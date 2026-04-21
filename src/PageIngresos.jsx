@@ -302,13 +302,8 @@ const PageIngresos = ({ onOpenPatient }) => {
                 <tr key={p.folio} onClick={()=>onOpenPatient(p)}>
                   <td className="mono">{p.folio}</td>
                   <td>
-                    <div style={{display:'flex', alignItems:'center', gap:10}}>
-                      <div className="avatar" style={{background:'var(--brand-500)', width:28, height:28, fontSize:10}}>{p.inicial}</div>
-                      <div>
-                        <div style={{fontWeight:600}}>{p.nombre}</div>
-                        <div style={{fontSize:11, color:'var(--ink-500)'}}>{p.diagnostico.split('(')[0].trim()}</div>
-                      </div>
-                    </div>
+                    <div style={{fontWeight:600}}>{p.nombre}</div>
+                    <div style={{fontSize:11, color:'var(--ink-500)'}}>{p.diagnostico.split('(')[0].trim()}</div>
                   </td>
                   <td className="mono">{p.rut}</td>
                   <td>{p.region}</td>
