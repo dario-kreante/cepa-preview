@@ -1,0 +1,123 @@
+/* =========================================================
+   Sistema CEPA · Design Tokens
+   Inspirado en paleta institucional Universidad de Talca
+   ========================================================= */
+
+:root {
+  /* Brand - azul UTalca institucional */
+  --brand-50:  #eff5fb;
+  --brand-100: #dbe8f4;
+  --brand-200: #b8d0e7;
+  --brand-300: #8bb2d5;
+  --brand-400: #5a8fbe;
+  --brand-500: #2f6ea4;
+  --brand-600: #1f5a8f;
+  --brand-700: #174877;
+  --brand-800: #123a61;
+  --brand-900: #0d2a48;
+  --brand-950: #081c33;
+
+  /* Neutrales fríos (casi azulados) */
+  --ink-50:  #f7f9fc;
+  --ink-100: #eef2f7;
+  --ink-200: #dde4ee;
+  --ink-300: #c2cdda;
+  --ink-400: #8c9bae;
+  --ink-500: #5e6b7d;
+  --ink-600: #445161;
+  --ink-700: #2f3a48;
+  --ink-800: #1e2834;
+  --ink-900: #0f1721;
+
+  /* Estados semánticos */
+  --success-50:  #ecfdf3;
+  --success-100: #d1fadf;
+  --success-500: #12b76a;
+  --success-600: #039855;
+  --success-700: #027a48;
+
+  --warn-50:  #fff8eb;
+  --warn-100: #fef0c7;
+  --warn-500: #f59e0b;
+  --warn-600: #d97706;
+  --warn-700: #b45309;
+
+  --danger-50:  #fef3f2;
+  --danger-100: #fee4e2;
+  --danger-500: #f04438;
+  --danger-600: #d92d20;
+  --danger-700: #b42318;
+
+  --info-50:  #eff8ff;
+  --info-100: #d1e9ff;
+  --info-500: #2e90fa;
+  --info-600: #1570ef;
+  --info-700: #175cd3;
+
+  --accent-purple: #7a5af8;
+  --accent-teal:   #0e9384;
+
+  /* Tipografía */
+  --font-sans: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", Consolas, monospace;
+
+  /* Espaciado base */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 20px;
+  --s-6: 24px;
+  --s-8: 32px;
+  --s-10: 40px;
+  --s-12: 48px;
+
+  /* Radios */
+  --r-sm: 6px;
+  --r-md: 8px;
+  --r-lg: 12px;
+  --r-xl: 16px;
+
+  /* Sombras */
+  --sh-xs: 0 1px 2px rgba(16, 24, 40, 0.05);
+  --sh-sm: 0 1px 3px rgba(16, 24, 40, 0.1), 0 1px 2px rgba(16, 24, 40, 0.06);
+  --sh-md: 0 4px 8px -2px rgba(16, 24, 40, 0.1), 0 2px 4px -2px rgba(16, 24, 40, 0.06);
+  --sh-lg: 0 12px 16px -4px rgba(16, 24, 40, 0.08), 0 4px 6px -2px rgba(16, 24, 40, 0.03);
+
+  /* Layout */
+  --sidebar-w: 248px;
+  --sidebar-w-collapsed: 64px;
+  --topbar-h: 60px;
+  --alerts-w: 320px;
+
+  /* Densidad tabla */
+  --row-h-comfortable: 52px;
+  --row-h-compact: 36px;
+  --row-h: var(--row-h-comfortable);
+}
+
+/* Densidad compacta */
+[data-density="compact"] {
+  --row-h: var(--row-h-compact);
+}
+
+/* Variantes de brand */
+[data-brand="teal"]   { --brand-500:#0e9384; --brand-600:#107569; --brand-700:#125d56; --brand-800:#134e48; --brand-50:#f0fdf9; --brand-100:#ccfbef; }
+[data-brand="indigo"] { --brand-500:#4f46e5; --brand-600:#4338ca; --brand-700:#3730a3; --brand-800:#312e81; --brand-50:#eef2ff; --brand-100:#e0e7ff; }
+[data-brand="slate"]  { --brand-500:#334155; --brand-600:#1e293b; --brand-700:#0f172a; --brand-800:#020617; --brand-50:#f8fafc; --brand-100:#f1f5f9; }
+
+/* Reset mínimo */
+*, *::before, *::after { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-sans);
+  color: var(--ink-800);
+  background: var(--ink-50);
+  -webkit-font-smoothing: antialiased;
+  font-size: 14px;
+  line-height: 1.5;
+}
+button { font: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+input, select, textarea { font: inherit; }
+a { color: var(--brand-600); text-decoration: none; }

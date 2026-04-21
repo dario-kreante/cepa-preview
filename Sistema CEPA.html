@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Sistema CEPA · Centro de Estudios Psicosociales Aplicados · UTalca</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+
+<link rel="stylesheet" href="src/tokens.css"/>
+<link rel="stylesheet" href="src/styles.css"/>
+
+<script>
+  window.__TWEAKS__ = /*EDITMODE-BEGIN*/{
+    "role": "Psicóloga",
+    "density": "compact",
+    "accent": "salud",
+    "alertsOpen": true,
+    "showOnboarding": false
+  }/*EDITMODE-END*/;
+</script>
+</head>
+<body>
+<div id="root"></div>
+
+<!-- React + Babel -->
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<!-- Data (plain JS) -->
+<script src="src/data.js"></script>
+
+<!-- Component scripts -->
+<script type="text/babel" src="src/Icon.jsx"></script>
+<script type="text/babel" src="src/Shell.jsx"></script>
+<script type="text/babel" src="src/PageDashboard.jsx"></script>
+<script type="text/babel" src="src/PageIngresos.jsx"></script>
+<script type="text/babel" src="src/PageClinicos.jsx"></script>
+<script type="text/babel" src="src/PageSeguimiento.jsx"></script>
+<script type="text/babel" src="src/PageOperacion.jsx"></script>
+
+<script type="text/babel">
+const { useState, useEffect } = React;
+
+function App() {
+  const [tweaks, setTweaks] = useState(window.__TWEAKS__);
+  const [editMode, setEditMode] = useState(false);
+  const [current, setCurrent] = useState('dashboard');
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [alertsHidden, setAlertsHidden] = useState(!tweaks.alertsOpen);
+  const [selectedPatient, setSelectedPatient] = useState(null);
+
+  // edit-mode protocol
+  useEffect(() => {
+    const handler = (ev) => {
+      if (!ev.data || !ev.data.type) return;
+      if (ev.data.type === '__activate_edit_mode') setEditMode(true);
+      if (ev.data.type === '__deactivate_edit_mode') setEditMode(false);
+    };
+    window.addEventListener('message', handler);
+    window.parent.postMessage({type:'__edit_mode_available'}, '*');
+    return () => window.removeEventListener('message', handler);
+  }, []);
+
+  const updateTweak = (key, val) => {
+    const next = {...tweaks, [key]: val};
+    setTweaks(next);
+    window.parent.postMessage({type:'__edit_mode_set_keys', edits:{[key]:val}}, '*');
+  };
+
+  // apply density & accent
+  useEffect(() => {
+    document.documentElement.setAttribute('data-density', tweaks.density);
+    document.documentElement.setAttribute('data-accent', tweaks.accent);
+  }, [tweaks.density, tweaks.accent]);
+
+  const crumbsMap = {
+    'dashboard':  'Inicio / Dashboard',
+    'ingresos':   'Inicio / Pacientes',
+    'licencias':  'Inicio / Clínico / Licencias médicas',
+    'farmacos':   'Inicio / Clínico / Fármacos',
+    'controles':  'Inicio / Clínico / Controles médicos',
+    'ept':        'Inicio / Clínico / Seguimiento EPT',
+    'reintegro':  'Inicio / Clínico / Reintegro laboral',
+    'auditoria':  'Inicio / Auditoría',
+    'agenda':     'Inicio / Operación / Agendamiento',
+    'reportes':   'Inicio / Operación / Reportería',
+  };
+  const titleMap = {
+    'dashboard':'Dashboard','ingresos':'Pacientes','licencias':'Licencias médicas',
+    'farmacos':'Gestión de fármacos','controles':'Controles médicos',
+    'ept':'Seguimiento EPT','reintegro':'Seguimiento reintegro',
+    'auditoria':'Auditoría','agenda':'Agendamiento','reportes':'Reportería'
+  };
+
+  const handleAlertClick = (a) => {
+    const p = window.PATIENTS.find(x => x.folio === a.folio);
+    if (p) setSelectedPatient(p);
+  };
+
+  return (
+    <div className="app-shell"
+      data-alerts={alertsHidden ? 'hidden' : 'shown'}
+      data-sidebar={sidebarCollapsed ? 'collapsed' : 'expanded'}>
+      <Sidebar
+        current={current}
+        onNav={setCurrent}
+        collapsed={sidebarCollapsed}
+        onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+      />
+      <Topbar
+        title={titleMap[current]}
+        crumbs={crumbsMap[current]}
+        role={tweaks.role}
+        setRole={(r) => updateTweak('role', r)}
+        onToggleAlerts={() => setAlertsHidden(!alertsHidden)}
+        alertsHidden={alertsHidden}
+      />
+      <main className="main-root">
+        {current === 'dashboard' && <PageDashboard onOpenPatient={setSelectedPatient}/>}
+        {current === 'ingresos' && <PageIngresos onOpenPatient={setSelectedPatient}/>}
+        {current === 'licencias' && <PageLicencias/>}
+        {current === 'farmacos' && <PageFarmacos/>}
+        {current === 'controles' && <PageControles/>}
+        {current === 'ept' && <PageEPT/>}
+        {current === 'reintegro' && <PageReintegro/>}
+        {current === 'auditoria' && <PageAuditoria/>}
+        {current === 'agenda' && <PageAgenda/>}
+        {current === 'reportes' && <PageReportes/>}
+      </main>
+      {!alertsHidden && <AlertsPanel onItemClick={handleAlertClick}/>}
+
+      {selectedPatient && <PatientSheet patient={selectedPatient} onClose={() => setSelectedPatient(null)}/>}
+
+      {editMode && (
+        <div className="tweaks-panel">
+          <div className="tweaks-header">
+            <Icon name="sliders" size={16}/>
+            <h3>Tweaks</h3>
+            <button className="icon-btn close" onClick={()=>setEditMode(false)}><Icon name="close" size={16}/></button>
+          </div>
+          <div className="tweaks-body">
+            <div className="tweak-field">
+              <label>Rol del usuario</label>
+              <select value={tweaks.role} onChange={e=>updateTweak('role', e.target.value)}>
+                <option>Coordinadora CEPA</option>
+                <option>Médico tratante</option>
+                <option>Psicóloga</option>
+                <option>EPTista</option>
+                <option>Administrativa</option>
+                <option>Supervisor ISL</option>
+              </select>
+              <small>Cambia las acciones y accesos visibles</small>
+            </div>
+            <div className="tweak-field">
+              <label>Densidad</label>
+              <div style={{display:'flex', gap:6}}>
+                {['compact','comfortable','spacious'].map(d => (
+                  <button key={d}
+                    className={'btn sm ' + (tweaks.density===d?'primary':'ghost')}
+                    onClick={()=>updateTweak('density', d)}>
+                    {d==='compact'?'Compacta':d==='comfortable'?'Estándar':'Amplia'}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="tweak-field">
+              <label>Paleta de acento</label>
+              <div style={{display:'flex', gap:6}}>
+                {[
+                  {k:'utalca', c:'#1e3a5f', n:'UTalca'},
+                  {k:'salud',  c:'#0e9384', n:'Salud'},
+                  {k:'violeta',c:'#6e40c9', n:'Violeta'},
+                  {k:'ambar',  c:'#b45309', n:'Ámbar'},
+                ].map(a => (
+                  <button key={a.k}
+                    onClick={()=>updateTweak('accent', a.k)}
+                    style={{
+                      width:32, height:32, borderRadius:8, background:a.c,
+                      border: tweaks.accent===a.k ? '3px solid #fff' : '3px solid transparent',
+                      outline: tweaks.accent===a.k ? '2px solid '+a.c : 'none',
+                      cursor:'pointer'
+                    }} title={a.n}/>
+                ))}
+              </div>
+              <small>Cambia el color principal del sistema</small>
+            </div>
+            <div className="tweak-field">
+              <label style={{display:'flex', alignItems:'center', justifyContent:'space-between'}}>
+                <span>Panel de alertas visible</span>
+                <input type="checkbox" checked={!alertsHidden} onChange={e=>{ setAlertsHidden(!e.target.checked); updateTweak('alertsOpen', e.target.checked); }}/>
+              </label>
+              <small>Oculta el panel lateral derecho</small>
+            </div>
+
+            <div style={{marginTop: 18, paddingTop: 14, borderTop: '1px solid var(--ink-100)'}}>
+              <div style={{fontSize:11, color:'var(--ink-500)', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.04em', marginBottom:8}}>Navegación rápida</div>
+              <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:6}}>
+                {['dashboard','ingresos','licencias','farmacos','controles','ept','reintegro','auditoria','agenda','reportes'].map(k => (
+                  <button key={k}
+                    className={'btn sm ' + (current===k?'primary':'ghost')}
+                    onClick={()=>setCurrent(k)} style={{fontSize:10.5, padding:'6px 8px'}}>
+                    {titleMap[k]}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
