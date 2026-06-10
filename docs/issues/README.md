@@ -6,7 +6,9 @@ Aceptación** (Gherkin), **Reglas de Negocio** y **Test Cases**, según
 [`_plantilla-historia.md`](./_plantilla-historia.md).
 
 - **Proyecto Linear:** `CEPA - Sistema SALUTEM` (equipo Kreante / KRE)
-- **Stack:** React (Vite) + TypeScript + Tailwind + shadcn/ui · NestJS · Oracle · JWT/RBAC
+- **Stack:** React (Vite) + TypeScript + Tailwind + shadcn/ui · **FastAPI (Python)** · **PostgreSQL (desarrollo/CI) / Oracle (producción objetivo)** vía SQLAlchemy + Alembic · JWT/RBAC
+  - *Backend: **FastAPI (Python)** es la definición vigente y autoritativa (ver [`00-decisiones-v4.md`](./00-decisiones-v4.md) D14). Reemplaza cualquier mención previa a NestJS.*
+  - *Base de datos: portabilidad Oracle⇄PostgreSQL vía SQLAlchemy. Oracle es el target de producción; Postgres se ejerce en desarrollo/CI y es la contingencia desplegable (ver D15 y [`../superpowers/specs/2026-06-10-portabilidad-bd-postgres-fallback-design.md`](../superpowers/specs/2026-06-10-portabilidad-bd-postgres-fallback-design.md)).*
 - **Perfiles operativos (v4):** Coordinación · Administrativo · Auditor *(el perfil Clínico no accede — usa SALUTEM)*
 
 ## Leyenda de prioridad (MoSCoW)
