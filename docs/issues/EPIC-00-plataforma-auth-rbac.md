@@ -11,7 +11,7 @@
 - Permisos diferenciados de edición vs. solo lectura por módulo; Auditor sin edición de datos clínicos.
 - Log de auditoría inmutable, consultable y filtrable (quién / qué / cuándo) sobre el 100% de operaciones CRUD (objetivo institucional OI1).
 
-**Fuera de alcance:** integración con sistemas de fichas clínicas (SALUTEM/SAM), provisionamiento de infraestructura/Oracle, perfil Clínico (eliminado en v4 D1).
+**Fuera de alcance:** integración con sistemas de fichas clínicas (SALUTEM/SAM), provisionamiento de infraestructura/motor de base de datos (Oracle o PostgreSQL, ver Decisiones v4 D15), perfil Clínico (eliminado en v4 D1).
 
 ---
 
@@ -192,7 +192,7 @@ Como **Auditor / Coordinación del CEPA**, quiero **consultar un log de auditor�
 - [ ] Todos los CA verificados (incluye verificación de cobertura del 100% de operaciones CRUD)
 - [ ] Tests unitarios + integración en verde (incluye prueba de inmutabilidad)
 - [ ] Endpoint(s) de consulta del log documentados en OpenAPI/Swagger
-- [ ] Inmutabilidad del log verificada a nivel de aplicación y de base de datos (Oracle)
+- [ ] Inmutabilidad del log verificada a nivel de aplicación y de base de datos (Oracle o PostgreSQL, ver D15)
 - [ ] Demo validada con equipo gestor CEPA
 
 ### Notas / Preguntas abiertas

@@ -12,7 +12,8 @@
 - **IMED:** plataforma chilena de licencias médicas y recetas electrónicas.
 - **SAM / SALUTEM:** sistemas de fichas clínicas electrónicas con que opera CEPA. El equipo clínico registra la información clínica directamente en ellos (Decisiones v4 D1). **El aplicativo CEPA no escribe sobre SALUTEM** (D12).
 - **JWT:** JSON Web Token, mecanismo de autenticación basado en tokens firmados.
-- **OpenAPI / Swagger:** estándar de especificación y documentación automática de APIs REST (generado por NestJS).
+- **FastAPI:** framework web de Python para construir APIs REST; genera la especificación OpenAPI/Swagger de forma automática a partir de las anotaciones de tipos y los modelos Pydantic.
+- **OpenAPI / Swagger:** estándar de especificación y documentación automática de APIs REST (generado automáticamente por FastAPI).
 
 **Historias de la épica**
 | ID | Título | Perfil | Prioridad |

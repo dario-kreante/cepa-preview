@@ -76,7 +76,7 @@ Como **coordinadora del CEPA**, quiero **un dashboard con indicadores de gestió
 
 ### Notas / Preguntas abiertas
 - Tramos etarios y zona geográfica (región/comuna) dependen de campos obligatorios de calidad de datos (D6).
-- Estrategia de rendimiento (vistas materializadas/agregaciones) a confirmar con Oracle institucional para cumplir OU3.
+- Estrategia de rendimiento (vistas materializadas/agregaciones) para cumplir OU3, portable entre PostgreSQL y Oracle (ver D15); validar con el motor de producción una vez definido.
 
 ---
 

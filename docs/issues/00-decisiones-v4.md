@@ -83,3 +83,29 @@ Proyecto · Particular · PAPT. (El antiguo "convenio SOCORRO" ya no existe.)
 - Sumar a **Mario (Director de TI UTalca)** como contraparte técnica; valida y supervisa
   seguridad, cumplimiento e integraciones.
 - Posibilidad de **manual de usuario**. Capacitar al **100% de funcionarios activos** con acceso.
+
+## D14. Stack de backend: FastAPI (Python)
+- El backend del Sistema CEPA se construye con **FastAPI (Python)**. Esta es la definición
+  **vigente y autoritativa** y **reemplaza cualquier referencia previa a NestJS** en el PRD o el
+  backlog (corregido en `README.md` y `EPIC-12-api.md`).
+- **Impacto:** el criterio OI3 (100% de endpoints documentados en OpenAPI/Swagger) se mantiene
+  sin cambios — FastAPI genera la especificación OpenAPI automáticamente a partir de anotaciones
+  de tipos y modelos **Pydantic**. JWT, versionado de API (`/api/v1`), rate limiting y demás
+  principios de §8.1 son agnósticos del framework y siguen aplicando.
+- **Validación técnica:** queda bajo supervisión de TI UTalca (Mario, D13).
+
+## D15. Estrategia de portabilidad de base de datos (Oracle primario, Postgres contingencia)
+- Ante la demora en la habilitación de la instancia **Oracle** por parte de la Universidad, el
+  sistema se diseña para ser **portable entre Oracle y PostgreSQL** sin reescritura.
+- **Roles:** **Oracle** es el motor objetivo de **producción**; **PostgreSQL** es el motor de
+  **desarrollo, CI y contingencia** de producción (desplegable en los servidores de la U vía SSH).
+- **Principio rector:** un fallback que nunca se ejecuta no es seguro → se **ejerce Postgres de
+  forma continua** en desarrollo y CI, de modo que el camino de contingencia esté siempre probado.
+- **Implementación:** **SQLAlchemy + Alembic** abstraen el dialecto; el motor se elige por
+  `DATABASE_URL`. Reglas anti-lock-in (tipos genéricos, `Identity()`, sin SQL específico de motor,
+  identificadores ≤30 chars, fechas UTC). **CI dual-target:** job Postgres obligatorio en cada push;
+  job Oracle (XE/free en contenedor) *gated*, que pasa a obligatorio cuando exista la instancia real.
+- En desarrollo **no se requiere Oracle local**: se trabaja contra Postgres; Oracle solo aparece en
+  CI (contenedor efímero) y en producción.
+- **Validación técnica:** bajo supervisión de TI UTalca (Mario, D13).
+- **Detalle completo:** ver `../superpowers/specs/2026-06-10-portabilidad-bd-postgres-fallback-design.md`.
