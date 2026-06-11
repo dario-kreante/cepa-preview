@@ -8,6 +8,7 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Identity,
+    Integer,
     String,
     Text,
 )
@@ -56,6 +57,16 @@ class Ingreso(Base):
     flag_revision: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     observaciones: Mapped[str | None] = mapped_column(Text, nullable=True)
     tratamiento_iniciado: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # ── Campos de dimensión para dashboard/reportes EPIC-09 ───────────────────
+    programa: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    profesional_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    tipo_convenio: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    sexo: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    region: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    comuna: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    tramo_etario: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    especialidad: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    tipo_atencion: Mapped[str | None] = mapped_column(String(40), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, nullable=False
     )

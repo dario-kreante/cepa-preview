@@ -8,6 +8,7 @@ def test_columnas_oda():
         "id",
         "ingreso_id",
         "identificador",
+        "fecha_registro",   # EPIC-09 D4: campo añadido para reporte ODAS vencidas
         "fecha_vencimiento",
         "vigente",
         "created_at",

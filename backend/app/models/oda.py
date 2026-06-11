@@ -24,6 +24,7 @@ class Oda(Base):
         BigInteger, ForeignKey("ingreso.id"), nullable=False, index=True
     )
     identificador: Mapped[str] = mapped_column(String(60), nullable=False)
+    fecha_registro: Mapped[date | None] = mapped_column(Date, nullable=True)
     fecha_vencimiento: Mapped[date] = mapped_column(Date, nullable=False, index=True)
     vigente: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(

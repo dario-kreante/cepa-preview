@@ -27,6 +27,16 @@ def test_tabla_y_columnas():
         "tratamiento_iniciado",
         "created_at",
         "updated_at",
+        # EPIC-09: campos de dimensión para dashboard/reportes (D1)
+        "programa",
+        "profesional_id",
+        "tipo_convenio",
+        "sexo",
+        "region",
+        "comuna",
+        "tramo_etario",
+        "especialidad",
+        "tipo_atencion",
     }
 
 
