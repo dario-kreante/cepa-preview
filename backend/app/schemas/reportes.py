@@ -43,6 +43,7 @@ class ReporteOperativoItem(BaseModel):
     realizadas: int
     inasistencias: int
     anuladas: int
+    agendadas: int = 0  # DD-6: incluido para que columnas reconcilien con total_citas
 
 
 class ReporteOperativoResponse(BaseModel):

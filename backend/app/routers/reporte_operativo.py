@@ -117,6 +117,8 @@ def get_reporte_operativo(
             realizadas=estado_map.get((r.fecha, r.programa, r.profesional_id, "realizada"), 0),
             inasistencias=estado_map.get((r.fecha, r.programa, r.profesional_id, "inasistencia"), 0),
             anuladas=estado_map.get((r.fecha, r.programa, r.profesional_id, "anulada"), 0),
+            # DD-6: incluir agendadas para que total_citas = realizadas + inasistencias + anuladas + agendadas
+            agendadas=estado_map.get((r.fecha, r.programa, r.profesional_id, "agendada"), 0),
         )
         for r in rows_detalle
     ]

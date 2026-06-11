@@ -41,7 +41,10 @@ def crear_ventana(
     db: Session = Depends(get_db),
     current_user=Depends(_escritor),
 ) -> ConfigVentanaProceso:
-    """Crear la configuración de una ventana de proceso."""
+    """Crear la configuración de una ventana de proceso.
+
+    DD-5: single commit — record_audit antes del único db.commit().
+    """
     ventana = ConfigVentanaProceso(
         proceso=payload.proceso,
         columnas_visibles=payload.columnas_visibles,
@@ -49,8 +52,7 @@ def crear_ventana(
         creado_por=current_user.username,
     )
     db.add(ventana)
-    db.commit()
-    db.refresh(ventana)
+    db.flush()
 
     record_audit(
         db,
@@ -60,5 +62,6 @@ def crear_ventana(
         entity_id=str(ventana.id),
     )
     db.commit()
+    db.refresh(ventana)
 
     return ventana

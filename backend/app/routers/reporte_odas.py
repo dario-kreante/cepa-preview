@@ -3,6 +3,10 @@
 RN-1: vencida = fecha_vencimiento < fecha actual (estricto menor, NO <=).
 RN-2: las ODAS son manuales y tienen fecha_vencimiento (D3).
 Deviación: modelo Oda (no ODA); fecha_registro nullable añadida EPIC-09 migración 09000.
+
+DD-6 (EPIC-09 rework): se popula ODAVencidaItem.programa/region/comuna con datos
+del Ingreso y Paciente (join ya disponible). También se incluye folio/nombre paciente
+por CA-1.
 """
 
 from __future__ import annotations
@@ -18,6 +22,7 @@ from app.auth.deps import require_role
 from app.db.session import get_db
 from app.models.ingreso import Ingreso
 from app.models.oda import Oda
+from app.models.paciente import Paciente
 from app.schemas.reportes import ODAVencidaItem, ReporteODASVencidasResponse
 
 router = APIRouter(prefix="/api/v1/reportes", tags=["reportes"])
@@ -36,23 +41,25 @@ def get_odas_vencidas(
     """CA-1..CA-3: lista de ODAS cuya fecha_vencimiento < hoy (estricto).
 
     TC-097-02: ODA que vence exactamente hoy NO aparece (condición estricta < hoy).
+    DD-6: programa/region/comuna se leen de Ingreso y Paciente respectivamente.
     """
 
     hoy = datetime.now(timezone.utc).date()
 
     stmt = (
-        select(Oda)
+        select(Oda, Ingreso, Paciente)
         .join(Ingreso, Oda.ingreso_id == Ingreso.id)
+        .join(Paciente, Ingreso.paciente_id == Paciente.id)
         .where(Oda.fecha_vencimiento < hoy)
     )
     if programa is not None:
         stmt = stmt.where(Ingreso.programa == programa)
     if region is not None:
-        stmt = stmt.where(Ingreso.region == region)
+        stmt = stmt.where(Paciente.region == region)
     if comuna is not None:
-        stmt = stmt.where(Ingreso.comuna == comuna)
+        stmt = stmt.where(Paciente.comuna == comuna)
 
-    odas = list(db.scalars(stmt.order_by(Oda.fecha_vencimiento.asc())))
+    rows = db.execute(stmt.order_by(Oda.fecha_vencimiento.asc())).all()
 
     items = [
         ODAVencidaItem(
@@ -60,11 +67,11 @@ def get_odas_vencidas(
             folio_id=o.ingreso_id,
             fecha_registro=o.fecha_registro,
             fecha_vencimiento=o.fecha_vencimiento,
-            programa=None,
-            region=None,
-            comuna=None,
+            programa=ing.programa,
+            region=pac.region,
+            comuna=pac.comuna,
         )
-        for o in odas
+        for o, ing, pac in rows
     ]
 
     record_audit(

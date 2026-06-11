@@ -4,6 +4,13 @@ Deviación D5: LicenciaMedica usa `cantidad_dias` (no `dias_reposo`) y
 `origen: str` ("sistema"/"extra_sistema") en lugar de `origen_externo: bool`.
 Las licencias "extra_sistema" equivalen a las "externas" del plan.
 RN-4: las LM anuladas (anulada=True) se excluyen del cómputo.
+
+DD-4 (EPIC-09 rework): el período fecha_desde/hasta se aplica sobre
+LicenciaMedica.fecha_emision (tabla de hechos), no sobre ingreso.fecha_ingreso.
+aplicar_filtros_ingreso ya no aplica el rango de fechas (se eliminó ese comportamiento).
+
+DD-6 (EPIC-09 rework): se eliminó el `base_stmt` duplicado; se consolida en
+GROUP BY con origen para reducir el número de queries.
 """
 
 from __future__ import annotations
@@ -20,6 +27,7 @@ from app.auth.deps import require_role
 from app.db.session import get_db
 from app.models.ingreso import Ingreso
 from app.models.licencia import LicenciaMedica
+from app.models.paciente import Paciente
 from app.schemas.reportes import LicenciaAcumuladaItem, ReporteLicenciasResponse
 from app.services.reportes_filtros import FiltrosDashboard, aplicar_filtros_ingreso
 
@@ -43,19 +51,25 @@ def get_reporte_licencias(
     """CA-1..CA-3: total de días acumulados por folio, distinguiendo licencias externas (D7).
 
     Deviación D5: 'externas' = origen == 'extra_sistema'; 'internas' = origen == 'sistema'.
+    DD-4: período se aplica sobre LicenciaMedica.fecha_emision.
+    DD-6: consolidado — un GROUP BY por (ingreso_id, origen) en lugar de tres queries separadas.
     """
 
     filtros = FiltrosDashboard(
-        fecha_desde=fecha_desde,
-        fecha_hasta=fecha_hasta,
         region=region,
         comuna=comuna,
         programa=programa,
     )
 
-    # Subquery: IDs de ingresos que pasan los filtros de dimensión
-    stmt_ingresos = select(Ingreso.id).select_from(Ingreso)
-    stmt_ingresos = aplicar_filtros_ingreso(stmt_ingresos, Ingreso, filtros)
+    # Subquery: IDs de ingresos que pasan los filtros de dimensión (Paciente join para region/comuna)
+    stmt_ingresos = (
+        select(Ingreso.id)
+        .select_from(Ingreso)
+        .join(Paciente, Ingreso.paciente_id == Paciente.id)
+    )
+    stmt_ingresos = aplicar_filtros_ingreso(
+        stmt_ingresos, Ingreso, filtros, modelo_paciente=Paciente
+    )
     ingreso_ids = [r.id for r in db.execute(stmt_ingresos).all()]
 
     if not ingreso_ids:
@@ -65,79 +79,52 @@ def get_reporte_licencias(
             items=[],
         )
 
-    # Base: solo vigentes (no anuladas), en el período de emisión
-    base_stmt = (
-        select(LicenciaMedica.ingreso_id)
-        .where(LicenciaMedica.ingreso_id.in_(ingreso_ids))
-        .where(LicenciaMedica.fecha_emision >= fecha_desde)
-        .where(LicenciaMedica.fecha_emision <= fecha_hasta)
-        .where(LicenciaMedica.anulada.is_(False))
-    )
+    # DD-6: un solo GROUP BY (ingreso_id, origen) — reemplaza las 3 queries separadas
+    base_where = [
+        LicenciaMedica.ingreso_id.in_(ingreso_ids),
+        LicenciaMedica.fecha_emision >= fecha_desde,
+        LicenciaMedica.fecha_emision <= fecha_hasta,
+        LicenciaMedica.anulada.is_(False),
+    ]
     if tipo_licencia is not None:
-        base_stmt = base_stmt.where(LicenciaMedica.tipo_lm == tipo_licencia)
+        base_where.append(LicenciaMedica.tipo_lm == tipo_licencia)
     if tipo_reposo is not None:
-        base_stmt = base_stmt.where(LicenciaMedica.tipo_reposo == tipo_reposo)
+        base_where.append(LicenciaMedica.tipo_reposo == tipo_reposo)
 
-    # Total días por folio
-    stmt_total = (
+    stmt_agrupado = (
         select(
             LicenciaMedica.ingreso_id,
-            func.sum(LicenciaMedica.cantidad_dias).label("total_dias"),
-        )
-        .where(LicenciaMedica.ingreso_id.in_(ingreso_ids))
-        .where(LicenciaMedica.fecha_emision >= fecha_desde)
-        .where(LicenciaMedica.fecha_emision <= fecha_hasta)
-        .where(LicenciaMedica.anulada.is_(False))
-        .group_by(LicenciaMedica.ingreso_id)
-    )
-    if tipo_licencia is not None:
-        stmt_total = stmt_total.where(LicenciaMedica.tipo_lm == tipo_licencia)
-    if tipo_reposo is not None:
-        stmt_total = stmt_total.where(LicenciaMedica.tipo_reposo == tipo_reposo)
-
-    rows_total = db.execute(stmt_total).all()
-    total_map = {r.ingreso_id: r.total_dias or 0 for r in rows_total}
-
-    # Conteo internas (origen='sistema') por folio
-    stmt_internas = (
-        select(
-            LicenciaMedica.ingreso_id,
+            LicenciaMedica.origen,
             func.count(LicenciaMedica.id).label("n"),
+            func.sum(LicenciaMedica.cantidad_dias).label("dias"),
         )
-        .where(LicenciaMedica.ingreso_id.in_(ingreso_ids))
-        .where(LicenciaMedica.fecha_emision >= fecha_desde)
-        .where(LicenciaMedica.fecha_emision <= fecha_hasta)
-        .where(LicenciaMedica.anulada.is_(False))
-        .where(LicenciaMedica.origen == "sistema")
-        .group_by(LicenciaMedica.ingreso_id)
+        .where(*base_where)
+        .group_by(LicenciaMedica.ingreso_id, LicenciaMedica.origen)
     )
-    internas_map = {r.ingreso_id: r.n for r in db.execute(stmt_internas).all()}
+    rows_agrupados = db.execute(stmt_agrupado).all()
 
-    # Conteo externas (origen='extra_sistema') por folio
-    stmt_externas = (
-        select(
-            LicenciaMedica.ingreso_id,
-            func.count(LicenciaMedica.id).label("n"),
-        )
-        .where(LicenciaMedica.ingreso_id.in_(ingreso_ids))
-        .where(LicenciaMedica.fecha_emision >= fecha_desde)
-        .where(LicenciaMedica.fecha_emision <= fecha_hasta)
-        .where(LicenciaMedica.anulada.is_(False))
-        .where(LicenciaMedica.origen == "extra_sistema")
-        .group_by(LicenciaMedica.ingreso_id)
-    )
-    externas_map = {r.ingreso_id: r.n for r in db.execute(stmt_externas).all()}
+    # Acumular por ingreso_id
+    totales_dias: dict[int, int] = {}
+    internas_cnt: dict[int, int] = {}
+    externas_cnt: dict[int, int] = {}
 
-    # Folios que tienen al menos una licencia en el período
-    folio_ids_con_licencias = set(total_map.keys())
+    for r in rows_agrupados:
+        folio_id = r.ingreso_id
+        totales_dias[folio_id] = totales_dias.get(folio_id, 0) + (r.dias or 0)
+        if r.origen == "sistema":
+            internas_cnt[folio_id] = internas_cnt.get(folio_id, 0) + r.n
+        elif r.origen == "extra_sistema":
+            externas_cnt[folio_id] = externas_cnt.get(folio_id, 0) + r.n
+
+    folio_ids_con_licencias = set(totales_dias.keys())
 
     items = [
         LicenciaAcumuladaItem(
             folio_id=folio_id,
             rut_paciente=None,
-            total_dias_acumulados=total_map.get(folio_id, 0),
-            licencias_internas=internas_map.get(folio_id, 0),
-            licencias_externas=externas_map.get(folio_id, 0),
+            total_dias_acumulados=totales_dias.get(folio_id, 0),
+            licencias_internas=internas_cnt.get(folio_id, 0),
+            licencias_externas=externas_cnt.get(folio_id, 0),
         )
         for folio_id in folio_ids_con_licencias
     ]

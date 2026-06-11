@@ -2,6 +2,10 @@
 
 RN-4: el profesional es un dato de referencia en el registro (no un usuario del sistema — D1).
 La carga se computa por profesional_id sobre casos/atenciones del período.
+
+DD-4 (EPIC-09 rework): el período fecha_desde/hasta se aplica sobre Cita.fecha (tabla
+de hechos), NO sobre Ingreso.fecha_ingreso. Total_casos = ingresos distintos con al menos
+una cita en el período; total_atenciones = citas realizadas en el período.
 """
 
 from __future__ import annotations
@@ -36,33 +40,36 @@ def get_carga_laboral(
     db: Session = Depends(get_db),
     current_user=Depends(_lector),
 ) -> ReporteCargaLaboralResponse:
-    """CA-1..CA-3: carga por profesional en el período, con filtros opcionales."""
+    """CA-1..CA-3: carga por profesional en el período, con filtros opcionales.
+
+    DD-4: el período se aplica sobre Cita.fecha (no sobre fecha_ingreso del ingreso).
+    Total_casos = ingresos distintos con al menos una cita en el período.
+    """
 
     filtros = FiltrosDashboard(
-        fecha_desde=fecha_desde,
-        fecha_hasta=fecha_hasta,
         especialidad=especialidad,
         tipo_atencion=tipo_atencion,
         programa=programa,
     )
 
-    # Total de casos (ingresos) por profesional
+    # Total de casos (ingresos distintos) por profesional — citas en el período
     stmt_casos = (
         select(
             Ingreso.profesional_id,
             Ingreso.especialidad,
-            func.count(Ingreso.id).label("total_casos"),
+            func.count(Ingreso.id.distinct()).label("total_casos"),
         )
-        .select_from(Ingreso)
-        .where(Ingreso.fecha_ingreso >= fecha_desde)
-        .where(Ingreso.fecha_ingreso <= fecha_hasta)
+        .select_from(Cita)
+        .join(Ingreso, Cita.ingreso_id == Ingreso.id)
+        .where(Cita.fecha >= fecha_desde)
+        .where(Cita.fecha <= fecha_hasta)
         .where(Ingreso.profesional_id.is_not(None))
         .group_by(Ingreso.profesional_id, Ingreso.especialidad)
     )
     stmt_casos = aplicar_filtros_ingreso(stmt_casos, Ingreso, filtros)
     rows = db.execute(stmt_casos).all()
 
-    # Total de atenciones por profesional (join citas realizadas)
+    # Total de atenciones realizadas por profesional en el período
     stmt_atenciones = (
         select(
             Ingreso.profesional_id,
