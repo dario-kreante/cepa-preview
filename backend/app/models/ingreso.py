@@ -87,3 +87,6 @@ class Ingreso(Base):
     licencias: Mapped[list["LicenciaMedica"]] = relationship(  # noqa: F821
         back_populates="ingreso", cascade="all, delete-orphan"
     )
+    fichas_clinicas: Mapped[list["FichaClinica"]] = relationship(  # noqa: F821
+        back_populates="ingreso", cascade="all, delete-orphan"
+    )
