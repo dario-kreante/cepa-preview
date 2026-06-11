@@ -30,6 +30,12 @@ class Settings(BaseSettings):
     smtp_use_tls: bool = True
     smtp_from_addr: str = "cepa-alertas@utalca.cl"
 
+    # --- Rate limiting (CEPA-120 RN-4) ---
+    rate_limit_per_minute: int = 60
+
+    # --- IMED feature flag (CEPA-122, P2, PA5) ---
+    imed_enabled: bool = False
+
 
 @lru_cache
 def get_settings() -> Settings:

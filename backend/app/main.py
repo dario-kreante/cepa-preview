@@ -1,6 +1,10 @@
 from fastapi import FastAPI
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
 from app.config import get_settings
+from app.middleware.rate_limit import limiter
 from app.routers import audit_log, auth, usuarios, ingresos, pacientes, odas, consentimientos
 from app.routers import farmacos
 from app.routers import ept as ept_router
@@ -17,6 +21,11 @@ from app.routers import form_config as form_config_router
 from app.routers import pdf_extract as pdf_extract_router
 
 app = FastAPI(title=get_settings().app_name)
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
+
 app.include_router(auth.router)
 app.include_router(usuarios.router)
 app.include_router(audit_log.router)

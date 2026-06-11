@@ -7,6 +7,10 @@ os.environ.setdefault(
     os.environ.get("TEST_DATABASE_URL", "postgresql+psycopg://cepa:cepa@localhost:5432/cepa_test"),
 )
 
+# Cuota de rate limiting muy alta para que los tests nunca la alcancen.
+# El test específico test_rate_limit.py la sobrescribe a 3 con monkeypatch.
+os.environ.setdefault("RATE_LIMIT_PER_MINUTE", "10000")
+
 from collections.abc import Generator  # noqa: E402
 
 import pytest  # noqa: E402
