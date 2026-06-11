@@ -90,8 +90,14 @@ def _sembrar_usuario(db: Session, username: str, rol: str) -> Usuario:
 def _cliente_autenticado(client: TestClient, db_session: Session, username: str, rol: str) -> TestClient:
     usuario = _sembrar_usuario(db_session, username, rol)
     token = crear_access_token(user_id=usuario.id, username=usuario.username, role=usuario.rol)
-    client.headers.update({"Authorization": f"Bearer {token}"})
-    return client
+    # Crear un nuevo cliente con headers independientes para cada rol
+    authenticated_client = TestClient(app)
+    authenticated_client.headers.update({"Authorization": f"Bearer {token}"})
+    # Usar el mismo override de BD
+    def _override_get_db() -> Generator[Session, None, None]:
+        yield db_session
+    authenticated_client.app.dependency_overrides[get_db] = _override_get_db
+    return authenticated_client
 
 
 @pytest.fixture
