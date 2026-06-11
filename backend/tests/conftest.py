@@ -12,12 +12,23 @@ from collections.abc import Generator  # noqa: E402
 import pytest  # noqa: E402
 from alembic import command  # noqa: E402
 from alembic.config import Config  # noqa: E402
+from fastapi import Depends  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 from sqlalchemy.orm import Session  # noqa: E402
 
+from app.auth.deps import CurrentUser, get_current_user  # noqa: E402
+from app.auth.jwt import crear_access_token  # noqa: E402
+from app.auth.security import hash_password  # noqa: E402
 from app.config import get_settings  # noqa: E402
 from app.db.session import engine, get_db  # noqa: E402
 from app.main import app  # noqa: E402
+from app.models.usuario import Usuario  # noqa: E402
+
+
+# --- Ruta de diagnóstico, montada solo bajo tests ---
+@app.get("/whoami-test")
+def _whoami_test(user: CurrentUser = Depends(get_current_user)) -> dict:
+    return {"id": user.id, "username": user.username, "role": user.role}
 
 
 def _alembic_config() -> Config:
@@ -60,3 +71,39 @@ def client(db_session: Session) -> Generator[TestClient, None, None]:
     with TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.clear()
+
+
+def _sembrar_usuario(db: Session, username: str, rol: str) -> Usuario:
+    usuario = Usuario(
+        username=username,
+        nombre=username.title(),
+        hashed_password=hash_password("Clave123!"),
+        rol=rol,
+        activo=True,
+        intentos_fallidos=0,
+    )
+    db.add(usuario)
+    db.flush()
+    return usuario
+
+
+def _cliente_autenticado(client: TestClient, db_session: Session, username: str, rol: str) -> TestClient:
+    usuario = _sembrar_usuario(db_session, username, rol)
+    token = crear_access_token(user_id=usuario.id, username=usuario.username, role=usuario.rol)
+    client.headers.update({"Authorization": f"Bearer {token}"})
+    return client
+
+
+@pytest.fixture
+def as_coordinacion(client: TestClient, db_session: Session) -> TestClient:
+    return _cliente_autenticado(client, db_session, "coord_test", "Coordinacion")
+
+
+@pytest.fixture
+def as_admin(client: TestClient, db_session: Session) -> TestClient:
+    return _cliente_autenticado(client, db_session, "admin_test", "Administrativo")
+
+
+@pytest.fixture
+def as_auditor(client: TestClient, db_session: Session) -> TestClient:
+    return _cliente_autenticado(client, db_session, "auditor_test", "Auditor")
