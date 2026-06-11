@@ -11,6 +11,8 @@ dependencies = [
     "pydantic-settings>=2.3",
     "psycopg[binary]>=3.2",
     "oracledb>=2.2",
+    "pyjwt>=2.9",
+    "pwdlib[argon2]>=0.2.1",
 ]
 
 [dependency-groups]
