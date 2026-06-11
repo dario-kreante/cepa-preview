@@ -1,7 +1,3 @@
-import pytest
-from tests.conftest_ept import ingreso_fixture  # noqa: F401
-
-
 def _crear_caso(as_admin, ingreso_id, corresponde=True):
     r = as_admin.post(
         "/api/v1/casos-ept",

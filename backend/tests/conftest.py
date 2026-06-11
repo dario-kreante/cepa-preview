@@ -23,6 +23,8 @@ from app.config import get_settings  # noqa: E402
 from app.db.session import engine, get_db  # noqa: E402
 from app.main import app  # noqa: E402
 from app.models.usuario import Usuario  # noqa: E402
+from app.models.ingreso import Ingreso  # noqa: E402
+from app.models.paciente import Paciente  # noqa: E402
 
 
 # --- Ruta de diagnóstico, montada solo bajo tests ---
@@ -113,3 +115,35 @@ def as_admin(client: TestClient, db_session: Session) -> TestClient:
 @pytest.fixture
 def as_auditor(client: TestClient, db_session: Session) -> TestClient:
     return _cliente_autenticado(client, db_session, "auditor_test", "Auditor")
+
+
+import datetime  # noqa: E402
+
+
+@pytest.fixture
+def ingreso_fixture(db_session: Session) -> Ingreso:
+    """Crea un paciente + ingreso de prueba para tests del módulo EPT."""
+    paciente = Paciente(
+        rut="123456785",
+        nombre="Pedro Soto",
+        sexo="M",
+        edad=35,
+        region="Maule",
+    )
+    db_session.add(paciente)
+    db_session.flush()
+
+    ingreso = Ingreso(
+        paciente_id=paciente.id,
+        folio="F-2026-TEST",
+        folio_manual=True,
+        fecha_ingreso=datetime.date(2026, 1, 10),
+        tipo_derivacion="DIAT",
+        tipo_ingreso="convenio",
+        modelo_tratamiento="ambulatorio",
+        diagnostico="Trastorno adaptativo",
+        estado="activo",
+    )
+    db_session.add(ingreso)
+    db_session.flush()
+    return ingreso

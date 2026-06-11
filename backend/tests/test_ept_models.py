@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import BigInteger, Boolean, Date, DateTime, String
+from sqlalchemy import BigInteger, Boolean, Date
 
 from app.models.ept import CasoEpt, ContactoEpt
 

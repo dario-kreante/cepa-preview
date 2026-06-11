@@ -1,6 +1,4 @@
-import pytest
 from datetime import date, timedelta
-from tests.conftest_ept import ingreso_fixture  # noqa: F401
 
 from app.services.ept import calcular_estado_cumplimiento
 from app.domain.enums_ept import EstadoCumplimiento

@@ -13,6 +13,7 @@ dependencies = [
     "oracledb>=2.2",
     "pyjwt>=2.9",
     "pwdlib[argon2]>=0.2.1",
+    "email-validator>=2.1",
 ]
 
 [dependency-groups]

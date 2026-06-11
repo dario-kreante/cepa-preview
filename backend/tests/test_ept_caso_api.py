@@ -1,7 +1,3 @@
-import pytest
-from tests.conftest_ept import ingreso_fixture  # noqa: F401
-
-
 def _payload(ingreso_id, **over):
     base = {
         "ingreso_id": ingreso_id,
