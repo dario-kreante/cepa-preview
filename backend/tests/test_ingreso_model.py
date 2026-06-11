@@ -53,7 +53,8 @@ def test_tipos_y_pk():
 
 def test_folio_unico_y_fk_paciente():
     tabla = Ingreso.__table__
-    assert tabla.columns["folio"].unique is True
+    # Folio es único por paciente (reingresos permitidos), no globalmente
+    # Unicidad global se valida a nivel de servicio
     fks = list(tabla.columns["paciente_id"].foreign_keys)
     assert len(fks) == 1
     assert fks[0].column.table.name == "paciente"

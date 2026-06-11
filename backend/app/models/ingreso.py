@@ -33,7 +33,7 @@ class Ingreso(Base):
     paciente_id: Mapped[int] = mapped_column(
         BigInteger, ForeignKey("paciente.id"), nullable=False, index=True
     )
-    folio: Mapped[str] = mapped_column(String(30), unique=True, nullable=False, index=True)
+    folio: Mapped[str] = mapped_column(String(30), nullable=False, index=True)
     folio_manual: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     numero_siniestro: Mapped[str | None] = mapped_column(String(40), nullable=True, index=True)
     fecha_ingreso: Mapped[date] = mapped_column(Date, nullable=False)

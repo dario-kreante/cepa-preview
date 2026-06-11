@@ -1,14 +1,14 @@
 """crear folio_seq
 
 Revision ID: 0012
-Revises: 0011
+Revises: 0011b
 Create Date: 2026-06-10 00:00:00.000000
 """
 from alembic import op
 import sqlalchemy as sa
 
 revision = "0012"
-down_revision = "0011"
+down_revision = "0011b"
 branch_labels = None
 depends_on = None
 
