@@ -43,8 +43,65 @@ def _alembic_config() -> Config:
 def _migrated_schema() -> Generator[None, None, None]:
     cfg = _alembic_config()
     command.upgrade(cfg, "head")
+    _seed_form_ingresos_published()
     yield
     command.downgrade(cfg, "base")
+
+
+def _seed_form_ingresos_published() -> None:
+    """Siembra una versión publicada del formulario 'ingresos' para tests de PDF confirm."""
+    from datetime import datetime, timezone
+
+    from app.models.form_definition import FieldDef, FormDefinition, FormVersion
+
+    _system_fields = [
+        ("sexo", "Sexo", "select", ["F", "M", "otro"]),
+        ("edad", "Edad", "number", None),
+        ("diagnostico", "Diagnóstico", "text", None),
+        ("modelo_trat", "Modelo de tratamiento", "text", None),
+        ("tipo_alta", "Tipo de alta", "select", ["terapeutica", "medica", "psicologica", "abandono", "derivacion"]),
+        ("tipo_ingreso", "Tipo de ingreso", "select", ["consulta_espontanea", "convenio", "proyecto", "particular"]),
+        ("tipo_convenio", "Tipo de convenio", "select", ["ISL", "SUSESO", "particular", "otro"]),
+    ]
+
+    with Session(bind=engine) as session:
+        # Idempotente: solo crea si no existe
+        existing = session.execute(
+            __import__("sqlalchemy", fromlist=["select"]).select(FormDefinition).where(
+                FormDefinition.form_key == "ingresos"
+            )
+        ).scalar_one_or_none()
+        if existing is not None:
+            return
+
+        fd = FormDefinition(form_key="ingresos")
+        session.add(fd)
+        session.flush()
+
+        now = datetime.now(timezone.utc)
+        version = FormVersion(
+            form_def_id=fd.id,
+            version_num=1,
+            status="published",
+            published_at=now,
+            created_by="seed",
+        )
+        session.add(version)
+        session.flush()
+
+        for order, (key, label, ftype, dv) in enumerate(_system_fields, start=1):
+            session.add(FieldDef(
+                form_version_id=version.id,
+                field_key=key,
+                label=label,
+                field_type=ftype,
+                required=True,
+                system_locked=True,
+                domain_values=dv,
+                display_order=order,
+                active=True,
+            ))
+        session.commit()
 
 
 @pytest.fixture
