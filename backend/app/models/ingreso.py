@@ -1,4 +1,5 @@
 from datetime import date, datetime, timezone
+from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     BigInteger,
@@ -14,6 +15,9 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 from app.domain.enums import EstadoCaso
+
+if TYPE_CHECKING:
+    from app.models.seguimiento import Seguimiento  # noqa: F401
 
 
 def _utcnow() -> datetime:
@@ -57,3 +61,6 @@ class Ingreso(Base):
     )
 
     paciente: Mapped["Paciente"] = relationship(back_populates="ingresos")  # noqa: F821
+    seguimiento: Mapped["Seguimiento | None"] = relationship(  # noqa: F821
+        back_populates="ingreso", uselist=False, cascade="all, delete-orphan"
+    )
