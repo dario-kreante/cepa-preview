@@ -5,6 +5,7 @@ from app.routers import audit_log, auth, usuarios, ingresos, pacientes, odas, co
 from app.routers import farmacos
 from app.routers import ept as ept_router
 from app.routers import reintegros
+from app.routers import controles_medicos
 
 app = FastAPI(title=get_settings().app_name)
 app.include_router(auth.router)
@@ -17,6 +18,7 @@ app.include_router(consentimientos.router)
 app.include_router(farmacos.router)
 app.include_router(ept_router.router)
 app.include_router(reintegros.router)
+app.include_router(controles_medicos.router)
 
 
 @app.get("/health")
