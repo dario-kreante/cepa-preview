@@ -57,12 +57,3 @@ class Ingreso(Base):
     )
 
     paciente: Mapped["Paciente"] = relationship(back_populates="ingresos")  # noqa: F821
-    seguimiento: Mapped["Seguimiento | None"] = relationship(  # noqa: F821
-        back_populates="ingreso", uselist=False, cascade="all, delete-orphan"
-    )
-    odas: Mapped[list["Oda"]] = relationship(  # noqa: F821
-        back_populates="ingreso", cascade="all, delete-orphan"
-    )
-    consentimiento: Mapped["Consentimiento | None"] = relationship(  # noqa: F821
-        back_populates="ingreso", uselist=False, cascade="all, delete-orphan"
-    )
