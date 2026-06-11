@@ -21,6 +21,15 @@ class Settings(BaseSettings):
     login_max_intentos: int = 5
     login_bloqueo_minutos: int = 15
 
+    # --- SMTP para alertas (CEPA-102, D12). Opcionales — si smtp_host está vacío,
+    # los correos quedan desactivados y la alerta in-app sigue funcionando (PA6). ---
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_username: str = ""
+    smtp_password: str = ""
+    smtp_use_tls: bool = True
+    smtp_from_addr: str = "cepa-alertas@utalca.cl"
+
 
 @lru_cache
 def get_settings() -> Settings:
