@@ -84,3 +84,38 @@ Ejecución en 4 lotes (implementadores haiku, revisión Fable por lote):
 - Auditoría de lecturas sensibles (action="READ") — decisión transversal pendiente.
 - TLS se delega al proxy (TC-001-06) — documentado en runbook, no en FastAPI.
 - Política de retención del log — fuera de alcance de EPIC-00.
+
+## Oleada 2 — EPIC-01 Ingresos y Pacientes ✅ (2026-06-11)
+
+Ejecución en 4 lotes (haiku) + Task 12 por el orquestador; 4 revisiones Fable.
+
+- **Lote A (Tasks 1–4)** APROBADO. Desviaciones validadas: (1) los RUT de ejemplo del plan
+  eran inválidos por módulo 11 → sustituidos por sintéticos válidos (el revisor recomputó los
+  DV a mano); (2) se difirieron las relationships a modelos futuros en `Ingreso` (el plan las
+  traía con forward refs rotas) → instrucción obligatoria de re-agregarlas en Tasks 8/10/11
+  (cumplida); (3) revisiones 0010/0011 correctas (el plan lo dejaba parametrizado).
+- **Lote B (Tasks 5–7)** APROBADO CON CORRECCIONES (aplicadas en `990f076`):
+  - **Decisión de diseño importante:** se eliminó el unique global de `ingreso.folio`
+    (migración `0011b`) porque el spec exige reingresos que MANTIENEN el folio
+    (CEPA-011 RN-2/RN-3, D2); el plan tenía una contradicción interna y el revisor falló a
+    favor del spec. Unicidad por servicio.
+  - Corrección exigida: el reingreso debe ser EXPLÍCITO (`es_reingreso=True`) — el
+    implementador lo había relajado. Restaurado al literal del plan.
+  - `IngresoRead` retipado con enums; limpieza de lint.
+- **Lote C (Tasks 8–9)** APROBADO con 1 corrección (revert del future-import en rut.py que el
+  implementador re-introdujo con justificación falsa — churn repetido, revertido en `6cc8c79`).
+- **Lote D (Tasks 10–11)** APROBADO. El implementador olvidó commitear las relaciones
+  odas/consentimiento en `ingreso.py` (recuperado por el orquestador en `6cc8c79`). El RUT
+  "10.000.05K" es checksum-válido aunque esté mal formateado (el normalizador lo acepta).
+  Nota de proceso del revisor: el commit `0e4a2a1` no es importable aislado (bisect).
+- **Task 12** ✅ 152 tests verdes, ruff limpio, `downgrade base → upgrade head` OK,
+  sin SQL específico de motor (grep ON CONFLICT/MERGE/ROWNUM limpio).
+- **QA funcional end-to-end (BD cepa):** login → ingreso 201 (folio F-2026-0001) → búsqueda →
+  vista-360 → seguimiento + validación de plazo → ODA (alerta por vencer funciona con
+  ventana 5 días) → iniciar-tratamiento bloqueado 409 sin consentimiento → firmado → 200 →
+  cierre con alta terapéutica 200.
+- **Deuda conocida:** la BD dev `cepa` migrada antes de `0011b` tiene drift en downgrade
+  (uq ya existente) — no afecta upgrade ni producción desde cero.
+- Decisiones de negocio abiertas heredadas del plan: D11 (una fecha_alta), D9 (evidencia de
+  consentimiento como string), D2 (confirmar folio en reingresos), ventana ODAS 5 días
+  (parametrizar en EPIC-11), catálogos regiones/diagnósticos como string libre (D5).
