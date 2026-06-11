@@ -5,3 +5,5 @@ from app.models.ingreso import Ingreso  # noqa: F401
 from app.models.folio_seq import FolioSeq  # noqa: F401
 from app.models.plazo_programa import PlazoPrograma  # noqa: F401
 from app.models.seguimiento import Seguimiento  # noqa: F401
+from app.models.oda import Oda  # noqa: F401
+from app.models.consentimiento import Consentimiento  # noqa: F401
