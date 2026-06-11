@@ -22,3 +22,4 @@ from app.models.alerta_licencia import AlertaLicencia  # noqa: F401
 from app.agendamiento.models import CitaPropuesta, DisponibilidadProf, PropuestaAgenda  # noqa: F401
 from app.models.cita import Cita  # noqa: F401
 from app.models.plan_tratamiento import PlanTratamiento  # noqa: F401
+from app.models.ventana_proceso import ConfigVentanaProceso  # noqa: F401
