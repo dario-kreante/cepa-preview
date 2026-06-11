@@ -67,3 +67,31 @@ class EstadoConsentimiento(str, Enum):
 
     FIRMADO = "firmado"
     PENDIENTE = "pendiente"
+
+
+class EstadoFarmacologico(str, Enum):
+    """Estado del caso farmacológico del paciente (CEPA-020 RN-3).
+
+    Pendiente confirmar catálogo final con Coordinación (ver Notas de cierre).
+    """
+
+    ACTIVO = "activo"
+    SUSPENDIDO = "suspendido"
+    COMPLETADO = "completado"
+    PENDIENTE = "pendiente"
+
+
+class FrecuenciaFarmaco(str, Enum):
+    """Frecuencias de administración habituales para el esquema farmacológico (CEPA-021 RN-1).
+
+    'otro' contempla frecuencias no listadas (se registra junto al campo texto).
+    """
+
+    C24H = "c/24h"
+    C12H = "c/12h"
+    C8H = "c/8h"
+    C6H = "c/6h"
+    SEMANAL = "semanal"
+    BISEMANAL = "bisemanal"
+    MENSUAL = "mensual"
+    OTRO = "otro"
