@@ -9,7 +9,7 @@ con error_message y fields=[], sin bloquear el flujo de captura manual.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, UploadFile, status
+from fastapi import APIRouter, Depends, UploadFile
 from sqlalchemy.orm import Session
 
 from app.audit.service import record_audit

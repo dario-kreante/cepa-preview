@@ -1,8 +1,6 @@
-import pytest
 
 from app.services.form_validator import (
     SYSTEM_REQUIRED_FIELDS,
-    ParametrizationError,
     validate_form_version,
 )
 

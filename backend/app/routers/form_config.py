@@ -1,6 +1,6 @@
 """Router para el editor de formularios dinámicos (CEPA-110 / CEPA-111)."""
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 

@@ -1,7 +1,6 @@
 """Tests de integración para el endpoint de lectura de PDF (CEPA-112)."""
 
 import io
-import pytest
 
 
 def _pdf_minimo_con_texto(texto: str) -> bytes:

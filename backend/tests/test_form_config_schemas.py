@@ -1,6 +1,5 @@
 from app.schemas.form_config import (
     FieldDefIn,
-    FieldDefOut,
     FormVersionCreate,
     FormVersionRead,
     PublishResult,
@@ -8,8 +7,6 @@ from app.schemas.form_config import (
 
 
 def test_field_def_in_valida_field_type_valido():
-    from pydantic import ValidationError
-    import pytest
 
     fd = FieldDefIn(
         field_key="sexo",

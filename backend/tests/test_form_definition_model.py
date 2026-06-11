@@ -1,4 +1,4 @@
-from sqlalchemy import BigInteger, Boolean, DateTime, Integer, String
+from sqlalchemy import BigInteger, Boolean, DateTime, Integer
 
 from app.models.form_definition import FieldDef, FormDefinition, FormVersion
 

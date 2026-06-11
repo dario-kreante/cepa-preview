@@ -5,7 +5,10 @@ en memoria (pypdf.PdfWriter) o con el PdfParserStub inyectable.
 """
 
 import io
+
 import pytest
+
+from app.services.pdf_parser import ExtractedPage, PdfParserStub, PypdfParser
 
 
 def _pdf_con_texto(texto: str) -> bytes:
@@ -33,12 +36,8 @@ def _pdf_vacio() -> bytes:
     return buf.read()
 
 
-from app.services.pdf_parser import PypdfParser, PdfParserStub, ExtractedPage
-
-
 # TC-112-01: parser real extrae texto de un PDF con capa de texto
 def test_pypdf_parser_extrae_texto():
-    parser = PypdfParser()
     # Usamos el stub porque no podemos predecir el texto exacto que pypdf
     # extraerá del stream manual. Probamos el flujo completo con el stub.
     stub = PdfParserStub(pages=[ExtractedPage(page_num=1, text="Nombre: Juan Perez RUT: 12.345.678-5")])

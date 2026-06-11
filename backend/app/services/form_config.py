@@ -9,8 +9,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from app.models.form_definition import FieldDef, FormDefinition, FormVersion
-from app.schemas.form_config import FieldDefIn, FormVersionCreate
-from app.services.form_validator import ParametrizationError, validate_form_version
+from app.schemas.form_config import FormVersionCreate
+from app.services.form_validator import validate_form_version
 
 
 def _utcnow() -> datetime:
