@@ -1,4 +1,4 @@
-from sqlalchemy import BigInteger, Boolean, Date, DateTime, Integer, SmallInteger, String
+from sqlalchemy import BigInteger, DateTime
 
 from app.agendamiento.models import CitaPropuesta, DisponibilidadProf, PropuestaAgenda
 

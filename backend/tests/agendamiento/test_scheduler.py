@@ -5,13 +5,11 @@ Cubre todos los TC-080-XX, CA y RN del spec CEPA-080.
 
 from datetime import date, timedelta
 
-import pytest
 
 from app.agendamiento.enums import PrioridadCita
 from app.agendamiento.scheduler import (
     Candidato,
     DisponibilidadDia,
-    ParametrosProf,
     ReposoPaciente,
     proponer_agenda,
     proponer_agenda_semana,

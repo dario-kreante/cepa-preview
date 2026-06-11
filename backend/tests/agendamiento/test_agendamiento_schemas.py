@@ -2,11 +2,9 @@ import pytest
 from datetime import date
 from pydantic import ValidationError
 
-from app.agendamiento.enums import DiaSemana, EstadoCita, PrioridadCita, TipoPropuesta
+from app.agendamiento.enums import DiaSemana, TipoPropuesta
 from app.agendamiento.schemas import (
-    CitaPropuestaRead,
     DisponibilidadProfCreate,
-    DisponibilidadProfRead,
     GenerarPropuestaRequest,
     PropuestaAgendaRead,
     ConfirmarCitasRequest,

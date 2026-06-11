@@ -12,10 +12,9 @@ Adaptaciones respecto al plan original (Deviación 5-7):
 
 from datetime import date, timedelta
 
-import pytest
 
 from app.agendamiento.enums import EstadoCita, EstadoPropuesta, PrioridadCita, TipoPropuesta
-from app.agendamiento.models import CitaPropuesta, DisponibilidadProf, PropuestaAgenda
+from app.agendamiento.models import CitaPropuesta, DisponibilidadProf
 from app.agendamiento.schemas import GenerarPropuestaRequest
 from app.agendamiento.service import (
     confirmar_citas,

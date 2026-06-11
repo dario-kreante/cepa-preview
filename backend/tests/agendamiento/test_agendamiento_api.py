@@ -3,8 +3,6 @@
 Cubre CA-8 (permisos por rol), CA-1 (propuesta diaria), CA-7 (confirmación).
 """
 
-import pytest
-from datetime import date
 from fastapi.testclient import TestClient
 
 
