@@ -119,3 +119,43 @@ Ejecución en 4 lotes (haiku) + Task 12 por el orquestador; 4 revisiones Fable.
 - Decisiones de negocio abiertas heredadas del plan: D11 (una fecha_alta), D9 (evidencia de
   consentimiento como string), D2 (confirmar folio en reingresos), ventana ODAS 5 días
   (parametrizar en EPIC-11), catálogos regiones/diagnósticos como string libre (D5).
+
+## Oleada 3 — Épicas de dominio (2026-06-11)
+
+**Cambio de proceso (D-W4):** a partir de aquí, un implementador sonnet por épica completa
+(en vez de lotes haiku) + 1 revisión Fable por épica — mejor relación costo/fiabilidad con
+planes literales largos. Épicas secuenciales (main.py y cadena Alembic compartidos), con
+revisión de la épica N en paralelo a la implementación de la N+1 (BDs scratch separadas).
+
+- **EPIC-02 Fármacos** ✅ APROBADA sin correcciones (207 tests acumulados, +55).
+  Desviaciones validadas: schemas `*Body` sin id de path (el plan era internamente
+  inconsistente — patrón aprobado y reutilizado en épicas siguientes); 7 RUTs corregidos
+  (revisor recomputó los 8 módulo-11); migraciones 0020–0024. Menor pendiente de spec:
+  semántica de `vigente` en indicaciones (el plan nunca lo apaga) — revisar con negocio.
+- **EPIC-03 EPT** ✅ APROBADA (251, +44). email-validator agregado (sancionado por el plan);
+  `ContactoEptPayload`; fixture movida a conftest. Única corrección: borrar
+  `conftest_ept.py` muerto (hecho en `e50b3e1`). TC-032-02 (emisión de alertas) delegada a
+  EPIC-10 por el propio spec.
+- **EPIC-04 Reintegro** ✅ APROBADA (308, +57) con 2 brechas de spec heredadas del plan,
+  corregidas en `1369f58` (354 tests): RN-2 cierre valida también vs `fecha_caso`; RN-4
+  `verifica_medidas=True` exige `fecha_verificacion`; `TipoAlta` consolidado como re-export
+  (riesgo de divergencia D11). Menor declarado: PATCH /cierre con semántica replace
+  (heredado del plan; revisar si se quiere exclude_unset).
+- **EPIC-06 Controles** ✅ APROBADA sin correcciones (349, +41). El plan mencionaba
+  migraciones 0061/0062 que ninguna Task creaba — una sola 0060 con todas las columnas es
+  la lectura correcta (validado por revisor columna a columna). TC-060-03 delegado a
+  EPIC-01, TC-061-02 a EPIC-10 (sancionado por spec).
+- **EPIC-07 Licencias** ✅ APROBADA sin correcciones (407 tests, +53). El revisor confirmó que
+  el TipoLicencia restringido {1,5,6} en `enums_licencia.py` es lo que dictan plan Y spec
+  (RN-3); el de controles modela digitación manual con extra_sistema — NO consolidar.
+  Fechas y 6 RUTs del plan corregidos (todos los DV originales eran inválidos).
+  Menores para backlog: RN-5 advertencia de días no bloqueante (decisión del plan, confirmar
+  con Coordinación); ISL de extra-sistema queda "pendiente" en vez de "no aplica".
+- **QA funcional Oleada 3 (BD cepa, usuario root + ana/Administrativo):** registro
+  farmacológico 201 + esquema (frecuencia c/24h) 201, caso EPT 201 (nota: writer EPT es solo
+  rol Administrativo según plan), caso reintegro 201, control médico 201, licencia 201 con
+  acumulado correcto (15 días vigentes, sin solapamiento). Todas las rutas reales validadas
+  vía OpenAPI.
+- **Pendiente cross-épica detectado por revisores:** poblar las ranuras de `vista_360`
+  (farmacos/licencias/controles/reintegro siguen vacías — ningún plan de oleada 3 lo
+  prescribió; evaluar al cerrar EPIC-09 Reportería).
