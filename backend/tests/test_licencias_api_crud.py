@@ -1,4 +1,3 @@
-import datetime
 
 
 def _payload_ingreso(as_admin, rut="12.345.678-5", folio="F-LIC-001"):

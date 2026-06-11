@@ -11,7 +11,6 @@ generar_alertas_vencimiento(db, hoy, umbral_habiles=3): idempotente — por cada
 """
 
 import datetime
-from typing import Sequence
 
 from sqlalchemy import select
 

@@ -1,6 +1,5 @@
 """Operaciones CRUD sobre LicenciaMedica — CEPA-070 / CEPA-073."""
 
-import datetime
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
@@ -8,7 +7,6 @@ from sqlalchemy import select
 from app.models.ingreso import Ingreso
 from app.models.licencia import LicenciaMedica
 from app.schemas.licencia import LicenciaAnularUpdate, LicenciaCreate, LicenciaISLUpdate
-from app.domain.enums_licencia import EstadoEnvioISL
 
 
 def _verificar_ingreso(db, ingreso_id: int) -> Ingreso:

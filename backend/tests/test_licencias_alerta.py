@@ -1,8 +1,6 @@
 import datetime
 
-import pytest
 
-from app.models.alerta_licencia import AlertaLicencia
 from app.models.ingreso import Ingreso
 from app.models.licencia import LicenciaMedica
 from app.models.paciente import Paciente

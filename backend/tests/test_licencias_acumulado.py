@@ -1,6 +1,5 @@
 import datetime
 
-import pytest
 
 from app.models.licencia import LicenciaMedica
 from app.models.paciente import Paciente
