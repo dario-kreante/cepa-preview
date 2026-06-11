@@ -34,12 +34,6 @@ class DisponibilidadDia(NamedTuple):
 
 
 @dataclass
-class ParametrosProf:
-    """Parámetros de un profesional para el scheduler (extensible en versiones futuras)."""
-    profesional_id: int
-
-
-@dataclass
 class Candidato:
     """Paciente candidato a ser agendado, con su contexto de prioridad."""
     paciente_id: int

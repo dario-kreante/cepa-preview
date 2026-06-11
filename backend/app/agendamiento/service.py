@@ -13,6 +13,11 @@ Adaptaciones respecto al plan (Deviaciones 5-7):
   - profesional_id en DisponibilidadProf es un ID interno del módulo de agendamiento.
     Las queries a control_medico retornan todos los controles próximos sin filtrar por
     profesional_id (ya que control_medico no tiene ese campo entero).
+
+Limitación conocida — pool único de candidatos:
+  Los candidatos son clínica-wide (no hay filtro por profesional en control_medico, ya que
+  esa tabla carece de profesional_id). El mapeo por-profesional vía medico_tratante está
+  planificado antes del despliegue multi-profesional.
 """
 
 from datetime import date, timedelta
@@ -76,25 +81,39 @@ def _cargar_disponibilidad(db: Session, profesional_id: int) -> list[Disponibili
 
 # ─── Carga de candidatos desde BD ───────────────────────────────────────────────
 
-def _cargar_reposos(
-    db: Session, paciente_id: int, fecha_ini: date, fecha_fin: date
-) -> list[ReposoPaciente]:
-    """Carga los reposos del paciente que se solapan con el rango de fechas.
+def _cargar_reposos_batch(
+    db: Session,
+    paciente_ids: list[int],
+    fecha_ini: date,
+    fecha_fin: date,
+) -> dict[int, list[ReposoPaciente]]:
+    """Carga en UNA sola query los reposos de todos los pacientes del conjunto candidato.
 
     Adaptación Desviación 6: usa licencia_medica con join a ingreso para obtener paciente_id.
     Campos reales: inicio_reposo, fin_reposo (no reposo_inicio/reposo_fin del plan).
+
+    Evita el N+1 de _cargar_reposos por paciente (~800 round-trips al volumen objetivo).
+    Retorna un dict {paciente_id: [ReposoPaciente, ...]}.
     """
     from sqlalchemy import text
+
+    if not paciente_ids:
+        return {}
+
     rows = db.execute(text(
-        "SELECT lm.inicio_reposo, lm.fin_reposo "
+        "SELECT i.paciente_id, lm.inicio_reposo, lm.fin_reposo "
         "FROM licencia_medica lm "
         "JOIN ingreso i ON i.id = lm.ingreso_id "
-        "WHERE i.paciente_id = :pid "
+        "WHERE i.paciente_id = ANY(:pids) "
         "  AND lm.anulada = FALSE "
         "  AND lm.inicio_reposo <= :fin "
         "  AND lm.fin_reposo >= :ini"
-    ), {"pid": paciente_id, "ini": fecha_ini, "fin": fecha_fin}).fetchall()
-    return [ReposoPaciente(inicio=r[0], fin=r[1]) for r in rows]
+    ), {"pids": paciente_ids, "ini": fecha_ini, "fin": fecha_fin}).fetchall()
+
+    resultado: dict[int, list[ReposoPaciente]] = {pid: [] for pid in paciente_ids}
+    for r in rows:
+        resultado[r[0]].append(ReposoPaciente(inicio=r[1], fin=r[2]))
+    return resultado
 
 
 def _cargar_candidatos(
@@ -103,9 +122,14 @@ def _cargar_candidatos(
     """Construye la lista de candidatos a partir de controles y recetas.
 
     Adaptación Desviación 5: usa control_medico con join a ingreso para obtener paciente_id.
-    - Controles vencidos: proximo_control < hoy (campo real: proximo_control)
-    - Controles próximos: hoy ≤ proximo_control ≤ fecha_fin + 7 días
-    - Recetas: fecha_revision >= hoy (revisión futura = seguimiento pendiente, Desviación 7)
+    - Controles vencidos: el control MÁS RECIENTE por ingreso tiene proximo_control < hoy
+    - Controles próximos: el control MÁS RECIENTE por ingreso tiene proximo_control en ventana
+    - Se excluyen filas con proximo_agendado = TRUE (ya tienen cita programada)
+    - Recetas: hoy ≤ fecha_revision ≤ hoy + VENTANA_SEGUIMIENTO_RECETA_DIAS
+               y fecha_envio IS NULL (proxy de receta no gestionada — RN-6)
+
+    Solo se usa el último control_medico por ingreso (subquery MAX fecha_control) para
+    evitar que controles históricos desencadenen propuestas duplicadas.
 
     profesional_id no se usa como filtro en control_medico (no existe ese campo entero
     en la tabla real). La selección por profesional se hace via DisponibilidadProf.
@@ -115,18 +139,72 @@ def _cargar_candidatos(
 
     vistos: dict[int, Candidato] = {}
 
-    # 1. Controles vencidos (proximo_control < hoy) — Desviación 5
-    ctrl_vencidos = db.execute(text(
-        "SELECT i.paciente_id, cm.proximo_control "
+    # Subquery portable (sin DISTINCT ON) que retorna solo el último control por ingreso.
+    # Se usa MAX(fecha_control) como clave del control más reciente.
+    _latest_ctrl = (
+        "SELECT cm.ingreso_id, cm.proximo_control, cm.proximo_agendado "
         "FROM control_medico cm "
-        "JOIN ingreso i ON i.id = cm.ingreso_id "
-        "WHERE cm.proximo_control IS NOT NULL "
-        "  AND cm.proximo_control < :hoy"
+        "INNER JOIN ("
+        "  SELECT ingreso_id, MAX(fecha_control) AS max_fc "
+        "  FROM control_medico "
+        "  GROUP BY ingreso_id"
+        ") latest ON latest.ingreso_id = cm.ingreso_id "
+        "         AND latest.max_fc = cm.fecha_control"
+    )
+
+    # 1. Controles vencidos (proximo_control < hoy, último control por ingreso) — Desviación 5
+    ctrl_vencidos = db.execute(text(
+        f"SELECT i.paciente_id, lc.proximo_control "
+        f"FROM ({_latest_ctrl}) lc "
+        f"JOIN ingreso i ON i.id = lc.ingreso_id "
+        f"WHERE lc.proximo_control IS NOT NULL "
+        f"  AND lc.proximo_control < :hoy "
+        f"  AND lc.proximo_agendado = FALSE"
     ), {"hoy": hoy}).fetchall()
 
-    for row in ctrl_vencidos:
-        pid, fecha_ctrl = row[0], row[1]
-        reposos = _cargar_reposos(db, pid, fecha_ini, fecha_fin)
+    pid_list: list[int] = []
+    vencidos_rows: list[tuple] = list(ctrl_vencidos)
+    pid_list.extend(row[0] for row in vencidos_rows)
+
+    # 2. Controles próximos — Desviación 5
+    horizonte = fecha_fin + timedelta(days=7)
+    ctrl_proximos = db.execute(text(
+        f"SELECT i.paciente_id, lc.proximo_control "
+        f"FROM ({_latest_ctrl}) lc "
+        f"JOIN ingreso i ON i.id = lc.ingreso_id "
+        f"WHERE lc.proximo_control IS NOT NULL "
+        f"  AND lc.proximo_control >= :hoy "
+        f"  AND lc.proximo_control <= :horizonte "
+        f"  AND lc.proximo_agendado = FALSE"
+    ), {"hoy": hoy, "horizonte": horizonte}).fetchall()
+
+    proximos_rows: list[tuple] = list(ctrl_proximos)
+    pid_list.extend(row[0] for row in proximos_rows)
+
+    # 3. Recetas con revisión pendiente dentro de la ventana (RN-6, Desviación 7)
+    # Sólo recetas cuya fecha_revision cae en [hoy, hoy+VENTANA] y fecha_envio IS NULL
+    # (fecha_envio IS NULL = receta no gestionada/despachada, proxy de RN-6)
+    limite_revision = hoy + timedelta(days=VENTANA_SEGUIMIENTO_RECETA_DIAS)
+    recetas = db.execute(text(
+        "SELECT DISTINCT i.paciente_id "
+        "FROM receta r "
+        "JOIN reg_farmacologico rf ON rf.id = r.registro_id "
+        "JOIN ingreso i ON i.id = rf.ingreso_id "
+        "WHERE r.fecha_revision >= :hoy "
+        "  AND r.fecha_revision <= :limite "
+        "  AND r.fecha_envio IS NULL"  # RN-6: excluir recetas ya gestionadas
+    ), {"hoy": hoy, "limite": limite_revision}).fetchall()
+
+    recetas_rows: list[tuple] = list(recetas)
+    pid_list.extend(row[0] for row in recetas_rows)
+
+    # Batch-load de todos los reposos en una sola query (Fix 5: evita N+1)
+    unique_pids = list({pid for pid in pid_list})
+    reposos_map = _cargar_reposos_batch(db, unique_pids, fecha_ini, fecha_fin)
+
+    # Construir candidatos a partir de los datos ya cargados
+    for pid, fecha_ctrl in vencidos_rows:
+        reposos = reposos_map.get(pid, [])
         vistos[pid] = Candidato(
             paciente_id=pid,
             prioridad=PrioridadCita.CONTROL_VENCIDO,
@@ -135,21 +213,9 @@ def _cargar_candidatos(
             reposos=reposos,
         )
 
-    # 2. Controles próximos — Desviación 5
-    horizonte = fecha_fin + timedelta(days=7)
-    ctrl_proximos = db.execute(text(
-        "SELECT i.paciente_id, cm.proximo_control "
-        "FROM control_medico cm "
-        "JOIN ingreso i ON i.id = cm.ingreso_id "
-        "WHERE cm.proximo_control IS NOT NULL "
-        "  AND cm.proximo_control >= :hoy "
-        "  AND cm.proximo_control <= :horizonte"
-    ), {"hoy": hoy, "horizonte": horizonte}).fetchall()
-
-    for row in ctrl_proximos:
-        pid, fecha_ctrl = row[0], row[1]
+    for pid, fecha_ctrl in proximos_rows:
         if pid not in vistos:
-            reposos = _cargar_reposos(db, pid, fecha_ini, fecha_fin)
+            reposos = reposos_map.get(pid, [])
             vistos[pid] = Candidato(
                 paciente_id=pid,
                 prioridad=PrioridadCita.CONTROL_PROXIMO,
@@ -158,22 +224,9 @@ def _cargar_candidatos(
                 reposos=reposos,
             )
 
-    # 3. Recetas con revisión futura pendiente (RN-6, Desviación 7)
-    # La tabla receta no tiene requiere_seguimiento/gestionada; se usa fecha_revision futura
-    limite_emision = hoy - timedelta(days=VENTANA_SEGUIMIENTO_RECETA_DIAS)
-    recetas = db.execute(text(
-        "SELECT DISTINCT i.paciente_id "
-        "FROM receta r "
-        "JOIN reg_farmacologico rf ON rf.id = r.registro_id "
-        "JOIN ingreso i ON i.id = rf.ingreso_id "
-        "WHERE r.fecha_revision >= :hoy "
-        "  AND r.fecha_emision >= :limite"
-    ), {"hoy": hoy, "limite": limite_emision}).fetchall()
-
-    for row in recetas:
-        pid = row[0]
+    for (pid,) in recetas_rows:
         if pid not in vistos:
-            reposos = _cargar_reposos(db, pid, fecha_ini, fecha_fin)
+            reposos = reposos_map.get(pid, [])
             vistos[pid] = Candidato(
                 paciente_id=pid,
                 prioridad=PrioridadCita.SEGUIMIENTO_RECETA,
@@ -275,7 +328,9 @@ def confirmar_citas(
         cita = db.get(CitaPropuesta, cita_id)
         if cita is None or cita.propuesta_id != propuesta_id:
             continue
-        if cita.estado == EstadoCita.PROPUESTA.value:
+        # RN-1: excluida_por != None significa que la cita fue descartada (ej. reposo vigente)
+        # — aunque su estado sea 'propuesta', no debe ser confirmable.
+        if cita.estado == EstadoCita.PROPUESTA.value and cita.excluida_por is None:
             cita.estado = EstadoCita.CONFIRMADA.value
             confirmadas.append(cita)
 

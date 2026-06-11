@@ -182,3 +182,249 @@ def test_confirmar_citas_estado_propuesta_pasa_a_confirmada(db_session):
 
 def test_obtener_propuesta_inexistente_retorna_none(db_session):
     assert obtener_propuesta(db=db_session, propuesta_id=99999) is None
+
+
+# ─── Fix 1: citas excluidas no confirmables (RN-1) ────────────────────────────
+
+def test_confirmar_cita_excluida_no_cambia_estado(db_session):
+    """RN-1: una cita con excluida_por != None no puede ser confirmada,
+    aunque su estado sea 'propuesta'."""
+    _insertar_disponibilidad_completa(db_session)
+    req = GenerarPropuestaRequest(
+        profesional_id=PROF_ID,
+        tipo=TipoPropuesta.DIARIA,
+        fecha_inicio=HOY,
+    )
+    propuesta = generar_propuesta(db=db_session, req=req, actor="admin_test")
+
+    cita_excluida = CitaPropuesta(
+        propuesta_id=propuesta.id,
+        paciente_id=PACIENTE_ID,
+        fecha_candidata=HOY,
+        prioridad=PrioridadCita.CONTROL_PROXIMO.value,
+        razon="control próximo",
+        estado=EstadoCita.PROPUESTA.value,
+        excluida_por="reposo vigente hasta 2026-07-20",
+    )
+    db_session.add(cita_excluida)
+    db_session.flush()
+
+    confirmadas = confirmar_citas(
+        db=db_session,
+        propuesta_id=propuesta.id,
+        cita_ids=[cita_excluida.id],
+        actor="admin_test",
+    )
+    # La cita excluida NO debe aparecer como confirmada
+    assert confirmadas == []
+    db_session.refresh(cita_excluida)
+    assert cita_excluida.estado == EstadoCita.PROPUESTA.value
+
+
+# ─── Fix 2: último control por ingreso + proximo_agendado (Desviación 5) ──────
+
+def _insertar_control_medico(
+    db,
+    ingreso_id: int,
+    fecha_control: date,
+    proximo_control: date | None = None,
+    proximo_agendado: bool = False,
+):
+    """Inserta un control_medico con los campos dados."""
+    from sqlalchemy import text
+    db.execute(text(
+        "INSERT INTO control_medico "
+        "(ingreso_id, fecha_control, semana_control, medico_tratante, region_derivacion, "
+        " proximo_control, proximo_agendado, tiene_licencia, created_at, updated_at) "
+        "VALUES (:iid, :fc, 1, 'Dr Test', 'Metropolitana', :prox, :pagendado, false, now(), now())"
+    ), {
+        "iid": ingreso_id,
+        "fc": fecha_control,
+        "prox": proximo_control,
+        "pagendado": proximo_agendado,
+    })
+    db.flush()
+
+
+def test_control_stale_no_genera_candidato_si_hay_control_futuro(db_session):
+    """Fix 2a: un ingreso con control vencido antiguo + control reciente con fecha futura
+    NO debe aparecer como CONTROL_VENCIDO; solo aplica el último control.
+    Usa date.today() porque _cargar_candidatos llama date.today() internamente.
+    """
+    from datetime import date as _date
+    from app.agendamiento.service import _cargar_candidatos
+    from app.agendamiento.enums import PrioridadCita
+
+    hoy_real = _date.today()
+    _, ingreso = _crear_paciente_e_ingreso(db_session, rut="55500001-1")
+
+    # Control viejo vencido (fecha_control = hace ~120 días, proximo_control vencido)
+    _insertar_control_medico(
+        db_session, ingreso.id,
+        fecha_control=hoy_real - timedelta(days=120),
+        proximo_control=hoy_real - timedelta(days=90),  # vencido
+    )
+    # Control reciente con proximo_control en el futuro
+    _insertar_control_medico(
+        db_session, ingreso.id,
+        fecha_control=hoy_real - timedelta(days=5),
+        proximo_control=hoy_real + timedelta(days=60),  # futuro — no vencido
+    )
+
+    candidatos = _cargar_candidatos(
+        db_session,
+        profesional_id=PROF_ID,
+        fecha_ini=hoy_real,
+        fecha_fin=hoy_real + timedelta(days=6),
+    )
+    pids_vencidos = [
+        c.paciente_id for c in candidatos
+        if c.prioridad == PrioridadCita.CONTROL_VENCIDO
+        and c.paciente_id == ingreso.paciente_id
+    ]
+    assert pids_vencidos == [], (
+        "El paciente con control reciente futuro no debe aparecer como CONTROL_VENCIDO"
+    )
+
+
+def test_control_proximo_agendado_no_genera_candidato(db_session):
+    """Fix 2b: un control con proximo_agendado=True no debe generar propuesta.
+    Usa date.today() para alinear con _cargar_candidatos.
+    """
+    from datetime import date as _date
+    from app.agendamiento.service import _cargar_candidatos
+
+    hoy_real = _date.today()
+    _, ingreso = _crear_paciente_e_ingreso(db_session, rut="55500002-2")
+    _insertar_control_medico(
+        db_session, ingreso.id,
+        fecha_control=hoy_real - timedelta(days=5),
+        proximo_control=hoy_real + timedelta(days=3),  # dentro del horizonte
+        proximo_agendado=True,  # ya tiene cita — no reproponer
+    )
+
+    candidatos = _cargar_candidatos(
+        db_session,
+        profesional_id=PROF_ID,
+        fecha_ini=hoy_real,
+        fecha_fin=hoy_real + timedelta(days=6),
+    )
+    pids = [c.paciente_id for c in candidatos if c.paciente_id == ingreso.paciente_id]
+    assert pids == [], "proximo_agendado=True no debe generar candidato"
+
+
+# ─── Fix 3: ventana receta acotada + fecha_envio IS NULL (RN-6) ───────────────
+
+def _insertar_receta(
+    db,
+    ingreso_id: int,
+    fecha_revision: date,
+    fecha_envio: date | None = None,
+):
+    """Inserta paciente→ingreso→reg_farmacologico→receta para tests de Fix 3."""
+    from sqlalchemy import text
+    # reg_farmacologico
+    result = db.execute(text(
+        "INSERT INTO reg_farmacologico "
+        "(ingreso_id, medico_tratante, estado_farmacologico, activo, created_at, updated_at) "
+        "VALUES (:iid, 'Dr Test RF', 'activo', true, now(), now()) RETURNING id"
+    ), {"iid": ingreso_id})
+    rf_id = result.scalar()
+    db.execute(text(
+        "INSERT INTO receta "
+        "(registro_id, fecha_emision, fecha_revision, fecha_envio, marca_medicamento, created_at, updated_at) "
+        "VALUES (:rfid, :fem, :frev, :fenv, 'TestMarca', now(), now())"
+    ), {
+        "rfid": rf_id,
+        "fem": date(2026, 6, 1),
+        "frev": fecha_revision,
+        "fenv": fecha_envio,
+    })
+    db.flush()
+
+
+def test_receta_fuera_de_ventana_no_genera_candidato(db_session):
+    """Fix 3: receta con fecha_revision más allá de hoy + VENTANA no debe generar candidato.
+    Usa date.today() porque _cargar_candidatos llama date.today() internamente.
+    """
+    from datetime import date as _date
+    from app.agendamiento.service import _cargar_candidatos, VENTANA_SEGUIMIENTO_RECETA_DIAS
+    from app.agendamiento.enums import PrioridadCita
+
+    hoy_real = _date.today()
+    _, ingreso = _crear_paciente_e_ingreso(db_session, rut="77700001-1")
+    fecha_fuera = hoy_real + timedelta(days=VENTANA_SEGUIMIENTO_RECETA_DIAS + 5)
+    _insertar_receta(db_session, ingreso.id, fecha_revision=fecha_fuera)
+
+    candidatos = _cargar_candidatos(
+        db_session,
+        profesional_id=PROF_ID,
+        fecha_ini=hoy_real,
+        fecha_fin=hoy_real + timedelta(days=6),
+    )
+    pids = [
+        c.paciente_id for c in candidatos
+        if c.prioridad == PrioridadCita.SEGUIMIENTO_RECETA
+        and c.paciente_id == ingreso.paciente_id
+    ]
+    assert pids == [], "Receta fuera de ventana RN-6 no debe generar candidato"
+
+
+def test_receta_gestionada_no_genera_candidato(db_session):
+    """Fix 3: receta con fecha_envio != NULL (ya gestionada) no debe generar candidato — RN-6.
+    Usa date.today() para alinear con _cargar_candidatos.
+    """
+    from datetime import date as _date
+    from app.agendamiento.service import _cargar_candidatos
+    from app.agendamiento.enums import PrioridadCita
+
+    hoy_real = _date.today()
+    _, ingreso = _crear_paciente_e_ingreso(db_session, rut="77700002-2")
+    _insertar_receta(
+        db_session, ingreso.id,
+        fecha_revision=hoy_real + timedelta(days=5),
+        fecha_envio=hoy_real - timedelta(days=1),  # ya fue despachada
+    )
+
+    candidatos = _cargar_candidatos(
+        db_session,
+        profesional_id=PROF_ID,
+        fecha_ini=hoy_real,
+        fecha_fin=hoy_real + timedelta(days=6),
+    )
+    pids = [
+        c.paciente_id for c in candidatos
+        if c.prioridad == PrioridadCita.SEGUIMIENTO_RECETA
+        and c.paciente_id == ingreso.paciente_id
+    ]
+    assert pids == [], "Receta con fecha_envio (gestionada) no debe generar candidato (RN-6)"
+
+
+def test_receta_dentro_de_ventana_genera_candidato(db_session):
+    """Fix 3: receta con fecha_revision en ventana y sin fecha_envio SÍ genera candidato.
+    Usa date.today() para alinear con _cargar_candidatos.
+    """
+    from datetime import date as _date
+    from app.agendamiento.service import _cargar_candidatos
+    from app.agendamiento.enums import PrioridadCita
+
+    hoy_real = _date.today()
+    _, ingreso = _crear_paciente_e_ingreso(db_session, rut="77700003-3")
+    _insertar_receta(
+        db_session, ingreso.id,
+        fecha_revision=hoy_real + timedelta(days=10),  # dentro de la ventana (30 días)
+        fecha_envio=None,
+    )
+
+    candidatos = _cargar_candidatos(
+        db_session,
+        profesional_id=PROF_ID,
+        fecha_ini=hoy_real,
+        fecha_fin=hoy_real + timedelta(days=6),
+    )
+    pids = [
+        c.paciente_id for c in candidatos
+        if c.prioridad == PrioridadCita.SEGUIMIENTO_RECETA
+        and c.paciente_id == ingreso.paciente_id
+    ]
+    assert pids == [ingreso.paciente_id], "Receta válida dentro de ventana debe generar candidato"
