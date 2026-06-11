@@ -25,7 +25,9 @@ class FieldDefIn(BaseModel):
     @field_validator("field_type")
     @classmethod
     def _tipo_valido(cls, v: str) -> str:
-        if v not in VALID_FIELD_TYPES:
+        # Empty string is allowed in drafts; the form_validator catches it at publish time.
+        # Non-empty values must be in the valid set.
+        if v and v not in VALID_FIELD_TYPES:
             raise ValueError(
                 f"field_type '{v}' no válido. Valores aceptados: {sorted(VALID_FIELD_TYPES)}"
             )

@@ -13,6 +13,7 @@ from app.routers import dashboard, reporte_operativo, reporte_convenio, reporte_
 from app.routers import citas as citas_router
 from app.routers import alertas as alertas_router
 from app.routers import tareas as tareas_router
+from app.routers import form_config as form_config_router
 
 app = FastAPI(title=get_settings().app_name)
 app.include_router(auth.router)
@@ -40,6 +41,7 @@ app.include_router(ventana_proceso.router)
 app.include_router(citas_router.router)
 app.include_router(alertas_router.router)
 app.include_router(tareas_router.router)
+app.include_router(form_config_router.router)
 
 
 @app.get("/health")
