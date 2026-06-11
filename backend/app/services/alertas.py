@@ -182,6 +182,7 @@ def _construir_hitos_oda(db: Session) -> list[HitoPlazos]:
             )
         ).mappings().all()
     except Exception:
+        db.rollback()
         return []
     ventana = VENTANAS_DEFAULT[TipoAlerta.ODA_POR_VENCER.value]
     hitos = []
@@ -218,6 +219,7 @@ def _construir_hitos_licencias(db: Session) -> list[HitoPlazos]:
             )
         ).mappings().all()
     except Exception:
+        db.rollback()
         return []
     ventana = VENTANAS_DEFAULT[TipoAlerta.VENCIMIENTO_LICENCIA.value]
     hitos = []
@@ -259,6 +261,7 @@ def _construir_hitos_ept(db: Session) -> list[HitoPlazos]:
             )
         ).mappings().all()
     except Exception:
+        db.rollback()
         return []
 
     v_ept = VENTANAS_DEFAULT[TipoAlerta.PLAZO_EPT.value]
@@ -306,6 +309,7 @@ def _construir_hitos_consentimiento(db: Session) -> list[HitoPlazos]:
             )
         ).mappings().all()
     except Exception:
+        db.rollback()
         return []
 
     ventana = VENTANAS_DEFAULT[TipoAlerta.CONSENTIMIENTO_PENDIENTE.value]
