@@ -7,3 +7,10 @@ from app.models.plazo_programa import PlazoPrograma  # noqa: F401
 from app.models.seguimiento import Seguimiento  # noqa: F401
 from app.models.oda import Oda  # noqa: F401
 from app.models.consentimiento import Consentimiento  # noqa: F401
+from app.models.farmacos import (  # noqa: F401
+    Alerta,
+    EsquemaIndicacion,
+    Receta,
+    RegistroFarmacologico,
+    SeguimTratamiento,
+)
