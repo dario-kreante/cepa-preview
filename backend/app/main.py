@@ -8,6 +8,7 @@ from app.routers import reintegros
 from app.routers import controles_medicos
 from app.routers import licencias
 from app.routers import auditoria
+from app.agendamiento import router as agendamiento_router
 
 app = FastAPI(title=get_settings().app_name)
 app.include_router(auth.router)
@@ -23,6 +24,7 @@ app.include_router(reintegros.router)
 app.include_router(controles_medicos.router)
 app.include_router(licencias.router)
 app.include_router(auditoria.router)
+app.include_router(agendamiento_router.router)
 
 
 @app.get("/health")
