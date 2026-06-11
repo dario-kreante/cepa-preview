@@ -1,7 +1,6 @@
 """Tests — Task 2 EPIC-09: Dashboard multiprograma CEPA-090."""
 import pytest
 from datetime import date
-from fastapi.testclient import TestClient
 
 from app.models.ingreso import Ingreso
 from app.models.cita import Cita

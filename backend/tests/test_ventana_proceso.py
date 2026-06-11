@@ -1,5 +1,4 @@
 """Tests — Task 9 EPIC-09: Ventanas de proceso CEPA-096."""
-import pytest
 
 
 # ── TC-096-01: lista de ventanas de proceso disponibles ──────────────────────

@@ -12,11 +12,11 @@ from datetime import date
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import case, func, select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.audit.service import record_audit
-from app.auth.deps import get_current_user, require_role
+from app.auth.deps import require_role
 from app.db.session import get_db
 from app.models.cita import Cita
 from app.models.ingreso import Ingreso

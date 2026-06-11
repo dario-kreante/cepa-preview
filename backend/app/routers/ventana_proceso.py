@@ -11,7 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.audit.service import record_audit
-from app.auth.deps import get_current_user, require_role
+from app.auth.deps import require_role
 from app.db.session import get_db
 from app.models.ventana_proceso import ConfigVentanaProceso
 from app.schemas.ventana_proceso import VentanaProcesoCreate, VentanaProcesoRead

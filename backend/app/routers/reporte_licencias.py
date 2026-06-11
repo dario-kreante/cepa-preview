@@ -16,7 +16,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.audit.service import record_audit
-from app.auth.deps import get_current_user, require_role
+from app.auth.deps import require_role
 from app.db.session import get_db
 from app.models.ingreso import Ingreso
 from app.models.licencia import LicenciaMedica

@@ -7,14 +7,14 @@ Deviación: modelo Oda (no ODA); fecha_registro nullable añadida EPIC-09 migrac
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.audit.service import record_audit
-from app.auth.deps import get_current_user, require_role
+from app.auth.deps import require_role
 from app.db.session import get_db
 from app.models.ingreso import Ingreso
 from app.models.oda import Oda
