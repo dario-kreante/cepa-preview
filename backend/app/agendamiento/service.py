@@ -322,11 +322,15 @@ def _ingreso_activo_para_paciente(db: Session, paciente_id: int) -> int | None:
     DD-1: se usa para materializar Cita en la tabla de hechos al confirmar
     una CitaPropuesta (que solo tiene paciente_id, no ingreso_id).
     """
+    from app.domain.enums import EstadoCaso
     from app.models.ingreso import Ingreso
 
     row = db.execute(
         select(Ingreso.id)
-        .where(Ingreso.paciente_id == paciente_id)
+        .where(
+            Ingreso.paciente_id == paciente_id,
+            Ingreso.estado == EstadoCaso.ACTIVO.value,
+        )
         .order_by(Ingreso.fecha_ingreso.desc())
         .limit(1)
     ).scalar_one_or_none()

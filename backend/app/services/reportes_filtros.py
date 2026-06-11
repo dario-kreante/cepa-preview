@@ -32,6 +32,7 @@ def _tramo_case(paciente_cls: Any) -> Any:
     from sqlalchemy import case as sa_case
 
     return sa_case(
+        (paciente_cls.edad < 18, "<18"),
         (paciente_cls.edad < 30, "18-29"),
         (paciente_cls.edad < 45, "30-44"),
         (paciente_cls.edad < 60, "45-59"),
@@ -117,7 +118,9 @@ def aplicar_filtros_ingreso(
         stmt = stmt.where(modelo_ingreso.tipo_convenio == f.tipo_convenio)
 
     # ── Filtros que requieren JOIN con Paciente ────────────────────────────────
-    necesita_paciente = f.sexo or f.region or f.comuna or f.tramo_etario
+    necesita_paciente = any(
+        v is not None for v in (f.sexo, f.region, f.comuna, f.tramo_etario)
+    )
     if necesita_paciente:
         pac = modelo_paciente
         if pac is None:

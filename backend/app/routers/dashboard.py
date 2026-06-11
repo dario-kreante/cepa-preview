@@ -88,9 +88,13 @@ def get_dashboard(
         modelo_tratamiento, tipo_ingreso, tipo_convenio, especialidad, tipo_atencion,
     )
 
-    # ── Total ingresos ────────────────────────────────────────────────────────
+    # ── Total ingresos (período sobre fecha_ingreso) ─────────────────────────
     stmt_ingresos = select(func.count()).select_from(Ingreso)
     stmt_ingresos = aplicar_filtros_ingreso(stmt_ingresos, Ingreso, filtros)
+    if filtros.fecha_desde is not None:
+        stmt_ingresos = stmt_ingresos.where(Ingreso.fecha_ingreso >= filtros.fecha_desde)
+    if filtros.fecha_hasta is not None:
+        stmt_ingresos = stmt_ingresos.where(Ingreso.fecha_ingreso <= filtros.fecha_hasta)
     total_ingresos = db.execute(stmt_ingresos).scalar_one()
 
     # ── Citas por estado (join ingreso para aplicar filtros de dimensión) ─────
@@ -102,6 +106,11 @@ def get_dashboard(
             .where(Cita.estado == estado)
         )
         stmt = aplicar_filtros_ingreso(stmt, Ingreso, filtros)
+        # DD-4: el período se aplica sobre la tabla de hechos (Cita.fecha)
+        if filtros.fecha_desde is not None:
+            stmt = stmt.where(Cita.fecha >= filtros.fecha_desde)
+        if filtros.fecha_hasta is not None:
+            stmt = stmt.where(Cita.fecha <= filtros.fecha_hasta)
         return db.execute(stmt).scalar_one()
 
     total_atenciones = _count_citas_estado("realizada")
@@ -116,6 +125,10 @@ def get_dashboard(
         .group_by(Ingreso.profesional_id)
     )
     stmt_carga = aplicar_filtros_ingreso(stmt_carga, Ingreso, filtros)
+    if filtros.fecha_desde is not None:
+        stmt_carga = stmt_carga.where(Ingreso.fecha_ingreso >= filtros.fecha_desde)
+    if filtros.fecha_hasta is not None:
+        stmt_carga = stmt_carga.where(Ingreso.fecha_ingreso <= filtros.fecha_hasta)
     carga_rows = db.execute(stmt_carga).all()
     carga_por_profesional = [
         {"profesional_id": r.profesional_id, "total_ingresos": r.total}
@@ -131,6 +144,10 @@ def get_dashboard(
         .group_by(Ingreso.tipo_convenio)
     )
     stmt_conv = aplicar_filtros_ingreso(stmt_conv, Ingreso, filtros)
+    if filtros.fecha_desde is not None:
+        stmt_conv = stmt_conv.where(Cita.fecha >= filtros.fecha_desde)
+    if filtros.fecha_hasta is not None:
+        stmt_conv = stmt_conv.where(Cita.fecha <= filtros.fecha_hasta)
     conv_rows = db.execute(stmt_conv).all()
     cumplimiento_convenios = [
         {"tipo_convenio": r.tipo_convenio, "total_realizadas": r.total}
