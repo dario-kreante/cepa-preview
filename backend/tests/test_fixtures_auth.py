@@ -1,7 +1,4 @@
-from fastapi import Depends, FastAPI
-from fastapi.testclient import TestClient
 
-from app.auth.deps import CurrentUser, get_current_user
 
 
 def test_as_coordinacion_lleva_jwt_de_coordinacion(as_coordinacion):
