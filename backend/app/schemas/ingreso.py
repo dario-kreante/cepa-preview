@@ -87,3 +87,20 @@ class IngresoRead(BaseModel):
     flag_revision: bool
     observaciones: str | None
     tratamiento_iniciado: bool
+
+
+class IngresoCierre(BaseModel):
+    """Cierre/alta del caso (CEPA-014). Solo se permite estado cerrado o derivado."""
+
+    estado: EstadoCaso
+    tipo_alta: TipoAlta | None = None
+    fecha_alta: date | None = None
+    flag_revision: bool | None = None
+    observaciones: str | None = None
+
+    @field_validator("estado")
+    @classmethod
+    def _solo_cierre_o_derivacion(cls, v: EstadoCaso) -> EstadoCaso:
+        if v not in (EstadoCaso.CERRADO, EstadoCaso.DERIVADO):
+            raise ValueError("El cierre solo admite estado 'cerrado' o 'derivado'.")
+        return v

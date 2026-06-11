@@ -4,8 +4,9 @@ from sqlalchemy.orm import Session
 from app.audit.service import record_audit
 from app.auth.deps import get_current_user, require_role
 from app.db.session import get_db
-from app.schemas.ingreso import IngresoCreate, IngresoRead
+from app.schemas.ingreso import IngresoCierre, IngresoCreate, IngresoRead
 from app.schemas.seguimiento import SeguimientoRead, SeguimientoUpdate, ValidacionPlazo
+from app.services.cierre import cerrar_ingreso
 from app.services.ingreso import crear_ingreso
 from app.services.seguimiento import upsert_seguimiento, validar_plazo
 
@@ -62,3 +63,23 @@ def actualizar_seguimiento(
 )
 def validacion_plazo(ingreso_id: int, db: Session = Depends(get_db)) -> ValidacionPlazo:
     return validar_plazo(db, ingreso_id)
+
+
+@router.post(
+    "/{ingreso_id}/cierre",
+    response_model=IngresoRead,
+    dependencies=[Depends(_writer)],
+)
+def cerrar(
+    ingreso_id: int,
+    payload: IngresoCierre,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+) -> IngresoRead:
+    ingreso = cerrar_ingreso(db, ingreso_id, payload)
+    record_audit(
+        db, actor=current_user.username, action="UPDATE", entity="ingreso", entity_id=str(ingreso.id)
+    )
+    db.commit()
+    db.refresh(ingreso)
+    return ingreso
