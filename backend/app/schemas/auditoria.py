@@ -106,6 +106,7 @@ class FiltrosReporte(BaseModel):
     tipo_alta: str | None = None
     region: str | None = None
     tipo_ingreso: str | None = None
+    tipo_denuncia: str | None = None  # filtra por tipo_derivacion del Ingreso
 
     @field_validator("fecha_desde", "fecha_hasta", mode="before")
     @classmethod
