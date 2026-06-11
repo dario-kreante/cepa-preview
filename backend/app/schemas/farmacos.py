@@ -56,6 +56,15 @@ class EsquemaIndicacionCreate(BaseModel):
     extra_sistema: bool = False
 
 
+class EsquemaIndicacionBody(BaseModel):
+    """Schema para el body del endpoint /{ingreso_id}/esquema (sin registro_id)."""
+
+    medicamento: str
+    dosis: str
+    frecuencia: FrecuenciaFarmaco
+    extra_sistema: bool = False
+
+
 class EsquemaIndicacionRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -80,6 +89,27 @@ class RecetaCreate(BaseModel):
 
     @model_validator(mode="after")
     def _validar_orden_fechas(self) -> "RecetaCreate":
+        if self.fecha_revision < self.fecha_emision:
+            raise ValueError(
+                "fecha_revision no puede ser anterior a fecha_emision (CEPA-022 RN-5)"
+            )
+        if self.fecha_envio is not None and self.fecha_envio < self.fecha_emision:
+            raise ValueError(
+                "fecha_envio no puede ser anterior a fecha_emision (CEPA-022 RN-5)"
+            )
+        return self
+
+
+class RecetaBody(BaseModel):
+    """Schema para el body del endpoint /{ingreso_id}/recetas (sin registro_id)."""
+
+    fecha_emision: date
+    fecha_revision: date
+    fecha_envio: date | None = None
+    marca_medicamento: str
+
+    @model_validator(mode="after")
+    def _validar_orden_fechas(self) -> "RecetaBody":
         if self.fecha_revision < self.fecha_emision:
             raise ValueError(
                 "fecha_revision no puede ser anterior a fecha_emision (CEPA-022 RN-5)"
@@ -116,6 +146,28 @@ class SeguimTratamientoCreate(BaseModel):
 
     @model_validator(mode="after")
     def _validar_detalles_obligatorios(self) -> "SeguimTratamientoCreate":
+        if self.disminucion_farmacos and not self.plan_disminucion:
+            raise ValueError(
+                "plan_disminucion es obligatorio cuando disminucion_farmacos=True (CEPA-023 RN-1)"
+            )
+        if self.cambio_esquema and not self.detalle_cambio:
+            raise ValueError(
+                "detalle_cambio es obligatorio cuando cambio_esquema=True (CEPA-023 RN-2)"
+            )
+        return self
+
+
+class SeguimTratamientoBody(BaseModel):
+    """Schema para el body del endpoint /{ingreso_id}/seguimiento (sin registro_id)."""
+
+    disminucion_farmacos: bool
+    plan_disminucion: str | None = None
+    cambio_esquema: bool
+    detalle_cambio: str | None = None
+    observaciones: str | None = None
+
+    @model_validator(mode="after")
+    def _validar_detalles_obligatorios(self) -> "SeguimTratamientoBody":
         if self.disminucion_farmacos and not self.plan_disminucion:
             raise ValueError(
                 "plan_disminucion es obligatorio cuando disminucion_farmacos=True (CEPA-023 RN-1)"

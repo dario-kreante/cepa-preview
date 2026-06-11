@@ -15,13 +15,16 @@ from app.auth.deps import get_current_user, require_role
 from app.db.session import get_db
 from app.schemas.farmacos import (
     AlertaRead,
+    EsquemaIndicacionBody,
     EsquemaIndicacionCreate,
     EsquemaIndicacionRead,
+    RecetaBody,
     RecetaCreate,
     RecetaRead,
     RegistroFarmacologicoCreate,
     RegistroFarmacologicoRead,
     RegistroFarmacologicoUpdate,
+    SeguimTratamientoBody,
     SeguimTratamientoCreate,
     SeguimTratamientoRead,
 )
@@ -153,7 +156,7 @@ def actualizar(
 )
 def agregar_indicacion_endpoint(
     ingreso_id: int,
-    payload: EsquemaIndicacionCreate,
+    payload: EsquemaIndicacionBody,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
@@ -200,7 +203,7 @@ def listar_indicaciones_endpoint(ingreso_id: int, db: Session = Depends(get_db))
 )
 def crear_receta_endpoint(
     ingreso_id: int,
-    payload: RecetaCreate,
+    payload: RecetaBody,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
@@ -247,7 +250,7 @@ def listar_recetas_endpoint(ingreso_id: int, db: Session = Depends(get_db)):
 )
 def crear_seguimiento_endpoint(
     ingreso_id: int,
-    payload: SeguimTratamientoCreate,
+    payload: SeguimTratamientoBody,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
