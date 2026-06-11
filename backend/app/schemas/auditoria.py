@@ -37,7 +37,7 @@ class SeccionEvaluacionesRead(BaseModel):
     fecha_calificacion_reca: datetime.date | None
     diagnostico_inicial: str | None
     diagnostico_post_reca: str | None
-    numero_sesiones_evaluacion: int
+    numero_sesiones_evaluacion: int | None = None  # S2: dato no existe en el modelo real
 
 
 class SeccionControlesRead(BaseModel):
@@ -47,9 +47,9 @@ class SeccionControlesRead(BaseModel):
 
     fecha_primera_consulta_medica: datetime.date | None
     fecha_primera_consulta_psicologica: datetime.date | None
-    n_sesiones_medicas: int
-    n_sesiones_psicologicas: int
-    n_sesiones_ampliacion: int
+    n_sesiones_medicas: int | None = None      # S2: dato no existe en el modelo real
+    n_sesiones_psicologicas: int | None = None  # S2: dato no existe en el modelo real
+    n_sesiones_ampliacion: int | None = None    # S2: dato no existe en el modelo real
     reintegro_parcial: bool
     fecha_reintegro_parcial: datetime.date | None
     reintegro_total: bool

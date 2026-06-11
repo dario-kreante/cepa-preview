@@ -226,7 +226,7 @@ def test_caso_sin_altas_cierre_pendiente(
     assert caso.cierre.estado_general is None
     # resto de hitos visible sin error
     assert caso.datos_caso.folio == "2026-0124"
-    assert caso.evaluaciones.numero_sesiones_evaluacion == 0
+    assert caso.evaluaciones.numero_sesiones_evaluacion is None  # S2: dato no existe
 
 
 # ── TC-050-06: ingreso_id inexistente devuelve None ────────────────────────

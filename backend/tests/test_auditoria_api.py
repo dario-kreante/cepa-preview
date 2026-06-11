@@ -94,9 +94,9 @@ class TestVistaCasoConsolidado:
         assert ev["diagnostico_post_reca"] == "F33.1 Trastorno depresivo recurrente"
         assert ev["fecha_eval_medica"] == "2026-02-01"
 
-        # §7.5.3
+        # §7.5.3 — S2: n_sesiones_* retornan None (dato no existe en el modelo real)
         ctrl = body["controles"]
-        assert ctrl["n_sesiones_medicas"] == 0  # no existe en el modelo real
+        assert ctrl["n_sesiones_medicas"] is None
 
         # §7.5.4
         cierre = body["cierre"]

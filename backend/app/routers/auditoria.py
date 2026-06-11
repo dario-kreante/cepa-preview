@@ -35,6 +35,16 @@ router = APIRouter(prefix="/api/v1/auditoria", tags=["auditoria"])
 # Solo Coordinacion y Auditor acceden al módulo de auditoría (RN-2, D1)
 _reader = Depends(require_role("Coordinacion", "Auditor"))
 
+# Prefijos que pueden usarse como fórmulas en ataques de inyección CSV (M1)
+_CSV_INJECTION_PREFIXES = ("=", "+", "-", "@")
+
+
+def _sanitize_csv_cell(value: str) -> str:
+    """Prefija con ' cualquier celda string que comience con un carácter de fórmula (M1)."""
+    if value and value[0] in _CSV_INJECTION_PREFIXES:
+        return f"'{value}"
+    return value
+
 
 # ── CEPA-050: Vista consolidada del caso ──────────────────────────────────
 
@@ -65,6 +75,7 @@ def ver_caso_consolidado(
         entity="auditoria_caso",
         entity_id=str(ingreso_id),
     )
+    db.commit()  # C1: persistir la traza READ
     return caso
 
 
@@ -106,6 +117,7 @@ def buscar_casos(
         entity="auditoria_busqueda",
         entity_id=f"rut={rut}&folio={folio}&siniestro={numero_siniestro}",
     )
+    db.commit()  # C1: persistir la traza READ
 
     resultados: list[CasoConsolidadoRead] = []
     for ing in ingresos:
@@ -144,6 +156,7 @@ def generar_reporte_auditoria(
             f"|estado={filtros.estado_caso}|dx={filtros.diagnostico}"
         ),
     )
+    db.commit()  # C1: persistir la traza READ
     return reporte
 
 
@@ -171,6 +184,7 @@ def descargar_reporte_csv(
         entity="auditoria_descarga_csv",
         entity_id=f"{filtros.fecha_desde}..{filtros.fecha_hasta}|total={reporte.total}",
     )
+    db.commit()  # C1: persistir la traza READ
 
     output = io.StringIO()
     writer = csv.writer(output)
@@ -201,17 +215,17 @@ def descargar_reporte_csv(
     for fila in reporte.filas:
         writer.writerow([
             fila.ingreso_id,
-            fila.folio,
-            fila.numero_siniestro or "",
-            fila.rut,
-            fila.nombre_completo,
-            fila.region or "",
+            _sanitize_csv_cell(fila.folio),
+            _sanitize_csv_cell(fila.numero_siniestro or ""),
+            _sanitize_csv_cell(fila.rut),
+            _sanitize_csv_cell(fila.nombre_completo),
+            _sanitize_csv_cell(fila.region or ""),
             fila.fecha_denuncia or "",
-            fila.tipo_denuncia or "",
-            fila.estado_caso or "",
-            fila.diagnostico_inicial or "",
-            fila.diagnostico_post_reca or "",
-            fila.profesional or "",
+            _sanitize_csv_cell(fila.tipo_denuncia or ""),
+            _sanitize_csv_cell(fila.estado_caso or ""),
+            _sanitize_csv_cell(fila.diagnostico_inicial or ""),
+            _sanitize_csv_cell(fila.diagnostico_post_reca or ""),
+            _sanitize_csv_cell(fila.profesional or ""),
             fila.fecha_calificacion_reca or "",
             fila.reintegro_parcial,
             fila.reintegro_total,

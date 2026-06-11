@@ -57,33 +57,30 @@ def test_seccion_evaluaciones_diagnoticos_separados():
         fecha_calificacion_reca=datetime.date(2026, 3, 1),
         diagnostico_inicial="F32.0 Episodio depresivo leve",
         diagnostico_post_reca="F33.1 Trastorno depresivo recurrente",
-        numero_sesiones_evaluacion=3,
     )
     assert ev.diagnostico_inicial != ev.diagnostico_post_reca
     assert ev.fecha_calificacion_reca == datetime.date(2026, 3, 1)
 
 
 def test_seccion_evaluaciones_todos_opcionales():
+    # S2: numero_sesiones_evaluacion es int | None = None
     ev = SeccionEvaluacionesRead(
         fecha_eval_medica=None,
         fecha_eval_psicologica=None,
         fecha_calificacion_reca=None,
         diagnostico_inicial=None,
         diagnostico_post_reca=None,
-        numero_sesiones_evaluacion=0,
     )
-    assert ev.numero_sesiones_evaluacion == 0
+    assert ev.numero_sesiones_evaluacion is None
 
 
 # ── SeccionControlesRead ───────────────────────────────────────────────────
 
 def test_seccion_controles_campos_completos():
+    # S2: n_sesiones_* son int | None = None
     ctrl = SeccionControlesRead(
         fecha_primera_consulta_medica=datetime.date(2026, 3, 10),
         fecha_primera_consulta_psicologica=datetime.date(2026, 3, 12),
-        n_sesiones_medicas=5,
-        n_sesiones_psicologicas=8,
-        n_sesiones_ampliacion=2,
         reintegro_parcial=True,
         fecha_reintegro_parcial=datetime.date(2026, 5, 1),
         reintegro_total=False,
@@ -91,6 +88,9 @@ def test_seccion_controles_campos_completos():
     )
     assert ctrl.reintegro_parcial is True
     assert ctrl.fecha_reintegro_total is None
+    assert ctrl.n_sesiones_medicas is None   # S2
+    assert ctrl.n_sesiones_psicologicas is None
+    assert ctrl.n_sesiones_ampliacion is None
 
 
 # ── SeccionCierreRead ──────────────────────────────────────────────────────
@@ -147,14 +147,10 @@ def test_caso_consolidado_contiene_todas_las_secciones():
             fecha_calificacion_reca=None,
             diagnostico_inicial="F32.0",
             diagnostico_post_reca=None,
-            numero_sesiones_evaluacion=0,
         ),
         controles=SeccionControlesRead(
             fecha_primera_consulta_medica=None,
             fecha_primera_consulta_psicologica=None,
-            n_sesiones_medicas=0,
-            n_sesiones_psicologicas=0,
-            n_sesiones_ampliacion=0,
             reintegro_parcial=False,
             fecha_reintegro_parcial=None,
             reintegro_total=False,
