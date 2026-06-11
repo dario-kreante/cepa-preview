@@ -16,3 +16,4 @@ from app.models.farmacos import (  # noqa: F401
 )
 from app.models.ept import CasoEpt, ContactoEpt, PlazoEpt, ProcesoEpt  # noqa: F401
 from app.models.reintegro import CasoReintegro, Reca  # noqa: F401
+from app.models.control_medico import ControlMedico  # noqa: F401

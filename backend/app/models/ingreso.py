@@ -18,6 +18,7 @@ from app.domain.enums import EstadoCaso
 
 if TYPE_CHECKING:
     from app.models.consentimiento import Consentimiento  # noqa: F401
+    from app.models.control_medico import ControlMedico  # noqa: F401
     from app.models.oda import Oda  # noqa: F401
     from app.models.seguimiento import Seguimiento  # noqa: F401
 
@@ -71,4 +72,7 @@ class Ingreso(Base):
     )
     consentimiento: Mapped["Consentimiento | None"] = relationship(  # noqa: F821
         back_populates="ingreso", uselist=False, cascade="all, delete-orphan"
+    )
+    controles_medicos: Mapped[list["ControlMedico"]] = relationship(  # noqa: F821
+        back_populates="ingreso", cascade="all, delete-orphan"
     )
