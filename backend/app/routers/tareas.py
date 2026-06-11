@@ -48,11 +48,15 @@ def crear_tarea(
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> TareaItem:
-    """Crea una tarea operativa asignada a un usuario (RN-1 CEPA-103)."""
+    """Crea una tarea operativa asignada a un usuario (RN-1 CEPA-103).
+
+    DD-B: auditoría ANTES del commit.
+    """
     tarea = TareaItem(**payload.model_dump(), estado=EstadoTarea.PENDIENTE.value)
     db.add(tarea)
-    db.commit()
-    db.refresh(tarea)
+    db.flush()  # obtiene el id sin commit para poder registrarlo en auditoría
+
+    # DD-B: registrar auditoría ANTES del commit
     record_audit(
         db,
         actor=current_user.username,
@@ -60,6 +64,8 @@ def crear_tarea(
         entity="tarea_item",
         entity_id=str(tarea.id),
     )
+    db.commit()
+    db.refresh(tarea)
     return tarea
 
 
@@ -70,7 +76,10 @@ def actualizar_tarea(
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> TareaItem:
-    """Marca una tarea como completada o en progreso (CA-2, RN-3 CEPA-103)."""
+    """Marca una tarea como completada o en progreso (CA-2, RN-3 CEPA-103).
+
+    DD-B: auditoría ANTES del commit.
+    """
     tarea = db.get(TareaItem, tarea_id)
     if tarea is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tarea no encontrada")
@@ -80,8 +89,7 @@ def actualizar_tarea(
         tarea.completada_en = datetime.now(timezone.utc)
         tarea.completada_por = current_user.username
 
-    db.commit()
-    db.refresh(tarea)
+    # DD-B: registrar auditoría ANTES del commit
     record_audit(
         db,
         actor=current_user.username,
@@ -89,4 +97,6 @@ def actualizar_tarea(
         entity="tarea_item",
         entity_id=str(tarea_id),
     )
+    db.commit()
+    db.refresh(tarea)
     return tarea
