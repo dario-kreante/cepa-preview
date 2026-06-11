@@ -1,11 +1,15 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.audit.service import record_audit
 from app.auth.deps import get_current_user, require_role
 from app.db.session import get_db
+from app.models.ingreso import Ingreso
+from app.models.plan_tratamiento import PlanTratamiento
 from app.schemas.consentimiento import ConsentimientoRead, ConsentimientoUpdate
 from app.schemas.ingreso import IngresoCierre, IngresoCreate, IngresoRead
+from app.schemas.plan_tratamiento import PlanTratamientoRead, PlanTratamientoUpsert
 from app.schemas.seguimiento import SeguimientoRead, SeguimientoUpdate, ValidacionPlazo
 from app.services.cierre import cerrar_ingreso
 from app.services.consentimiento import iniciar_tratamiento, upsert_consentimiento
@@ -124,3 +128,53 @@ def iniciar_tratamiento_endpoint(
     db.commit()
     db.refresh(ingreso)
     return ingreso
+
+
+@router.put(
+    "/{ingreso_id}/plan-tratamiento",
+    response_model=PlanTratamientoRead,
+    dependencies=[Depends(_writer)],
+)
+def upsert_plan_tratamiento(
+    ingreso_id: int,
+    payload: PlanTratamientoUpsert,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+) -> PlanTratamiento:
+    """DD-2: crea o actualiza el plan de tratamiento de un ingreso (upsert).
+
+    Si no existe plan, crea uno. Si ya existe, actualiza sesiones_plan y aumentos_isl.
+    Auditoría + commit.
+    """
+    ingreso = db.get(Ingreso, ingreso_id)
+    if ingreso is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ingreso no encontrado")
+
+    plan = db.scalars(
+        select(PlanTratamiento).where(PlanTratamiento.ingreso_id == ingreso_id)
+    ).first()
+
+    if plan is None:
+        plan = PlanTratamiento(
+            ingreso_id=ingreso_id,
+            sesiones_plan=payload.sesiones_plan,
+            aumentos_isl=payload.aumentos_isl,
+        )
+        db.add(plan)
+        db.flush()
+        accion = "CREATE"
+    else:
+        plan.sesiones_plan = payload.sesiones_plan
+        plan.aumentos_isl = payload.aumentos_isl
+        accion = "UPDATE"
+
+    record_audit(
+        db,
+        actor=current_user.username,
+        action=accion,
+        entity="plan_tratamiento",
+        entity_id=str(ingreso_id),
+    )
+    db.commit()
+    db.refresh(plan)
+    return plan
