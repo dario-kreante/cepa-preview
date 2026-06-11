@@ -11,7 +11,6 @@ Los helpers `_crear_paciente_e_ingreso` crean las entidades previas necesarias
 directamente en la sesión para aislar cada test.
 """
 
-import pytest
 from datetime import date
 
 from sqlalchemy.orm import Session
