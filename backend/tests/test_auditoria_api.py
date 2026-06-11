@@ -20,7 +20,6 @@ from sqlalchemy.orm import Session
 
 from app.models.ingreso import Ingreso
 from app.models.paciente import Paciente
-from app.models.reintegro import CasoReintegro
 from app.models.seguimiento import Seguimiento
 
 
