@@ -22,6 +22,12 @@ _writer = require_role("Administrativo", "Coordinacion")
 _reader = require_role("Administrativo", "Coordinacion", "Auditor")
 
 
+@router.get("", response_model=list[IngresoRead], dependencies=[Depends(_reader)])
+def listar_ingresos(db: Session = Depends(get_db)) -> list[Ingreso]:
+    """Lista todos los ingresos (CA-2 CEPA-121 — consulta de estado)."""
+    return list(db.scalars(select(Ingreso).order_by(Ingreso.id)).all())
+
+
 @router.post(
     "",
     response_model=IngresoRead,

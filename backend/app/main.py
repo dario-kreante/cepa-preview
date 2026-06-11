@@ -19,6 +19,7 @@ from app.routers import alertas as alertas_router
 from app.routers import tareas as tareas_router
 from app.routers import form_config as form_config_router
 from app.routers import pdf_extract as pdf_extract_router
+from app.routers.v2 import health_v2 as health_v2_router
 
 app = FastAPI(title=get_settings().app_name)
 
@@ -53,6 +54,7 @@ app.include_router(alertas_router.router)
 app.include_router(tareas_router.router)
 app.include_router(form_config_router.router)
 app.include_router(pdf_extract_router.router)
+app.include_router(health_v2_router.router)
 
 
 @app.get("/health")
