@@ -1,7 +1,5 @@
 """Tests de integración — CEPA-040: Datos del caso de reintegro."""
 
-import pytest
-
 
 def _ingreso_fixture(as_admin):
     """Crea un ingreso real en la BD de tests para usar como FK."""

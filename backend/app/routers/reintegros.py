@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.audit.service import record_audit
 from app.auth.deps import get_current_user, require_role
 from app.db.session import get_db
-from app.models.reintegro import CasoReintegro, Reca
+from app.models.reintegro import CasoReintegro
 from app.schemas.reintegro import (
     CasoReintegroCreate,
     CasoReintegroRead,

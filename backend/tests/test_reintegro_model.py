@@ -1,4 +1,4 @@
-from sqlalchemy import BigInteger, Boolean, Date, DateTime, String, Text
+from sqlalchemy import BigInteger, Boolean, Date, DateTime, String
 
 from app.models.reintegro import CasoReintegro, Reca
 
