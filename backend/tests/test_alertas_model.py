@@ -4,7 +4,7 @@ Desviación 1: el modelo usa AlertaNotif/alerta_notif en lugar de Alerta/alerta
 para coexistir con app.models.farmacos.Alerta (EPIC-02).
 """
 
-from sqlalchemy import BigInteger, Boolean, DateTime, Integer, String
+from sqlalchemy import BigInteger, DateTime, String
 
 from app.domain.enums_alertas import EstadoAlerta, TipoAlerta
 from app.models.alertas import AlertaNotif

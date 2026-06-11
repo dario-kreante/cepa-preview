@@ -6,11 +6,9 @@ Cubre CA-1..CA-8, TC-100-01..TC-100-07.
 
 from datetime import date, timedelta
 
-import pytest
 
 from app.services.alertas import (
     HitoPlazos,
-    ResultadoAlerta,
     dias_habiles_hasta,
     evaluar_plazos,
 )

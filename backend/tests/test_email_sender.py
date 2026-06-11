@@ -7,7 +7,7 @@ TC-102-01..TC-102-05.
 
 import pytest
 
-from app.services.email_sender import FakeEmailSender, SmtpConfig, enviar_alerta
+from app.services.email_sender import FakeEmailSender, enviar_alerta
 
 
 # ---------------------------------------------------------------------------
@@ -84,7 +84,6 @@ def test_enviar_alerta_sin_email_valido_no_envia():
 def test_no_reenvio_si_email_ya_enviado():
     # TC-102-04: email de alerta ya enviado → enviar_correos_alertas no reenvía
     # (la flag email_enviado=True en la BD evita el reenvío — testeado a nivel de BD)
-    from datetime import datetime, timedelta, timezone
     from unittest.mock import MagicMock
 
     from sqlalchemy.orm import Session

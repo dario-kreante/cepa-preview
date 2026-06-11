@@ -1,6 +1,6 @@
 """Tests del modelo TareaItem (CEPA-103)."""
 
-from sqlalchemy import BigInteger, DateTime, String
+from sqlalchemy import BigInteger
 
 from app.domain.enums_alertas import EstadoTarea
 from app.models.tareas import TareaItem
