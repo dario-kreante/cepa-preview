@@ -95,20 +95,24 @@ def _cargar_reposos_batch(
     Evita el N+1 de _cargar_reposos por paciente (~800 round-trips al volumen objetivo).
     Retorna un dict {paciente_id: [ReposoPaciente, ...]}.
     """
-    from sqlalchemy import text
+    from sqlalchemy import bindparam, text
 
     if not paciente_ids:
         return {}
 
-    rows = db.execute(text(
+    # IN expandible (portable Oracle/Postgres, D15) en lugar de ANY(array) de Postgres.
+    stmt = text(
         "SELECT i.paciente_id, lm.inicio_reposo, lm.fin_reposo "
         "FROM licencia_medica lm "
         "JOIN ingreso i ON i.id = lm.ingreso_id "
-        "WHERE i.paciente_id = ANY(:pids) "
+        "WHERE i.paciente_id IN :pids "
         "  AND lm.anulada = FALSE "
         "  AND lm.inicio_reposo <= :fin "
         "  AND lm.fin_reposo >= :ini"
-    ), {"pids": paciente_ids, "ini": fecha_ini, "fin": fecha_fin}).fetchall()
+    ).bindparams(bindparam("pids", expanding=True))
+    rows = db.execute(
+        stmt, {"pids": list(paciente_ids), "ini": fecha_ini, "fin": fecha_fin}
+    ).fetchall()
 
     resultado: dict[int, list[ReposoPaciente]] = {pid: [] for pid in paciente_ids}
     for r in rows:
