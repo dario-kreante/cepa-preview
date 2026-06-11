@@ -87,6 +87,12 @@ class CasoEptRead(BaseModel):
 # ContactoEpt
 # ──────────────────────────────
 
+class ContactoEptPayload(BaseModel):
+    """Payload de creación de contacto EPT — solo correo (caso_ept_id viene de la URL)."""
+
+    correo: EmailStr
+
+
 class ContactoEptCreate(BaseModel):
     """Alta de contacto de coordinación EPT (CEPA-030 CA-3 / RN-4)."""
 
