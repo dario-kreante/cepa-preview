@@ -16,16 +16,13 @@ from app.db.session import get_db
 from app.schemas.farmacos import (
     AlertaRead,
     EsquemaIndicacionBody,
-    EsquemaIndicacionCreate,
     EsquemaIndicacionRead,
     RecetaBody,
-    RecetaCreate,
     RecetaRead,
     RegistroFarmacologicoCreate,
     RegistroFarmacologicoRead,
     RegistroFarmacologicoUpdate,
     SeguimTratamientoBody,
-    SeguimTratamientoCreate,
     SeguimTratamientoRead,
 )
 from app.services.farmacos import (

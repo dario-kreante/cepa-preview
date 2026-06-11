@@ -9,7 +9,7 @@ Incluye validaciones de negocio:
 
 from datetime import date, datetime
 
-from pydantic import BaseModel, ConfigDict, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, model_validator
 
 from app.domain.enums import EstadoFarmacologico, FrecuenciaFarmaco
 

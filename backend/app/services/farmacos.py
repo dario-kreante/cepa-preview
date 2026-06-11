@@ -181,7 +181,6 @@ def generar_alertas_revision(db, hoy: date | None = None) -> list[Alerta]:
     _VENTANA_ALERTA_DIAS días (límite inclusivo). Omite recetas que ya tienen alerta
     del mismo tipo generada el mismo día (idempotente). CEPA-022 RN-3/CA-2/CA-3.
     """
-    from datetime import datetime, timezone as tz
 
     hoy = hoy or date.today()
     limite = hoy + timedelta(days=_VENTANA_ALERTA_DIAS)

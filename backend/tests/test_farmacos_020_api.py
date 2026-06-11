@@ -3,7 +3,6 @@
 Fixtures as_admin / as_coordinacion / as_auditor provienen de EPIC-00 conftest.
 Se necesita un ingreso previo: helper _crear_ingreso() lo hace vía API de EPIC-01.
 """
-import pytest
 
 
 def _crear_ingreso(client) -> int:
