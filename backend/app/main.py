@@ -11,6 +11,7 @@ from app.routers import auditoria
 from app.agendamiento import router as agendamiento_router
 from app.routers import dashboard, reporte_operativo, reporte_convenio, reporte_carga, reporte_licencias, reporte_odas, reporte_adherencia, ventana_proceso
 from app.routers import alertas as alertas_router
+from app.routers import tareas as tareas_router
 
 app = FastAPI(title=get_settings().app_name)
 app.include_router(auth.router)
@@ -36,6 +37,7 @@ app.include_router(reporte_odas.router)
 app.include_router(reporte_adherencia.router)
 app.include_router(ventana_proceso.router)
 app.include_router(alertas_router.router)
+app.include_router(tareas_router.router)
 
 
 @app.get("/health")
