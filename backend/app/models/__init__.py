@@ -14,3 +14,4 @@ from app.models.farmacos import (  # noqa: F401
     RegistroFarmacologico,
     SeguimTratamiento,
 )
+from app.models.ept import CasoEpt, ContactoEpt, PlazoEpt, ProcesoEpt  # noqa: F401
