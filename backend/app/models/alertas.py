@@ -45,7 +45,7 @@ class AlertaNotif(Base):
     estado: Mapped[str] = mapped_column(String(20), nullable=False, default="pendiente")
     caso_id: Mapped[int] = mapped_column(BigInteger, nullable=False, index=True)
     caso_tipo: Mapped[str] = mapped_column(String(30), nullable=False)
-    usuario_id: Mapped[int] = mapped_column(BigInteger, nullable=False, index=True)
+    usuario_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True, index=True)
     plazo_objetivo: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     ventana_dias: Mapped[int] = mapped_column(Integer, nullable=False)
     generada_en: Mapped[datetime] = mapped_column(

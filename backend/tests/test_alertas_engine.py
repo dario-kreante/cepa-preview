@@ -235,9 +235,32 @@ def test_idempotencia_excluye_alertas_ya_activas():
     assert len(primera) == 1
 
     # Segunda evaluación con la alerta ya activa: no debe duplicar
-    clave_activa = (20, "vencimiento_licencia")
+    # DD-D: la clave incluye plazo_objetivo para que un nuevo plazo genere alerta distinta
+    clave_activa = (20, "vencimiento_licencia", vencimiento)
     segunda = evaluar_plazos(hitos, hoy=hoy, alertas_activas={clave_activa})
     assert len(segunda) == 0
+
+
+def test_idempotencia_nuevo_plazo_genera_nueva_alerta():
+    """DD-D / RN-4: mismo caso+tipo pero con plazo_objetivo posterior → nueva alerta."""
+    hoy = date(2026, 6, 9)
+    vencimiento_v1 = hoy + timedelta(days=2)
+    vencimiento_v2 = hoy + timedelta(days=3)  # plazo posterior (e.g. prórroga)
+    hito_v2 = HitoPlazos(
+        tipo="vencimiento_licencia",
+        caso_id=20,
+        caso_tipo="licencia",
+        usuario_id=10,
+        plazo_objetivo=vencimiento_v2,
+        ventana_dias=5,
+        usar_dias_habiles=True,
+    )
+    # La alerta de v1 ya existe en BD — clave con su plazo
+    clave_v1 = (20, "vencimiento_licencia", vencimiento_v1)
+    resultados = evaluar_plazos([hito_v2], hoy=hoy, alertas_activas={clave_v1})
+    # v2 tiene plazo distinto → debe generar alerta propia
+    assert len(resultados) == 1
+    assert resultados[0].plazo_objetivo == vencimiento_v2
 
 
 def test_evaluar_plazos_multiples_hitos_independientes():

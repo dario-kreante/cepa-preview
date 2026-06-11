@@ -1,24 +1,48 @@
 """Motor de evaluación de plazos perentorios — CEPA-100.
 
-Diseño: función pura `evaluar_plazos()`.
-  - Entrada:  lista de HitoPlazos + fecha `hoy` + set de alertas activas.
+Diseño: función pura ``evaluar_plazos()``.
+  - Entrada:  lista de HitoPlazos + fecha ``hoy`` + set de alertas activas.
   - Salida:   lista de ResultadoAlerta a crear (sin efectos secundarios).
   - Sin BD, sin red → completamente testeable como función unitaria.
 
-El job de revisión (`ejecutar_job_alertas`) construye los HitoPlazos
+El job de revisión (``ejecutar_job_alertas``) construye los HitoPlazos
 consultando la BD y llama a esta función.
 
-Desviación 1: el modelo ORM se llama AlertaNotif (tabla alerta_notif) para
-coexistir con app.models.farmacos.Alerta (tabla alerta, EPIC-02).
+Relación con otras tablas de alertas (DD-F / Decisión de diseño):
+  • ``alerta`` (tabla EPIC-02, modelo farmacos.Alerta):  almacén específico
+    de recetas farmacológicas — permanece en su flujo de dominio EPIC-02.
+  • ``alerta_licencia`` (tabla EPIC-07):  almacén específico de alertas de
+    licencias médicas — permanece en su flujo de dominio EPIC-07.
+  • ``alerta_notif`` (este módulo):  panel unificado in-app que cubre los 7
+    tipos de alerta directamente desde las tablas de dominio, sin duplicar
+    los registros de las dos tablas anteriores.
+
+Destinatario de la alerta (PA):
+  El campo ``usuario_id`` se resuelve como ``Ingreso.profesional_id`` cuando
+  está definido; en caso contrario se almacena ``None`` (la alerta queda
+  visible en el panel de Coordinación/global).  Actualmente no existe un
+  administrativo por caso — esta regla se revisará cuando se implemente ese
+  vínculo (nota abierta PA).
+
+Idempotencia (RN-4 / DD-D):
+  La clave de idempotencia es ``(caso_id, tipo, plazo_objetivo)`` para que
+  un nuevo plazo posterior al mismo caso genere una alerta distinta.
+
+Desviación 1: el modelo ORM se llama AlertaNotif (tabla ``alerta_notif``)
+para coexistir con ``app.models.farmacos.Alerta`` (tabla ``alerta``,
+EPIC-02).
 """
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 
-from sqlalchemy import select, text
+from sqlalchemy import select
 from sqlalchemy.orm import Session
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -33,7 +57,7 @@ class HitoPlazos:
     tipo:              valor de TipoAlerta (str)
     caso_id:           PK del objeto disparador
     caso_tipo:         'ingreso' | 'oda' | 'ept' | 'licencia'
-    usuario_id:        PK del usuario Administrativo destinatario
+    usuario_id:        PK del usuario destinatario (None si sin asignar)
     plazo_objetivo:    date del plazo perentorio
     ventana_dias:      días de anticipación configurados
     usar_dias_habiles: True → cálculo en días hábiles; False → días calendario
@@ -42,7 +66,7 @@ class HitoPlazos:
     tipo: str
     caso_id: int
     caso_tipo: str
-    usuario_id: int
+    usuario_id: int | None
     plazo_objetivo: date
     ventana_dias: int
     usar_dias_habiles: bool = False
@@ -50,12 +74,12 @@ class HitoPlazos:
 
 @dataclass
 class ResultadoAlerta:
-    """DTO devuelto por evaluar_plazos; se persistirá como fila en `alerta_notif`."""
+    """DTO devuelto por evaluar_plazos; se persistirá como fila en ``alerta_notif``."""
 
     tipo: str
     caso_id: int
     caso_tipo: str
-    usuario_id: int
+    usuario_id: int | None
     plazo_objetivo: date
     ventana_dias: int
 
@@ -97,14 +121,17 @@ def evaluar_plazos(
     hitos: list[HitoPlazos],
     *,
     hoy: date | None = None,
-    alertas_activas: set[tuple[int, str]] | None = None,
+    alertas_activas: set[tuple] | None = None,
 ) -> list[ResultadoAlerta]:
     """Evalúa una lista de hitos y devuelve los que deben generar una nueva alerta.
 
     Args:
         hitos:           lista de plazos a evaluar.
         hoy:             fecha de referencia (default: date.today()).
-        alertas_activas: set de (caso_id, tipo) ya activos — para idempotencia (CA-7).
+        alertas_activas: set de (caso_id, tipo, plazo_objetivo) ya activos —
+                         para idempotencia (CA-7 / RN-4 / DD-D).
+                         El tercer elemento del tuple es la fecha normalizada a
+                         ``date`` para comparación uniforme.
 
     Returns:
         Lista de ResultadoAlerta que el llamador persistirá en la BD.
@@ -116,9 +143,9 @@ def evaluar_plazos(
 
     resultados: list[ResultadoAlerta] = []
     for hito in hitos:
-        clave = (hito.caso_id, hito.tipo)
+        clave = (hito.caso_id, hito.tipo, hito.plazo_objetivo)
         if clave in alertas_activas:
-            continue  # idempotencia: ya existe alerta activa para este (caso, tipo)
+            continue  # idempotencia: ya existe alerta activa para este (caso, tipo, plazo)
 
         if hito.usar_dias_habiles:
             dias_restantes = dias_habiles_hasta(hoy, hito.plazo_objetivo)
@@ -158,47 +185,62 @@ VENTANAS_DEFAULT: dict[str, dict] = {
 }
 
 
-def _cargar_alertas_activas(db: Session) -> set[tuple[int, str]]:
-    """Devuelve el set de (caso_id, tipo) con alertas en estado pendiente o leída."""
+def _cargar_alertas_activas(db: Session) -> set[tuple]:
+    """Devuelve el set de (caso_id, tipo, plazo_objetivo_date) con alertas pendiente o leída."""
     filas = db.execute(
-        select(AlertaNotif.caso_id, AlertaNotif.tipo).where(
+        select(AlertaNotif.caso_id, AlertaNotif.tipo, AlertaNotif.plazo_objetivo).where(
             AlertaNotif.estado.in_([EstadoAlerta.PENDIENTE.value, EstadoAlerta.LEIDA.value])
         )
     ).all()
-    return {(fila.caso_id, fila.tipo) for fila in filas}
+    resultado = set()
+    for fila in filas:
+        plazo = fila.plazo_objetivo
+        if hasattr(plazo, "date"):
+            plazo = plazo.date()
+        resultado.add((fila.caso_id, fila.tipo, plazo))
+    return resultado
+
+
+def _resolver_usuario(ingreso_id: int | None, db: Session) -> int | None:
+    """Resuelve el usuario_id destinatario a partir del ingreso.
+
+    Regla PA: usa Ingreso.profesional_id cuando está definido; en caso
+    contrario devuelve None (alerta visible al panel global de Coordinación).
+    """
+    if ingreso_id is None:
+        return None
+    from app.models.ingreso import Ingreso  # local import para evitar ciclos
+    ingreso = db.get(Ingreso, ingreso_id)
+    if ingreso is None:
+        return None
+    return ingreso.profesional_id  # puede ser None
 
 
 def _construir_hitos_oda(db: Session) -> list[HitoPlazos]:
-    """Construye HitoPlazos desde la tabla oda (EPIC-01).
+    """Construye HitoPlazos desde la tabla oda (EPIC-01) via ORM.
 
-    Asume columnas: id, fecha_vencimiento, usuario_id.
-    Si la columna no existe devuelve lista vacía.
+    Filtra por vigente=True y fecha_vencimiento IS NOT NULL.
+    Destinatario: Ingreso.profesional_id, o None si no asignado (PA).
     """
-    try:
-        filas = db.execute(
-            text(
-                "SELECT id, fecha_vencimiento, usuario_id FROM oda "
-                "WHERE fecha_vencimiento IS NOT NULL"
-            )
-        ).mappings().all()
-    except Exception:
-        db.rollback()
-        return []
+    from app.models.oda import Oda  # local import para evitar ciclos
+
     ventana = VENTANAS_DEFAULT[TipoAlerta.ODA_POR_VENCER.value]
+    filas = db.scalars(
+        select(Oda).where(
+            Oda.vigente == True,  # noqa: E712
+            Oda.fecha_vencimiento.isnot(None),
+        )
+    ).all()
     hitos = []
-    for f in filas:
-        if f["fecha_vencimiento"] is None:
-            continue
-        plazo = f["fecha_vencimiento"]
-        if hasattr(plazo, "date"):
-            plazo = plazo.date()
+    for oda in filas:
+        usuario_id = _resolver_usuario(oda.ingreso_id, db)
         hitos.append(
             HitoPlazos(
                 tipo=TipoAlerta.ODA_POR_VENCER.value,
-                caso_id=f["id"],
+                caso_id=oda.id,
                 caso_tipo="oda",
-                usuario_id=f["usuario_id"],
-                plazo_objetivo=plazo,
+                usuario_id=usuario_id,
+                plazo_objetivo=oda.fecha_vencimiento,
                 ventana_dias=ventana["dias"],
                 usar_dias_habiles=ventana["habiles"],
             )
@@ -207,35 +249,30 @@ def _construir_hitos_oda(db: Session) -> list[HitoPlazos]:
 
 
 def _construir_hitos_licencias(db: Session) -> list[HitoPlazos]:
-    """Construye HitoPlazos desde la tabla licencia (EPIC-07).
+    """Construye HitoPlazos desde la tabla licencia_medica (EPIC-07) via ORM.
 
-    Asume columnas: id, fecha_fin_reposo, usuario_id.
+    Filtra anulada=False y fin_reposo IS NOT NULL.
+    Destinatario: Ingreso.profesional_id, o None (PA).
     """
-    try:
-        filas = db.execute(
-            text(
-                "SELECT id, fecha_fin_reposo, usuario_id FROM licencia "
-                "WHERE fecha_fin_reposo IS NOT NULL"
-            )
-        ).mappings().all()
-    except Exception:
-        db.rollback()
-        return []
+    from app.models.licencia import LicenciaMedica  # local import
+
     ventana = VENTANAS_DEFAULT[TipoAlerta.VENCIMIENTO_LICENCIA.value]
+    filas = db.scalars(
+        select(LicenciaMedica).where(
+            LicenciaMedica.anulada == False,  # noqa: E712
+            LicenciaMedica.fin_reposo.isnot(None),
+        )
+    ).all()
     hitos = []
-    for f in filas:
-        if f["fecha_fin_reposo"] is None:
-            continue
-        plazo = f["fecha_fin_reposo"]
-        if hasattr(plazo, "date"):
-            plazo = plazo.date()
+    for lm in filas:
+        usuario_id = _resolver_usuario(lm.ingreso_id, db)
         hitos.append(
             HitoPlazos(
                 tipo=TipoAlerta.VENCIMIENTO_LICENCIA.value,
-                caso_id=f["id"],
+                caso_id=lm.id,
                 caso_tipo="licencia",
-                usuario_id=f["usuario_id"],
-                plazo_objetivo=plazo,
+                usuario_id=usuario_id,
+                plazo_objetivo=lm.fin_reposo,
                 ventana_dias=ventana["dias"],
                 usar_dias_habiles=ventana["habiles"],
             )
@@ -244,45 +281,40 @@ def _construir_hitos_licencias(db: Session) -> list[HitoPlazos]:
 
 
 def _construir_hitos_ept(db: Session) -> list[HitoPlazos]:
-    """Construye HitoPlazos desde la tabla caso_ept (EPIC-03).
+    """Construye HitoPlazos desde plazo_ept JOIN caso_ept (EPIC-03) via ORM.
 
-    Asume columnas: id, usuario_id.
-    Los plazos vienen de la tabla plazo_ept (fecha_plazo_informe, fecha_plazo_isl).
-    Si la tabla no existe devuelve lista vacía.
+    Genera un hito por cada plazo no nulo:
+      - plazo_informe_ept → TipoAlerta.PLAZO_EPT
+      - plazo_portal_isl  → TipoAlerta.PLAZO_ISL
+    Destinatario: Ingreso.profesional_id vía CasoEpt.ingreso_id (PA).
     """
-    hitos: list[HitoPlazos] = []
-    try:
-        filas = db.execute(
-            text(
-                "SELECT pe.id AS ept_id, pe.fecha_plazo_informe, "
-                "pe.fecha_plazo_isl, ce.usuario_id "
-                "FROM plazo_ept pe "
-                "JOIN caso_ept ce ON ce.id = pe.caso_ept_id"
-            )
-        ).mappings().all()
-    except Exception:
-        db.rollback()
-        return []
+    from app.models.ept import CasoEpt, PlazoEpt  # local import
 
     v_ept = VENTANAS_DEFAULT[TipoAlerta.PLAZO_EPT.value]
     v_isl = VENTANAS_DEFAULT[TipoAlerta.PLAZO_ISL.value]
-    for f in filas:
-        for campo, tipo, ventana in [
-            ("fecha_plazo_informe", TipoAlerta.PLAZO_EPT.value, v_ept),
-            ("fecha_plazo_isl", TipoAlerta.PLAZO_ISL.value, v_isl),
+
+    filas = db.scalars(
+        select(PlazoEpt)
+    ).all()
+    hitos: list[HitoPlazos] = []
+    for plazo_ept in filas:
+        caso = db.get(CasoEpt, plazo_ept.caso_ept_id)
+        if caso is None:
+            continue
+        usuario_id = _resolver_usuario(caso.ingreso_id, db)
+        for campo_date, tipo, ventana in [
+            (plazo_ept.plazo_informe_ept, TipoAlerta.PLAZO_EPT.value, v_ept),
+            (plazo_ept.plazo_portal_isl, TipoAlerta.PLAZO_ISL.value, v_isl),
         ]:
-            if f[campo] is None:
+            if campo_date is None:
                 continue
-            plazo = f[campo]
-            if hasattr(plazo, "date"):
-                plazo = plazo.date()
             hitos.append(
                 HitoPlazos(
                     tipo=tipo,
-                    caso_id=f["ept_id"],
+                    caso_id=plazo_ept.id,
                     caso_tipo="ept",
-                    usuario_id=f["usuario_id"],
-                    plazo_objetivo=plazo,
+                    usuario_id=usuario_id,
+                    plazo_objetivo=campo_date,
                     ventana_dias=ventana["dias"],
                     usar_dias_habiles=ventana["habiles"],
                 )
@@ -291,40 +323,104 @@ def _construir_hitos_ept(db: Session) -> list[HitoPlazos]:
 
 
 def _construir_hitos_consentimiento(db: Session) -> list[HitoPlazos]:
-    """Construye HitoPlazos para ingresos sin consentimiento firmado.
+    """Construye HitoPlazos para consentimientos no firmados (EPIC-01) via ORM.
 
-    Usa la tabla consentimiento (EPIC-01). Un ingreso sin consentimiento aceptado
-    genera alerta permanente hasta que se firme.
+    Un consentimiento con estado != FIRMADO genera alerta permanente hasta
+    que se firme.  El plazo_objetivo es la fecha de creación del consentimiento
+    (ya vencido → dias_restantes=0 → siempre dentro de la ventana de 30 días).
+    Destinatario: Ingreso.profesional_id, o None (PA).
     """
-    try:
-        # Ingresos que NO tienen consentimiento aceptado
-        filas = db.execute(
-            text(
-                "SELECT i.id, i.usuario_id, i.fecha_ingreso "
-                "FROM ingreso i "
-                "WHERE NOT EXISTS ("
-                "  SELECT 1 FROM consentimiento c "
-                "  WHERE c.ingreso_id = i.id AND c.estado = 'aceptado'"
-                ")"
-            )
-        ).mappings().all()
-    except Exception:
-        db.rollback()
-        return []
+    from app.domain.enums import EstadoConsentimiento
+    from app.models.consentimiento import Consentimiento  # local import
 
     ventana = VENTANAS_DEFAULT[TipoAlerta.CONSENTIMIENTO_PENDIENTE.value]
+    filas = db.scalars(
+        select(Consentimiento).where(
+            Consentimiento.estado != EstadoConsentimiento.FIRMADO.value
+        )
+    ).all()
     hitos = []
-    for f in filas:
-        plazo = f.get("fecha_ingreso") or date.today()
-        if hasattr(plazo, "date"):
-            plazo = plazo.date()
+    for c in filas:
+        usuario_id = _resolver_usuario(c.ingreso_id, db)
+        # plazo_objetivo = fecha de creación del consentimiento (dias_restantes <= 0
+        # → siempre dentro de la ventana de 30 días, que es la intención del tipo)
+        plazo = c.created_at.date() if hasattr(c.created_at, "date") else date.today()
         hitos.append(
             HitoPlazos(
                 tipo=TipoAlerta.CONSENTIMIENTO_PENDIENTE.value,
-                caso_id=f["id"],
+                caso_id=c.ingreso_id,
                 caso_tipo="ingreso",
-                usuario_id=f["usuario_id"],
+                usuario_id=usuario_id,
                 plazo_objetivo=plazo,
+                ventana_dias=ventana["dias"],
+                usar_dias_habiles=ventana["habiles"],
+            )
+        )
+    return hitos
+
+
+def _construir_hitos_control_medico(db: Session) -> list[HitoPlazos]:
+    """Construye HitoPlazos para controles médicos próximos sin agendar (EPIC-06) via ORM.
+
+    Filtra: proximo_control IS NOT NULL AND proximo_agendado = False.
+    Toma el control con proximo_control más reciente por ingreso (el último registrado).
+    Destinatario: Ingreso.profesional_id, o None (PA).
+    """
+    from app.models.control_medico import ControlMedico  # local import
+
+    ventana = VENTANAS_DEFAULT[TipoAlerta.CONTROL_MEDICO.value]
+    filas = db.scalars(
+        select(ControlMedico).where(
+            ControlMedico.proximo_control.isnot(None),
+            ControlMedico.proximo_agendado == False,  # noqa: E712
+        )
+    ).all()
+    hitos = []
+    for cm in filas:
+        usuario_id = _resolver_usuario(cm.ingreso_id, db)
+        hitos.append(
+            HitoPlazos(
+                tipo=TipoAlerta.CONTROL_MEDICO.value,
+                caso_id=cm.id,
+                caso_tipo="ingreso",
+                usuario_id=usuario_id,
+                plazo_objetivo=cm.proximo_control,
+                ventana_dias=ventana["dias"],
+                usar_dias_habiles=ventana["habiles"],
+            )
+        )
+    return hitos
+
+
+def _construir_hitos_receta(db: Session) -> list[HitoPlazos]:
+    """Construye HitoPlazos para recetas por renovar (EPIC-02) via ORM.
+
+    Filtra: fecha_revision IS NOT NULL AND fecha_envio IS NULL.
+    El hito representa la receta que necesita ser enviada antes de su fecha de revisión.
+    Destinatario: resuelto vía reg_farmacologico → ingreso_id → profesional_id (PA).
+    """
+    from app.models.farmacos import Receta, RegistroFarmacologico  # local import
+
+    ventana = VENTANAS_DEFAULT[TipoAlerta.RECETA_POR_RENOVAR.value]
+    filas = db.scalars(
+        select(Receta).where(
+            Receta.fecha_revision.isnot(None),
+            Receta.fecha_envio.is_(None),
+        )
+    ).all()
+    hitos = []
+    for receta in filas:
+        # Resolver ingreso_id a través del registro farmacológico
+        reg = db.get(RegistroFarmacologico, receta.registro_id)
+        ingreso_id = reg.ingreso_id if reg else None
+        usuario_id = _resolver_usuario(ingreso_id, db)
+        hitos.append(
+            HitoPlazos(
+                tipo=TipoAlerta.RECETA_POR_RENOVAR.value,
+                caso_id=receta.id,
+                caso_tipo="receta",
+                usuario_id=usuario_id,
+                plazo_objetivo=receta.fecha_revision,
                 ventana_dias=ventana["dias"],
                 usar_dias_habiles=ventana["habiles"],
             )
@@ -337,7 +433,7 @@ def ejecutar_job_alertas(db: Session, *, actor: str = "sistema") -> int:
 
     Construye todos los hitos de dominio, evalúa plazos y persiste las alertas nuevas.
     Devuelve el número de alertas generadas en esta ejecución.
-    Registra auditoría vía record_audit (RN-8, CA-8).
+    Registra auditoría ANTES del commit (DD-B / RN-8 / CA-8).
     """
     from app.audit.service import record_audit
 
@@ -348,6 +444,8 @@ def ejecutar_job_alertas(db: Session, *, actor: str = "sistema") -> int:
     hitos.extend(_construir_hitos_licencias(db))
     hitos.extend(_construir_hitos_ept(db))
     hitos.extend(_construir_hitos_consentimiento(db))
+    hitos.extend(_construir_hitos_control_medico(db))
+    hitos.extend(_construir_hitos_receta(db))
 
     alertas_activas = _cargar_alertas_activas(db)
     resultados = evaluar_plazos(hitos, hoy=hoy, alertas_activas=alertas_activas)
@@ -368,7 +466,7 @@ def ejecutar_job_alertas(db: Session, *, actor: str = "sistema") -> int:
         db.add(alerta)
 
     if resultados:
-        db.commit()
+        # DD-B: registrar auditoría ANTES del commit
         record_audit(
             db,
             actor=actor,
@@ -376,6 +474,7 @@ def ejecutar_job_alertas(db: Session, *, actor: str = "sistema") -> int:
             entity="alerta_notif",
             entity_id=f"job:{len(resultados)}",
         )
+        db.commit()
 
     return len(resultados)
 
@@ -385,12 +484,15 @@ def enviar_correos_alertas(
     *,
     sender,
     actor: str = "sistema",
-) -> int:
+) -> dict:
     """Recorre las alertas pendientes de envío y envía correo a cada destinatario.
 
     Filtra email_enviado=False para evitar duplicados (CA-4, TC-102-04).
     Actualiza email_enviado=True solo si el envío fue exitoso.
-    Devuelve el número de correos enviados en esta ejecución.
+    Cuando smtp_host está vacío (sin configuración SMTP), retorna early sin
+    marcar email_enviado (DD-C).
+    Devuelve dict con ``enviados`` y ``omitidas`` (sin usuario o sin email).
+    DD-B: auditoría ANTES del commit.
     """
     from app.audit.service import record_audit
     from app.services.email_sender import enviar_alerta
@@ -403,16 +505,19 @@ def enviar_correos_alertas(
     ).all()
 
     enviados = 0
+    omitidas = 0
+
     for alerta in alertas_pendientes:
-        # Obtener correo del usuario desde la tabla de usuarios
-        try:
-            fila = db.execute(
-                text("SELECT email FROM usuario WHERE id = :uid"),
-                {"uid": alerta.usuario_id},
-            ).mappings().first()
-            correo = fila["email"] if fila and fila.get("email") else None
-        except Exception:
-            correo = None
+        # Resolver correo del usuario via ORM (DD-C)
+        correo: str | None = None
+        if alerta.usuario_id is not None:
+            from app.models.usuario import Usuario
+            usuario = db.get(Usuario, alerta.usuario_id)
+            correo = usuario.email if usuario is not None else None
+
+        if not correo:
+            omitidas += 1
+            continue
 
         plazo_str = str(
             alerta.plazo_objetivo.date()
@@ -430,9 +535,11 @@ def enviar_correos_alertas(
         if ok:
             alerta.email_enviado = True
             enviados += 1
+        else:
+            omitidas += 1
 
     if enviados:
-        db.commit()
+        # DD-B: auditoría ANTES del commit
         record_audit(
             db,
             actor=actor,
@@ -440,5 +547,6 @@ def enviar_correos_alertas(
             entity="alerta_notif",
             entity_id=f"email:{enviados}",
         )
+        db.commit()
 
-    return enviados
+    return {"enviados": enviados, "omitidas": omitidas}

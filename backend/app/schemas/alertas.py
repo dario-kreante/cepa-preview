@@ -15,7 +15,7 @@ class AlertaRead(BaseModel):
     estado: str
     caso_id: int
     caso_tipo: str
-    usuario_id: int
+    usuario_id: int | None
     plazo_objetivo: datetime
     ventana_dias: int
     generada_en: datetime
@@ -30,3 +30,4 @@ class AlertaUpdate(BaseModel):
 class JobResultado(BaseModel):
     alertas_generadas: int
     timestamp: datetime
+    omitidas: int = 0
