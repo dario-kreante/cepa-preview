@@ -21,7 +21,6 @@ def datos_odas(db_session):
     ing = Ingreso(
         paciente_id=pac.id, folio="F-ODA-001", folio_manual=True,
         programa="DIEP", fecha_ingreso=date(2026, 1, 1),
-        sexo="F", tramo_etario="18-29", region="Maule",
         tipo_derivacion="DIAT", tipo_ingreso="convenio",
         modelo_tratamiento="ambulatorio", diagnostico="Test",
     )

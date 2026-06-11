@@ -22,7 +22,7 @@ def datos_licencias(db_session):
     ing = Ingreso(
         paciente_id=pac.id, folio="F-LIC-001", folio_manual=True,
         programa="DIEP", fecha_ingreso=date(2026, 1, 10),
-        sexo="F", tramo_etario="18-29", region="Maule", tipo_convenio="DIEP",
+        tipo_convenio="DIEP",
         tipo_derivacion="DIAT", tipo_ingreso="convenio",
         modelo_tratamiento="ambulatorio", diagnostico="Test",
     )

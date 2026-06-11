@@ -13,7 +13,12 @@ from app.util.rut import RutInvalidoError, normalizar_rut
 
 
 class IngresoCreate(BaseModel):
-    """Alta de ingreso en formulario único (CEPA-010). Campos obligatorios = D6."""
+    """Alta de ingreso en formulario único (CEPA-010). Campos obligatorios = D6.
+
+    DD-3 (EPIC-09 rework): se añaden como opcionales programa, tipo_convenio,
+    profesional_id, especialidad y tipo_atencion para que el crear_ingreso los
+    almacene en la tabla `ingreso` y los reportes puedan filtrar por ellos.
+    """
 
     rut: str
     nombre: str
@@ -25,7 +30,7 @@ class IngresoCreate(BaseModel):
     tipo_ingreso: TipoIngreso
     modelo_tratamiento: str
     fecha_ingreso: date
-    # opcionales
+    # opcionales — datos paciente
     comuna: str | None = None
     telefono: str | None = None
     correo: str | None = None
@@ -35,6 +40,12 @@ class IngresoCreate(BaseModel):
     # folio manual (CEPA-011)
     folio: str | None = None
     es_reingreso: bool = False
+    # DD-3: dimensiones de reporte (opcionales)
+    programa: str | None = None
+    tipo_convenio: str | None = None
+    profesional_id: int | None = None
+    especialidad: str | None = None
+    tipo_atencion: str | None = None
 
     @field_validator("rut")
     @classmethod

@@ -16,7 +16,7 @@ def datos_convenio(db_session):
     ing = Ingreso(
         paciente_id=pac.id, folio="F-CONV-001", folio_manual=True,
         programa="DIEP", tipo_convenio="DIEP",
-        fecha_ingreso=date(2026, 4, 1), sexo="F", tramo_etario="18-29",
+        fecha_ingreso=date(2026, 4, 1),
         tipo_derivacion="DIAT", tipo_ingreso="convenio",
         modelo_tratamiento="ambulatorio", diagnostico="Test",
     )

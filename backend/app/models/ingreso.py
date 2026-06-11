@@ -57,13 +57,11 @@ class Ingreso(Base):
     observaciones: Mapped[str | None] = mapped_column(Text, nullable=True)
     tratamiento_iniciado: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     # ── Campos de dimensión para dashboard/reportes EPIC-09 ───────────────────
+    # sexo, region, comuna, tramo_etario eliminados en migración 11000 (DD-3):
+    # esos datos viven en Paciente y se acceden vía JOIN.
     programa: Mapped[str | None] = mapped_column(String(40), nullable=True)
     profesional_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     tipo_convenio: Mapped[str | None] = mapped_column(String(40), nullable=True)
-    sexo: Mapped[str | None] = mapped_column(String(10), nullable=True)
-    region: Mapped[str | None] = mapped_column(String(80), nullable=True)
-    comuna: Mapped[str | None] = mapped_column(String(80), nullable=True)
-    tramo_etario: Mapped[str | None] = mapped_column(String(20), nullable=True)
     especialidad: Mapped[str | None] = mapped_column(String(60), nullable=True)
     tipo_atencion: Mapped[str | None] = mapped_column(String(40), nullable=True)
     created_at: Mapped[datetime] = mapped_column(

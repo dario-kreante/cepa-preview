@@ -16,7 +16,7 @@ def datos_operativos(db_session):
 
     ing = Ingreso(
         paciente_id=pac.id, folio="F-OP-001", folio_manual=True,
-        programa="DIEP", fecha_ingreso=date(2026, 3, 1), sexo="F", tramo_etario="18-29",
+        programa="DIEP", fecha_ingreso=date(2026, 3, 1),
         tipo_derivacion="DIAT", tipo_ingreso="convenio",
         modelo_tratamiento="ambulatorio", diagnostico="Test",
     )

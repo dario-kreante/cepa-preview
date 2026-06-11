@@ -31,17 +31,15 @@ def datos_dashboard(db_session):
         **_ING_DEFAULTS,
         paciente_id=pac.id,
         folio="F-DASH-001",
-        programa="DIEP", sexo="F", tramo_etario="18-29",
+        programa="DIEP",
         fecha_ingreso=date(2026, 1, 15), tipo_convenio="DIEP",
-        region="Maule", comuna="Talca",
     )
     ing_b = Ingreso(
         **_ING_DEFAULTS,
         paciente_id=pac.id,
         folio="F-DASH-002",
-        programa="DIAT", sexo="M", tramo_etario="30-44",
+        programa="DIAT",
         fecha_ingreso=date(2026, 2, 20), tipo_convenio="DIAT",
-        region="Maule", comuna="Curicó",
     )
     db_session.add_all([ing_a, ing_b])
     db_session.flush()

@@ -84,6 +84,12 @@ def crear_ingreso(db, data: IngresoCreate) -> Ingreso:
         modelo_tratamiento=data.modelo_tratamiento,
         diagnostico=data.diagnostico,
         razon_social=data.razon_social,
+        # DD-3: dimensiones de reporte
+        programa=data.programa,
+        tipo_convenio=data.tipo_convenio,
+        profesional_id=data.profesional_id,
+        especialidad=data.especialidad,
+        tipo_atencion=data.tipo_atencion,
     )
     db.add(ingreso)
     db.flush()
