@@ -11,9 +11,12 @@ def test_tabla_y_columnas_esperadas():
     assert set(tabla.columns.keys()) == {
         "id",
         "actor",
+        "rol",
         "action",
         "entity",
         "entity_id",
+        "valor_anterior",
+        "valor_nuevo",
         "created_at",
     }
 
