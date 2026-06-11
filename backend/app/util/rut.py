@@ -4,7 +4,6 @@ Este util lo crea EPIC-01 y lo importan las demás épicas. El RUT normalizado
 (sin puntos ni guion, DV en mayúscula) es la forma canónica que se persiste.
 """
 
-from __future__ import annotations
 
 import re
 

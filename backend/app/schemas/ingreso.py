@@ -76,13 +76,13 @@ class IngresoRead(BaseModel):
     numero_siniestro: str | None
     fecha_ingreso: date
     fecha_diep_diat: date | None
-    tipo_derivacion: str
-    tipo_ingreso: str
+    tipo_derivacion: TipoDerivacion
+    tipo_ingreso: TipoIngreso
     modelo_tratamiento: str
     diagnostico: str
     razon_social: str | None
-    estado: str
-    tipo_alta: str | None
+    estado: EstadoCaso
+    tipo_alta: TipoAlta | None
     fecha_alta: date | None
     flag_revision: bool
     observaciones: str | None

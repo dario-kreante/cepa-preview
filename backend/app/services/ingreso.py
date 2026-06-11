@@ -58,13 +58,14 @@ def _resolver_folio(db, data: IngresoCreate, paciente: Paciente) -> tuple[str, b
         existente = db.execute(
             select(Ingreso).where(Ingreso.folio == data.folio).limit(1)
         ).scalar_one()
-        # El folio existe: solo permitir si es reingreso del MISMO paciente
-        if existente.paciente_id != paciente.id:
+        # El folio existe: solo se acepta como reingreso EXPLÍCITO del mismo
+        # paciente (CEPA-011 RN-3); cualquier otra colisión es 409.
+        es_reingreso_valido = data.es_reingreso and existente.paciente_id == paciente.id
+        if not es_reingreso_valido:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail=f"El folio {data.folio} ya está emitido para otro ingreso.",
             )
-        # Reingreso del mismo paciente: se permite (sea explícito o no)
     return data.folio, True
 
 
