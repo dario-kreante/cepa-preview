@@ -11,12 +11,16 @@ class UsuarioCreate(BaseModel):
     nombre: str
     password: str
     rol: Rol
+    # DD-C (CEPA-102): correo opcional para notificaciones de alerta
+    email: str | None = None
 
 
 class UsuarioUpdate(BaseModel):
     nombre: str | None = None
     password: str | None = None
     rol: Rol | None = None
+    # DD-C (CEPA-102): correo opcional para notificaciones de alerta
+    email: str | None = None
 
 
 class UsuarioRead(BaseModel):
@@ -27,4 +31,5 @@ class UsuarioRead(BaseModel):
     nombre: str
     rol: str
     activo: bool
+    email: str | None = None
     created_at: datetime

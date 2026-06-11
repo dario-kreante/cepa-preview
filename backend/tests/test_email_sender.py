@@ -95,6 +95,7 @@ def test_no_reenvio_si_email_ya_enviado():
     db.scalars.return_value.all.return_value = []
 
     sender = FakeEmailSender()
-    enviadas = enviar_correos_alertas(db, sender=sender)
-    assert enviadas == 0
+    resultado = enviar_correos_alertas(db, sender=sender)
+    # DD-C: enviar_correos_alertas ahora devuelve dict {enviados, omitidas}
+    assert resultado["enviados"] == 0
     assert len(sender.enviados) == 0

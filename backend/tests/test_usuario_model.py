@@ -15,6 +15,7 @@ def test_tabla_y_columnas_esperadas():
         "activo",
         "intentos_fallidos",
         "bloqueado_hasta",
+        "email",  # DD-C (CEPA-102): correo para notificaciones de alerta
         "created_at",
     }
 

@@ -36,6 +36,7 @@ def crear_usuario(
         rol=payload.rol,
         activo=True,
         intentos_fallidos=0,
+        email=payload.email,
     )
     db.add(usuario)
     try:
@@ -90,6 +91,8 @@ def actualizar_usuario(
         usuario.rol = payload.rol
     if payload.password is not None:
         usuario.hashed_password = hash_password(payload.password)
+    if payload.email is not None:
+        usuario.email = payload.email
     record_audit(
         db,
         actor=actor.username,
