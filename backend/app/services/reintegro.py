@@ -28,8 +28,14 @@ def validar_coherencia_reca(
     solicita_medidas: bool,
     detalle_medidas: str | None,
     fecha_medidas: datetime.date | None,
+    verifica_medidas: bool = False,
+    fecha_verificacion: datetime.date | None = None,
 ) -> None:
-    """RN-2 CEPA-041: si solicita_medidas=True, detalle y fecha son obligatorios."""
+    """RN-2 y RN-4 CEPA-041.
+
+    - RN-2: si solicita_medidas=True, detalle y fecha son obligatorios.
+    - RN-4: si verifica_medidas=True, fecha_verificacion es obligatoria.
+    """
     if solicita_medidas:
         if not detalle_medidas:
             raise HTTPException(
@@ -41,6 +47,11 @@ def validar_coherencia_reca(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail="fecha_medidas es obligatoria cuando solicita_medidas=True (RN-2).",
             )
+    if verifica_medidas and fecha_verificacion is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="fecha_verificacion es obligatoria cuando verifica_medidas=True (RN-4).",
+        )
 
 
 def validar_coherencia_medidas(
@@ -75,11 +86,13 @@ def validar_coherencia_cierre(
     alta_medica: bool,
     alta_psicologica: bool,
     tipo_alta: str | None,
+    fecha_caso: datetime.date | None = None,
 ) -> None:
     """Valida las reglas de negocio del cierre del caso (CEPA-042 RN-1..4).
 
     - RN-1: estado=total exige fecha_reintegro.
-    - RN-2: fecha_reintegro >= fecha_reca (cuando fecha_reca disponible).
+    - RN-2: fecha_reintegro >= fecha_reca (cuando fecha_reca disponible)
+            Y fecha_reintegro >= fecha_caso (cuando fecha_caso disponible).
     - RN-4: reintegro total requiere al menos una alta y tipo_alta.
     """
     if estado == EstadoReintegro.TOTAL:
@@ -94,6 +107,14 @@ def validar_coherencia_cierre(
                 detail=(
                     f"fecha_reintegro ({fecha_reintegro}) no puede ser anterior "
                     f"a fecha_reca ({fecha_reca}) (RN-2)."
+                ),
+            )
+        if fecha_caso is not None and fecha_reintegro < fecha_caso:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=(
+                    f"fecha_reintegro ({fecha_reintegro}) no puede ser anterior "
+                    f"a fecha_caso ({fecha_caso}) (RN-2)."
                 ),
             )
         if not alta_medica and not alta_psicologica:
@@ -175,7 +196,13 @@ def crear_reca(db: Session, caso_id: int, data: RecaCreate) -> Reca:
             detail=f"Ya existe una RECA con número {data.numero_reca!r} en este caso (RN-1).",
         )
 
-    validar_coherencia_reca(data.solicita_medidas, data.detalle_medidas, data.fecha_medidas)
+    validar_coherencia_reca(
+        data.solicita_medidas,
+        data.detalle_medidas,
+        data.fecha_medidas,
+        data.verifica_medidas,
+        data.fecha_verificacion,
+    )
     if data.fecha_medidas is not None:
         validar_coherencia_medidas(data.fecha_reca, data.fecha_medidas, data.fecha_verificacion)
 
@@ -208,7 +235,11 @@ def actualizar_reca(db: Session, reca: Reca, data: RecaUpdate) -> Reca:
             setattr(reca, campo, valor)
     # Re-validar tras actualización
     validar_coherencia_reca(
-        reca.solicita_medidas, reca.detalle_medidas, reca.fecha_medidas
+        reca.solicita_medidas,
+        reca.detalle_medidas,
+        reca.fecha_medidas,
+        reca.verifica_medidas,
+        reca.fecha_verificacion,
     )
     if reca.fecha_medidas is not None:
         validar_coherencia_medidas(
@@ -231,6 +262,7 @@ def cerrar_caso_reintegro(
         estado=data.estado_reintegro,
         fecha_reintegro=data.fecha_reintegro,
         fecha_reca=fecha_reca,
+        fecha_caso=caso.fecha_caso,
         alta_medica=data.alta_medica,
         alta_psicologica=data.alta_psicologica,
         tipo_alta=data.tipo_alta.value if data.tipo_alta else None,

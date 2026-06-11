@@ -11,6 +11,8 @@ cuando el equipo gestor CEPA entregue el catálogo completo.
 
 from enum import Enum
 
+from app.domain.enums import TipoAlta  # noqa: F401
+
 
 class EstadoReintegro(str, Enum):
     """Estado del proceso de reintegro (CEPA-042 RN-1)."""
@@ -27,11 +29,5 @@ class TipoReca(str, Enum):
     EP = "EP"   # Enfermedad Profesional
 
 
-class TipoAlta(str, Enum):
-    """Tipo de alta al cerrar el caso de reintegro (CEPA-042 RN-4, D11)."""
-
-    TERAPEUTICA = "terapeutica"
-    MEDICA = "medica"
-    PSICOLOGICA = "psicologica"
-    ABANDONO = "abandono"
-    DERIVACION = "derivacion"
+# TipoAlta is re-exported from app.domain.enums to avoid duplication.
+# The import at the top of this module provides the re-export.

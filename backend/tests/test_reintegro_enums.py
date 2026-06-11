@@ -24,3 +24,9 @@ def test_tipo_alta_reintegro():
     assert "psicologica" in valores
     assert "abandono" in valores
     assert "derivacion" in valores
+
+
+# Fix 3: TipoAlta en reintegro_enums debe ser el mismo objeto que app.domain.enums.TipoAlta
+def test_tipo_alta_reintegro_es_reexport_de_enums():
+    from app.domain.enums import TipoAlta as TipoAltaCore
+    assert TipoAltaReintegro is TipoAltaCore
