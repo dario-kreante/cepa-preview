@@ -18,6 +18,10 @@ Limitación conocida — pool único de candidatos:
   Los candidatos son clínica-wide (no hay filtro por profesional en control_medico, ya que
   esa tabla carece de profesional_id). El mapeo por-profesional vía medico_tratante está
   planificado antes del despliegue multi-profesional.
+
+DD-1 (EPIC-09 rework): confirmar_citas también crea filas en la tabla `cita` (hecho de
+reportes). Para cada CitaPropuesta confirmada se busca el ingreso activo más reciente del
+paciente; si no existe se omite silenciosamente (no bloquea el flujo de agendamiento).
 """
 
 from datetime import date, timedelta
@@ -312,6 +316,23 @@ def obtener_propuesta(db: Session, propuesta_id: int) -> PropuestaAgenda | None:
 
 # ─── Confirmación de citas (CA-7, RN-8, RN-9) ─────────────────────────────────
 
+def _ingreso_activo_para_paciente(db: Session, paciente_id: int) -> int | None:
+    """Devuelve el ingreso_id activo más reciente de un paciente, o None.
+
+    DD-1: se usa para materializar Cita en la tabla de hechos al confirmar
+    una CitaPropuesta (que solo tiene paciente_id, no ingreso_id).
+    """
+    from app.models.ingreso import Ingreso
+
+    row = db.execute(
+        select(Ingreso.id)
+        .where(Ingreso.paciente_id == paciente_id)
+        .order_by(Ingreso.fecha_ingreso.desc())
+        .limit(1)
+    ).scalar_one_or_none()
+    return row
+
+
 def confirmar_citas(
     db: Session,
     propuesta_id: int,
@@ -322,7 +343,12 @@ def confirmar_citas(
 
     Las citas confirmadas cuentan como 'citas agendadas' en el denominador de adherencia
     (RN-8). El cambio de estado se graba en auditoría (RN-9).
+
+    DD-1 (EPIC-09 rework): también crea una fila en `cita` (estado='agendada') para
+    cada CitaPropuesta confirmada, alimentando los reportes operativos.
     """
+    from app.models.cita import Cita
+
     propuesta = db.get(PropuestaAgenda, propuesta_id)
     if propuesta is None:
         return []
@@ -337,6 +363,16 @@ def confirmar_citas(
         if cita.estado == EstadoCita.PROPUESTA.value and cita.excluida_por is None:
             cita.estado = EstadoCita.CONFIRMADA.value
             confirmadas.append(cita)
+
+            # DD-1: materializar en tabla de hechos `cita`
+            ingreso_id = _ingreso_activo_para_paciente(db, cita.paciente_id)
+            if ingreso_id is not None:
+                fila_cita = Cita(
+                    ingreso_id=ingreso_id,
+                    estado="agendada",
+                    fecha=cita.fecha_candidata,
+                )
+                db.add(fila_cita)
 
     if confirmadas:
         propuesta.estado = EstadoPropuesta.CONFIRMADA.value
