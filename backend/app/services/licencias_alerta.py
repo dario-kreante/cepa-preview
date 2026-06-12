@@ -12,7 +12,7 @@ generar_alertas_vencimiento(db, hoy, umbral_habiles=3): idempotente — por cada
 
 import datetime
 
-from sqlalchemy import select
+from sqlalchemy import select, true, false
 
 from app.models.alerta_licencia import AlertaLicencia
 from app.models.licencia import LicenciaMedica
@@ -60,7 +60,7 @@ def generar_alertas_vencimiento(
     lm_candidatas = list(
         db.scalars(
             select(LicenciaMedica).where(
-                LicenciaMedica.anulada.is_(False),
+                LicenciaMedica.anulada == false(),
                 LicenciaMedica.fecha_termino >= hoy,
             )
         )
@@ -76,7 +76,7 @@ def generar_alertas_vencimiento(
         existente = db.execute(
             select(AlertaLicencia).where(
                 AlertaLicencia.licencia_id == lm.id,
-                AlertaLicencia.activa.is_(True),
+                AlertaLicencia.activa == true(),
             )
         ).scalar_one_or_none()
         if existente is not None:

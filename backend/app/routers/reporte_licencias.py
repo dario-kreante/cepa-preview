@@ -19,7 +19,7 @@ from datetime import date
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import func, select
+from sqlalchemy import func, select, false
 from sqlalchemy.orm import Session
 
 from app.audit.service import record_audit
@@ -84,7 +84,7 @@ def get_reporte_licencias(
         LicenciaMedica.ingreso_id.in_(ingreso_ids),
         LicenciaMedica.fecha_emision >= fecha_desde,
         LicenciaMedica.fecha_emision <= fecha_hasta,
-        LicenciaMedica.anulada.is_(False),
+        LicenciaMedica.anulada == false(),
     ]
     if tipo_licencia is not None:
         base_where.append(LicenciaMedica.tipo_lm == tipo_licencia)

@@ -14,7 +14,7 @@ Algoritmo de días calendario efectivos (RN-3 CEPA-071):
 import datetime
 from dataclasses import dataclass
 
-from sqlalchemy import select
+from sqlalchemy import select, false
 
 from app.models.licencia import LicenciaMedica
 
@@ -44,7 +44,7 @@ def calcular_acumulado(db, ingreso_id: int) -> ResultadoAcumulado:
             select(LicenciaMedica)
             .where(
                 LicenciaMedica.ingreso_id == ingreso_id,
-                LicenciaMedica.anulada.is_(False),
+                LicenciaMedica.anulada == false(),
             )
             .order_by(LicenciaMedica.fecha_inicio)
         )

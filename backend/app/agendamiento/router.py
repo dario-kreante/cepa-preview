@@ -11,7 +11,7 @@ Endpoints:
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import select, true
 from sqlalchemy.orm import Session
 
 from app.agendamiento.models import CitaPropuesta, DisponibilidadProf, PropuestaAgenda
@@ -72,7 +72,7 @@ def listar_disponibilidad(
     return list(db.scalars(
         select(DisponibilidadProf)
         .where(DisponibilidadProf.profesional_id == profesional_id,
-               DisponibilidadProf.activo.is_(True))
+               DisponibilidadProf.activo == true())
         .order_by(DisponibilidadProf.dia_semana)
     ))
 

@@ -3,7 +3,7 @@
 from datetime import date, timedelta
 
 from fastapi import HTTPException, status
-from sqlalchemy import select, update
+from sqlalchemy import select, update, true
 
 from app.models.ingreso import Ingreso
 from app.models.oda import Oda
@@ -44,7 +44,7 @@ def odas_por_vencer(db, ventana_dias: int = VENTANA_ALERTA_DIAS) -> list[Oda]:
     return list(
         db.execute(
             select(Oda)
-            .where(Oda.vigente.is_(True))
+            .where(Oda.vigente == true())
             .where(Oda.fecha_vencimiento >= hoy)
             .where(Oda.fecha_vencimiento <= limite)
             .order_by(Oda.fecha_vencimiento)
