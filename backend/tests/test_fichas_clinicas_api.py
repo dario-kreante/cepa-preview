@@ -67,7 +67,7 @@ def test_pull_salutem_no_escribe_sobre_salutem(as_admin, ingreso_existente, monk
 
     guard = _SalutemWriteGuardMock()
     monkeypatch.setattr(
-        "app.integrations.salutem.client.get_salutem_client",
+        "app.services.ficha_clinica.get_salutem_client",
         lambda: guard,
     )
     folio = ingreso_existente["folio"]

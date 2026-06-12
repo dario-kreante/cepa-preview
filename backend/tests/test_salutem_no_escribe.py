@@ -29,7 +29,7 @@ def salutem_write_guard(monkeypatch):
     """Fixture que inyecta el mock de guardia en los tests de integración."""
     mock = _SalutemWriteGuardMock()
     monkeypatch.setattr(
-        "app.integrations.salutem.client.get_salutem_client",
+        "app.services.ficha_clinica.get_salutem_client",
         lambda: mock,
     )
     return mock
@@ -75,3 +75,67 @@ def test_d12_flujo_pull_de_datos_clinicos_no_escribe_sobre_salutem(
     # es que el mock de guardia haya lanzado AssertionError.
     assert r.status_code in (200, 404, 422)
     # Si el mock hubiera disparado, el endpoint habría devuelto 500 y el test fallaría aquí.
+
+
+def test_d12_pull_positivo_persiste_con_origen_salutem(monkeypatch, as_admin, db_session):
+    """TC-121-05 variante positiva: cuando SALUTEM devuelve datos, se persiste con origen=SALUTEM.
+
+    El mock entra REALMENTE en el flujo (patch sobre el binding del servicio), y el guard
+    sigue fallando en cualquier método de escritura.
+    """
+    from datetime import date
+
+    from app.models.ficha_clinica import FichaClinica
+    from app.models.ingreso import Ingreso
+    from app.models.paciente import Paciente
+
+    # Crear un ingreso de apoyo para que el pull-salutem encuentre el folio
+    p = Paciente(rut="8881112220", nombre="Positivo Pull", sexo="M", edad=30, region="Maule")
+    db_session.add(p)
+    db_session.flush()
+    ing = Ingreso(
+        paciente_id=p.id,
+        folio="F-2026-D12P",
+        folio_manual=True,
+        fecha_ingreso=date(2026, 1, 1),
+        tipo_derivacion="DIAT",
+        tipo_ingreso="convenio",
+        modelo_tratamiento="ambulatorio",
+        diagnostico="test d12 positivo",
+        estado="activo",
+    )
+    db_session.add(ing)
+    db_session.flush()
+
+    class _PositiveGuardMock(_SalutemWriteGuardMock):
+        """Devuelve datos en get_ficha_clinica pero sigue bloqueando escrituras."""
+
+        def get_ficha_clinica(self, folio):  # noqa: ARG002
+            return {"nota": "sincronizada"}
+
+    guard = _PositiveGuardMock()
+    monkeypatch.setattr("app.services.ficha_clinica.get_salutem_client", lambda: guard)
+
+    r = as_admin.post(
+        "/api/v1/fichas-clinicas/pull-salutem",
+        json={"folio": "F-2026-D12P"},
+    )
+    assert r.status_code == 200, r.text
+
+    # La fila persiste en el dominio CEPA con origen="SALUTEM"
+    from sqlalchemy import select
+
+    ficha = db_session.execute(
+        select(FichaClinica).where(FichaClinica.folio == "F-2026-D12P")
+    ).scalar_one_or_none()
+    assert ficha is not None, "La ficha no fue persistida en el dominio CEPA"
+    assert ficha.origen == "SALUTEM"
+    assert ficha.contenido == {"nota": "sincronizada"}
+
+    # Verificar que ningún método de escritura fue invocado (el guard sigue activo)
+    with pytest.raises(AssertionError, match="VIOLACIÓN D12"):
+        guard.write({})
+    with pytest.raises(AssertionError, match="VIOLACIÓN D12"):
+        guard.create({})
+    with pytest.raises(AssertionError, match="VIOLACIÓN D12"):
+        guard.update("id", {})

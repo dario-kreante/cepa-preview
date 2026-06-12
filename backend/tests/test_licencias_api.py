@@ -18,7 +18,7 @@ def folio_con_licencias(as_admin, db_session):
     from app.models.paciente import Paciente
 
     # Crear paciente e ingreso
-    p = Paciente(rut="999888777K", nombre="Test Licencia", sexo="F", edad=40, region="Maule")
+    p = Paciente(rut="9998887779", nombre="Test Licencia", sexo="F", edad=40, region="Maule")
     db_session.add(p)
     db_session.flush()
     ing = Ingreso(

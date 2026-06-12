@@ -40,14 +40,8 @@ def obtener_licencias(folio: str, db: Session = Depends(get_db)) -> LicenciasRes
             detail=f"No existe ingreso con folio {folio!r}",
         )
 
-    try:
-        from app.models.licencia import LicenciaMedica
-        from app.services.licencias_acumulado import calcular_acumulado
-    except ImportError:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Módulo de Licencias (EPIC-07) aún no disponible en este entorno.",
-        )
+    from app.models.licencia import LicenciaMedica
+    from app.services.licencias_acumulado import calcular_acumulado
 
     licencias = list(
         db.scalars(

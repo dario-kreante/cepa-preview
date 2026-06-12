@@ -126,3 +126,21 @@ def test_imed_endpoints_en_openapi(client):
     paths = r.json()["paths"]
     assert "/api/v1/imed/licencias" in paths
     assert "/api/v1/imed/recetas" in paths
+
+
+def test_imed_deshabilitado_exactamente_503(as_admin, monkeypatch):
+    """IMED_ENABLED=False (feature flag off) → exactamente 503, no 401 ni otro código."""
+    monkeypatch.setenv("IMED_ENABLED", "false")
+    import app.config
+
+    app.config.get_settings.cache_clear()
+    try:
+        r = as_admin.post(
+            "/api/v1/imed/licencias",
+            json={"folio": "F-2026-0001", "tipo": "licencia_medica", "datos": {}},
+        )
+        assert r.status_code == 503, (
+            f"Se esperaba exactamente 503 con IMED_ENABLED=false, got {r.status_code}"
+        )
+    finally:
+        app.config.get_settings.cache_clear()
