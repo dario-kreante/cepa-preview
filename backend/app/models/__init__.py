@@ -27,3 +27,4 @@ from app.models.alertas import AlertaNotif  # noqa: F401
 from app.models.tareas import TareaItem  # noqa: F401
 from app.models.form_definition import FieldDef, FormDefinition, FormVersion  # noqa: F401
 from app.models.ficha_clinica import FichaClinica  # noqa: F401
+from app.models.imed_payload import ImedPayload  # noqa: F401

@@ -22,6 +22,7 @@ from app.routers import pdf_extract as pdf_extract_router
 from app.routers import fichas_clinicas as fichas_clinicas_router
 from app.routers import licencias_api as licencias_api_router
 from app.routers import ingresos_estado as ingresos_estado_router
+from app.routers import imed as imed_router
 from app.routers.v2 import health_v2 as health_v2_router
 
 app = FastAPI(title=get_settings().app_name)
@@ -60,6 +61,7 @@ app.include_router(pdf_extract_router.router)
 app.include_router(fichas_clinicas_router.router)
 app.include_router(licencias_api_router.router)
 app.include_router(ingresos_estado_router.router)
+app.include_router(imed_router.router)
 app.include_router(health_v2_router.router)
 
 
