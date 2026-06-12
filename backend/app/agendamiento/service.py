@@ -26,7 +26,7 @@ paciente; si no existe se omite silenciosamente (no bloquea el flujo de agendami
 
 from datetime import date, timedelta
 
-from sqlalchemy import select
+from sqlalchemy import false, func, select, true
 from sqlalchemy.orm import Session
 
 from app.agendamiento.enums import EstadoCita, EstadoPropuesta, PrioridadCita
@@ -77,7 +77,7 @@ def _cargar_disponibilidad(db: Session, profesional_id: int) -> list[Disponibili
     rows = db.scalars(
         select(DisponibilidadProf).where(
             DisponibilidadProf.profesional_id == profesional_id,
-            DisponibilidadProf.activo.is_(True),
+            DisponibilidadProf.activo == true(),
         )
     ).all()
     return [DisponibilidadDia(dia_semana=r.dia_semana, cupo=r.cupo_diario) for r in rows]
@@ -99,24 +99,24 @@ def _cargar_reposos_batch(
     Evita el N+1 de _cargar_reposos por paciente (~800 round-trips al volumen objetivo).
     Retorna un dict {paciente_id: [ReposoPaciente, ...]}.
     """
-    from sqlalchemy import bindparam, text
+    from app.models.ingreso import Ingreso
+    from app.models.licencia import LicenciaMedica
 
     if not paciente_ids:
         return {}
 
-    # IN expandible (portable Oracle/Postgres, D15) en lugar de ANY(array) de Postgres.
-    stmt = text(
-        "SELECT i.paciente_id, lm.inicio_reposo, lm.fin_reposo "
-        "FROM licencia_medica lm "
-        "JOIN ingreso i ON i.id = lm.ingreso_id "
-        "WHERE i.paciente_id IN :pids "
-        "  AND lm.anulada = FALSE "
-        "  AND lm.inicio_reposo <= :fin "
-        "  AND lm.fin_reposo >= :ini"
-    ).bindparams(bindparam("pids", expanding=True))
-    rows = db.execute(
-        stmt, {"pids": list(paciente_ids), "ini": fecha_ini, "fin": fecha_fin}
-    ).fetchall()
+    # Core ORM — portable Oracle/Postgres (D15): false() renderiza 0/FALSE según dialecto.
+    stmt = (
+        select(Ingreso.paciente_id, LicenciaMedica.inicio_reposo, LicenciaMedica.fin_reposo)
+        .join(Ingreso, Ingreso.id == LicenciaMedica.ingreso_id)
+        .where(
+            Ingreso.paciente_id.in_(list(paciente_ids)),
+            LicenciaMedica.anulada == false(),
+            LicenciaMedica.inicio_reposo <= fecha_fin,
+            LicenciaMedica.fin_reposo >= fecha_ini,
+        )
+    )
+    rows = db.execute(stmt).fetchall()
 
     resultado: dict[int, list[ReposoPaciente]] = {pid: [] for pid in paciente_ids}
     for r in rows:
@@ -142,33 +142,52 @@ def _cargar_candidatos(
     profesional_id no se usa como filtro en control_medico (no existe ese campo entero
     en la tabla real). La selección por profesional se hace via DisponibilidadProf.
     """
-    from sqlalchemy import text
+    from app.models.control_medico import ControlMedico
+    from app.models.farmacos import Receta, RegistroFarmacologico
+    from app.models.ingreso import Ingreso
+
     hoy = date.today()
 
     vistos: dict[int, Candidato] = {}
 
     # Subquery portable (sin DISTINCT ON) que retorna solo el último control por ingreso.
-    # Se usa MAX(fecha_control) como clave del control más reciente.
+    # Se usa MAX(fecha_control) como clave del control más reciente — D15.
+    _max_fc_sub = (
+        select(
+            ControlMedico.ingreso_id,
+            func.max(ControlMedico.fecha_control).label("max_fc"),
+        )
+        .group_by(ControlMedico.ingreso_id)
+        .subquery("latest")
+    )
+
+    # Alias del control más reciente (auto-join sobre max_fc)
+    _cm = ControlMedico
     _latest_ctrl = (
-        "SELECT cm.ingreso_id, cm.proximo_control, cm.proximo_agendado "
-        "FROM control_medico cm "
-        "INNER JOIN ("
-        "  SELECT ingreso_id, MAX(fecha_control) AS max_fc "
-        "  FROM control_medico "
-        "  GROUP BY ingreso_id"
-        ") latest ON latest.ingreso_id = cm.ingreso_id "
-        "         AND latest.max_fc = cm.fecha_control"
+        select(
+            _cm.ingreso_id,
+            _cm.proximo_control,
+            _cm.proximo_agendado,
+        )
+        .join(
+            _max_fc_sub,
+            (_cm.ingreso_id == _max_fc_sub.c.ingreso_id)
+            & (_cm.fecha_control == _max_fc_sub.c.max_fc),
+        )
+        .subquery("lc")
     )
 
     # 1. Controles vencidos (proximo_control < hoy, último control por ingreso) — Desviación 5
-    ctrl_vencidos = db.execute(text(
-        f"SELECT i.paciente_id, lc.proximo_control "
-        f"FROM ({_latest_ctrl}) lc "
-        f"JOIN ingreso i ON i.id = lc.ingreso_id "
-        f"WHERE lc.proximo_control IS NOT NULL "
-        f"  AND lc.proximo_control < :hoy "
-        f"  AND lc.proximo_agendado = FALSE"
-    ), {"hoy": hoy}).fetchall()
+    stmt_vencidos = (
+        select(Ingreso.paciente_id, _latest_ctrl.c.proximo_control)
+        .join(Ingreso, Ingreso.id == _latest_ctrl.c.ingreso_id)
+        .where(
+            _latest_ctrl.c.proximo_control.isnot(None),
+            _latest_ctrl.c.proximo_control < hoy,
+            _latest_ctrl.c.proximo_agendado == false(),
+        )
+    )
+    ctrl_vencidos = db.execute(stmt_vencidos).fetchall()
 
     pid_list: list[int] = []
     vencidos_rows: list[tuple] = list(ctrl_vencidos)
@@ -176,15 +195,17 @@ def _cargar_candidatos(
 
     # 2. Controles próximos — Desviación 5
     horizonte = fecha_fin + timedelta(days=7)
-    ctrl_proximos = db.execute(text(
-        f"SELECT i.paciente_id, lc.proximo_control "
-        f"FROM ({_latest_ctrl}) lc "
-        f"JOIN ingreso i ON i.id = lc.ingreso_id "
-        f"WHERE lc.proximo_control IS NOT NULL "
-        f"  AND lc.proximo_control >= :hoy "
-        f"  AND lc.proximo_control <= :horizonte "
-        f"  AND lc.proximo_agendado = FALSE"
-    ), {"hoy": hoy, "horizonte": horizonte}).fetchall()
+    stmt_proximos = (
+        select(Ingreso.paciente_id, _latest_ctrl.c.proximo_control)
+        .join(Ingreso, Ingreso.id == _latest_ctrl.c.ingreso_id)
+        .where(
+            _latest_ctrl.c.proximo_control.isnot(None),
+            _latest_ctrl.c.proximo_control >= hoy,
+            _latest_ctrl.c.proximo_control <= horizonte,
+            _latest_ctrl.c.proximo_agendado == false(),
+        )
+    )
+    ctrl_proximos = db.execute(stmt_proximos).fetchall()
 
     proximos_rows: list[tuple] = list(ctrl_proximos)
     pid_list.extend(row[0] for row in proximos_rows)
@@ -193,15 +214,18 @@ def _cargar_candidatos(
     # Sólo recetas cuya fecha_revision cae en [hoy, hoy+VENTANA] y fecha_envio IS NULL
     # (fecha_envio IS NULL = receta no gestionada/despachada, proxy de RN-6)
     limite_revision = hoy + timedelta(days=VENTANA_SEGUIMIENTO_RECETA_DIAS)
-    recetas = db.execute(text(
-        "SELECT DISTINCT i.paciente_id "
-        "FROM receta r "
-        "JOIN reg_farmacologico rf ON rf.id = r.registro_id "
-        "JOIN ingreso i ON i.id = rf.ingreso_id "
-        "WHERE r.fecha_revision >= :hoy "
-        "  AND r.fecha_revision <= :limite "
-        "  AND r.fecha_envio IS NULL"  # RN-6: excluir recetas ya gestionadas
-    ), {"hoy": hoy, "limite": limite_revision}).fetchall()
+    stmt_recetas = (
+        select(Ingreso.paciente_id)
+        .distinct()
+        .join(RegistroFarmacologico, RegistroFarmacologico.ingreso_id == Ingreso.id)
+        .join(Receta, Receta.registro_id == RegistroFarmacologico.id)
+        .where(
+            Receta.fecha_revision >= hoy,
+            Receta.fecha_revision <= limite_revision,
+            Receta.fecha_envio.is_(None),  # RN-6: excluir recetas ya gestionadas
+        )
+    )
+    recetas = db.execute(stmt_recetas).fetchall()
 
     recetas_rows: list[tuple] = list(recetas)
     pid_list.extend(row[0] for row in recetas_rows)
