@@ -41,7 +41,7 @@ class FieldDefOut(BaseModel):
     id: int
     field_key: str
     label: str
-    field_type: str
+    field_type: str | None
     required: bool
     system_locked: bool
     domain_values: list[str] | None
