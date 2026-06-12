@@ -363,7 +363,8 @@ def _construir_hitos_control_medico(db: Session) -> list[HitoPlazos]:
     """Construye HitoPlazos para controles médicos próximos sin agendar (EPIC-06) via ORM.
 
     Filtra: proximo_control IS NOT NULL AND proximo_agendado = False.
-    Toma el control con proximo_control más reciente por ingreso (el último registrado).
+    F5: toma solo el control más reciente por ingreso (latest-per-ingreso en Python).
+    F6: caso_tipo="control_medico" (caso_id=control.id).
     Destinatario: Ingreso.profesional_id, o None (PA).
     """
     from app.models.control_medico import ControlMedico  # local import
@@ -375,14 +376,23 @@ def _construir_hitos_control_medico(db: Session) -> list[HitoPlazos]:
             ControlMedico.proximo_agendado == False,  # noqa: E712
         )
     ).all()
-    hitos = []
+
+    # F5: latest-per-ingreso — conservar solo el control con proximo_control más reciente
+    # por ingreso_id (group in Python para portabilidad).
+    latest_by_ingreso: dict[int, ControlMedico] = {}
     for cm in filas:
+        existing = latest_by_ingreso.get(cm.ingreso_id)
+        if existing is None or cm.proximo_control > existing.proximo_control:
+            latest_by_ingreso[cm.ingreso_id] = cm
+
+    hitos = []
+    for cm in latest_by_ingreso.values():
         usuario_id = _resolver_usuario(cm.ingreso_id, db)
         hitos.append(
             HitoPlazos(
                 tipo=TipoAlerta.CONTROL_MEDICO.value,
                 caso_id=cm.id,
-                caso_tipo="ingreso",
+                caso_tipo="control_medico",  # F6: tipo correcto
                 usuario_id=usuario_id,
                 plazo_objetivo=cm.proximo_control,
                 ventana_dias=ventana["dias"],

@@ -253,7 +253,7 @@ def test_job_genera_alerta_control_medico(db_session: Session):
         )
     ).first()
     assert alerta is not None
-    assert alerta.caso_tipo == "ingreso"
+    assert alerta.caso_tipo == "control_medico"  # F6: caso_tipo corregido
 
 
 def test_job_genera_alerta_receta_por_renovar(db_session: Session):
@@ -757,3 +757,94 @@ def test_actualizar_usuario_email(as_coordinacion: TestClient):
     )
     assert resp_put.status_code == 200
     assert resp_put.json()["email"] == "updated@example.com"
+
+
+# ---------------------------------------------------------------------------
+# F5 — latest-per-ingreso en _construir_hitos_control_medico
+# F6 — caso_tipo="control_medico"
+# ---------------------------------------------------------------------------
+
+
+def test_control_medico_solo_alerta_por_ultimo_control_por_ingreso(db_session: Session):
+    """F5: si hay dos controles para el mismo ingreso, solo genera alerta para el más reciente."""
+    from sqlalchemy import select
+
+    ingreso = _make_ingreso(db_session, folio="F-CM-LATEST-001")
+
+    # control más antiguo — proximo_control en 2 días
+    control_viejo = ControlMedico(
+        ingreso_id=ingreso.id,
+        fecha_control=datetime.date.today(),
+        semana_control=1,
+        medico_tratante="Dr. Viejo",
+        region_derivacion="Maule",
+        proximo_control=_today_plus(2),
+        proximo_agendado=False,
+    )
+    db_session.add(control_viejo)
+    db_session.flush()
+
+    # control más reciente — proximo_control en 4 días (> 2)
+    control_nuevo = ControlMedico(
+        ingreso_id=ingreso.id,
+        fecha_control=datetime.date.today(),
+        semana_control=2,
+        medico_tratante="Dr. Nuevo",
+        region_derivacion="Maule",
+        proximo_control=_today_plus(4),
+        proximo_agendado=False,
+    )
+    db_session.add(control_nuevo)
+    db_session.flush()
+
+    n = ejecutar_job_alertas(db_session, actor="test")
+    assert n >= 1
+
+    # Solo debe existir alerta para el control más reciente (caso_id=control_nuevo.id)
+    alerta_nuevo = db_session.scalars(
+        select(AlertaNotif).where(
+            AlertaNotif.tipo == "control_medico",
+            AlertaNotif.caso_id == control_nuevo.id,
+        )
+    ).first()
+    assert alerta_nuevo is not None, "Se esperaba alerta para el control más reciente"
+
+    # No debe existir alerta para el control viejo
+    alerta_viejo = db_session.scalars(
+        select(AlertaNotif).where(
+            AlertaNotif.tipo == "control_medico",
+            AlertaNotif.caso_id == control_viejo.id,
+        )
+    ).first()
+    assert alerta_viejo is None, "No debe generarse alerta para el control más antiguo del mismo ingreso"
+
+
+def test_control_medico_caso_tipo_es_control_medico(db_session: Session):
+    """F6: la alerta de control médico tiene caso_tipo='control_medico', no 'ingreso'."""
+    from sqlalchemy import select
+
+    ingreso = _make_ingreso(db_session, folio="F-CM-TIPO-001")
+    control = ControlMedico(
+        ingreso_id=ingreso.id,
+        fecha_control=datetime.date.today(),
+        semana_control=1,
+        medico_tratante="Dr. Tipo",
+        region_derivacion="Maule",
+        proximo_control=_today_plus(3),
+        proximo_agendado=False,
+    )
+    db_session.add(control)
+    db_session.flush()
+
+    ejecutar_job_alertas(db_session, actor="test")
+
+    alerta = db_session.scalars(
+        select(AlertaNotif).where(
+            AlertaNotif.tipo == "control_medico",
+            AlertaNotif.caso_id == control.id,
+        )
+    ).first()
+    assert alerta is not None
+    assert alerta.caso_tipo == "control_medico", (
+        f"Se esperaba caso_tipo='control_medico', se obtuvo '{alerta.caso_tipo}'"
+    )
