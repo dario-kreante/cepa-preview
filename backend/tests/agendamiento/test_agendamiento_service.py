@@ -63,13 +63,18 @@ def _crear_paciente_e_ingreso(db, rut: str = "11222333-9"):
 
 def _insertar_control_proximo(db, ingreso_id: int, fecha: date):
     """Inserta un control médico con próximo control en la fecha dada (Desviación 5)."""
-    from sqlalchemy import text
-    db.execute(text(
-        "INSERT INTO control_medico "
-        "(ingreso_id, fecha_control, semana_control, medico_tratante, region_derivacion, "
-        " proximo_control, proximo_agendado, tiene_licencia, created_at, updated_at) "
-        "VALUES (:iid, :fc, 1, 'Dr Test', 'Metropolitana', :prox, false, false, now(), now())"
-    ), {"iid": ingreso_id, "fc": date(2026, 1, 15), "prox": fecha})
+    from app.models.control_medico import ControlMedico
+    ctrl = ControlMedico(
+        ingreso_id=ingreso_id,
+        fecha_control=date(2026, 1, 15),
+        semana_control=1,
+        medico_tratante="Dr Test",
+        region_derivacion="Metropolitana",
+        proximo_control=fecha,
+        proximo_agendado=False,
+        tiene_licencia=False,
+    )
+    db.add(ctrl)
     db.flush()
 
 
@@ -231,18 +236,18 @@ def _insertar_control_medico(
     proximo_agendado: bool = False,
 ):
     """Inserta un control_medico con los campos dados."""
-    from sqlalchemy import text
-    db.execute(text(
-        "INSERT INTO control_medico "
-        "(ingreso_id, fecha_control, semana_control, medico_tratante, region_derivacion, "
-        " proximo_control, proximo_agendado, tiene_licencia, created_at, updated_at) "
-        "VALUES (:iid, :fc, 1, 'Dr Test', 'Metropolitana', :prox, :pagendado, false, now(), now())"
-    ), {
-        "iid": ingreso_id,
-        "fc": fecha_control,
-        "prox": proximo_control,
-        "pagendado": proximo_agendado,
-    })
+    from app.models.control_medico import ControlMedico
+    ctrl = ControlMedico(
+        ingreso_id=ingreso_id,
+        fecha_control=fecha_control,
+        semana_control=1,
+        medico_tratante="Dr Test",
+        region_derivacion="Metropolitana",
+        proximo_control=proximo_control,
+        proximo_agendado=proximo_agendado,
+        tiene_licencia=False,
+    )
+    db.add(ctrl)
     db.flush()
 
 
@@ -322,24 +327,23 @@ def _insertar_receta(
     fecha_envio: date | None = None,
 ):
     """Inserta paciente→ingreso→reg_farmacologico→receta para tests de Fix 3."""
-    from sqlalchemy import text
-    # reg_farmacologico
-    result = db.execute(text(
-        "INSERT INTO reg_farmacologico "
-        "(ingreso_id, medico_tratante, estado_farmacologico, activo, created_at, updated_at) "
-        "VALUES (:iid, 'Dr Test RF', 'activo', true, now(), now()) RETURNING id"
-    ), {"iid": ingreso_id})
-    rf_id = result.scalar()
-    db.execute(text(
-        "INSERT INTO receta "
-        "(registro_id, fecha_emision, fecha_revision, fecha_envio, marca_medicamento, created_at, updated_at) "
-        "VALUES (:rfid, :fem, :frev, :fenv, 'TestMarca', now(), now())"
-    ), {
-        "rfid": rf_id,
-        "fem": date(2026, 6, 1),
-        "frev": fecha_revision,
-        "fenv": fecha_envio,
-    })
+    from app.models.farmacos import RegistroFarmacologico, Receta
+    rf = RegistroFarmacologico(
+        ingreso_id=ingreso_id,
+        medico_tratante="Dr Test RF",
+        estado_farmacologico="activo",
+        activo=True,
+    )
+    db.add(rf)
+    db.flush()
+    receta = Receta(
+        registro_id=rf.id,
+        fecha_emision=date(2026, 6, 1),
+        fecha_revision=fecha_revision,
+        fecha_envio=fecha_envio,
+        marca_medicamento="TestMarca",
+    )
+    db.add(receta)
     db.flush()
 
 
