@@ -306,3 +306,12 @@ exige (a) no índices redundantes sobre columnas únicas, (b) `PortableJSON` en 
 `RETURNING`/`true`/`false` en `text()` crudo — usar ORM/Core, (e) cuidado con `''`=NULL de Oracle.
 Estado: migraciones y queries de producción portables; suite de tests portable. Confirmación
 final: job Oracle gated del CI.
+
+### Portabilidad Oracle — RESUELTA ✅ (2026-06-12)
+
+Tras 6 iteraciones del job gated, **ambos jobs del CI pasan: PostgreSQL (obligatorio) Y
+Oracle (gated)**. La portabilidad D15 quedó verificada empíricamente en los dos motores, no
+solo asumida. El job Oracle cumplió exactamente su propósito de diseño: atrapar fugas de
+portabilidad que los tests Postgres no podían ver (índices redundantes, tipo JSON, booleanos
+`IS 0/1`, SQL crudo con `now()`/`RETURNING`/`= FALSE`, y la peculiaridad `''`=NULL de Oracle).
+774 tests verdes en ambos motores.
