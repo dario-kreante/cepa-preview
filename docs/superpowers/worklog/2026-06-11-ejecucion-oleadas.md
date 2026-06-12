@@ -277,3 +277,32 @@ Transparente en Postgres. Aplicado a las 4 columnas JSON del sistema: `imed_payl
 
 **Verificación:** 774 tests Postgres verdes (incluido round-trip JSON real en form-config/IMED/
 fichas), ciclo upgrade/downgrade desde cero OK, ruff limpio. Confirmación Oracle: job gated del CI.
+
+### Portabilidad Oracle — iteraciones 3-5 (queries + tests, 2026-06-12)
+
+Tras los índices y JSON, el job Oracle gated reveló (y se corrigieron) más fugas D15:
+
+- **Booleanos en queries (`ORA-00908: IS 0/1`):** `.is_(True)`/`.is_(False)` compila a `col IS 1`
+  en Oracle (inválido; columnas Boolean = NUMBER(1)). Reemplazado por `== true()`/`== false()`
+  (compila a `col = 1`/`= 0`, válido en ambos). Afectó oda, licencias acumulado/alerta,
+  reporte_licencias, agendamiento.
+- **SQL crudo en agendamiento (`= FALSE`):** 4 queries `text()` con literales booleanos
+  Postgres-only en `_cargar_candidatos`/`_cargar_reposos_batch` → reescritas a SQLAlchemy Core
+  (subquery MAX por ingreso, joins, `== false()`, `.distinct()`). No hay literal booleano
+  portable en SQL crudo → la regla es construir con el ORM/Core.
+- **Helpers de test con INSERT crudo Postgres-only:** `now()` (no existe en Oracle),
+  `true`/`false`, `RETURNING id` (Oracle exige `RETURNING ... INTO` → `ORA-00925`) →
+  reescritos con el ORM (ControlMedico/RegistroFarmacologico/Receta/AuditLog). El test de
+  inmutabilidad mantiene el UPDATE/DELETE crudo (es su objetivo) pero inserta vía ORM.
+- **Oracle `''` = NULL (`ORA-01400`):** `field_def.field_type` era NOT NULL pero un draft puede
+  tener tipo vacío (`""`), que Oracle convierte a NULL. → columna nullable (migración 1221) +
+  el validador ya trataba None/"" igual. Cambio aditivo, Postgres idéntico.
+- **Smoke de tablas Postgres-only:** `get_table_names()` + `in` (lowercase) → `has_table()`
+  (normaliza case/schema por dialecto).
+
+**Lección D15 (actualizada en convenciones):** además de tipos genéricos, la portabilidad real
+exige (a) no índices redundantes sobre columnas únicas, (b) `PortableJSON` en vez de `sa.JSON`,
+(c) booleanos vía `== true()/false()` nunca `.is_(bool)` ni literales SQL, (d) nada de `now()`/
+`RETURNING`/`true`/`false` en `text()` crudo — usar ORM/Core, (e) cuidado con `''`=NULL de Oracle.
+Estado: migraciones y queries de producción portables; suite de tests portable. Confirmación
+final: job Oracle gated del CI.
