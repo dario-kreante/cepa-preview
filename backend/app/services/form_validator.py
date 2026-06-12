@@ -107,7 +107,7 @@ def validate_form_version(fields: list[dict]) -> list[dict[str, str]]:
                 {"field_key": key, "error": f"Campo '{key}' sin etiqueta (label vacío)."}
             )
 
-        # 3b. field_type en conjunto válido
+        # 3b. field_type en conjunto válido (None y "" se tratan como ausente — D15/Oracle)
         ftype = (f.get("field_type") or "").strip()
         if not ftype:
             errors.append(

@@ -95,7 +95,8 @@ class FieldDef(Base):
     field_key: Mapped[str] = mapped_column(String(60), nullable=False)
     label: Mapped[str] = mapped_column(String(120), nullable=False)
     # field_type: 'text' | 'number' | 'date' | 'select' | 'boolean'
-    field_type: Mapped[str] = mapped_column(String(20), nullable=False)
+    # nullable=True: un borrador puede tener campo sin tipo aún (Oracle trata '' como NULL)
+    field_type: Mapped[str | None] = mapped_column(String(20), nullable=True)
     required: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     system_locked: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     # JSON genérico (portable PG/Oracle — no usar JSONB)
