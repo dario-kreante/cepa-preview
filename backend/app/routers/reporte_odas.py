@@ -11,7 +11,7 @@ por CA-1.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import date
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select
@@ -44,7 +44,9 @@ def get_odas_vencidas(
     DD-6: programa/region/comuna se leen de Ingreso y Paciente respectivamente.
     """
 
-    hoy = datetime.now(timezone.utc).date()
+    # Fecha operacional local (convención del resto del sistema: date.today();
+    # usar UTC adelanta el día desde las 20-21h hora de Chile y rompe RN-1).
+    hoy = date.today()
 
     stmt = (
         select(Oda, Ingreso, Paciente)
