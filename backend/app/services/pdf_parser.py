@@ -46,13 +46,16 @@ class PypdfParser:
         except Exception as exc:
             raise ExtractionError(f"No se pudo leer el PDF: {exc}") from exc
 
-        pages: list[ExtractedPage] = []
-        for i, page in enumerate(reader.pages, start=1):
-            try:
-                text = page.extract_text() or ""
-            except Exception:
-                text = ""
-            pages.append(ExtractedPage(page_num=i, text=text))
+        try:
+            pages: list[ExtractedPage] = []
+            for i, page in enumerate(reader.pages, start=1):
+                try:
+                    text = page.extract_text() or ""
+                except Exception:
+                    text = ""
+                pages.append(ExtractedPage(page_num=i, text=text))
+        except Exception as exc:
+            raise ExtractionError(f"Error al iterar páginas del PDF: {exc}") from exc
         return pages
 
 

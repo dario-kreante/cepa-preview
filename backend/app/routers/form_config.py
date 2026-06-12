@@ -67,7 +67,15 @@ def publicar(
         db.commit()
         return result
     else:
-        # Publicación bloqueada: devolver 422 con body igual a PublishResult
+        # Publicación bloqueada (CEPA-111 RN-5): registrar auditoría y devolver 422
+        record_audit(
+            db,
+            actor=current_user.username,
+            action="UPDATE",
+            entity="form_version_publish_blocked",
+            entity_id=str(version_id),
+        )
+        db.commit()
         return JSONResponse(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             content=result,

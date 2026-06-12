@@ -1,5 +1,8 @@
 """Tests de integración para el editor de formularios dinámicos (CEPA-110 / CEPA-111)."""
 
+from sqlalchemy.orm import Session
+from app.models.audit_log import AuditLog
+
 
 def _campos_sistema():
     """Payload mínimo con los 7 campos obligatorios bien parametrizados."""
@@ -154,6 +157,36 @@ def test_campo_desactivado_nueva_version(as_coordinacion):
     pub_now = as_coordinacion.get("/api/v1/form-definitions/modulo_v/published")
     obs_v2 = next(f for f in pub_now.json()["fields"] if f["field_key"] == "observaciones")
     assert obs_v2["active"] is False
+
+
+# F1 — CEPA-111 RN-5: publicación bloqueada registra auditoría
+def test_publicar_bloqueado_registra_auditoria(as_coordinacion, db_session: Session):
+    """F1: un publish bloqueado (422) debe dejar una fila en audit_log con
+    entity='form_version_publish_blocked'."""
+    from sqlalchemy import select
+
+    campos_malos = _campos_sistema() + [
+        {"field_key": "extra_audit", "label": "Extra", "field_type": "",
+         "required": False, "system_locked": False, "domain_values": None, "display_order": 9}
+    ]
+    r = as_coordinacion.post(
+        "/api/v1/form-definitions/modulo_audit_test/draft",
+        json={"fields": campos_malos},
+    )
+    assert r.status_code == 201
+    vid = r.json()["id"]
+
+    pub = as_coordinacion.post(f"/api/v1/form-definitions/modulo_audit_test/publish/{vid}")
+    assert pub.status_code == 422
+
+    log = db_session.scalars(
+        select(AuditLog).where(
+            AuditLog.entity == "form_version_publish_blocked",
+            AuditLog.entity_id == str(vid),
+            AuditLog.action == "UPDATE",
+        )
+    ).first()
+    assert log is not None, "Se esperaba un AuditLog para la publicación bloqueada"
 
 
 # TC-110-05 / TC-111-06: Auditor solo lectura en endpoints de escritura → 403
