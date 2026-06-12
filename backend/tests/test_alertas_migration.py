@@ -9,8 +9,7 @@ from app.db.session import engine
 
 
 def test_migracion_crea_tabla_alerta_notif():
-    tablas = inspect(engine).get_table_names()
-    assert "alerta_notif" in tablas
+    assert inspect(engine).has_table("alerta_notif")
 
 
 def test_columnas_alerta_notif_en_bd():

@@ -4,7 +4,7 @@ from app.db.session import engine
 
 
 def test_tablas_de_farmacos_existen():
-    tablas = inspect(engine).get_table_names()
+    insp = inspect(engine)
     for nombre in [
         "reg_farmacologico",
         "esquema_indicacion",
@@ -12,4 +12,4 @@ def test_tablas_de_farmacos_existen():
         "seguim_tratamiento",
         "alerta",
     ]:
-        assert nombre in tablas, f"Tabla {nombre!r} no encontrada tras upgrade head"
+        assert insp.has_table(nombre), f"Tabla {nombre!r} no encontrada tras upgrade head"
