@@ -7,6 +7,8 @@ Create Date: 2026-06-11 00:00:00.000000
 from alembic import op
 import sqlalchemy as sa
 
+from app.db.types import PortableJSON
+
 revision = "11002"
 down_revision = "11001"
 branch_labels = None
@@ -47,7 +49,7 @@ def upgrade() -> None:
         sa.Column("field_type", sa.String(length=20), nullable=False),
         sa.Column("required", sa.Boolean(), nullable=False),
         sa.Column("system_locked", sa.Boolean(), nullable=False),
-        sa.Column("domain_values", sa.JSON(), nullable=True),
+        sa.Column("domain_values", PortableJSON(), nullable=True),
         sa.Column("display_order", sa.Integer(), nullable=False),
         sa.Column("active", sa.Boolean(), nullable=False),
         sa.ForeignKeyConstraint(

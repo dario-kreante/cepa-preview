@@ -261,3 +261,19 @@ indexado).
 vacía OK, ruff limpio. La confirmación final contra Oracle la da el propio job gated del CI.
 Nota: se editaron migraciones ya committeadas porque ninguna corrió en producción (todo
 dev/CI) y el objetivo declarado de la épica es portabilidad real Oracle⇄Postgres.
+
+### Segundo fix de portabilidad Oracle — tipo JSON (2026-06-12)
+
+Resuelto el ORA-01408, el job Oracle reveló el siguiente agujero: `sa.JSON()` (tipo genérico
+de SQLAlchemy) **no compila en Oracle** — `OracleTypeCompiler` no implementa `visit_JSON`
+(`UnsupportedCompilationError`). Las convenciones D15 de la Fundación listaban `JSON` como
+tipo portable, pero no lo es en el dialecto Oracle thin de SQLAlchemy 2.0.
+
+**Solución:** `app/db/types.py::PortableJSON` (TypeDecorator) — delega al JSON nativo en
+PostgreSQL y serializa a `Text`/CLOB en Oracle (`json.dumps`/`json.loads` en la capa de app).
+Transparente en Postgres. Aplicado a las 4 columnas JSON del sistema: `imed_payload.datos`,
+`ficha_clinica.contenido`, `form_definition.domain_values`, `ventana_proceso.columnas_visibles`
+(modelos + migraciones). Convención D15 del roadmap actualizada para prohibir `sa.JSON` directo.
+
+**Verificación:** 774 tests Postgres verdes (incluido round-trip JSON real en form-config/IMED/
+fichas), ciclo upgrade/downgrade desde cero OK, ruff limpio. Confirmación Oracle: job gated del CI.

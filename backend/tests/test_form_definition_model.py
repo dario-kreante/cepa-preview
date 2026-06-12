@@ -63,9 +63,10 @@ def test_tipos_portables():
     assert isinstance(cols_field["required"].type, Boolean)
     assert isinstance(cols_field["system_locked"].type, Boolean)
     assert isinstance(cols_field["active"].type, Boolean)
-    # domain_values: JSON genérico (portable PG/Oracle)
-    from sqlalchemy import JSON
-    assert isinstance(cols_field["domain_values"].type, JSON)
+    # domain_values: tipo JSON portable PG/Oracle (TypeDecorator que delega a
+    # JSON nativo en Postgres y a CLOB serializado en Oracle).
+    from app.db.types import PortableJSON
+    assert isinstance(cols_field["domain_values"].type, PortableJSON)
 
 
 def test_field_def_fk_a_form_version():

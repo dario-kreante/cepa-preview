@@ -16,13 +16,13 @@ from sqlalchemy import (
     ForeignKey,
     Identity,
     Integer,
-    JSON,
     String,
     UniqueConstraint,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+from app.db.types import PortableJSON
 
 
 def _utcnow() -> datetime:
@@ -99,7 +99,7 @@ class FieldDef(Base):
     required: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     system_locked: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     # JSON genérico (portable PG/Oracle — no usar JSONB)
-    domain_values: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    domain_values: Mapped[list | None] = mapped_column(PortableJSON, nullable=True)
     display_order: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 

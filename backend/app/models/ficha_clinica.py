@@ -8,7 +8,9 @@ push externo). El contenido clínico se almacena como JSON.
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
-from sqlalchemy import BigInteger, DateTime, ForeignKey, Identity, JSON, String
+from sqlalchemy import BigInteger, DateTime, ForeignKey, Identity, String
+
+from app.db.types import PortableJSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -37,7 +39,7 @@ class FichaClinica(Base):
     )
     folio: Mapped[str] = mapped_column(String(30), nullable=False, index=True)
     origen: Mapped[str] = mapped_column(String(40), nullable=False)
-    contenido: Mapped[dict] = mapped_column(JSON, nullable=False)
+    contenido: Mapped[dict] = mapped_column(PortableJSON, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, nullable=False
     )

@@ -7,6 +7,8 @@ Create Date: 2026-06-11 00:00:00.000000
 from alembic import op
 import sqlalchemy as sa
 
+from app.db.types import PortableJSON
+
 revision = "09001"
 down_revision = "09000"
 branch_labels = None
@@ -18,7 +20,7 @@ def upgrade() -> None:
         "config_ventana_proceso",
         sa.Column("id", sa.BigInteger(), sa.Identity(always=False), primary_key=True),
         sa.Column("proceso", sa.String(length=40), nullable=False),
-        sa.Column("columnas_visibles", sa.JSON(), nullable=False),
+        sa.Column("columnas_visibles", PortableJSON(), nullable=False),
         sa.Column("orden_por_defecto", sa.String(length=60), nullable=True),
         sa.Column("creado_por", sa.String(length=120), nullable=True),
         sa.Column(

@@ -7,6 +7,8 @@ Create Date: 2026-06-10 00:00:00.000000
 from alembic import op
 import sqlalchemy as sa
 
+from app.db.types import PortableJSON
+
 revision = "1220"
 down_revision = "1200"
 branch_labels = None
@@ -19,7 +21,7 @@ def upgrade() -> None:
         sa.Column("id", sa.BigInteger(), sa.Identity(always=False), primary_key=True),
         sa.Column("folio", sa.String(length=30), nullable=False),
         sa.Column("tipo", sa.String(length=40), nullable=False),
-        sa.Column("datos", sa.JSON(), nullable=False),
+        sa.Column("datos", PortableJSON(), nullable=False),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
     )
     op.create_index("ix_imed_payload_folio", "imed_payload", ["folio"])

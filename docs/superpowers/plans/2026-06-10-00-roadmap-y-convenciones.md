@@ -73,7 +73,8 @@ backend/
 
 ### Reglas de portabilidad de BD (D15) — innegociables en cada modelo/migración
 - Solo tipos genéricos de SQLAlchemy (`String`, `Numeric`, `DateTime(timezone=True)`, `Boolean`,
-  `JSON`, `BigInteger`, `Integer`, `Date`, `Text`). Nunca tipos/SQL específicos de un motor.
+  `BigInteger`, `Integer`, `Date`, `Text`). Nunca tipos/SQL específicos de un motor.
+  **Excepción JSON:** el tipo genérico `sa.JSON` NO compila en Oracle (SQLAlchemy 2.0 thin); usar `app.db.types.PortableJSON` (JSON nativo en PG, CLOB serializado en Oracle).
 - PK subrogada con `Identity(always=False)` sobre `BigInteger`.
 - Identificadores de tabla/columna en **minúscula y ≤30 caracteres**.
 - Fechas/tiempos en **UTC**, `DateTime(timezone=True)`; helper `_utcnow()` (de la Fundación).

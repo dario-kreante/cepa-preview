@@ -7,7 +7,9 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from sqlalchemy import BigInteger, DateTime, Identity, JSON, String
+from sqlalchemy import BigInteger, DateTime, Identity, String
+
+from app.db.types import PortableJSON
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -28,7 +30,7 @@ class ConfigVentanaProceso(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, Identity(always=False), primary_key=True)
     proceso: Mapped[str] = mapped_column(String(40), nullable=False, index=True)
-    columnas_visibles: Mapped[list] = mapped_column(JSON, nullable=False)
+    columnas_visibles: Mapped[list] = mapped_column(PortableJSON, nullable=False)
     orden_por_defecto: Mapped[str | None] = mapped_column(String(60), nullable=True)
     creado_por: Mapped[str | None] = mapped_column(String(120), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
