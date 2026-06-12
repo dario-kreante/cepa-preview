@@ -43,7 +43,7 @@ def test_openapi_cubre_100_pct_endpoints(client):
         "/api/v1/ingresos",
         "/api/v1/pacientes/buscar",
         "/api/v1/fichas-clinicas",
-        "/api/v1/licencias/{folio}",
+        "/api/v1/licencias/folio/{folio}",
         "/api/v2/health",
         "/health",
     ]:
