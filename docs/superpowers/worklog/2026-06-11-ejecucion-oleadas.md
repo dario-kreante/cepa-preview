@@ -159,3 +159,80 @@ revisión de la épica N en paralelo a la implementación de la N+1 (BDs scratch
 - **Pendiente cross-épica detectado por revisores:** poblar las ranuras de `vista_360`
   (farmacos/licencias/controles/reintegro siguen vacías — ningún plan de oleada 3 lo
   prescribió; evaluar al cerrar EPIC-09 Reportería).
+
+## Oleada 4 — Transversales (2026-06-11/12)
+
+Mismo patrón D-W4 (sonnet por épica + revisión Fable). Dos interrupciones por límite de
+sesión (EPIC-11 y EPIC-12 a mitad de trabajo) — el trabajo huérfano se recuperó, se
+verificó y se committeó con traza explícita.
+
+- **EPIC-05 Auditoría** ⚠️→✅ (487→536 tests tras fixes). Plan anterior al código: el
+  implementador adaptó nombres de campos al modelo real (sancionado por el roadmap). La
+  revisión encontró 1 CRÍTICO — las trazas `record_audit(READ)` nunca se persistían (sin
+  `db.commit()` en los GET) — más filtros diagnostico/profesional ignorados, deducción
+  errónea de reintegro parcial/total (debía usar el enum EstadoReintegro), fecha_denuncia
+  mapeada a fecha_ingreso en vez de fecha_diep_diat, y CSV sin sanitizar (formula
+  injection). Todo corregido en `64fbf27`. **Decisión:** contadores de sesiones → `None`
+  (el dato no existe en el modelo; 0 afirmaría dato real ante fiscalización).
+- **EPIC-08 Agendamiento** ⚠️→✅ (504→542). Aprobada con fixes: citas excluidas por reposo
+  eran confirmables (RN-1), candidatos desde controles vencidos obsoletos (ahora último
+  control por ingreso + proximo_agendado=False), ventana de recetas sin tope + fecha_envio
+  como proxy de "gestionada" (RN-6), N+1 de reposos → batch. El batch usó `ANY(:pids)`
+  (Postgres-only) — corregido por el orquestador a IN expandible (`65d73ce`, D15).
+  **Limitación documentada:** pool único de candidatos (sin scoping por profesional;
+  control_medico no tiene profesional_id) — resolver vía medico_tratante antes de uso
+  multi-profesional.
+- **EPIC-09 Reportería** ❌→⚠️→✅ (588→658). **Rechazo inicial:** la épica reportaba sobre
+  tablas huérfanas que nadie escribía (`cita`, `plan_tratamiento`) y 9 columnas de
+  dimensión en `ingreso` sin poblar (3 duplicando a `paciente`). **Decisiones DD-1..6 del
+  orquestador:** materializar `Cita` al confirmar propuesta (EPIC-08) + PATCH de estado;
+  endpoint de escritura para plan de tratamiento; migración correctiva 11000 eliminando
+  sexo/region/comuna/tramo_etario de ingreso (JOIN a Paciente + tramo derivado por CASE);
+  dimensiones pobladas vía IngresoCreate; período solo sobre tablas de hechos. Re-revisión
+  aprobó con 2 fixes que aplicó el orquestador (`55208cc`): ingreso ACTIVO al materializar
+  cita; fecha_desde/hasta del dashboard dejaron de ser no-ops.
+- **EPIC-10 Alertas** ❌→✅ (640→682). **Rechazo inicial demoledor:** los 5 constructores de
+  hitos en SQL crudo referenciaban tablas/columnas inexistentes (except anchos lo
+  ocultaban → el job siempre generaba 0 alertas pareciendo sano), trazas no persistidas,
+  destinatario de correo imposible (usuario sin email). **Rework (DD-A..F):** constructores
+  ORM reales por los 6 tipos + test de integración por tipo, auditoría antes del commit,
+  migración 11001 (usuario.email; usuario_id nullable — destinatario = profesional_id del
+  ingreso, PA documentada), idempotencia por (caso, tipo, plazo_objetivo) RN-4,
+  transiciones validadas, SMTP inerte sin marcar email_enviado. Re-revisión: APROBADA.
+  Menores M1/M2 corregidos después (último control por ingreso; caso_tipo control_medico).
+- **EPIC-11 Config/Calidad** ⚠️→✅ (721→770). Implementada por agente interrumpido (sin
+  reporte); revisión exhaustiva post-mortem: APROBADA con 4 importantes, corregidos en
+  `1f609fb`: auditar publicaciones bloqueadas (RN-5), validación RN-4 en confirm del PDF
+  (obligatorios + dominios), endurecimiento PDF (límite 10MB, 50 páginas, pages-loop dentro
+  del try), y tests reales de la heurística de mapeo + DI del parser.
+  **Brechas de spec registradas (heredadas del plan):** TC-111-04/05 (validación de captura
+  operacional contra el formulario publicado) sin endpoint de captura.
+- **EPIC-12 API Integración** ⚠️→✅ (760→774). Tasks 1-4 del agente interrumpido + Task 5
+  recuperada del working tree (verificada completa contra el plan por el revisor) + Task 6
+  (IMED, agente fresco). Revisión: APROBADA con 2 importantes de efectividad de tests,
+  corregidos en `2ab73a8`: la guardia D12 parcheaba el target equivocado (vacua — ahora
+  parchea el binding del servicio y un pull positivo prueba que el mock entra al flujo) y
+  el test de rate-limit no ejercitaba la app real (ahora 429 sobre app.main.app).
+  D12 verificado: cliente SALUTEM read-only stub, cero llamadas de red, sin credenciales.
+- **Fix transversal:** ODAs vencidas usaba fecha UTC (adelantaba el día desde las ~20h de
+  Chile); ahora fecha operacional local (`296f2bf`).
+
+### Verificación final integral (2026-06-12)
+- **774 tests verdes**, ruff limpio, `alembic upgrade head` + `downgrade base` desde BD
+  **vacía** OK (head 1220, cadena lineal 0001→…→1220).
+- Humo Oleada 4 (BD cepa): v2/health, dashboard, auditoría consolidada, ODAs vencidas,
+  panel de alertas, tareas → 200; **ejecutar-job generó 1 alerta real** sobre la ODA del
+  humo de Oleada 3 (motor end-to-end probado con datos reales del flujo).
+
+### Issues pendientes para backlog (detectados por revisores, fuera de alcance de los planes)
+1. Export CSV/PDF en reportes 091/092/093/094/097 (precedente: StreamingResponse de EPIC-05).
+2. Estadísticas de fármacos (CEPA-095 CA-3) — ausente también del plan.
+3. Endpoint de captura operacional con validación contra formulario publicado (TC-111-04/05).
+4. Scoping por profesional en agendamiento (mapeo medico_tratante).
+5. Vistas consolidadas CEPA-096 completas (hoy: solo tabla de configuración de ventanas).
+6. Poblar ranuras vista-360 (farmacos/licencias/controles/reintegro).
+7. Política global de auditoría de lecturas sensibles (hoy: EPIC-05/09 auditan generación
+   de reportes; el resto de GETs no).
+8. Festivos chilenos en cálculos de días hábiles (alertas/agendamiento).
+9. Drift de la BD dev `cepa` en downgrade (migrada antes de 0011b) — solo afecta esa BD.
+10. TipoLicencia ISL "no aplica" para licencias extra-sistema (CEPA-073 RN-4).
