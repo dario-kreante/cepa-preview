@@ -25,7 +25,7 @@ class PlanTratamiento(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, Identity(always=False), primary_key=True)
     ingreso_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("ingreso.id"), nullable=False, unique=True, index=True
+        BigInteger, ForeignKey("ingreso.id"), nullable=False, unique=True
     )
     sesiones_plan: Mapped[int | None] = mapped_column(Integer, nullable=True)
     aumentos_isl: Mapped[int] = mapped_column(Integer, nullable=False, default=0)

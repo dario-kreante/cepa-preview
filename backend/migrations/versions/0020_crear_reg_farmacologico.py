@@ -29,11 +29,10 @@ def upgrade() -> None:
             ["ingreso_id"], ["ingreso.id"], name="fk_reg_farm_ingreso"
         ),
     )
+    # uq_reg_farm_ingreso_id ya indexa ingreso_id (Oracle ORA-01408 si se duplica).
     op.create_unique_constraint("uq_reg_farm_ingreso_id", "reg_farmacologico", ["ingreso_id"])
-    op.create_index("ix_reg_farm_ingreso_id", "reg_farmacologico", ["ingreso_id"])
 
 
 def downgrade() -> None:
-    op.drop_index("ix_reg_farm_ingreso_id", table_name="reg_farmacologico")
     op.drop_constraint("uq_reg_farm_ingreso_id", "reg_farmacologico", type_="unique")
     op.drop_table("reg_farmacologico")

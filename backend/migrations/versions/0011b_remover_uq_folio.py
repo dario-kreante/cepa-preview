@@ -13,9 +13,12 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # Remover unique constraint pero mantener el índice para búsquedas rápidas
+    # Remover unique constraint y crear índice no-único para búsquedas por folio
+    # (al dejar de ser único, ya no hay índice implícito que cubra las búsquedas).
     op.drop_constraint("uq_ingreso_folio", "ingreso", type_="unique")
+    op.create_index("ix_ingreso_folio", "ingreso", ["folio"])
 
 
 def downgrade() -> None:
+    op.drop_index("ix_ingreso_folio", table_name="ingreso")
     op.create_unique_constraint("uq_ingreso_folio", "ingreso", ["folio"])

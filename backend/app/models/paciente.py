@@ -19,7 +19,7 @@ class Paciente(Base):
     __tablename__ = "paciente"
 
     id: Mapped[int] = mapped_column(BigInteger, Identity(always=False), primary_key=True)
-    rut: Mapped[str] = mapped_column(String(12), unique=True, nullable=False, index=True)
+    rut: Mapped[str] = mapped_column(String(12), unique=True, nullable=False)
     nombre: Mapped[str] = mapped_column(String(160), nullable=False, index=True)
     sexo: Mapped[str] = mapped_column(String(10), nullable=False)
     edad: Mapped[int] = mapped_column(Integer, nullable=False)

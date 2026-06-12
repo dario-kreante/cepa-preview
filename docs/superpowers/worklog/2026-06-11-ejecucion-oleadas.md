@@ -236,3 +236,28 @@ verificó y se committeó con traza explícita.
 8. Festivos chilenos en cálculos de días hábiles (alertas/agendamiento).
 9. Drift de la BD dev `cepa` en downgrade (migrada antes de 0011b) — solo afecta esa BD.
 10. TipoLicencia ISL "no aplica" para licencias extra-sistema (CEPA-073 RN-4).
+
+## Post-PR — Fix de portabilidad Oracle (job gated, 2026-06-12)
+
+El job **Oracle gated** del CI (allowed-to-fail, existe precisamente para atrapar fugas de
+portabilidad D15) falló en `alembic upgrade head` con **ORA-01408: such column list already
+indexed** en `CREATE INDEX ix_paciente_rut`. Postgres tolera un índice explícito sobre una
+columna que ya tiene UNIQUE constraint; Oracle no (el unique ya crea un índice implícito).
+
+**Alcance (7 tablas con el mismo patrón redundante):** paciente.rut, ingreso.folio,
+reg_farmacologico.ingreso_id, proceso_ept.caso_ept_id, plazo_ept.caso_ept_id,
+plan_tratamiento.ingreso_id, form_definition.form_key — todas tenían un `create_index`
+explícito sobre una columna ya cubierta por su unique constraint (y `unique=True, index=True`
+en el modelo).
+
+**Fix:** se eliminó el índice redundante en las 7 migraciones y el `index=True` redundante
+en los 6 modelos (el UNIQUE ya provee el índice en ambos motores). Caso especial
+`ingreso.folio`: como `0011b` le quita la unicidad (reingresos), su índice no-único se
+**mueve** de `0011` a `0011b` — así nunca coexisten uq + ix sobre folio (ni en upgrade ni en
+downgrade). `folio` conserva `index=True` en el modelo (en estado final no es único pero sí
+indexado).
+
+**Verificación:** 774 tests Postgres verdes, ciclo `upgrade head`/`downgrade base` desde BD
+vacía OK, ruff limpio. La confirmación final contra Oracle la da el propio job gated del CI.
+Nota: se editaron migraciones ya committeadas porque ninguna corrió en producción (todo
+dev/CI) y el objetivo declarado de la épica es portabilidad real Oracle⇄Postgres.

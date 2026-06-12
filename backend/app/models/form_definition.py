@@ -35,7 +35,7 @@ class FormDefinition(Base):
     __tablename__ = "form_definition"
 
     id: Mapped[int] = mapped_column(BigInteger, Identity(always=False), primary_key=True)
-    form_key: Mapped[str] = mapped_column(String(60), unique=True, nullable=False, index=True)
+    form_key: Mapped[str] = mapped_column(String(60), unique=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, nullable=False
     )

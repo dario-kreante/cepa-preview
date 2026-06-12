@@ -37,7 +37,7 @@ class RegistroFarmacologico(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, Identity(always=False), primary_key=True)
     ingreso_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("ingreso.id"), unique=True, nullable=False, index=True
+        BigInteger, ForeignKey("ingreso.id"), unique=True, nullable=False
     )
     medico_tratante: Mapped[str] = mapped_column(String(160), nullable=False)
     estado_farmacologico: Mapped[str] = mapped_column(String(40), nullable=False)

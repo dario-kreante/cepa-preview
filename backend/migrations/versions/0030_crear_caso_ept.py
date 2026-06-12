@@ -69,7 +69,6 @@ def upgrade() -> None:
         ),
     )
     op.create_unique_constraint("uq_proceso_ept_caso", "proceso_ept", ["caso_ept_id"])
-    op.create_index("ix_proceso_ept_caso_id", "proceso_ept", ["caso_ept_id"])
 
     op.create_table(
         "plazo_ept",
@@ -88,15 +87,12 @@ def upgrade() -> None:
         ),
     )
     op.create_unique_constraint("uq_plazo_ept_caso", "plazo_ept", ["caso_ept_id"])
-    op.create_index("ix_plazo_ept_caso_id", "plazo_ept", ["caso_ept_id"])
 
 
 def downgrade() -> None:
-    op.drop_index("ix_plazo_ept_caso_id", table_name="plazo_ept")
     op.drop_constraint("uq_plazo_ept_caso", "plazo_ept", type_="unique")
     op.drop_table("plazo_ept")
 
-    op.drop_index("ix_proceso_ept_caso_id", table_name="proceso_ept")
     op.drop_constraint("uq_proceso_ept_caso", "proceso_ept", type_="unique")
     op.drop_table("proceso_ept")
 

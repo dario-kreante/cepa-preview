@@ -38,8 +38,9 @@ def upgrade() -> None:
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
         sa.ForeignKeyConstraint(["paciente_id"], ["paciente.id"], name="fk_ingreso_paciente"),
     )
+    # Mientras folio es único, uq_ingreso_folio provee el índice (Oracle: evitar
+    # índice redundante ORA-01408). El índice no-único se crea en 0011b al quitar el uq.
     op.create_unique_constraint("uq_ingreso_folio", "ingreso", ["folio"])
-    op.create_index("ix_ingreso_folio", "ingreso", ["folio"])
     op.create_index("ix_ingreso_paciente_id", "ingreso", ["paciente_id"])
     op.create_index("ix_ingreso_num_siniestro", "ingreso", ["numero_siniestro"])
 
@@ -47,6 +48,5 @@ def upgrade() -> None:
 def downgrade() -> None:
     op.drop_index("ix_ingreso_num_siniestro", table_name="ingreso")
     op.drop_index("ix_ingreso_paciente_id", table_name="ingreso")
-    op.drop_index("ix_ingreso_folio", table_name="ingreso")
     op.drop_constraint("uq_ingreso_folio", "ingreso", type_="unique")
     op.drop_table("ingreso")

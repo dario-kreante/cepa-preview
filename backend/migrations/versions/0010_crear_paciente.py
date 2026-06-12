@@ -28,13 +28,13 @@ def upgrade() -> None:
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
     )
+    # uq_paciente_rut ya provee el índice de rut (portabilidad Oracle: un índice
+    # explícito sobre la misma columna lanza ORA-01408). Solo índice no-único de nombre.
     op.create_unique_constraint("uq_paciente_rut", "paciente", ["rut"])
-    op.create_index("ix_paciente_rut", "paciente", ["rut"])
     op.create_index("ix_paciente_nombre", "paciente", ["nombre"])
 
 
 def downgrade() -> None:
     op.drop_index("ix_paciente_nombre", table_name="paciente")
-    op.drop_index("ix_paciente_rut", table_name="paciente")
     op.drop_constraint("uq_paciente_rut", "paciente", type_="unique")
     op.drop_table("paciente")

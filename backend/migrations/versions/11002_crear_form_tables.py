@@ -21,7 +21,6 @@ def upgrade() -> None:
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
     )
     op.create_unique_constraint("uq_formdef_key", "form_definition", ["form_key"])
-    op.create_index("ix_form_definition_key", "form_definition", ["form_key"])
 
     op.create_table(
         "form_version",
@@ -63,6 +62,5 @@ def downgrade() -> None:
     op.drop_table("field_def")
     op.drop_index("ix_form_version_def_id", table_name="form_version")
     op.drop_table("form_version")
-    op.drop_index("ix_form_definition_key", table_name="form_definition")
     op.drop_constraint("uq_formdef_key", "form_definition", type_="unique")
     op.drop_table("form_definition")

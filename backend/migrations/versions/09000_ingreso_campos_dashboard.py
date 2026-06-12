@@ -89,11 +89,9 @@ def upgrade() -> None:
             server_default=sa.text("CURRENT_TIMESTAMP"),
         ),
     )
-    op.create_index("ix_plan_trat_ingreso", "plan_tratamiento", ["ingreso_id"])
 
 
 def downgrade() -> None:
-    op.drop_index("ix_plan_trat_ingreso", table_name="plan_tratamiento")
     op.drop_table("plan_tratamiento")
 
     with op.batch_alter_table("oda") as batch_op:

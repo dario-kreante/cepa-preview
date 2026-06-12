@@ -115,7 +115,7 @@ class ProcesoEpt(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, Identity(always=False), primary_key=True)
     caso_ept_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("caso_ept.id"), nullable=False, unique=True, index=True
+        BigInteger, ForeignKey("caso_ept.id"), nullable=False, unique=True
     )
     plazo_evid_denunciante: Mapped[date | None] = mapped_column(Date, nullable=True)
     plazo_insumos_empresa: Mapped[date | None] = mapped_column(Date, nullable=True)
@@ -147,7 +147,7 @@ class PlazoEpt(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, Identity(always=False), primary_key=True)
     caso_ept_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("caso_ept.id"), nullable=False, unique=True, index=True
+        BigInteger, ForeignKey("caso_ept.id"), nullable=False, unique=True
     )
     plazo_informe_ept: Mapped[date | None] = mapped_column(Date, nullable=True)
     plazo_portal_isl: Mapped[date | None] = mapped_column(Date, nullable=True)
