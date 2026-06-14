@@ -1,0 +1,81 @@
+name: backend-ci
+
+on:
+  push:
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-ci.yml"
+  pull_request:
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-ci.yml"
+
+jobs:
+  postgres:
+    name: tests (PostgreSQL — obligatorio)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: cepa
+          POSTGRES_PASSWORD: cepa
+          POSTGRES_DB: cepa_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U cepa"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql+psycopg://cepa:cepa@localhost:5432/cepa_test
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv sync --dev
+      - name: Smoke de migraciones (upgrade/downgrade)
+        run: |
+          uv run alembic upgrade head
+          uv run alembic downgrade base
+      - name: Tests
+        run: uv run pytest -v
+      - name: Lint
+        run: uv run ruff check .
+
+  oracle:
+    name: tests (Oracle free — gated, allowed-to-fail)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    services:
+      oracle:
+        image: gvenzl/oracle-free:23-slim
+        env:
+          ORACLE_PASSWORD: cepa
+        ports:
+          - 1521:1521
+        options: >-
+          --health-cmd "healthcheck.sh"
+          --health-interval 10s
+          --health-timeout 10s
+          --health-retries 30
+    env:
+      DATABASE_URL: oracle+oracledb://system:cepa@localhost:1521/?service_name=FREEPDB1
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv sync --dev
+      - name: Smoke de migraciones en Oracle
+        run: uv run alembic upgrade head
+      - name: Tests en Oracle
+        run: uv run pytest -v
