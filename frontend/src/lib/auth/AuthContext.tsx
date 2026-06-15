@@ -38,7 +38,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const refresh = tokenStore.getRefresh()!;
         const { data } = await api.POST("/api/v1/auth/refresh", {
           body: { refresh_token: refresh },
-          fetch: (...args: Parameters<typeof fetch>) => globalThis.fetch(...args),
         });
         if (activo && data?.access_token) {
           tokenStore.setAccess(data.access_token);
@@ -56,7 +55,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function login(user: string, password: string) {
     const { data, error } = await api.POST("/api/v1/auth/login", {
       body: { username: user, password },
-      fetch: (...args: Parameters<typeof fetch>) => globalThis.fetch(...args),
     });
     if (error || !data) throw new Error("Credenciales inválidas");
     tokenStore.setAccess(data.access_token);

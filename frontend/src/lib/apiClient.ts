@@ -45,5 +45,8 @@ const authMiddleware: Middleware = {
   },
 };
 
-export const api = createClient<paths>({ baseUrl });
+export const api = createClient<paths>({
+  baseUrl,
+  fetch: (...args) => globalThis.fetch(...args),
+});
 api.use(authMiddleware);
