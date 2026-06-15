@@ -6,9 +6,13 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "lint": "eslint .",
     "preview": "vite preview",
-    "gen:api": "openapi-typescript ${VITE_API_BASE_URL:-https://cepa-backend-staging.onrender.com}/openapi.json -o src/types/api.ts"
+    "gen:api": "openapi-typescript ${VITE_API_BASE_URL:-https://cepa-backend-staging.onrender.com}/openapi.json -o src/types/api.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "e2e": "playwright test",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
