@@ -14,5 +14,8 @@ test("crea un ingreso y lo ve en la vista 360", async ({ page }) => {
   await page.getByLabel("Modelo de tratamiento").fill("ambulatorio");
   await page.getByLabel("Fecha de ingreso").fill("2026-06-01");
   await page.getByRole("button", { name: /crear ingreso/i }).click();
-  await expect(page.getByText(/Folio F-/i)).toBeVisible();
+  // Tras el alta exitosa, la app navega a la vista 360 del paciente.
+  // Verificamos el destino (no el toast transitorio, que compite con el redirect).
+  await expect(page).toHaveURL(/\/pacientes\/\d+$/);
+  await expect(page.getByRole("heading", { name: /Paciente E2E/i })).toBeVisible();
 });
