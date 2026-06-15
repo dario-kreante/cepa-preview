@@ -51,6 +51,13 @@ class Settings(BaseSettings):
     # --- IMED feature flag (CEPA-122, P2, PA5) ---
     imed_enabled: bool = False
 
+    # --- CORS (integración frontend) ---
+    cors_origins: str = "http://localhost:5173,http://localhost:4173,https://cepa-preview.vercel.app"
+
+    @property
+    def cors_origins_list(self) -> list[str]:
+        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+
 
 @lru_cache
 def get_settings() -> Settings:
