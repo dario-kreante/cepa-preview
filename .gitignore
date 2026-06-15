@@ -9,3 +9,10 @@ __pycache__/
 backend/.env
 .pytest_cache/
 .ruff_cache/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/playwright-report/
+frontend/test-results/
