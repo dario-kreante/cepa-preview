@@ -8,6 +8,9 @@ RUN uv sync --frozen --no-dev
 
 COPY . .
 ENV PATH="/app/.venv/bin:$PATH"
+RUN chmod +x entrypoint.sh
 
+# El puerto real lo inyecta la plataforma vía $PORT (Render/Railway/Fly); 8000 por defecto.
+# El entrypoint aplica migraciones, siembra el admin (si SEED_ADMIN_*) y arranca uvicorn.
 EXPOSE 8000
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["./entrypoint.sh"]

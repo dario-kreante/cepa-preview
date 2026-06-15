@@ -1,5 +1,6 @@
 from functools import lru_cache
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -10,6 +11,20 @@ class Settings(BaseSettings):
 
     database_url: str = "postgresql+psycopg://cepa:cepa@localhost:5432/cepa"
     app_name: str = "Sistema CEPA API"
+
+    @field_validator("database_url")
+    @classmethod
+    def _normalizar_driver(cls, v: str) -> str:
+        """Los PaaS (Render/Railway/Fly/Heroku) entregan DATABASE_URL como
+        ``postgres://`` o ``postgresql://`` sin driver. SQLAlchemy 2.0 necesita el
+        driver explícito; normalizamos a psycopg v3 sin tocar el resto de la URL.
+        Las URLs de Oracle (``oracle+oracledb://``) u otras con driver se dejan tal cual.
+        """
+        if v.startswith("postgres://"):
+            v = "postgresql://" + v[len("postgres://"):]
+        if v.startswith("postgresql://"):
+            v = "postgresql+psycopg://" + v[len("postgresql://"):]
+        return v
 
     # --- Autenticación / JWT (EPIC-00, parametrizable; D13) ---
     jwt_secret: str = "cambiar-en-produccion-secreto-jwt-cepa"

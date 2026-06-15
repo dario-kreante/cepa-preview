@@ -1,0 +1,40 @@
+# Blueprint de Render para staging del backend CEPA.
+# Despliegue: en Render → New → Blueprint → conectar este repo. Render lee este archivo,
+# crea la Postgres gestionada y el web service Docker, e inyecta DATABASE_URL.
+#
+# Tras el primer deploy, define en el dashboard del servicio (Environment) las variables
+# marcadas `sync: false` (no se versionan): SEED_ADMIN_USERNAME / SEED_ADMIN_PASSWORD
+# para crear el usuario inicial de Coordinación. JWT_SECRET se genera automáticamente.
+#
+# Planes `free`: la Postgres free expira a los ~90 días y el web service free se duerme
+# por inactividad — suficiente para staging. Subir a `starter` para algo más estable.
+
+databases:
+  - name: cepa-staging-db
+    databaseName: cepa
+    user: cepa
+    plan: free
+
+services:
+  - type: web
+    name: cepa-backend-staging
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: cepa-staging-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      # Usuario inicial de Coordinación (definir en el dashboard; no versionar).
+      - key: SEED_ADMIN_USERNAME
+        sync: false
+      - key: SEED_ADMIN_PASSWORD
+        sync: false
+      - key: SEED_ADMIN_NOMBRE
+        value: Coordinación
