@@ -20,31 +20,26 @@ async function doRefresh(): Promise<boolean> {
   return true;
 }
 
+const pending = new Map<string, Request>();
+
 const authMiddleware: Middleware = {
   async onRequest(options) {
     const token = tokenStore.getAccess();
     if (token) options.request.headers.set("authorization", `Bearer ${token}`);
+    // Clone BEFORE openapi-fetch consumes the body so we can replay it on retry.
+    pending.set(options.id, options.request.clone());
     return options.request;
   },
   async onResponse(options) {
-    const { request, response } = options;
-    if (response.status !== 401) return response;
-    if (request.url.endsWith("/api/v1/auth/refresh")) return response;
+    const original = pending.get(options.id);
+    pending.delete(options.id); // delete on ALL paths to avoid Map leak
+    if (options.response.status !== 401) return options.response;
+    if (options.request.url.endsWith("/api/v1/auth/refresh")) return options.response;
     refreshing ??= doRefresh().finally(() => { refreshing = null; });
     const ok = await refreshing;
-    if (!ok) return response;
-    const retried = new Request(request.url, {
-      method: request.method,
-      headers: new Headers(request.headers),
-      body: request.body,
-      mode: request.mode,
-      credentials: request.credentials,
-      cache: request.cache,
-      redirect: request.redirect,
-      referrer: request.referrer,
-      referrerPolicy: request.referrerPolicy,
-      integrity: request.integrity,
-    });
+    if (!ok || !original) return options.response;
+    // Build a fresh Request from the pre-consume clone with the updated token.
+    const retried = new Request(original, { headers: new Headers(original.headers) });
     retried.headers.set("authorization", `Bearer ${tokenStore.getAccess()}`);
     return fetch(retried);
   },
