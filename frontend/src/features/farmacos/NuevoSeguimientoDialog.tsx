@@ -69,9 +69,9 @@ export function NuevoSeguimientoDialog({ ingresoId, open, onOpenChange }: Props)
     try {
       await crearMutation.mutateAsync({
         disminucion_farmacos: values.disminucion_farmacos,
-        plan_disminucion: values.plan_disminucion?.trim() || null,
+        plan_disminucion: values.disminucion_farmacos ? (values.plan_disminucion?.trim() || null) : null,
         cambio_esquema: values.cambio_esquema,
-        detalle_cambio: values.detalle_cambio?.trim() || null,
+        detalle_cambio: values.cambio_esquema ? (values.detalle_cambio?.trim() || null) : null,
         observaciones: values.observaciones?.trim() || null,
       });
       toast.success("Seguimiento registrado");

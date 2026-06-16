@@ -509,6 +509,188 @@ describe("Generar alertas de revisión", () => {
   });
 });
 
+// ── 7. Flag-detail coercion: detail nulled when flag is unchecked ─────────────
+
+describe("NuevoSeguimientoDialog — coerción de detalle cuando flag desmarcado", () => {
+  it("cambio_esquema desmarcado → detalle_cambio enviado como null aunque se haya escrito texto", async () => {
+    const postSpy = vi.fn();
+    const state = { seguimientos: [] as SeguimTratamientoRead[] };
+
+    server.use(
+      http.get(`${BASE}/api/v1/pacientes/buscar`, () =>
+        HttpResponse.json([MOCK_PACIENTE]),
+      ),
+      http.get(`${BASE}/api/v1/pacientes/:id/vista-360`, () =>
+        HttpResponse.json(MOCK_VISTA_360),
+      ),
+      http.get(`${BASE}/api/v1/registro-farmacologico/:id`, () =>
+        HttpResponse.json(MOCK_REGISTRO),
+      ),
+      http.get(`${BASE}/api/v1/registro-farmacologico/:id/recetas`, () =>
+        HttpResponse.json([]),
+      ),
+      http.get(`${BASE}/api/v1/registro-farmacologico/:id/esquema`, () =>
+        HttpResponse.json([]),
+      ),
+      http.get(`${BASE}/api/v1/registro-farmacologico/:id/seguimiento`, () =>
+        HttpResponse.json(state.seguimientos),
+      ),
+      http.post(
+        `${BASE}/api/v1/registro-farmacologico/:id/seguimiento`,
+        async ({ request }) => {
+          const body = await request.json();
+          postSpy(body);
+          state.seguimientos = [MOCK_SEGUIMIENTO];
+          return HttpResponse.json(MOCK_SEGUIMIENTO, { status: 201 });
+        },
+      ),
+    );
+
+    const user = await setupPageWithPaciente();
+
+    await waitFor(
+      () => expect(screen.getByText("Dra. Carmen López")).toBeInTheDocument(),
+      { timeout: 3000 },
+    );
+
+    await waitFor(
+      () =>
+        expect(
+          screen.getByText(/Sin seguimientos registrados/i),
+        ).toBeInTheDocument(),
+      { timeout: 3000 },
+    );
+
+    // Open dialog
+    await user.click(screen.getByRole("button", { name: /Agregar seguimiento/i }));
+    await screen.findByRole("dialog");
+
+    // Check "Cambio de esquema" and type text in detalle_cambio
+    await user.click(
+      screen.getByRole("checkbox", { name: /Cambio de esquema/i }),
+    );
+    await user.type(
+      screen.getByLabelText(/Detalle del cambio/i),
+      "texto que debería ser descartado",
+    );
+
+    // Now UNCHECK "Cambio de esquema" — detail text remains in the field
+    await user.click(
+      screen.getByRole("checkbox", { name: /Cambio de esquema/i }),
+    );
+
+    // Fill observaciones so the form is otherwise valid
+    await user.type(
+      screen.getByLabelText(/Observaciones/i),
+      "Sin cambios al final",
+    );
+
+    // Submit
+    const dialog = screen.getByRole("dialog");
+    const submitBtn = dialog.querySelector(
+      'button[type="submit"]',
+    ) as HTMLElement;
+    await user.click(submitBtn);
+
+    await waitFor(() => {
+      expect(postSpy).toHaveBeenCalledOnce();
+    });
+
+    const sentBody = postSpy.mock.calls[0][0] as Record<string, unknown>;
+    expect(sentBody.cambio_esquema).toBe(false);
+    expect(sentBody.detalle_cambio).toBeNull();
+  });
+
+  it("disminucion_farmacos desmarcado → plan_disminucion enviado como null aunque se haya escrito texto", async () => {
+    const postSpy = vi.fn();
+    const state = { seguimientos: [] as SeguimTratamientoRead[] };
+
+    server.use(
+      http.get(`${BASE}/api/v1/pacientes/buscar`, () =>
+        HttpResponse.json([MOCK_PACIENTE]),
+      ),
+      http.get(`${BASE}/api/v1/pacientes/:id/vista-360`, () =>
+        HttpResponse.json(MOCK_VISTA_360),
+      ),
+      http.get(`${BASE}/api/v1/registro-farmacologico/:id`, () =>
+        HttpResponse.json(MOCK_REGISTRO),
+      ),
+      http.get(`${BASE}/api/v1/registro-farmacologico/:id/recetas`, () =>
+        HttpResponse.json([]),
+      ),
+      http.get(`${BASE}/api/v1/registro-farmacologico/:id/esquema`, () =>
+        HttpResponse.json([]),
+      ),
+      http.get(`${BASE}/api/v1/registro-farmacologico/:id/seguimiento`, () =>
+        HttpResponse.json(state.seguimientos),
+      ),
+      http.post(
+        `${BASE}/api/v1/registro-farmacologico/:id/seguimiento`,
+        async ({ request }) => {
+          const body = await request.json();
+          postSpy(body);
+          state.seguimientos = [MOCK_SEGUIMIENTO];
+          return HttpResponse.json(MOCK_SEGUIMIENTO, { status: 201 });
+        },
+      ),
+    );
+
+    const user = await setupPageWithPaciente();
+
+    await waitFor(
+      () => expect(screen.getByText("Dra. Carmen López")).toBeInTheDocument(),
+      { timeout: 3000 },
+    );
+
+    await waitFor(
+      () =>
+        expect(
+          screen.getByText(/Sin seguimientos registrados/i),
+        ).toBeInTheDocument(),
+      { timeout: 3000 },
+    );
+
+    // Open dialog
+    await user.click(screen.getByRole("button", { name: /Agregar seguimiento/i }));
+    await screen.findByRole("dialog");
+
+    // Check "Disminución de fármacos" and type text in plan_disminucion
+    await user.click(
+      screen.getByRole("checkbox", { name: /Disminución de fármacos/i }),
+    );
+    await user.type(
+      screen.getByLabelText(/Plan de disminución/i),
+      "texto que debería ser descartado",
+    );
+
+    // Now UNCHECK "Disminución de fármacos"
+    await user.click(
+      screen.getByRole("checkbox", { name: /Disminución de fármacos/i }),
+    );
+
+    // Fill observaciones so the form is otherwise valid
+    await user.type(
+      screen.getByLabelText(/Observaciones/i),
+      "Sin cambios al final",
+    );
+
+    // Submit
+    const dialog = screen.getByRole("dialog");
+    const submitBtn = dialog.querySelector(
+      'button[type="submit"]',
+    ) as HTMLElement;
+    await user.click(submitBtn);
+
+    await waitFor(() => {
+      expect(postSpy).toHaveBeenCalledOnce();
+    });
+
+    const sentBody = postSpy.mock.calls[0][0] as Record<string, unknown>;
+    expect(sentBody.disminucion_farmacos).toBe(false);
+    expect(sentBody.plan_disminucion).toBeNull();
+  });
+});
+
 // ── 6. RBAC ──────────────────────────────────────────────────────────────────
 
 describe("RBAC — Auditor no ve acciones de escritura", () => {
