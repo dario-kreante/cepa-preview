@@ -72,7 +72,7 @@ const MOCK_REGISTRO = {
   id: 1,
   ingreso_id: 10,
   medico_tratante: "Dra. Carmen López",
-  estado_farmacologico: "en_tratamiento",
+  estado_farmacologico: "activo",
   antecedentes_previos: "Hipertensión arterial",
   tratamiento_previo: "Enalapril 10mg",
 };
@@ -170,7 +170,7 @@ describe("FarmacosPage", () => {
     );
 
     // Registro estado badge
-    expect(screen.getByText("En tratamiento")).toBeInTheDocument();
+    expect(screen.getByText("Activo")).toBeInTheDocument();
 
     // Receta row with marca_medicamento (also appears in the filter <option>)
     const marcaElements = screen.getAllByText("Losartán 50mg");

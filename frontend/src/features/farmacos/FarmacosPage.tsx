@@ -13,6 +13,7 @@ import type { RecetaRead } from "./api";
 import type { components } from "@/types/api";
 
 type PacienteRead = components["schemas"]["PacienteRead"];
+type EstadoFarmacologico = components["schemas"]["EstadoFarmacologico"];
 
 // ── Date helpers ─────────────────────────────────────────────────────────────
 
@@ -20,11 +21,10 @@ type PacienteRead = components["schemas"]["PacienteRead"];
  * Derive receta status from fecha_revision vs today.
  * 5-day window mirrors the backend alert rule.
  */
-function recetaStatusInfo(fechaRevision: string | null): {
+function recetaStatusInfo(fechaRevision: string): {
   label: string;
   variant: "destructive" | "warning" | "success";
 } {
-  if (!fechaRevision) return { label: "Sin revisión", variant: "warning" };
   // Compare yyyy-mm-dd strings directly (lexicographic == chronological for ISO dates)
   const todayStr = new Date().toISOString().split("T")[0];
   const in5Days = new Date();
@@ -49,7 +49,7 @@ function Th({ children }: { children: React.ReactNode }) {
 // ── Receta row ───────────────────────────────────────────────────────────────
 
 function RecetaRow({ receta }: { receta: RecetaRead }) {
-  const status = recetaStatusInfo(receta.fecha_revision ?? null);
+  const status = recetaStatusInfo(receta.fecha_revision);
   return (
     <tr className="border-b hover:bg-muted/40 transition-colors">
       {/* Fármaco / marca */}
@@ -131,11 +131,11 @@ function RegistroPanel({
     );
   }
 
-  const ESTADO_LABELS: Record<string, string> = {
-    sin_tratamiento: "Sin tratamiento",
-    en_tratamiento: "En tratamiento",
+  const ESTADO_LABELS: Record<EstadoFarmacologico, string> = {
+    activo: "Activo",
     suspendido: "Suspendido",
-    finalizado: "Finalizado",
+    completado: "Completado",
+    pendiente: "Pendiente",
   };
 
   return (
@@ -198,7 +198,7 @@ function RecetasPanel({
   ).sort() as string[];
 
   const filtered = recetas.filter((r) => {
-    const status = recetaStatusInfo(r.fecha_revision ?? null).label;
+    const status = recetaStatusInfo(r.fecha_revision).label;
     if (statusFilter !== "Todos" && status !== statusFilter) return false;
     if (marcaFilter !== "Todas" && r.marca_medicamento !== marcaFilter) return false;
     return true;
@@ -232,7 +232,6 @@ function RecetasPanel({
               <option value="Vigente">Vigente</option>
               <option value="Por vencer">Por vencer</option>
               <option value="Vencida">Vencida</option>
-              <option value="Sin revisión">Sin revisión</option>
             </select>
             <ChevronRight className="absolute right-2 top-2.5 size-3.5 text-muted-foreground pointer-events-none rotate-90" />
           </div>
@@ -326,24 +325,18 @@ export function FarmacosPage() {
   const [inputQ, setInputQ] = useState("");
   const [q, setQ] = useState("");
 
+  // Selected paciente — cleared whenever the debounced query changes.
+  const [selectedPaciente, setSelectedPaciente] = useState<PacienteRead | null>(null);
+
   useEffect(() => {
-    const t = setTimeout(() => setInputQ((v) => {
-      setQ(v.trim());
-      return v;
-    }), 300);
+    const t = setTimeout(() => {
+      setQ(inputQ.trim());
+      setSelectedPaciente(null);
+    }, 300);
     return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [inputQ]);
 
   const { data: pacientes = [], isFetching } = useBuscarPacientes(q);
-
-  // Selected paciente
-  const [selectedPaciente, setSelectedPaciente] = useState<PacienteRead | null>(null);
-
-  // When query changes, clear selection
-  useEffect(() => {
-    setSelectedPaciente(null);
-  }, [q]);
 
   // Resolve ingreso_id via vista360 — same pattern as PatientSheet.tsx lines ~244-248
   const { data: vista, isLoading: vistaLoading } = useVista360(
@@ -354,10 +347,10 @@ export function FarmacosPage() {
   // Derive receta KPIs once we have data
   const { data: recetasForKpi = [] } = useRecetas(ingresoId ?? 0);
   const vencidas = recetasForKpi.filter(
-    (r) => recetaStatusInfo(r.fecha_revision ?? null).label === "Vencida"
+    (r) => recetaStatusInfo(r.fecha_revision).label === "Vencida"
   ).length;
   const porVencer = recetasForKpi.filter(
-    (r) => recetaStatusInfo(r.fecha_revision ?? null).label === "Por vencer"
+    (r) => recetaStatusInfo(r.fecha_revision).label === "Por vencer"
   ).length;
 
   const hasSearched = q.length > 0;
