@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Search, Plus, ChevronRight } from "lucide-react";
+import { Search, Plus, ChevronRight, Ban, Send } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +11,8 @@ import { puedeEscribir, type Rol } from "@/lib/rbac";
 import { useLicenciasPorFolio, useLicenciasDetalle } from "./hooks";
 import type { LicenciaReadSlim, LicenciaRead } from "./api";
 import { AltaLicenciaDialog } from "./AltaLicenciaDialog";
+import { AnularLicenciaDialog } from "./AnularLicenciaDialog";
+import { IslLicenciaDialog } from "./IslLicenciaDialog";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -85,11 +87,12 @@ function Th({ children }: { children: React.ReactNode }) {
 interface RowProps {
   slim: LicenciaReadSlim;
   full: LicenciaRead | undefined;
+  canWrite: boolean;
   onAnular: (row: LicenciaReadSlim) => void;
   onISL: (row: LicenciaReadSlim) => void;
 }
 
-function LicenciaRow({ slim, full, onAnular, onISL }: RowProps) {
+function LicenciaRow({ slim, full, canWrite, onAnular, onISL }: RowProps) {
   const vence = venceEnInfo(slim.fecha_termino, slim.anulada);
   const estado = estadoInfo(slim.fecha_termino, slim.anulada);
 
@@ -142,26 +145,29 @@ function LicenciaRow({ slim, full, onAnular, onISL }: RowProps) {
       <td className="px-4 py-3">
         <Badge variant={estado.variant}>{estado.label}</Badge>
       </td>
-      {/* Acciones — placeholders wired in Task 4 */}
+      {/* Acciones — writers only; anulled rows can't be re-anulled */}
       <td className="px-4 py-3">
-        <div className="flex items-center gap-1">
-          <button
-            disabled
-            onClick={() => onAnular(slim)}
-            className="h-7 px-2 text-[11.5px] rounded border border-transparent hover:border-border hover:bg-muted/40 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-muted-foreground"
-            title="Anular licencia (disponible en Task 4)"
-          >
-            Anular
-          </button>
-          <button
-            disabled
-            onClick={() => onISL(slim)}
-            className="h-7 px-2 text-[11.5px] rounded border border-transparent hover:border-border hover:bg-muted/40 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-muted-foreground"
-            title="Actualizar ISL (disponible en Task 4)"
-          >
-            ISL
-          </button>
-        </div>
+        {canWrite && (
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => onAnular(slim)}
+              disabled={slim.anulada}
+              className="h-7 w-7 flex items-center justify-center rounded border border-transparent hover:border-border hover:bg-destructive/10 hover:text-destructive disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-muted-foreground"
+              title={slim.anulada ? "Licencia ya anulada" : "Anular licencia"}
+              aria-label="Anular licencia"
+            >
+              <Ban className="size-3.5" />
+            </button>
+            <button
+              onClick={() => onISL(slim)}
+              className="h-7 w-7 flex items-center justify-center rounded border border-transparent hover:border-border hover:bg-muted/40 transition-colors text-muted-foreground"
+              title="Actualizar envío ISL"
+              aria-label="Actualizar ISL"
+            >
+              <Send className="size-3.5" />
+            </button>
+          </div>
+        )}
       </td>
     </tr>
   );
@@ -178,6 +184,8 @@ export function LicenciasPage() {
 
   // Dialog state
   const [altaOpen, setAltaOpen] = useState(false);
+  const [anularTarget, setAnularTarget] = useState<LicenciaReadSlim | null>(null);
+  const [islTarget, setIslTarget] = useState<LicenciaReadSlim | null>(null);
 
   // Filters (client-side over fetched rows)
   const [tipoFilter, setTipoFilter] = useState("Todos");
@@ -224,14 +232,11 @@ export function LicenciasPage() {
     return true;
   });
 
-  // Placeholder no-op handlers (wired in Task 4)
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  function handleAnular(_row: LicenciaReadSlim) {
-    // Task 4: open anular dialog
+  function handleAnular(row: LicenciaReadSlim) {
+    setAnularTarget(row);
   }
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  function handleISL(_row: LicenciaReadSlim) {
-    // Task 4: open ISL update dialog
+  function handleISL(row: LicenciaReadSlim) {
+    setIslTarget(row);
   }
 
   const hasSearched = folio.length > 0;
@@ -354,6 +359,26 @@ export function LicenciasPage() {
         />
       )}
 
+      {/* Anular dialog — writers only; mounted when a row is targeted */}
+      {puedeCrear && anularTarget && (
+        <AnularLicenciaDialog
+          licenciaId={anularTarget.id}
+          folio={folio}
+          open={anularTarget != null}
+          onOpenChange={(open) => { if (!open) setAnularTarget(null); }}
+        />
+      )}
+
+      {/* ISL dialog — writers only; mounted when a row is targeted */}
+      {puedeCrear && islTarget && (
+        <IslLicenciaDialog
+          licenciaId={islTarget.id}
+          folio={folio}
+          open={islTarget != null}
+          onOpenChange={(open) => { if (!open) setIslTarget(null); }}
+        />
+      )}
+
       {/* Table */}
       {!isFetching && filtered.length > 0 && (
         <>
@@ -380,6 +405,7 @@ export function LicenciasPage() {
                       key={slim.id}
                       slim={slim}
                       full={full}
+                      canWrite={puedeCrear}
                       onAnular={handleAnular}
                       onISL={handleISL}
                     />
