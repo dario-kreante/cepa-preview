@@ -11,6 +11,11 @@ import { useBuscarPacientes, useVista360 } from "@/features/ingresos/hooks";
 import { useControlesPorIngreso } from "./hooks";
 import { NuevoControlDialog } from "./NuevoControlDialog";
 import { ProximoControlDialog } from "./ProximoControlDialog";
+import {
+  LicenciaControlDialog,
+  ESTADO_RECA_LABELS,
+  TIPO_REPOSO_LABELS,
+} from "./LicenciaControlDialog";
 import type { ControlMedicoRead, EstadoReca, TipoReposo } from "./api";
 import type { components } from "@/types/api";
 
@@ -20,21 +25,8 @@ type PacienteRead = components["schemas"]["PacienteRead"];
 // GET /api/v1/controles-medicos/por-ingreso/{ingreso_id}, so filters are
 // ingreso-scoped (client-side only). There is also NO reca_fecha in the
 // ControlMedicoRead contract (only estado_reca) — known backend gaps.
-
-// ── Friendly label maps (exhaustive) ────────────────────────────────────────
-
-const ESTADO_RECA_LABELS: Record<EstadoReca, string> = {
-  pendiente: "Pendiente",
-  aprobado: "Aprobado",
-  rechazado: "Rechazado",
-  en_proceso: "En proceso",
-  no_aplica: "No aplica",
-};
-
-const TIPO_REPOSO_LABELS: Record<TipoReposo, string> = {
-  total: "Total",
-  parcial: "Parcial",
-};
+//
+// Label maps are imported from LicenciaControlDialog (single source of truth).
 
 // ── Sub-components ───────────────────────────────────────────────────────────
 
@@ -54,6 +46,7 @@ interface ControlRowProps {
 
 function ControlRow({ control, ingresoId, canWrite }: ControlRowProps) {
   const [proximoOpen, setProximoOpen] = useState(false);
+  const [licenciaOpen, setLicenciaOpen] = useState(false);
 
   return (
     <>
@@ -145,27 +138,47 @@ function ControlRow({ control, ingresoId, canWrite }: ControlRowProps) {
         {/* Acciones (writers only) */}
         {canWrite && (
           <td className="px-4 py-3">
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-7 text-[11.5px] px-2"
-              aria-label="Próximo control"
-              data-testid={`btn-proximo-control-${control.id}`}
-              onClick={() => setProximoOpen(true)}
-            >
-              Próximo control
-            </Button>
+            <div className="flex items-center gap-1.5">
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-[11.5px] px-2"
+                aria-label="Próximo control"
+                data-testid={`btn-proximo-control-${control.id}`}
+                onClick={() => setProximoOpen(true)}
+              >
+                Próximo control
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-[11.5px] px-2"
+                aria-label="Licencia/RECA"
+                data-testid={`btn-licencia-reca-${control.id}`}
+                onClick={() => setLicenciaOpen(true)}
+              >
+                Licencia/RECA
+              </Button>
+            </div>
           </td>
         )}
       </tr>
 
       {canWrite && (
-        <ProximoControlDialog
-          control={control}
-          ingresoId={ingresoId}
-          open={proximoOpen}
-          onOpenChange={setProximoOpen}
-        />
+        <>
+          <ProximoControlDialog
+            control={control}
+            ingresoId={ingresoId}
+            open={proximoOpen}
+            onOpenChange={setProximoOpen}
+          />
+          <LicenciaControlDialog
+            control={control}
+            ingresoId={ingresoId}
+            open={licenciaOpen}
+            onOpenChange={setLicenciaOpen}
+          />
+        </>
       )}
     </>
   );
