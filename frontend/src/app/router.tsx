@@ -7,6 +7,7 @@ import { IngresosListaPage } from "@/features/ingresos/IngresosListaPage";
 import { AltaIngresoPage } from "@/features/ingresos/AltaIngresoPage";
 import { LicenciasPage } from "@/features/licencias/LicenciasPage";
 import { FarmacosPage } from "@/features/farmacos/FarmacosPage";
+import { ControlesPage } from "@/features/controles/ControlesPage";
 import { ProximamentePage } from "@/features/_placeholder/ProximamentePage";
 
 export function ProtectedRoute({ rolesEscritura }: { rolesEscritura?: boolean }) {
@@ -30,7 +31,7 @@ export function AppRoutes() {
           </Route>
           <Route path="/licencias" element={<LicenciasPage />} />
           <Route path="/farmacos" element={<FarmacosPage />} />
-          <Route path="/controles" element={<ProximamentePage titulo="Controles médicos" />} />
+          <Route path="/controles" element={<ControlesPage />} />
           <Route path="/ept" element={<ProximamentePage titulo="Seguimiento EPT" />} />
           <Route path="/reintegro" element={<ProximamentePage titulo="Seguimiento reintegro" />} />
           <Route path="/auditoria" element={<ProximamentePage titulo="Auditoría" />} />
