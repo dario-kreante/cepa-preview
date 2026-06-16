@@ -10,6 +10,7 @@ import { puedeEscribir, type Rol } from "@/lib/rbac";
 import { useBuscarPacientes, useVista360 } from "@/features/ingresos/hooks";
 import { useControlesPorIngreso } from "./hooks";
 import { NuevoControlDialog } from "./NuevoControlDialog";
+import { ProximoControlDialog } from "./ProximoControlDialog";
 import type { ControlMedicoRead, EstadoReca, TipoReposo } from "./api";
 import type { components } from "@/types/api";
 
@@ -45,99 +46,139 @@ function Th({ children }: { children: React.ReactNode }) {
   );
 }
 
-function ControlRow({ control }: { control: ControlMedicoRead }) {
+interface ControlRowProps {
+  control: ControlMedicoRead;
+  ingresoId: number;
+  canWrite: boolean;
+}
+
+function ControlRow({ control, ingresoId, canWrite }: ControlRowProps) {
+  const [proximoOpen, setProximoOpen] = useState(false);
+
   return (
-    <tr className="border-b hover:bg-muted/40 transition-colors">
-      {/* Fecha control */}
-      <td className="px-4 py-3 font-mono text-[12px] text-muted-foreground">
-        {fmtDate(control.fecha_control)}
-      </td>
+    <>
+      <tr className="border-b hover:bg-muted/40 transition-colors">
+        {/* Fecha control */}
+        <td className="px-4 py-3 font-mono text-[12px] text-muted-foreground">
+          {fmtDate(control.fecha_control)}
+        </td>
 
-      {/* Próximo control */}
-      <td className="px-4 py-3">
-        <div className="flex items-center gap-1.5">
-          <span className="font-mono text-[12px] text-muted-foreground">
-            {control.proximo_control ? fmtDate(control.proximo_control) : "—"}
-          </span>
-          {control.proximo_agendado && (
-            <Badge variant="success" className="gap-1">
-              <CalendarCheck className="size-2.5" />
-              Agendado
-            </Badge>
-          )}
-        </div>
-      </td>
-
-      {/* Semana */}
-      <td className="px-4 py-3 text-[13px] font-medium">
-        {control.semana_control}
-      </td>
-
-      {/* Días LM */}
-      <td className="px-4 py-3 text-[13px] text-muted-foreground">
-        {control.total_dias_lm ?? "—"}
-      </td>
-
-      {/* Reposo */}
-      <td className="px-4 py-3">
-        {control.tipo_reposo ? (
-          <Badge variant={control.tipo_reposo === "total" ? "info" : "warning"}>
-            {TIPO_REPOSO_LABELS[control.tipo_reposo]}
-          </Badge>
-        ) : (
-          <span className="text-[13px] text-muted-foreground">—</span>
-        )}
-      </td>
-
-      {/* GAF — mini horizontal bar 0-100 */}
-      <td className="px-4 py-3">
-        {control.gaf != null ? (
-          <div className="flex items-center gap-2">
-            <div className="w-16 h-1.5 rounded-full bg-muted overflow-hidden">
-              <div
-                className="h-full rounded-full bg-primary"
-                style={{ width: `${Math.max(0, Math.min(100, control.gaf))}%` }}
-              />
-            </div>
-            <span className="text-[12px] font-mono text-muted-foreground">
-              {control.gaf}
+        {/* Próximo control */}
+        <td className="px-4 py-3">
+          <div className="flex items-center gap-1.5">
+            <span className="font-mono text-[12px] text-muted-foreground">
+              {control.proximo_control ? fmtDate(control.proximo_control) : "—"}
             </span>
+            {control.proximo_agendado && (
+              <Badge variant="success" className="gap-1">
+                <CalendarCheck className="size-2.5" />
+                Agendado
+              </Badge>
+            )}
           </div>
-        ) : (
-          <span className="text-[13px] text-muted-foreground">—</span>
-        )}
-      </td>
+        </td>
 
-      {/* RECA */}
-      <td className="px-4 py-3">
-        {control.estado_reca ? (
-          <Badge
-            variant={
-              control.estado_reca === "aprobado"
-                ? "success"
-                : control.estado_reca === "rechazado"
-                ? "destructive"
-                : control.estado_reca === "en_proceso"
-                ? "info"
-                : "neutral"
-            }
-          >
-            {ESTADO_RECA_LABELS[control.estado_reca]}
-          </Badge>
-        ) : (
-          <span className="text-[13px] text-muted-foreground">—</span>
-        )}
-      </td>
+        {/* Semana */}
+        <td className="px-4 py-3 text-[13px] font-medium">
+          {control.semana_control}
+        </td>
 
-      {/* Médico */}
-      <td className="px-4 py-3 text-[12.5px]">{control.medico_tratante}</td>
-    </tr>
+        {/* Días LM */}
+        <td className="px-4 py-3 text-[13px] text-muted-foreground">
+          {control.total_dias_lm ?? "—"}
+        </td>
+
+        {/* Reposo */}
+        <td className="px-4 py-3">
+          {control.tipo_reposo ? (
+            <Badge variant={control.tipo_reposo === "total" ? "info" : "warning"}>
+              {TIPO_REPOSO_LABELS[control.tipo_reposo]}
+            </Badge>
+          ) : (
+            <span className="text-[13px] text-muted-foreground">—</span>
+          )}
+        </td>
+
+        {/* GAF — mini horizontal bar 0-100 */}
+        <td className="px-4 py-3">
+          {control.gaf != null ? (
+            <div className="flex items-center gap-2">
+              <div className="w-16 h-1.5 rounded-full bg-muted overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-primary"
+                  style={{ width: `${Math.max(0, Math.min(100, control.gaf))}%` }}
+                />
+              </div>
+              <span className="text-[12px] font-mono text-muted-foreground">
+                {control.gaf}
+              </span>
+            </div>
+          ) : (
+            <span className="text-[13px] text-muted-foreground">—</span>
+          )}
+        </td>
+
+        {/* RECA */}
+        <td className="px-4 py-3">
+          {control.estado_reca ? (
+            <Badge
+              variant={
+                control.estado_reca === "aprobado"
+                  ? "success"
+                  : control.estado_reca === "rechazado"
+                  ? "destructive"
+                  : control.estado_reca === "en_proceso"
+                  ? "info"
+                  : "neutral"
+              }
+            >
+              {ESTADO_RECA_LABELS[control.estado_reca]}
+            </Badge>
+          ) : (
+            <span className="text-[13px] text-muted-foreground">—</span>
+          )}
+        </td>
+
+        {/* Médico */}
+        <td className="px-4 py-3 text-[12.5px]">{control.medico_tratante}</td>
+
+        {/* Acciones (writers only) */}
+        {canWrite && (
+          <td className="px-4 py-3">
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 text-[11.5px] px-2"
+              aria-label="Próximo control"
+              data-testid={`btn-proximo-control-${control.id}`}
+              onClick={() => setProximoOpen(true)}
+            >
+              Próximo control
+            </Button>
+          </td>
+        )}
+      </tr>
+
+      {canWrite && (
+        <ProximoControlDialog
+          control={control}
+          ingresoId={ingresoId}
+          open={proximoOpen}
+          onOpenChange={setProximoOpen}
+        />
+      )}
+    </>
   );
 }
 
 // ── Controles panel ──────────────────────────────────────────────────────────
 
-function ControlesPanel({ ingresoId }: { ingresoId: number }) {
+interface ControlesPanelProps {
+  ingresoId: number;
+  canWrite: boolean;
+}
+
+function ControlesPanel({ ingresoId, canWrite }: ControlesPanelProps) {
   const {
     data: controles = [],
     isLoading,
@@ -258,20 +299,28 @@ function ControlesPanel({ ingresoId }: { ingresoId: number }) {
                   <Th>GAF</Th>
                   <Th>RECA</Th>
                   <Th>Médico</Th>
+                  {canWrite && <Th>Acciones</Th>}
                 </tr>
               </thead>
               <tbody>
                 {filtered.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={8}
+                      colSpan={canWrite ? 9 : 8}
                       className="px-4 py-8 text-center text-[13px] text-muted-foreground"
                     >
                       Sin controles para los filtros seleccionados.
                     </td>
                   </tr>
                 ) : (
-                  filtered.map((c) => <ControlRow key={c.id} control={c} />)
+                  filtered.map((c) => (
+                    <ControlRow
+                      key={c.id}
+                      control={c}
+                      ingresoId={ingresoId}
+                      canWrite={canWrite}
+                    />
+                  ))
                 )}
               </tbody>
             </table>
@@ -468,7 +517,7 @@ export function ControlesPage() {
               <h2 className="text-[14px] font-semibold px-0.5">
                 Controles médicos
               </h2>
-              <ControlesPanel ingresoId={ingresoId} />
+              <ControlesPanel ingresoId={ingresoId} canWrite={canWrite} />
             </div>
           )}
         </div>
