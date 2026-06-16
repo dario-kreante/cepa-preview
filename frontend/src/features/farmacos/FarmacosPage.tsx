@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Search, Plus, Pill, ChevronRight } from "lucide-react";
+import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,8 +9,9 @@ import { cn, fmtDate } from "@/lib/utils";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { puedeEscribir, type Rol } from "@/lib/rbac";
 import { useBuscarPacientes, useVista360 } from "@/features/ingresos/hooks";
-import { useRegistro, useRecetas } from "./hooks";
+import { useRegistro, useRecetas, useGenerarAlertasRevision } from "./hooks";
 import { EsquemaPanel } from "./EsquemaPanel";
+import { SeguimientoPanel } from "./SeguimientoPanel";
 import { CrearRegistroDialog } from "./CrearRegistroDialog";
 import { NuevaRecetaDialog } from "./NuevaRecetaDialog";
 import { ESTADO_LABELS } from "./registroSchema";
@@ -313,6 +315,9 @@ export function FarmacosPage() {
   // Dialog state — "Nueva receta" header button
   const [nuevaRecetaOpen, setNuevaRecetaOpen] = useState(false);
 
+  // "Generar alertas de revisión" mutation
+  const generarAlertasMutation = useGenerarAlertasRevision();
+
   // Search state — 300ms debounce (mirrors IngresosListaPage)
   const [inputQ, setInputQ] = useState("");
   const [q, setQ] = useState("");
@@ -367,17 +372,45 @@ export function FarmacosPage() {
               : "Busca un paciente para ver su historial de fármacos."}
           </p>
         </div>
-        {/* "Nueva receta" — hidden for Auditor; enabled when registro exists */}
+        {/* Header action buttons — writers only */}
         {canWrite && (
-          <Button
-            size="sm"
-            aria-label="Nueva receta"
-            data-testid="btn-nueva-receta"
-            disabled={!ingresoId || !registroForPage}
-            onClick={() => setNuevaRecetaOpen(true)}
-          >
-            <Plus /> Nueva receta
-          </Button>
+          <div className="flex items-center gap-2">
+            {/* "Generar alertas de revisión" — global action, no registro requirement */}
+            <Button
+              size="sm"
+              variant="outline"
+              aria-label="Generar alertas de revisión"
+              data-testid="btn-generar-alertas"
+              disabled={generarAlertasMutation.isPending}
+              onClick={async () => {
+                try {
+                  const alertas = await generarAlertasMutation.mutateAsync();
+                  toast.success(
+                    `${alertas.length} alerta${alertas.length !== 1 ? "s" : ""} de revisión generada${alertas.length !== 1 ? "s" : ""}`,
+                  );
+                } catch (err) {
+                  const msg =
+                    err instanceof Error
+                      ? err.message
+                      : "Error al generar alertas de revisión";
+                  toast.error(msg);
+                }
+              }}
+            >
+              {generarAlertasMutation.isPending ? "Generando…" : "Generar alertas de revisión"}
+            </Button>
+
+            {/* "Nueva receta" — hidden for Auditor; enabled when registro exists */}
+            <Button
+              size="sm"
+              aria-label="Nueva receta"
+              data-testid="btn-nueva-receta"
+              disabled={!ingresoId || !registroForPage}
+              onClick={() => setNuevaRecetaOpen(true)}
+            >
+              <Plus /> Nueva receta
+            </Button>
+          </div>
         )}
         {canWrite && ingresoId && registroForPage && (
           <NuevaRecetaDialog
@@ -496,6 +529,11 @@ export function FarmacosPage() {
                 <h2 className="text-[14px] font-semibold px-0.5">Recetas</h2>
                 <RecetasPanel ingresoId={ingresoId} />
               </div>
+              <SeguimientoPanel
+                ingresoId={ingresoId}
+                registro={registroForPage}
+                canWrite={canWrite}
+              />
             </>
           )}
         </div>

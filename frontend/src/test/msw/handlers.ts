@@ -9,4 +9,10 @@ export const handlers = [
     `${BASE}/api/v1/registro-farmacologico/:ingreso_id/esquema`,
     () => HttpResponse.json([]),
   ),
+  // Default handler for the seguimiento endpoint — returns empty list.
+  // Individual tests can override via server.use().
+  http.get(
+    `${BASE}/api/v1/registro-farmacologico/:ingreso_id/seguimiento`,
+    () => HttpResponse.json([]),
+  ),
 ];
