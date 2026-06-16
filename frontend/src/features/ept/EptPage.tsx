@@ -282,7 +282,8 @@ export function EptPage() {
   const [casoIdInput, setCasoIdInput] = useState("");
   const [casoId, setCasoId] = useState<number | null>(() => {
     const param = searchParams.get("caso");
-    return param ? parseInt(param, 10) : null;
+    const n = param ? parseInt(param, 10) : NaN;
+    return Number.isInteger(n) && n > 0 ? n : null;
   });
 
   // ── Active caso (set by create OR load) ────────────────────────────────
