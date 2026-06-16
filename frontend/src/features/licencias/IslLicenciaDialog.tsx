@@ -16,6 +16,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -105,9 +106,9 @@ export function IslLicenciaDialog({ licenciaId, folio, open, onOpenChange }: Pro
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Actualizar envío ISL</DialogTitle>
-          <p className="text-[12.5px] text-muted-foreground">
+          <DialogDescription className="text-[12.5px]">
             Registra el estado de envío al ISL para esta licencia.
-          </p>
+          </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 py-2">

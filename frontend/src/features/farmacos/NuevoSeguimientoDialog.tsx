@@ -14,6 +14,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -88,9 +89,9 @@ export function NuevoSeguimientoDialog({ ingresoId, open, onOpenChange }: Props)
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>Nuevo seguimiento de tratamiento</DialogTitle>
-          <p className="text-[12.5px] text-muted-foreground">
+          <DialogDescription className="text-[12.5px]">
             Registra el estado del tratamiento farmacológico del ingreso.
-          </p>
+          </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 py-2">

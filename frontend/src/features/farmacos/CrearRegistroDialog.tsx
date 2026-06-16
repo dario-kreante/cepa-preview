@@ -15,6 +15,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -87,9 +88,9 @@ export function CrearRegistroDialog({ ingresoId, open, onOpenChange }: Props) {
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>Crear registro farmacológico</DialogTitle>
-          <p className="text-[12.5px] text-muted-foreground">
+          <DialogDescription className="text-[12.5px]">
             Se creará un nuevo registro farmacológico para este ingreso.
-          </p>
+          </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 py-2">

@@ -14,6 +14,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -80,9 +81,9 @@ export function NuevaRecetaDialog({ ingresoId, open, onOpenChange }: Props) {
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>Nueva receta</DialogTitle>
-          <p className="text-[12.5px] text-muted-foreground">
+          <DialogDescription className="text-[12.5px]">
             La receta se asociará al registro farmacológico del ingreso.
-          </p>
+          </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 py-2">

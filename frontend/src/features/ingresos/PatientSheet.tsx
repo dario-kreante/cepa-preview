@@ -1,4 +1,4 @@
-import { Sheet, SheetContent, SheetTitle } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetTitle, SheetDescription } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -320,6 +320,9 @@ export function PatientSheet({ pacienteId, open, onOpenChange }: PatientSheetPro
               )}
             </div>
           </SheetTitle>
+          <SheetDescription className="sr-only">
+            Ficha del paciente: datos, ingresos, licencias y seguimiento.
+          </SheetDescription>
 
           {/* Action buttons — only for writers */}
           {canWrite && vista && (

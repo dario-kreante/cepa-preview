@@ -11,6 +11,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -47,9 +48,9 @@ export function AnularLicenciaDialog({ licenciaId, folio, open, onOpenChange }: 
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Anular licencia</DialogTitle>
-          <p className="text-[12.5px] text-muted-foreground">
+          <DialogDescription className="text-[12.5px]">
             Esta acción es irreversible. Debes justificar la anulación.
-          </p>
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3 py-2">

@@ -15,6 +15,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -91,9 +92,9 @@ export function AgregarIndicacionDialog({ ingresoId, open, onOpenChange }: Props
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>Agregar indicación</DialogTitle>
-          <p className="text-[12.5px] text-muted-foreground">
+          <DialogDescription className="text-[12.5px]">
             La indicación se agregará al esquema farmacológico del ingreso.
-          </p>
+          </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 py-2">

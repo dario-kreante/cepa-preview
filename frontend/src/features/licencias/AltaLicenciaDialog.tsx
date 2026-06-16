@@ -24,6 +24,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -119,7 +120,7 @@ export function AltaLicenciaDialog({ folio, ingresoId, open, onOpenChange }: Pro
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Nueva licencia médica</DialogTitle>
-          <p className="text-[12.5px] text-muted-foreground">Folio: {folio}</p>
+          <DialogDescription className="text-[12.5px]">Folio: {folio}</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 py-2">
