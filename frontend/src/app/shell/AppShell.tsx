@@ -1,41 +1,65 @@
-import { Link, NavLink, Outlet } from "react-router-dom";
-import { useAuth } from "@/lib/auth/AuthContext";
-import { puedeEscribir, type Rol } from "@/lib/rbac";
-import { NAV } from "./nav";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { useState } from "react";
+import { Outlet } from "react-router-dom";
+import { Sidebar } from "@/components/shell/Sidebar";
+import { Topbar } from "@/components/shell/Topbar";
+import { AlertsPanel } from "@/components/shell/AlertsPanel";
+import { useAlertas } from "@/features/alertas/hooks";
 
+/**
+ * AppShell — authenticated layout.
+ *
+ * Rendered inside ProtectedRoute, so we can safely use useAuth() in child
+ * components. Manages sidebar collapse + alerts panel visibility.
+ *
+ * Badge computation:
+ *   - "licencias" badge = alertas pendientes cuyo tipo contiene "licencia"
+ *   - "ept"       badge = alertas pendientes cuyo caso_tipo == "ept"
+ *   - críticas count    = alertas with estado == "pendiente"
+ */
 export function AppShell() {
-  const { rol, username, logout } = useAuth();
-  const escritor = puedeEscribir(rol as Rol);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [alertsVisible, setAlertsVisible] = useState(true);
+
+  const { data: alertas = [] } = useAlertas();
+
+  // Compute sidebar badges from real alert data
+  const pendientes = alertas.filter((a) => a.estado === "pendiente");
+
+  const badges: Record<string, number> = {
+    licencias: pendientes.filter((a) =>
+      a.tipo.toLowerCase().includes("licencia"),
+    ).length,
+    ept: pendientes.filter(
+      (a) => a.caso_tipo?.toLowerCase() === "ept",
+    ).length,
+  };
+
+  // Critical count for Topbar pill
+  const alertasCriticas = pendientes.length;
+
   return (
-    <div className="min-h-screen grid grid-cols-[240px_1fr] bg-ink-50">
-      <aside className="border-r border-ink-200 bg-white p-4 space-y-1">
-        <div className="px-2 py-3 text-brand-700 font-semibold">Sistema CEPA</div>
-        {NAV.filter((n) => n.activo && (n.to !== "/ingresos/nuevo" || escritor)).map((n) => (
-          <NavLink key={n.to} to={n.to} end={n.to === "/"}
-            className={({ isActive }) => cn(
-              "block rounded-md px-3 py-2 text-sm",
-              isActive ? "bg-brand-50 text-brand-700 font-medium" : "text-ink-700 hover:bg-ink-100",
-            )}>
-            {n.label}
-          </NavLink>
-        ))}
-        <div className="pt-2 mt-2 border-t border-ink-200 text-xs text-ink-400">Próximamente</div>
-        {NAV.filter((n) => !n.activo).map((n) => (
-          <span key={n.to} className="block rounded-md px-3 py-2 text-sm text-ink-300 cursor-not-allowed">{n.label}</span>
-        ))}
-      </aside>
-      <div className="flex flex-col">
-        <header className="flex items-center justify-between border-b border-ink-200 bg-white px-6 py-3">
-          <Link to="/" className="text-sm text-ink-500">CEPA · UTalca</Link>
-          <div className="flex items-center gap-3 text-sm">
-            <span className="text-ink-500">{username} · {rol}</span>
-            <Button variant="outline" size="sm" onClick={logout}>Salir</Button>
+    <div className="h-screen w-screen flex overflow-hidden bg-background">
+      <Sidebar
+        collapsed={sidebarCollapsed}
+        onToggleCollapse={() => setSidebarCollapsed((v) => !v)}
+        badges={badges}
+      />
+
+      <div className="flex-1 flex flex-col min-w-0">
+        <Topbar
+          alertsVisible={alertsVisible}
+          onToggleAlerts={() => setAlertsVisible((v) => !v)}
+          alertasCriticas={alertasCriticas}
+        />
+
+        <main className="flex-1 overflow-y-auto bg-[oklch(0.985_0.003_195)]">
+          <div className="p-6 lg:p-8 max-w-[1600px] mx-auto">
+            <Outlet />
           </div>
-        </header>
-        <main className="p-6"><Outlet /></main>
+        </main>
       </div>
+
+      {alertsVisible && <AlertsPanel />}
     </div>
   );
 }
