@@ -9,6 +9,7 @@ import { useAuth } from "@/lib/auth/AuthContext";
 import { puedeEscribir, type Rol } from "@/lib/rbac";
 import { useBuscarPacientes, useVista360 } from "@/features/ingresos/hooks";
 import { useControlesPorIngreso } from "./hooks";
+import { NuevoControlDialog } from "./NuevoControlDialog";
 import type { ControlMedicoRead, EstadoReca, TipoReposo } from "./api";
 import type { components } from "@/types/api";
 
@@ -322,6 +323,9 @@ export function ControlesPage() {
 
   const hasSearched = q.length > 0;
 
+  // Dialog state — "Nuevo control"
+  const [dialogOpen, setDialogOpen] = useState(false);
+
   return (
     <div className="space-y-5">
       {/* ── Header ── */}
@@ -339,16 +343,27 @@ export function ControlesPage() {
           </p>
         </div>
 
-        {/* "Nuevo control" — hidden for Auditor */}
+        {/* "Nuevo control" — hidden for Auditor; enabled only when paciente + ingreso resolved */}
         {canWrite && (
-          <Button
-            size="sm"
-            aria-label="Nuevo control"
-            data-testid="btn-nuevo-control"
-            disabled
-          >
-            <Plus /> Nuevo control
-          </Button>
+          <>
+            <Button
+              size="sm"
+              aria-label="Nuevo control"
+              data-testid="btn-nuevo-control"
+              disabled={!ingresoId}
+              onClick={() => setDialogOpen(true)}
+            >
+              <Plus /> Nuevo control
+            </Button>
+
+            {ingresoId && (
+              <NuevoControlDialog
+                ingresoId={ingresoId}
+                open={dialogOpen}
+                onOpenChange={setDialogOpen}
+              />
+            )}
+          </>
         )}
       </div>
 
