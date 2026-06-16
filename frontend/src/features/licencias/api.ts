@@ -84,6 +84,16 @@ export async function actualizarISL(
   return data;
 }
 
+export async function getLicenciaDetalle(
+  licenciaId: number,
+): Promise<LicenciaRead> {
+  const { data, error } = await api.GET("/api/v1/licencias/{licencia_id}", {
+    params: { path: { licencia_id: licenciaId } },
+  });
+  if (error || !data) throw new Error("No se pudo obtener el detalle de la licencia");
+  return data;
+}
+
 export async function generarAlertasLicencias(): Promise<AlertaLicenciaRead[]> {
   // No requestBody on this endpoint
   const { data, error } = await api.POST("/api/v1/licencias/alertas/generar", {});

@@ -5,6 +5,7 @@ import { AppShell } from "./shell/AppShell";
 import { LoginPage } from "@/features/auth/LoginPage";
 import { IngresosListaPage } from "@/features/ingresos/IngresosListaPage";
 import { AltaIngresoPage } from "@/features/ingresos/AltaIngresoPage";
+import { LicenciasPage } from "@/features/licencias/LicenciasPage";
 import { ProximamentePage } from "@/features/_placeholder/ProximamentePage";
 
 export function ProtectedRoute({ rolesEscritura }: { rolesEscritura?: boolean }) {
@@ -26,7 +27,7 @@ export function AppRoutes() {
           <Route element={<ProtectedRoute rolesEscritura />}>
             <Route path="/ingresos/nuevo" element={<AltaIngresoPage />} />
           </Route>
-          <Route path="/licencias" element={<ProximamentePage titulo="Licencias médicas" />} />
+          <Route path="/licencias" element={<LicenciasPage />} />
           <Route path="/farmacos" element={<ProximamentePage titulo="Gestión de fármacos" />} />
           <Route path="/controles" element={<ProximamentePage titulo="Controles médicos" />} />
           <Route path="/ept" element={<ProximamentePage titulo="Seguimiento EPT" />} />

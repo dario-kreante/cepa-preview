@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   acumuladoPorIngreso,
   actualizarISL,
@@ -6,8 +6,10 @@ import {
   buscarLicenciasPorFolio,
   crearLicencia,
   generarAlertasLicencias,
+  getLicenciaDetalle,
   type LicenciaCreate,
   type LicenciaISLUpdate,
+  type LicenciaRead,
 } from "./api";
 
 export function useLicenciasPorFolio(folio: string) {
@@ -64,4 +66,21 @@ export function useGenerarAlertas() {
   return useMutation({
     mutationFn: () => generarAlertasLicencias(),
   });
+}
+
+/**
+ * Fetches full LicenciaRead for each id in the provided array.
+ * Returns an array of (data | undefined) in the same order.
+ * Strategy: the folio-slim historial lacks tipo_reposo/eeag_gaf/envio_isl/folio_lm.
+ * Per-row detail fetches are acceptable for small per-folio lists.
+ */
+export function useLicenciasDetalle(ids: number[]): Array<LicenciaRead | undefined> {
+  const results = useQueries({
+    queries: ids.map((id) => ({
+      queryKey: ["licencias", "detalle", id] as const,
+      queryFn: () => getLicenciaDetalle(id),
+      staleTime: 5 * 60 * 1000,
+    })),
+  });
+  return results.map((r) => r.data);
 }
