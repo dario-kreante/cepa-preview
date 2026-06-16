@@ -65,7 +65,7 @@ export async function crearRegistro(
       throw new Error("Datos inválidos. Revisa los campos.");
     throw new Error("No se pudo crear el registro farmacológico");
   }
-  return data as unknown as RegistroFarmacologicoRead;
+  return data;
 }
 
 /** PATCH /api/v1/registro-farmacologico/{ingreso_id} */
@@ -111,7 +111,7 @@ export async function agregarIndicacion(
   );
   if (error || !data)
     throw new Error("No se pudo agregar la indicación al esquema");
-  return data as unknown as EsquemaIndicacionRead;
+  return data;
 }
 
 /** GET /api/v1/registro-farmacologico/{ingreso_id}/recetas */
@@ -139,7 +139,7 @@ export async function crearReceta(
     },
   );
   if (error || !data) throw new Error("No se pudo crear la receta");
-  return data as unknown as RecetaRead;
+  return data;
 }
 
 /** GET /api/v1/registro-farmacologico/{ingreso_id}/seguimiento */
@@ -167,7 +167,7 @@ export async function crearSeguimiento(
     },
   );
   if (error || !data) throw new Error("No se pudo registrar el seguimiento");
-  return data as unknown as SeguimTratamientoRead;
+  return data;
 }
 
 /** POST /api/v1/registro-farmacologico/recetas/alertas/generar */
