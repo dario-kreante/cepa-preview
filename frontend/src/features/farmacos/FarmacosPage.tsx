@@ -9,6 +9,7 @@ import { useAuth } from "@/lib/auth/AuthContext";
 import { puedeEscribir, type Rol } from "@/lib/rbac";
 import { useBuscarPacientes, useVista360 } from "@/features/ingresos/hooks";
 import { useRegistro, useRecetas } from "./hooks";
+import { EsquemaPanel } from "./EsquemaPanel";
 import type { RecetaRead } from "./api";
 import type { components } from "@/types/api";
 
@@ -346,6 +347,10 @@ export function FarmacosPage() {
 
   // Derive receta KPIs once we have data
   const { data: recetasForKpi = [] } = useRecetas(ingresoId ?? 0);
+
+  // Registro — fetched here (in addition to RegistroPanel's own useRegistro) so we can
+  // pass `registro` to EsquemaPanel. React Query deduplicates the request via cache key.
+  const { data: registroForPage } = useRegistro(ingresoId ?? 0);
   const vencidas = recetasForKpi.filter(
     (r) => recetaStatusInfo(r.fecha_revision).label === "Vencida"
   ).length;
@@ -483,6 +488,11 @@ export function FarmacosPage() {
           {ingresoId && (
             <>
               <RegistroPanel ingresoId={ingresoId} canWrite={canWrite} />
+              <EsquemaPanel
+                ingresoId={ingresoId}
+                registro={registroForPage}
+                canWrite={canWrite}
+              />
               <div className="space-y-2">
                 <h2 className="text-[14px] font-semibold px-0.5">Recetas</h2>
                 <RecetasPanel ingresoId={ingresoId} canWrite={canWrite} />
