@@ -21,4 +21,10 @@ export const handlers = [
     `${BASE}/api/v1/casos-ept/:casoId/proceso`,
     () => new HttpResponse(null, { status: 404 }),
   ),
+  // Default handler for plazos EPT — returns 404 (no plazos yet).
+  // Individual tests can override via server.use().
+  http.get(
+    `${BASE}/api/v1/casos-ept/:casoId/plazos`,
+    () => new HttpResponse(null, { status: 404 }),
+  ),
 ];

@@ -36,6 +36,8 @@ import { useBuscarPacientes, useVista360 } from "@/features/ingresos/hooks";
 import { useCaso } from "./hooks";
 import { NuevoCasoEptDialog } from "./NuevoCasoEptDialog";
 import { ProcesoEptPanel } from "./ProcesoEptPanel";
+import { PlazosEptPanel } from "./PlazosEptPanel";
+import { ContactosEptPanel } from "./ContactosEptPanel";
 import { FACTOR_RIESGO_LABELS, type CasoEptForm } from "./casoEptSchema";
 import type { CasoEptRead, EstadoEpt, FactorRiesgo } from "./api";
 import type { components } from "@/types/api";
@@ -233,6 +235,8 @@ function CasoPanel({ casoId, canWrite, onCasoUpdated }: CasoPanelProps) {
         onEdit={() => setEditOpen(true)}
       />
       <ProcesoEptPanel casoId={casoId} canWrite={canWrite} />
+      <PlazosEptPanel casoId={casoId} canWrite={canWrite} />
+      <ContactosEptPanel casoId={casoId} canWrite={canWrite} />
       {canWrite && (
         <NuevoCasoEptDialog
           ingresoId={caso.ingreso_id}
