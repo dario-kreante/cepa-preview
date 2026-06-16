@@ -10,11 +10,13 @@ import { puedeEscribir, type Rol } from "@/lib/rbac";
 import { useBuscarPacientes, useVista360 } from "@/features/ingresos/hooks";
 import { useRegistro, useRecetas } from "./hooks";
 import { EsquemaPanel } from "./EsquemaPanel";
+import { CrearRegistroDialog } from "./CrearRegistroDialog";
+import { NuevaRecetaDialog } from "./NuevaRecetaDialog";
+import { ESTADO_LABELS } from "./registroSchema";
 import type { RecetaRead } from "./api";
 import type { components } from "@/types/api";
 
 type PacienteRead = components["schemas"]["PacienteRead"];
-type EstadoFarmacologico = components["schemas"]["EstadoFarmacologico"];
 
 // ── Date helpers ─────────────────────────────────────────────────────────────
 
@@ -94,6 +96,7 @@ function RegistroPanel({
   canWrite: boolean;
 }) {
   const { data: registro, isLoading, isError } = useRegistro(ingresoId);
+  const [crearOpen, setCrearOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -109,35 +112,37 @@ function RegistroPanel({
   }
   if (registro === null || registro === undefined) {
     return (
-      <Card className="p-5">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <p className="text-[13.5px] font-semibold">Sin registro farmacológico</p>
-            <p className="text-[12.5px] text-muted-foreground mt-0.5">
-              Este ingreso aún no tiene un registro farmacológico creado.
-            </p>
+      <>
+        <Card className="p-5">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-[13.5px] font-semibold">Sin registro farmacológico</p>
+              <p className="text-[12.5px] text-muted-foreground mt-0.5">
+                Este ingreso aún no tiene un registro farmacológico creado.
+              </p>
+            </div>
+            {canWrite && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setCrearOpen(true)}
+                aria-label="Crear registro farmacológico"
+              >
+                <Plus /> Crear registro
+              </Button>
+            )}
           </div>
-          {canWrite && (
-            <Button
-              size="sm"
-              variant="outline"
-              disabled
-              aria-label="Crear registro farmacológico"
-            >
-              <Plus /> Crear registro
-            </Button>
-          )}
-        </div>
-      </Card>
+        </Card>
+        {canWrite && (
+          <CrearRegistroDialog
+            ingresoId={ingresoId}
+            open={crearOpen}
+            onOpenChange={setCrearOpen}
+          />
+        )}
+      </>
     );
   }
-
-  const ESTADO_LABELS: Record<EstadoFarmacologico, string> = {
-    activo: "Activo",
-    suspendido: "Suspendido",
-    completado: "Completado",
-    pendiente: "Pendiente",
-  };
 
   return (
     <Card className="p-5 space-y-3">
@@ -181,13 +186,7 @@ function RegistroPanel({
 // The backend has no global receta list endpoint — cross-ingreso or cross-patient
 // receta queries are not supported. This is a known gap.
 
-function RecetasPanel({
-  ingresoId,
-  canWrite,
-}: {
-  ingresoId: number;
-  canWrite: boolean;
-}) {
+function RecetasPanel({ ingresoId }: { ingresoId: number }) {
   const { data: recetas = [], isLoading, isError } = useRecetas(ingresoId);
 
   // Filters — client-side over ingreso scope only
@@ -269,17 +268,6 @@ function RecetasPanel({
           <p className="text-[13.5px] text-muted-foreground">
             No hay recetas registradas para este ingreso.
           </p>
-          {canWrite && (
-            <Button
-              size="sm"
-              variant="outline"
-              className="mt-3"
-              disabled
-              aria-label="Nueva receta"
-            >
-              <Plus /> Nueva receta
-            </Button>
-          )}
         </div>
       ) : (
         <Card className="overflow-hidden p-0">
@@ -321,6 +309,9 @@ function RecetasPanel({
 export function FarmacosPage() {
   const { rol } = useAuth();
   const canWrite = puedeEscribir(rol as Rol);
+
+  // Dialog state — "Nueva receta" header button
+  const [nuevaRecetaOpen, setNuevaRecetaOpen] = useState(false);
 
   // Search state — 300ms debounce (mirrors IngresosListaPage)
   const [inputQ, setInputQ] = useState("");
@@ -376,16 +367,24 @@ export function FarmacosPage() {
               : "Busca un paciente para ver su historial de fármacos."}
           </p>
         </div>
-        {/* "Nueva receta" — hidden for Auditor; no-op (dialog comes in a later task) */}
+        {/* "Nueva receta" — hidden for Auditor; enabled when registro exists */}
         {canWrite && (
           <Button
             size="sm"
-            disabled
             aria-label="Nueva receta"
             data-testid="btn-nueva-receta"
+            disabled={!ingresoId || !registroForPage}
+            onClick={() => setNuevaRecetaOpen(true)}
           >
             <Plus /> Nueva receta
           </Button>
+        )}
+        {canWrite && ingresoId && registroForPage && (
+          <NuevaRecetaDialog
+            ingresoId={ingresoId}
+            open={nuevaRecetaOpen}
+            onOpenChange={setNuevaRecetaOpen}
+          />
         )}
       </div>
 
@@ -495,7 +494,7 @@ export function FarmacosPage() {
               />
               <div className="space-y-2">
                 <h2 className="text-[14px] font-semibold px-0.5">Recetas</h2>
-                <RecetasPanel ingresoId={ingresoId} canWrite={canWrite} />
+                <RecetasPanel ingresoId={ingresoId} />
               </div>
             </>
           )}
