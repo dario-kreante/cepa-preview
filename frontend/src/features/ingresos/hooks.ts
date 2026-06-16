@@ -1,5 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { buscarPacientes, crearIngreso, obtenerVista360, type IngresoCreate } from "./api";
+import {
+  buscarPacientes,
+  crearIngreso,
+  obtenerVista360,
+  obtenerLicenciasPorIngreso,
+  obtenerControlesPorIngreso,
+  obtenerRecetasPorIngreso,
+  type IngresoCreate,
+} from "./api";
 
 export function useBuscarPacientes(q: string) {
   return useQuery({
@@ -9,8 +17,36 @@ export function useBuscarPacientes(q: string) {
   });
 }
 
-export function useVista360(id: number) {
-  return useQuery({ queryKey: ["pacientes", id, "vista360"], queryFn: () => obtenerVista360(id) });
+export function useVista360(id: number | null) {
+  return useQuery({
+    queryKey: ["pacientes", id, "vista360"],
+    queryFn: () => obtenerVista360(id!),
+    enabled: id !== null,
+  });
+}
+
+export function useLicenciasPorIngreso(ingresoId: number | undefined) {
+  return useQuery({
+    queryKey: ["ingresos", ingresoId, "licencias"],
+    queryFn: () => obtenerLicenciasPorIngreso(ingresoId!),
+    enabled: ingresoId !== undefined,
+  });
+}
+
+export function useControlesPorIngreso(ingresoId: number | undefined) {
+  return useQuery({
+    queryKey: ["ingresos", ingresoId, "controles"],
+    queryFn: () => obtenerControlesPorIngreso(ingresoId!),
+    enabled: ingresoId !== undefined,
+  });
+}
+
+export function useRecetasPorIngreso(ingresoId: number | undefined) {
+  return useQuery({
+    queryKey: ["ingresos", ingresoId, "recetas"],
+    queryFn: () => obtenerRecetasPorIngreso(ingresoId!),
+    enabled: ingresoId !== undefined,
+  });
 }
 
 export function useCrearIngreso() {

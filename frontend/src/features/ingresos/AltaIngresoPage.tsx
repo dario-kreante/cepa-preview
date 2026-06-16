@@ -24,7 +24,7 @@ export function AltaIngresoPage() {
     try {
       const ingreso = await crear.mutateAsync(values as IngresoCreate);
       toast.success(`Ingreso creado · folio ${ingreso.folio}`);
-      nav(`/pacientes/${ingreso.paciente_id}`);
+      nav("/ingresos");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Error");
     }

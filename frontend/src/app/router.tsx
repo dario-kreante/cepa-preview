@@ -3,9 +3,10 @@ import { useAuth } from "@/lib/auth/AuthContext";
 import { puedeEscribir, type Rol } from "@/lib/rbac";
 import { AppShell } from "./shell/AppShell";
 import { LoginPage } from "@/features/auth/LoginPage";
-import { BuscarPage } from "@/features/ingresos/BuscarPage";
-import { Vista360Page } from "@/features/ingresos/Vista360Page";
+import { IngresosListaPage } from "@/features/ingresos/IngresosListaPage";
 import { AltaIngresoPage } from "@/features/ingresos/AltaIngresoPage";
+import { LicenciasPage } from "@/features/licencias/LicenciasPage";
+import { ProximamentePage } from "@/features/_placeholder/ProximamentePage";
 
 export function ProtectedRoute({ rolesEscritura }: { rolesEscritura?: boolean }) {
   const { rol, cargando } = useAuth();
@@ -21,11 +22,19 @@ export function AppRoutes() {
       <Route path="/login" element={<LoginPage />} />
       <Route element={<ProtectedRoute />}>
         <Route element={<AppShell />}>
-          <Route path="/" element={<BuscarPage />} />
-          <Route path="/pacientes/:id" element={<Vista360Page />} />
+          <Route path="/" element={<ProximamentePage titulo="Dashboard" />} />
+          <Route path="/ingresos" element={<IngresosListaPage />} />
           <Route element={<ProtectedRoute rolesEscritura />}>
             <Route path="/ingresos/nuevo" element={<AltaIngresoPage />} />
           </Route>
+          <Route path="/licencias" element={<LicenciasPage />} />
+          <Route path="/farmacos" element={<ProximamentePage titulo="Gestión de fármacos" />} />
+          <Route path="/controles" element={<ProximamentePage titulo="Controles médicos" />} />
+          <Route path="/ept" element={<ProximamentePage titulo="Seguimiento EPT" />} />
+          <Route path="/reintegro" element={<ProximamentePage titulo="Seguimiento reintegro" />} />
+          <Route path="/auditoria" element={<ProximamentePage titulo="Auditoría" />} />
+          <Route path="/agenda" element={<ProximamentePage titulo="Agendamiento" />} />
+          <Route path="/reportes" element={<ProximamentePage titulo="Reportería" />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
