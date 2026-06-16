@@ -95,7 +95,7 @@ function ControlRow({ control }: { control: ControlMedicoRead }) {
             <div className="w-16 h-1.5 rounded-full bg-muted overflow-hidden">
               <div
                 className="h-full rounded-full bg-primary"
-                style={{ width: `${control.gaf}%` }}
+                style={{ width: `${Math.max(0, Math.min(100, control.gaf))}%` }}
               />
             </div>
             <span className="text-[12px] font-mono text-muted-foreground">
