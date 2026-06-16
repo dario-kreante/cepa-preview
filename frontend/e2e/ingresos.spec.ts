@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test("crea un ingreso y lo ve en la vista 360", async ({ page }) => {
+test("crea un ingreso y regresa a la lista de ingresos", async ({ page }) => {
   await page.goto("/login");
   await page.getByLabel("Usuario").fill(process.env.E2E_USER ?? "coordinador");
   await page.getByLabel("Contraseña").fill(process.env.E2E_PASS ?? "cambiar");
@@ -14,8 +14,8 @@ test("crea un ingreso y lo ve en la vista 360", async ({ page }) => {
   await page.getByLabel("Modelo de tratamiento").fill("ambulatorio");
   await page.getByLabel("Fecha de ingreso").fill("2026-06-01");
   await page.getByRole("button", { name: /crear ingreso/i }).click();
-  // Tras el alta exitosa, la app navega a la vista 360 del paciente.
-  // Verificamos el destino (no el toast transitorio, que compite con el redirect).
-  await expect(page).toHaveURL(/\/pacientes\/\d+$/);
-  await expect(page.getByRole("heading", { name: /Paciente E2E/i })).toBeVisible();
+  // Tras el alta exitosa, la app navega a la lista de ingresos.
+  // La Ficha 360 ahora es un drawer que se abre desde la lista (Task 10).
+  await expect(page).toHaveURL(/\/ingresos$/);
+  await expect(page.getByText(/Ingresos y pacientes/i)).toBeVisible();
 });

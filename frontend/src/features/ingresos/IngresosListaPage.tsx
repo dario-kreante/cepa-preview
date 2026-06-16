@@ -6,6 +6,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
+import { PatientSheet } from "./PatientSheet";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -62,6 +63,7 @@ export function IngresosListaPage() {
   const [q, setQ] = useState("");
   const [regionFilter, setRegionFilter] = useState("Todas");
   const [page, setPage] = useState(0);
+  const [sheetId, setSheetId] = useState<number | null>(null);
 
   // 300ms debounce
   useEffect(() => {
@@ -92,9 +94,8 @@ export function IngresosListaPage() {
     return [1, 2, "…", page, page + 1, page + 2, "…", pages];
   })();
 
-  // Seam for Task 10 — swap to drawer open there
   function onOpenPatient(p: PacienteRead) {
-    navigate(`/pacientes/${p.id}`);
+    setSheetId(p.id);
   }
 
   return (
@@ -281,6 +282,12 @@ export function IngresosListaPage() {
           )}
         </Card>
       )}
+
+      <PatientSheet
+        pacienteId={sheetId}
+        open={sheetId !== null}
+        onOpenChange={(o) => { if (!o) setSheetId(null); }}
+      />
     </div>
   );
 }
