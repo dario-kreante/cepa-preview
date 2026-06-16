@@ -10,6 +10,7 @@ import { useAuth } from "@/lib/auth/AuthContext";
 import { puedeEscribir, type Rol } from "@/lib/rbac";
 import { useLicenciasPorFolio, useLicenciasDetalle } from "./hooks";
 import type { LicenciaReadSlim, LicenciaRead } from "./api";
+import { AltaLicenciaDialog } from "./AltaLicenciaDialog";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -175,6 +176,9 @@ export function LicenciasPage() {
   const [inputFolio, setInputFolio] = useState("");
   const [folio, setFolio] = useState("");
 
+  // Dialog state
+  const [altaOpen, setAltaOpen] = useState(false);
+
   // Filters (client-side over fetched rows)
   const [tipoFilter, setTipoFilter] = useState("Todos");
   const [reposoFilter, setReposoFilter] = useState("Todos");
@@ -193,6 +197,13 @@ export function LicenciasPage() {
 
   // Fetch full details per row (para tipo_reposo, eeag_gaf, envio_isl, folio_lm)
   const fullDetails = useLicenciasDetalle(historial.map((h) => h.id));
+
+  // Derive ingreso_id from the first resolved full detail row.
+  // LicenciaRead contains ingreso_id; LicenciasResponse does not expose it.
+  // When the user has searched a folio with existing licencias, we know the id.
+  // When no licencias exist yet (new case), ingresoId stays undefined and the
+  // dialog will show a manual input field for the user to enter it.
+  const ingresoId: number | undefined = fullDetails.find((d) => d?.ingreso_id != null)?.ingreso_id;
 
   // Build merged rows for filtering
   const mergedRows = historial.map((slim, i) => ({
@@ -239,7 +250,7 @@ export function LicenciasPage() {
         </div>
         {puedeCrear && (
           <div className="flex items-center gap-2">
-            <Button size="sm" disabled>
+            <Button size="sm" onClick={() => setAltaOpen(true)}>
               <Plus /> Nueva licencia
             </Button>
           </div>
@@ -331,6 +342,16 @@ export function LicenciasPage() {
             Sin licencias para este folio.
           </p>
         </div>
+      )}
+
+      {/* Alta de licencia dialog — writers only */}
+      {puedeCrear && (
+        <AltaLicenciaDialog
+          folio={folio || inputFolio.trim()}
+          ingresoId={ingresoId}
+          open={altaOpen}
+          onOpenChange={setAltaOpen}
+        />
       )}
 
       {/* Table */}
