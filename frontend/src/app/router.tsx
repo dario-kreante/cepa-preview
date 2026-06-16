@@ -3,7 +3,7 @@ import { useAuth } from "@/lib/auth/AuthContext";
 import { puedeEscribir, type Rol } from "@/lib/rbac";
 import { AppShell } from "./shell/AppShell";
 import { LoginPage } from "@/features/auth/LoginPage";
-import { BuscarPage } from "@/features/ingresos/BuscarPage";
+import { IngresosListaPage } from "@/features/ingresos/IngresosListaPage";
 import { Vista360Page } from "@/features/ingresos/Vista360Page";
 import { AltaIngresoPage } from "@/features/ingresos/AltaIngresoPage";
 import { ProximamentePage } from "@/features/_placeholder/ProximamentePage";
@@ -23,7 +23,7 @@ export function AppRoutes() {
       <Route element={<ProtectedRoute />}>
         <Route element={<AppShell />}>
           <Route path="/" element={<ProximamentePage titulo="Dashboard" />} />
-          <Route path="/ingresos" element={<BuscarPage />} />
+          <Route path="/ingresos" element={<IngresosListaPage />} />
           <Route path="/pacientes/:id" element={<Vista360Page />} />
           <Route element={<ProtectedRoute rolesEscritura />}>
             <Route path="/ingresos/nuevo" element={<AltaIngresoPage />} />
