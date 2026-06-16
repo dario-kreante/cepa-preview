@@ -1,14 +1,21 @@
 import { useEffect, useState } from "react";
-import { Search, Plus, ChevronRight, Ban, Send } from "lucide-react";
+import { Search, Plus, ChevronRight, Ban, Send, Bell } from "lucide-react";
+import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { fmtDate } from "@/lib/utils";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { puedeEscribir, type Rol } from "@/lib/rbac";
-import { useLicenciasPorFolio, useLicenciasDetalle } from "./hooks";
+import {
+  useLicenciasPorFolio,
+  useLicenciasDetalle,
+  useActualizarISL,
+  useGenerarAlertas,
+} from "./hooks";
 import type { LicenciaReadSlim, LicenciaRead } from "./api";
 import { AltaLicenciaDialog } from "./AltaLicenciaDialog";
 import { AnularLicenciaDialog } from "./AnularLicenciaDialog";
@@ -88,11 +95,21 @@ interface RowProps {
   slim: LicenciaReadSlim;
   full: LicenciaRead | undefined;
   canWrite: boolean;
+  selected: boolean;
+  onToggleSelect: (id: number) => void;
   onAnular: (row: LicenciaReadSlim) => void;
   onISL: (row: LicenciaReadSlim) => void;
 }
 
-function LicenciaRow({ slim, full, canWrite, onAnular, onISL }: RowProps) {
+function LicenciaRow({
+  slim,
+  full,
+  canWrite,
+  selected,
+  onToggleSelect,
+  onAnular,
+  onISL,
+}: RowProps) {
   const vence = venceEnInfo(slim.fecha_termino, slim.anulada);
   const estado = estadoInfo(slim.fecha_termino, slim.anulada);
 
@@ -104,6 +121,17 @@ function LicenciaRow({ slim, full, canWrite, onAnular, onISL }: RowProps) {
 
   return (
     <tr className="border-b hover:bg-muted/40 transition-colors">
+      {/* Checkbox — writers only; anulled rows are not selectable */}
+      {canWrite && (
+        <td className="px-4 py-3">
+          <Checkbox
+            checked={selected}
+            onCheckedChange={() => onToggleSelect(slim.id)}
+            disabled={slim.anulada}
+            aria-label={`Seleccionar licencia ${slim.id}`}
+          />
+        </td>
+      )}
       {/* Folio LM */}
       <td className="px-4 py-3 font-mono text-[12px] text-muted-foreground">{folioLm}</td>
       {/* Tipo */}
@@ -192,6 +220,9 @@ export function LicenciasPage() {
   const [reposoFilter, setReposoFilter] = useState("Todos");
   const [islFilter, setIslFilter] = useState("Todos");
 
+  // Row selection — only used by writers; Set of licencia ids
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+
   // 400ms debounce on folio input
   useEffect(() => {
     const t = setTimeout(() => setFolio(inputFolio.trim()), 400);
@@ -208,9 +239,6 @@ export function LicenciasPage() {
 
   // Derive ingreso_id from the first resolved full detail row.
   // LicenciaRead contains ingreso_id; LicenciasResponse does not expose it.
-  // When the user has searched a folio with existing licencias, we know the id.
-  // When no licencias exist yet (new case), ingresoId stays undefined and the
-  // dialog will show a manual input field for the user to enter it.
   const ingresoId: number | undefined = fullDetails.find((d) => d?.ingreso_id != null)?.ingreso_id;
 
   // Build merged rows for filtering
@@ -223,7 +251,6 @@ export function LicenciasPage() {
   const filtered = mergedRows.filter(({ slim, full }) => {
     if (tipoFilter !== "Todos" && slim.tipo_lm !== tipoFilter) return false;
     if (reposoFilter !== "Todos") {
-      // If full not loaded yet, don't hide the row — show all until data is available
       if (full && full.tipo_reposo !== reposoFilter) return false;
     }
     if (islFilter !== "Todos") {
@@ -231,6 +258,93 @@ export function LicenciasPage() {
     }
     return true;
   });
+
+  // Non-anulled filtered rows eligible for selection
+  const selectableRows = filtered.filter(({ slim }) => !slim.anulada);
+
+  // Select-all state: checked if all selectable visible rows are in selectedIds
+  const allSelected =
+    selectableRows.length > 0 &&
+    selectableRows.every(({ slim }) => selectedIds.has(slim.id));
+  const someSelected = selectableRows.some(({ slim }) => selectedIds.has(slim.id));
+
+  function handleToggleSelectAll() {
+    if (allSelected) {
+      // Deselect all currently visible selectable rows
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        selectableRows.forEach(({ slim }) => next.delete(slim.id));
+        return next;
+      });
+    } else {
+      // Select all currently visible selectable rows
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        selectableRows.forEach(({ slim }) => next.add(slim.id));
+        return next;
+      });
+    }
+  }
+
+  function handleToggleRow(id: number) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  // Hooks for bulk operations
+  // NOTE: Cross-region bulk ISL is NOT supported — there is no backend global/region
+  // list endpoint to enumerate licencias across patients. Bulk send only applies to
+  // the currently selected rows of the active folio search (per-patient scope).
+  const actualizarISL = useActualizarISL(folio);
+  const generarAlertas = useGenerarAlertas();
+
+  const [isBulkSending, setIsBulkSending] = useState(false);
+  const [isGeneratingAlertas, setIsGeneratingAlertas] = useState(false);
+
+  async function handleBulkISL() {
+    if (selectedIds.size === 0) return;
+    setIsBulkSending(true);
+    const today = new Date().toISOString().split("T")[0];
+    const ids = Array.from(selectedIds);
+
+    const results = await Promise.allSettled(
+      ids.map((id) =>
+        actualizarISL.mutateAsync({
+          id,
+          body: { envio_isl: "enviado", fecha_envio_isl: today },
+        })
+      )
+    );
+
+    const succeeded = results.filter((r) => r.status === "fulfilled").length;
+    const failed = results.filter((r) => r.status === "rejected").length;
+
+    if (succeeded > 0) {
+      toast.success(`${succeeded} licencia${succeeded !== 1 ? "s" : ""} enviada${succeeded !== 1 ? "s" : ""} a ISL`);
+    }
+    if (failed > 0) {
+      toast.error(`${failed} licencia${failed !== 1 ? "s" : ""} fallaron al enviar a ISL`);
+    }
+
+    setSelectedIds(new Set());
+    setIsBulkSending(false);
+  }
+
+  async function handleGenerarAlertas() {
+    setIsGeneratingAlertas(true);
+    try {
+      const alertas = await generarAlertas.mutateAsync();
+      toast.success(`${alertas.length} alerta${alertas.length !== 1 ? "s" : ""} generada${alertas.length !== 1 ? "s" : ""}`);
+    } catch {
+      toast.error("No se pudieron generar las alertas");
+    } finally {
+      setIsGeneratingAlertas(false);
+    }
+  }
 
   function handleAnular(row: LicenciaReadSlim) {
     setAnularTarget(row);
@@ -255,6 +369,33 @@ export function LicenciasPage() {
         </div>
         {puedeCrear && (
           <div className="flex items-center gap-2">
+            {/* Generar alertas de vencimiento — writers only */}
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleGenerarAlertas}
+              disabled={isGeneratingAlertas}
+              aria-label="Generar alertas de vencimiento"
+            >
+              <Bell />
+              Generar alertas
+            </Button>
+
+            {/* Envío masivo ISL — writers only, enabled when ≥1 row selected */}
+            {/* NOTE: cross-region "envío por región" is not implemented — requires a
+                backend global list endpoint that does not exist. Bulk send operates
+                only over selected rows of the current folio (per-patient scope). */}
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleBulkISL}
+              disabled={selectedIds.size === 0 || isBulkSending}
+              aria-label="Envío masivo ISL"
+            >
+              <Send />
+              Envío masivo ISL
+            </Button>
+
             <Button size="sm" onClick={() => setAltaOpen(true)}>
               <Plus /> Nueva licencia
             </Button>
@@ -319,6 +460,13 @@ export function LicenciasPage() {
           </select>
           <ChevronRight className="absolute right-2 top-2.5 size-3.5 text-muted-foreground pointer-events-none rotate-90" />
         </div>
+
+        {/* Selection count chip — writers only */}
+        {puedeCrear && selectedIds.size > 0 && (
+          <Badge variant="info" className="ml-1">
+            {selectedIds.size} seleccionada{selectedIds.size !== 1 ? "s" : ""}
+          </Badge>
+        )}
 
         {hasSearched && !isFetching && (
           <Badge variant="neutral" className="ml-auto">
@@ -387,6 +535,18 @@ export function LicenciasPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-muted/30 border-b">
+                    {/* Select-all header checkbox — writers only */}
+                    {puedeCrear && (
+                      <th className="px-4 py-3 w-10">
+                        <Checkbox
+                          checked={allSelected}
+                          // indeterminate when some (not all) are selected
+                          data-state={someSelected && !allSelected ? "indeterminate" : undefined}
+                          onCheckedChange={handleToggleSelectAll}
+                          aria-label="Seleccionar todas las licencias"
+                        />
+                      </th>
+                    )}
                     <Th>Folio LM</Th>
                     <Th>Tipo</Th>
                     <Th>Reposo</Th>
@@ -406,6 +566,8 @@ export function LicenciasPage() {
                       slim={slim}
                       full={full}
                       canWrite={puedeCrear}
+                      selected={selectedIds.has(slim.id)}
+                      onToggleSelect={handleToggleRow}
                       onAnular={handleAnular}
                       onISL={handleISL}
                     />
