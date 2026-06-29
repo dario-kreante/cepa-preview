@@ -10,6 +10,7 @@ import {
   Calendar,
   BarChart3,
   UserCog,
+  SlidersHorizontal,
   type LucideIcon,
 } from "lucide-react";
 import type { Rol } from "@/lib/rbac";
@@ -71,6 +72,12 @@ export const NAV: NavSection[] = [
         icon: UserCog,
         roles: ["Coordinacion"],
       },
+      {
+        to: "/config-formularios",
+        label: "Formularios dinámicos",
+        icon: SlidersHorizontal,
+        roles: ["Coordinacion"],
+      },
     ],
   },
 ];
@@ -89,6 +96,7 @@ export const TITLE_MAP: Record<string, string> = {
   "/agenda": "Agendamiento",
   "/reportes": "Reportería",
   "/usuarios": "Usuarios y roles",
+  "/config-formularios": "Formularios dinámicos",
 };
 
 /** Pathname → breadcrumb string mapping */
@@ -105,4 +113,5 @@ export const CRUMBS_MAP: Record<string, string> = {
   "/agenda": "Inicio · Operación · Agendamiento",
   "/reportes": "Inicio · Operación · Reportería",
   "/usuarios": "Inicio · Administración · Usuarios y roles",
+  "/config-formularios": "Inicio · Administración · Formularios dinámicos",
 };
