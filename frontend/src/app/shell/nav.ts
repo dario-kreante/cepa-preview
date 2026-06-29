@@ -9,14 +9,18 @@ import {
   ShieldCheck,
   Calendar,
   BarChart3,
+  UserCog,
   type LucideIcon,
 } from "lucide-react";
+import type { Rol } from "@/lib/rbac";
 
 export interface NavItem {
   to: string;
   label: string;
   icon: LucideIcon;
   badgeKey?: string;
+  /** Si se define, el item solo se muestra a estos roles. */
+  roles?: Rol[];
 }
 
 export interface NavSection {
@@ -58,6 +62,17 @@ export const NAV: NavSection[] = [
       { to: "/reportes", label: "Reportería", icon: BarChart3 },
     ],
   },
+  {
+    label: "Administración",
+    items: [
+      {
+        to: "/usuarios",
+        label: "Usuarios y roles",
+        icon: UserCog,
+        roles: ["Coordinacion"],
+      },
+    ],
+  },
 ];
 
 /** Pathname → title mapping for Topbar */
@@ -73,6 +88,7 @@ export const TITLE_MAP: Record<string, string> = {
   "/auditoria": "Auditoría",
   "/agenda": "Agendamiento",
   "/reportes": "Reportería",
+  "/usuarios": "Usuarios y roles",
 };
 
 /** Pathname → breadcrumb string mapping */
@@ -88,4 +104,5 @@ export const CRUMBS_MAP: Record<string, string> = {
   "/auditoria": "Inicio · Auditoría",
   "/agenda": "Inicio · Operación · Agendamiento",
   "/reportes": "Inicio · Operación · Reportería",
+  "/usuarios": "Inicio · Administración · Usuarios y roles",
 };
