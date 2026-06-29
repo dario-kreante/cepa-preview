@@ -11,6 +11,7 @@ export type ReporteLicenciasResponse =
   components["schemas"]["ReporteLicenciasResponse"];
 export type ReporteODASVencidasResponse =
   components["schemas"]["ReporteODASVencidasResponse"];
+export type AdherenciaPaciente = components["schemas"]["AdherenciaPaciente"];
 
 export interface RangoFechas {
   fecha_desde: string;
@@ -77,5 +78,21 @@ export async function reporteOdasVencidas(): Promise<ReporteODASVencidasResponse
   });
   if (error || !data)
     throw new Error("No se pudo generar el reporte de ODAS vencidas");
+  return data;
+}
+
+/** GET /api/v1/reportes/adherencia/{folio_id} — adherencia y avance de un ingreso. */
+export async function reporteAdherencia(
+  folioId: number,
+): Promise<AdherenciaPaciente> {
+  const { data, error, response } = await api.GET(
+    "/api/v1/reportes/adherencia/{folio_id}",
+    { params: { path: { folio_id: folioId } } },
+  );
+  if (error || !data) {
+    if (response.status === 404)
+      throw new Error("No se encontró el ingreso indicado.");
+    throw new Error("No se pudo obtener la adherencia");
+  }
   return data;
 }
