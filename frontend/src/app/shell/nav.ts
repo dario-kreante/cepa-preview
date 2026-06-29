@@ -12,6 +12,7 @@ import {
   UserCog,
   SlidersHorizontal,
   LayoutGrid,
+  FileScan,
   type LucideIcon,
 } from "lucide-react";
 import type { Rol } from "@/lib/rbac";
@@ -62,6 +63,12 @@ export const NAV: NavSection[] = [
     items: [
       { to: "/agenda", label: "Agendamiento", icon: Calendar },
       { to: "/reportes", label: "Reportería", icon: BarChart3 },
+      {
+        to: "/lectura-pdf",
+        label: "Lectura de PDF",
+        icon: FileScan,
+        roles: ["Coordinacion", "Administrativo"],
+      },
     ],
   },
   {
@@ -101,6 +108,7 @@ export const TITLE_MAP: Record<string, string> = {
   "/auditoria": "Auditoría",
   "/agenda": "Agendamiento",
   "/reportes": "Reportería",
+  "/lectura-pdf": "Lectura de PDF",
   "/usuarios": "Usuarios y roles",
   "/config-formularios": "Formularios dinámicos",
   "/ventanas-proceso": "Ventanas de proceso",
@@ -119,6 +127,7 @@ export const CRUMBS_MAP: Record<string, string> = {
   "/auditoria": "Inicio · Auditoría",
   "/agenda": "Inicio · Operación · Agendamiento",
   "/reportes": "Inicio · Operación · Reportería",
+  "/lectura-pdf": "Inicio · Operación · Lectura de PDF",
   "/usuarios": "Inicio · Administración · Usuarios y roles",
   "/config-formularios": "Inicio · Administración · Formularios dinámicos",
   "/ventanas-proceso": "Inicio · Administración · Ventanas de proceso",
