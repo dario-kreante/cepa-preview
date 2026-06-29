@@ -11,6 +11,7 @@ import {
   BarChart3,
   UserCog,
   SlidersHorizontal,
+  LayoutGrid,
   type LucideIcon,
 } from "lucide-react";
 import type { Rol } from "@/lib/rbac";
@@ -78,6 +79,11 @@ export const NAV: NavSection[] = [
         icon: SlidersHorizontal,
         roles: ["Coordinacion"],
       },
+      {
+        to: "/ventanas-proceso",
+        label: "Ventanas de proceso",
+        icon: LayoutGrid,
+      },
     ],
   },
 ];
@@ -97,6 +103,7 @@ export const TITLE_MAP: Record<string, string> = {
   "/reportes": "Reportería",
   "/usuarios": "Usuarios y roles",
   "/config-formularios": "Formularios dinámicos",
+  "/ventanas-proceso": "Ventanas de proceso",
 };
 
 /** Pathname → breadcrumb string mapping */
@@ -114,4 +121,5 @@ export const CRUMBS_MAP: Record<string, string> = {
   "/reportes": "Inicio · Operación · Reportería",
   "/usuarios": "Inicio · Administración · Usuarios y roles",
   "/config-formularios": "Inicio · Administración · Formularios dinámicos",
+  "/ventanas-proceso": "Inicio · Administración · Ventanas de proceso",
 };

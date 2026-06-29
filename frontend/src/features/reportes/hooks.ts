@@ -1,5 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
 import {
+  reporteAdherencia,
   reporteCargaLaboral,
   reporteConvenio,
   reporteLicencias,
@@ -31,4 +32,8 @@ export function useReporteLicencias() {
 
 export function useReporteOdasVencidas() {
   return useMutation({ mutationFn: () => reporteOdasVencidas() });
+}
+
+export function useReporteAdherencia() {
+  return useMutation({ mutationFn: (folioId: number) => reporteAdherencia(folioId) });
 }

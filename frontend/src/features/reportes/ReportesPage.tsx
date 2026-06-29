@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn, fmtDate } from "@/lib/utils";
 import {
+  useReporteAdherencia,
   useReporteCargaLaboral,
   useReporteConvenio,
   useReporteLicencias,
@@ -19,7 +20,13 @@ import {
   useReporteOperativo,
 } from "./hooks";
 
-type Tab = "operativo" | "convenio" | "carga" | "licencias" | "odas";
+type Tab =
+  | "operativo"
+  | "convenio"
+  | "carga"
+  | "licencias"
+  | "odas"
+  | "adherencia";
 
 const TABS: [Tab, string][] = [
   ["operativo", "Operativo"],
@@ -27,6 +34,7 @@ const TABS: [Tab, string][] = [
   ["carga", "Carga laboral"],
   ["licencias", "Licencias"],
   ["odas", "ODAS vencidas"],
+  ["adherencia", "Adherencia"],
 ];
 
 function Th({ children }: { children: React.ReactNode }) {
@@ -368,6 +376,99 @@ function OdasTab() {
   );
 }
 
+// ── Tab: Adherencia (CEPA-095) ──────────────────────────────────────────────────
+
+function pct(v: number | null | undefined): string {
+  return v == null ? "—" : `${Math.round(v)}%`;
+}
+
+function AdherenciaTab() {
+  const [folio, setFolio] = useState("");
+  const m = useReporteAdherencia();
+
+  async function gen() {
+    const id = parseInt(folio, 10);
+    if (isNaN(id) || id <= 0) {
+      toast.error("Ingresa un N° de ingreso válido.");
+      return;
+    }
+    try {
+      await m.mutateAsync(id);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Error");
+    }
+  }
+
+  const d = m.data;
+
+  return (
+    <div className="space-y-3">
+      <Card className="p-4">
+        <div className="flex flex-wrap items-end gap-3">
+          <div>
+            <Label htmlFor="folio-adh">N° de ingreso *</Label>
+            <Input
+              id="folio-adh"
+              type="number"
+              min={1}
+              value={folio}
+              onChange={(e) => setFolio(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") gen();
+              }}
+              placeholder="ej. 1"
+              className="h-9 w-[160px]"
+              data-testid="input-folio-adherencia"
+            />
+          </div>
+          <Button size="sm" onClick={gen} disabled={m.isPending} data-testid="btn-generar-reporte">
+            <FileText className="size-3.5" />
+            {m.isPending ? "Consultando…" : "Consultar"}
+          </Button>
+        </div>
+      </Card>
+
+      {d && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <Card className="p-4">
+            <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
+              Adherencia
+            </p>
+            <p className="text-[22px] font-semibold" data-testid="kpi-adherencia">
+              {pct(d.pct_adherencia)}
+            </p>
+            <p className="text-[11.5px] text-muted-foreground">
+              {d.citas_realizadas}/{d.citas_agendadas} citas
+            </p>
+          </Card>
+          <Card className="p-4">
+            <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
+              Avance tratamiento
+            </p>
+            <p className="text-[22px] font-semibold">{pct(d.pct_avance)}</p>
+            <p className="text-[11.5px] text-muted-foreground">
+              {d.sesiones_realizadas}
+              {d.sesiones_plan != null ? `/${d.sesiones_plan}` : ""} sesiones
+            </p>
+          </Card>
+          <Card className="p-4">
+            <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
+              Citas realizadas
+            </p>
+            <p className="text-[22px] font-semibold">{d.citas_realizadas}</p>
+          </Card>
+          <Card className="p-4">
+            <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
+              Aumentos ISL
+            </p>
+            <p className="text-[22px] font-semibold">{d.aumentos_isl}</p>
+          </Card>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export function ReportesPage() {
@@ -408,6 +509,7 @@ export function ReportesPage() {
       {tab === "carga" && <CargaTab />}
       {tab === "licencias" && <LicenciasTab />}
       {tab === "odas" && <OdasTab />}
+      {tab === "adherencia" && <AdherenciaTab />}
     </div>
   );
 }
