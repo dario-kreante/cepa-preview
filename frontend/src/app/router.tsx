@@ -11,6 +11,7 @@ import { ControlesPage } from "@/features/controles/ControlesPage";
 import { EptPage } from "@/features/ept/EptPage";
 import { ReintegroPage } from "@/features/reintegro/ReintegroPage";
 import { AuditoriaPage } from "@/features/auditoria/AuditoriaPage";
+import { AgendaPage } from "@/features/agenda/AgendaPage";
 import { ProximamentePage } from "@/features/_placeholder/ProximamentePage";
 
 export function ProtectedRoute({ rolesEscritura }: { rolesEscritura?: boolean }) {
@@ -38,7 +39,7 @@ export function AppRoutes() {
           <Route path="/ept" element={<EptPage />} />
           <Route path="/reintegro" element={<ReintegroPage />} />
           <Route path="/auditoria" element={<AuditoriaPage />} />
-          <Route path="/agenda" element={<ProximamentePage titulo="Agendamiento" />} />
+          <Route path="/agenda" element={<AgendaPage />} />
           <Route path="/reportes" element={<ProximamentePage titulo="Reportería" />} />
         </Route>
       </Route>
