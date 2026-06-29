@@ -9,7 +9,11 @@ import { LicenciasPage } from "@/features/licencias/LicenciasPage";
 import { FarmacosPage } from "@/features/farmacos/FarmacosPage";
 import { ControlesPage } from "@/features/controles/ControlesPage";
 import { EptPage } from "@/features/ept/EptPage";
-import { ProximamentePage } from "@/features/_placeholder/ProximamentePage";
+import { ReintegroPage } from "@/features/reintegro/ReintegroPage";
+import { AuditoriaPage } from "@/features/auditoria/AuditoriaPage";
+import { AgendaPage } from "@/features/agenda/AgendaPage";
+import { DashboardPage } from "@/features/dashboard/DashboardPage";
+import { ReportesPage } from "@/features/reportes/ReportesPage";
 
 export function ProtectedRoute({ rolesEscritura }: { rolesEscritura?: boolean }) {
   const { rol, cargando } = useAuth();
@@ -25,7 +29,7 @@ export function AppRoutes() {
       <Route path="/login" element={<LoginPage />} />
       <Route element={<ProtectedRoute />}>
         <Route element={<AppShell />}>
-          <Route path="/" element={<ProximamentePage titulo="Dashboard" />} />
+          <Route path="/" element={<DashboardPage />} />
           <Route path="/ingresos" element={<IngresosListaPage />} />
           <Route element={<ProtectedRoute rolesEscritura />}>
             <Route path="/ingresos/nuevo" element={<AltaIngresoPage />} />
@@ -34,10 +38,10 @@ export function AppRoutes() {
           <Route path="/farmacos" element={<FarmacosPage />} />
           <Route path="/controles" element={<ControlesPage />} />
           <Route path="/ept" element={<EptPage />} />
-          <Route path="/reintegro" element={<ProximamentePage titulo="Seguimiento reintegro" />} />
-          <Route path="/auditoria" element={<ProximamentePage titulo="Auditoría" />} />
-          <Route path="/agenda" element={<ProximamentePage titulo="Agendamiento" />} />
-          <Route path="/reportes" element={<ProximamentePage titulo="Reportería" />} />
+          <Route path="/reintegro" element={<ReintegroPage />} />
+          <Route path="/auditoria" element={<AuditoriaPage />} />
+          <Route path="/agenda" element={<AgendaPage />} />
+          <Route path="/reportes" element={<ReportesPage />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

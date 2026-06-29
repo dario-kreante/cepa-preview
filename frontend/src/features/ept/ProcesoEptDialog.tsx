@@ -182,7 +182,7 @@ export function ProcesoEptDialog({ casoId, proceso, open, onOpenChange }: Props)
               }
               aria-label="Hay testigos"
             />
-            <Label htmlFor="hay_testigos" className="cursor-pointer">
+            <Label htmlFor="hay_testigos" className="mb-0 cursor-pointer">
               Hay testigos
             </Label>
           </div>

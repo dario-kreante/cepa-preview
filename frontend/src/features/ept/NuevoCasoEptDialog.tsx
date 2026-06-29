@@ -276,7 +276,7 @@ export function NuevoCasoEptDialog({
               onChange={(e) => setValue("corresponde_ept", e.target.checked)}
               className="h-4 w-4 rounded border-input"
             />
-            <Label htmlFor="corresponde_ept" className="cursor-pointer">
+            <Label htmlFor="corresponde_ept" className="mb-0 cursor-pointer">
               Corresponde EPT
             </Label>
           </div>

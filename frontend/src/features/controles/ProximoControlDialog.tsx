@@ -129,7 +129,7 @@ export function ProximoControlDialog({
               }
               aria-label="Próximo control agendado"
             />
-            <Label htmlFor="proximo_agendado" className="cursor-pointer">
+            <Label htmlFor="proximo_agendado" className="mb-0 cursor-pointer">
               Próximo control agendado
             </Label>
           </div>

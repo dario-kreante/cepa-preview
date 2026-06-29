@@ -105,7 +105,7 @@ export function NuevoSeguimientoDialog({ ingresoId, open, onOpenChange }: Props)
                 }
                 aria-label="Disminución de fármacos"
               />
-              <Label htmlFor="disminucion_farmacos" className="cursor-pointer">
+              <Label htmlFor="disminucion_farmacos" className="mb-0 cursor-pointer">
                 Disminución de fármacos
               </Label>
             </div>
@@ -144,7 +144,7 @@ export function NuevoSeguimientoDialog({ ingresoId, open, onOpenChange }: Props)
                 }
                 aria-label="Cambio de esquema"
               />
-              <Label htmlFor="cambio_esquema" className="cursor-pointer">
+              <Label htmlFor="cambio_esquema" className="mb-0 cursor-pointer">
                 Cambio de esquema
               </Label>
             </div>

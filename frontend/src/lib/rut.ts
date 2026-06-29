@@ -1,3 +1,8 @@
+/** Normaliza un RUT al formato de almacenamiento del backend: sin puntos/guion, K mayúscula. */
+export function normalizarRut(rut: string): string {
+  return rut.replace(/[.\-\s]/g, "").toUpperCase();
+}
+
 export function rutValido(rut: string): boolean {
   const limpio = rut.replace(/[.\-\s]/g, "").toUpperCase();
   if (limpio.length < 2) return false;

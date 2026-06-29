@@ -160,7 +160,7 @@ export function AgregarIndicacionDialog({ ingresoId, open, onOpenChange }: Props
                 setValue("extra_sistema", checked === true)
               }
             />
-            <Label htmlFor="extra_sistema" className="cursor-pointer font-normal">
+            <Label htmlFor="extra_sistema" className="mb-0 cursor-pointer font-normal">
               Extra sistema
             </Label>
           </div>

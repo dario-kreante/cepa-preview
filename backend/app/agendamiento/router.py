@@ -51,13 +51,16 @@ def crear_disponibilidad_endpoint(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ) -> DisponibilidadProf:
-    return crear_disponibilidad(
+    dp = crear_disponibilidad(
         db=db,
         profesional_id=payload.profesional_id,
         dia_semana=payload.dia_semana.value,
         cupo_diario=payload.cupo_diario,
         actor=current_user.username,
     )
+    db.commit()  # persistir: el servicio solo hace flush (bug CEPA-080)
+    db.refresh(dp)
+    return dp
 
 
 @router.get(
