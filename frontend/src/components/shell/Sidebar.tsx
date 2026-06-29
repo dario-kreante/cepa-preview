@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth/AuthContext";
+import { type Rol } from "@/lib/rbac";
 import { APP_INITIAL, APP_NAME, APP_SUBTITLE } from "@/lib/brand";
 import { NAV } from "@/app/shell/nav";
 
@@ -76,7 +77,13 @@ export function Sidebar({ collapsed, onToggleCollapse, badges = {} }: SidebarPro
 
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto px-3">
-        {NAV.map((section) => (
+        {NAV.map((section) => {
+          // Filtra items restringidos por rol; oculta la sección si queda vacía.
+          const items = section.items.filter(
+            (item) => !item.roles || (rol != null && item.roles.includes(rol as Rol)),
+          );
+          if (items.length === 0) return null;
+          return (
           <div key={section.label} className="mb-3">
             {!collapsed && (
               <div className="text-[10px] uppercase tracking-wider text-muted-foreground/70 px-2 py-1.5 font-semibold">
@@ -84,7 +91,7 @@ export function Sidebar({ collapsed, onToggleCollapse, badges = {} }: SidebarPro
               </div>
             )}
             <div className="space-y-0.5">
-              {section.items.map((item) => {
+              {items.map((item) => {
                 const Icon = item.icon;
                 const badgeCount =
                   item.badgeKey != null ? (badges[item.badgeKey] ?? 0) : 0;
@@ -132,7 +139,8 @@ export function Sidebar({ collapsed, onToggleCollapse, badges = {} }: SidebarPro
               })}
             </div>
           </div>
-        ))}
+          );
+        })}
       </nav>
 
       {/* Bottom: Support + Settings */}

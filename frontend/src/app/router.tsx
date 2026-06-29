@@ -14,6 +14,7 @@ import { AuditoriaPage } from "@/features/auditoria/AuditoriaPage";
 import { AgendaPage } from "@/features/agenda/AgendaPage";
 import { DashboardPage } from "@/features/dashboard/DashboardPage";
 import { ReportesPage } from "@/features/reportes/ReportesPage";
+import { UsuariosPage } from "@/features/usuarios/UsuariosPage";
 
 export function ProtectedRoute({ rolesEscritura }: { rolesEscritura?: boolean }) {
   const { rol, cargando } = useAuth();
@@ -42,6 +43,7 @@ export function AppRoutes() {
           <Route path="/auditoria" element={<AuditoriaPage />} />
           <Route path="/agenda" element={<AgendaPage />} />
           <Route path="/reportes" element={<ReportesPage />} />
+          <Route path="/usuarios" element={<UsuariosPage />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
