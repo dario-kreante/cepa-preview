@@ -15,6 +15,7 @@ import { AgendaPage } from "@/features/agenda/AgendaPage";
 import { DashboardPage } from "@/features/dashboard/DashboardPage";
 import { ReportesPage } from "@/features/reportes/ReportesPage";
 import { UsuariosPage } from "@/features/usuarios/UsuariosPage";
+import { ConfigFormulariosPage } from "@/features/config-formularios/ConfigFormulariosPage";
 
 export function ProtectedRoute({ rolesEscritura }: { rolesEscritura?: boolean }) {
   const { rol, cargando } = useAuth();
@@ -44,6 +45,7 @@ export function AppRoutes() {
           <Route path="/agenda" element={<AgendaPage />} />
           <Route path="/reportes" element={<ReportesPage />} />
           <Route path="/usuarios" element={<UsuariosPage />} />
+          <Route path="/config-formularios" element={<ConfigFormulariosPage />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
