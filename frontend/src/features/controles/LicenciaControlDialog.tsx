@@ -183,7 +183,7 @@ export function LicenciaControlDialog({
               }
               aria-label="Tiene licencia médica"
             />
-            <Label htmlFor="tiene_licencia" className="cursor-pointer">
+            <Label htmlFor="tiene_licencia" className="mb-0 cursor-pointer">
               Tiene licencia médica
             </Label>
           </div>
