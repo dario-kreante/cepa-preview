@@ -212,7 +212,7 @@ export function AlertsPanel() {
   ];
 
   return (
-    <aside className="w-80 shrink-0 bg-card border-l flex flex-col overflow-hidden">
+    <aside className="w-80 max-w-[85vw] h-full shrink-0 bg-card border-l flex flex-col overflow-hidden">
       {/* Header */}
       <div className="flex items-center gap-2 px-5 h-[3.75rem] border-b">
         <Bell className="size-4 text-primary" />

@@ -16,9 +16,18 @@ import { useAlertas } from "@/features/alertas/hooks";
  *   - "ept"       badge = alertas pendientes cuyo caso_tipo == "ept"
  *   - críticas count    = alertas with estado == "pendiente"
  */
+/** Anchos de chrome fijos. Por debajo de `xl` el panel de alertas pasa a overlay
+ *  y el sidebar arranca colapsado, para no aplastar el contenido. */
+function isWide(): boolean {
+  return typeof window !== "undefined" ? window.innerWidth >= 1280 : true;
+}
+function isNarrow(): boolean {
+  return typeof window !== "undefined" ? window.innerWidth < 1024 : false;
+}
+
 export function AppShell() {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [alertsVisible, setAlertsVisible] = useState(true);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(isNarrow);
+  const [alertsVisible, setAlertsVisible] = useState(isWide);
 
   const { data: alertas = [] } = useAlertas();
 
@@ -59,7 +68,21 @@ export function AppShell() {
         </main>
       </div>
 
-      {alertsVisible && <AlertsPanel />}
+      {alertsVisible && (
+        <>
+          {/* Backdrop solo en pantallas < xl (modo overlay) */}
+          <button
+            type="button"
+            aria-label="Cerrar panel de alertas"
+            onClick={() => setAlertsVisible(false)}
+            className="xl:hidden fixed inset-0 z-30 bg-black/40"
+          />
+          {/* Inline (xl+) / drawer flotante a la derecha (< xl) */}
+          <div className="fixed inset-y-0 right-0 z-40 shrink-0 shadow-xl xl:static xl:z-auto xl:shadow-none">
+            <AlertsPanel />
+          </div>
+        </>
+      )}
     </div>
   );
 }

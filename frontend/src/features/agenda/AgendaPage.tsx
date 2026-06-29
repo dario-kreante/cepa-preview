@@ -122,13 +122,12 @@ function DisponibilidadCard({
       )}
 
       {canWrite && (
-        <div className="flex items-end gap-2 pt-1">
+        <div className="flex flex-wrap items-end gap-2 pt-1">
           <div>
             <Label htmlFor="dia">Día</Label>
             <select
               id="dia"
-              className={selectCls}
-              style={{ width: 130 }}
+              className={cn(selectCls, "w-[130px]")}
               value={dia}
               onChange={(e) => setDia(e.target.value)}
             >
@@ -386,7 +385,7 @@ export function AgendaPage() {
               >
                 <div>
                   <Label htmlFor="tipo">Tipo de propuesta</Label>
-                  <select id="tipo" className={selectCls} style={{ width: 160 }} {...register("tipo")}>
+                  <select id="tipo" className={cn(selectCls, "w-40")} {...register("tipo")}>
                     <option value="diaria">Diaria</option>
                     <option value="semanal">Semanal</option>
                     <option value="mensual">Mensual</option>
@@ -462,6 +461,7 @@ export function AgendaPage() {
                         <td className="px-4 py-3">
                           <Badge
                             variant={ESTADO_PROP_VARIANT[p.estado] ?? "neutral"}
+                            className="capitalize"
                           >
                             {p.estado}
                           </Badge>
