@@ -77,6 +77,32 @@ function cap(s: string) {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
+/**
+ * Mapea un caso (caso_tipo + caso_id) a la ruta de su módulo. Los valores de
+ * caso_tipo provienen del generador de alertas: oda, licencia, ept, ingreso,
+ * control_medico, receta. EPT acepta deep-link por ?caso=; el resto navega a su
+ * página (paciente-driven, sin parámetro de caso).
+ */
+export function routeForCaso(
+  casoTipo: string | null | undefined,
+  casoId: number | null | undefined,
+): string {
+  switch (casoTipo) {
+    case "ept":
+      return casoId ? `/ept?caso=${casoId}` : "/ept";
+    case "control_medico":
+      return "/controles";
+    case "receta":
+      return "/farmacos";
+    case "licencia":
+      return "/licencias";
+    case "oda":
+    case "ingreso":
+    default:
+      return "/ingresos";
+  }
+}
+
 // ── sub-components ────────────────────────────────────────────────────────────
 
 interface AlertItemProps {
@@ -195,13 +221,12 @@ export function AlertsPanel() {
   const displayAlertas = getDisplayAlertas();
   const displayTareas = tab === "todas" || tab === "proximas" ? activeTareas : [];
 
-  const handleAlertaClick = () => {
-    // Deep-link by case ID/tipo comes in a later task — navigate to ingresos for now
-    navigate("/ingresos");
+  const handleAlertaClick = (a: AlertaRead) => {
+    navigate(routeForCaso(a.caso_tipo, a.caso_id));
   };
 
-  const handleTareaClick = () => {
-    navigate("/ingresos");
+  const handleTareaClick = (t: TareaItemRead) => {
+    navigate(routeForCaso(t.caso_tipo, t.caso_id));
   };
 
   const TABS: { key: TabKey; label: string }[] = [
@@ -280,7 +305,7 @@ export function AlertsPanel() {
               title={title}
               subtitle={subtitle}
               meta={meta}
-              onClick={handleAlertaClick}
+              onClick={() => handleAlertaClick(a)}
             />
           );
         })}
@@ -289,7 +314,7 @@ export function AlertsPanel() {
           <TareaItem
             key={`tarea-${t.id}`}
             tarea={t}
-            onClick={handleTareaClick}
+            onClick={() => handleTareaClick(t)}
           />
         ))}
       </div>
@@ -314,8 +339,7 @@ export function AlertsPanel() {
             variant="ghost"
             size="sm"
             className="justify-start h-8 text-[12px]"
-            disabled
-            title="Módulo de licencias no disponible aún"
+            onClick={() => navigate("/licencias")}
           >
             <FileText className="size-3.5" /> Registrar licencia
           </Button>
@@ -323,8 +347,7 @@ export function AlertsPanel() {
             variant="ghost"
             size="sm"
             className="justify-start h-8 text-[12px]"
-            disabled
-            title="Módulo de fármacos no disponible aún"
+            onClick={() => navigate("/farmacos")}
           >
             <Pill className="size-3.5" /> Nueva receta
           </Button>
