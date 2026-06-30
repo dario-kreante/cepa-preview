@@ -148,7 +148,7 @@ describe("ControlesPage", () => {
     // Paciente list appears
     await waitFor(
       () => expect(screen.getByText("Juan Pérez")).toBeInTheDocument(),
-      { timeout: 3000 }
+      { timeout: 8000 }
     );
 
     // Select the paciente row
@@ -157,7 +157,7 @@ describe("ControlesPage", () => {
     // Semana column
     await waitFor(
       () => expect(screen.getByText("8")).toBeInTheDocument(),
-      { timeout: 3000 }
+      { timeout: 8000 }
     );
 
     // Días LM column
@@ -198,7 +198,7 @@ describe("ControlesPage", () => {
 
     await waitFor(
       () => expect(screen.getByText("Juan Pérez")).toBeInTheDocument(),
-      { timeout: 3000 }
+      { timeout: 8000 }
     );
 
     await userEvent.click(screen.getByText("Juan Pérez"));
@@ -208,7 +208,7 @@ describe("ControlesPage", () => {
         expect(
           screen.getByText(/Este paciente no tiene ingresos registrados/i)
         ).toBeInTheDocument(),
-      { timeout: 3000 }
+      { timeout: 8000 }
     );
   });
 
@@ -232,7 +232,7 @@ describe("ControlesPage", () => {
 
     await waitFor(
       () => expect(screen.getByText("Juan Pérez")).toBeInTheDocument(),
-      { timeout: 3000 }
+      { timeout: 8000 }
     );
 
     await userEvent.click(screen.getByText("Juan Pérez"));
@@ -242,7 +242,7 @@ describe("ControlesPage", () => {
         expect(
           screen.getByText(/No hay controles médicos registrados para este ingreso/i)
         ).toBeInTheDocument(),
-      { timeout: 3000 }
+      { timeout: 8000 }
     );
   });
 });

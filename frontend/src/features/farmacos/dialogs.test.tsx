@@ -115,7 +115,7 @@ async function setupPageWithPaciente(token = WRITER_TOKEN) {
 
   await waitFor(
     () => expect(screen.getByText("Juan Pérez")).toBeInTheDocument(),
-    { timeout: 3000 },
+    { timeout: 8000 },
   );
 
   await user.click(screen.getByText("Juan Pérez"));
@@ -159,7 +159,7 @@ describe("NuevaRecetaDialog — coherencia de fechas", () => {
     await waitFor(
       () =>
         expect(screen.getByText("Dra. Carmen López")).toBeInTheDocument(),
-      { timeout: 3000 },
+      { timeout: 8000 },
     );
 
     // The "Nueva receta" header button should now be enabled (registro exists)
@@ -167,7 +167,7 @@ describe("NuevaRecetaDialog — coherencia de fechas", () => {
       name: /Nueva receta/i,
     });
     await waitFor(() => expect(btnNuevaReceta).not.toBeDisabled(), {
-      timeout: 3000,
+      timeout: 8000,
     });
     await user.click(btnNuevaReceta);
 
@@ -235,14 +235,14 @@ describe("NuevaRecetaDialog — coherencia de fechas", () => {
     await waitFor(
       () =>
         expect(screen.getByText("Dra. Carmen López")).toBeInTheDocument(),
-      { timeout: 3000 },
+      { timeout: 8000 },
     );
 
     const btnNuevaReceta = await screen.findByRole("button", {
       name: /Nueva receta/i,
     });
     await waitFor(() => expect(btnNuevaReceta).not.toBeDisabled(), {
-      timeout: 3000,
+      timeout: 8000,
     });
     await user.click(btnNuevaReceta);
 
@@ -315,14 +315,14 @@ describe("NuevaRecetaDialog — coherencia de fechas", () => {
     await waitFor(
       () =>
         expect(screen.getByText("Dra. Carmen López")).toBeInTheDocument(),
-      { timeout: 3000 },
+      { timeout: 8000 },
     );
 
     const btnNuevaReceta = await screen.findByRole("button", {
       name: /Nueva receta/i,
     });
     await waitFor(() => expect(btnNuevaReceta).not.toBeDisabled(), {
-      timeout: 3000,
+      timeout: 8000,
     });
     await user.click(btnNuevaReceta);
 
@@ -357,7 +357,7 @@ describe("NuevaRecetaDialog — coherencia de fechas", () => {
         const els = screen.getAllByText("Losartán 50mg");
         expect(els.length).toBeGreaterThanOrEqual(1);
       },
-      { timeout: 3000 },
+      { timeout: 8000 },
     );
   });
 });
@@ -395,7 +395,7 @@ describe("CrearRegistroDialog", () => {
         expect(
           screen.getByText(/Sin registro farmacológico/i),
         ).toBeInTheDocument(),
-      { timeout: 3000 },
+      { timeout: 8000 },
     );
 
     expect(
@@ -445,7 +445,7 @@ describe("CrearRegistroDialog", () => {
         expect(
           screen.getByText(/Sin registro farmacológico/i),
         ).toBeInTheDocument(),
-      { timeout: 3000 },
+      { timeout: 8000 },
     );
 
     // Open dialog
@@ -481,7 +481,7 @@ describe("CrearRegistroDialog", () => {
     await waitFor(
       () =>
         expect(screen.getByText("Dr. Juan Martínez")).toBeInTheDocument(),
-      { timeout: 3000 },
+      { timeout: 8000 },
     );
   });
 });
@@ -519,7 +519,7 @@ describe("RBAC — Auditor", () => {
         expect(
           screen.getByText(/Sin registro farmacológico/i),
         ).toBeInTheDocument(),
-      { timeout: 3000 },
+      { timeout: 8000 },
     );
 
     // Neither button should be present

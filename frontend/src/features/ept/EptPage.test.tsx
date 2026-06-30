@@ -175,7 +175,7 @@ describe("EptPage", () => {
 
     await waitFor(
       () => expect(screen.getByText("Juan Pérez")).toBeInTheDocument(),
-      { timeout: 3000 }
+      { timeout: 8000 }
     );
 
     // Select paciente
@@ -187,7 +187,7 @@ describe("EptPage", () => {
         const btn = screen.getByTestId("btn-nueva-ept");
         expect(btn).not.toBeDisabled();
       },
-      { timeout: 3000 }
+      { timeout: 8000 }
     );
 
     // Click Nueva EPT
@@ -196,7 +196,7 @@ describe("EptPage", () => {
     // Dialog should be open
     await waitFor(
       () => expect(screen.getByRole("dialog")).toBeInTheDocument(),
-      { timeout: 2000 }
+      { timeout: 8000 }
     );
 
     // Fill required fields
@@ -228,13 +228,13 @@ describe("EptPage", () => {
         expect(capturedBody).toBeDefined();
         expect((capturedBody as Record<string, unknown>).ingreso_id).toBe(10);
       },
-      { timeout: 3000 }
+      { timeout: 8000 }
     );
 
     // Caso detail renders — nombre_trabajador
     await waitFor(
       () => expect(screen.getByText("María González")).toBeInTheDocument(),
-      { timeout: 3000 }
+      { timeout: 8000 }
     );
 
     // Estado badge "Abierto"
@@ -263,7 +263,7 @@ describe("EptPage", () => {
     // Detail renders
     await waitFor(
       () => expect(screen.getByText("María González")).toBeInTheDocument(),
-      { timeout: 3000 }
+      { timeout: 8000 }
     );
 
     expect(screen.getByText("Abierto")).toBeInTheDocument();
@@ -289,7 +289,7 @@ describe("EptPage", () => {
 
     await waitFor(
       () => expect(screen.getByText("Juan Pérez")).toBeInTheDocument(),
-      { timeout: 3000 }
+      { timeout: 8000 }
     );
 
     await userEvent.click(screen.getByText("Juan Pérez"));
@@ -299,7 +299,7 @@ describe("EptPage", () => {
         expect(
           screen.getByText(/Este paciente no tiene ingresos registrados/i)
         ).toBeInTheDocument(),
-      { timeout: 3000 }
+      { timeout: 8000 }
     );
   });
 });

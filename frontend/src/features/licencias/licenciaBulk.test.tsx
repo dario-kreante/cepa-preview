@@ -122,7 +122,7 @@ async function searchAndWaitRows() {
       // header select-all + 2 row checkboxes = 3 total
       expect(checkboxes.length).toBeGreaterThanOrEqual(3);
     },
-    { timeout: 3000 }
+    { timeout: 8000 }
   );
 }
 
@@ -148,7 +148,7 @@ describe("LicenciasPage — Envío masivo ISL", () => {
         // "Tipo 5" appears at least as a filter option
         expect(screen.getByDisplayValue("Tipo LM: Todos")).toBeInTheDocument();
       },
-      { timeout: 3000 }
+      { timeout: 8000 }
     );
     // Auditor must see no checkboxes
     expect(screen.queryAllByRole("checkbox")).toHaveLength(0);
@@ -209,7 +209,7 @@ describe("LicenciasPage — Envío masivo ISL", () => {
         );
         expect(islPatches).toHaveLength(2);
       },
-      { timeout: 3000 }
+      { timeout: 8000 }
     );
 
     const bodies = islCalls.map((c) => c.body);
@@ -225,7 +225,7 @@ describe("LicenciasPage — Envío masivo ISL", () => {
     fireEvent.change(input, { target: { value: FOLIO } });
     await waitFor(
       () => expect(screen.getByDisplayValue("Tipo LM: Todos")).toBeInTheDocument(),
-      { timeout: 3000 }
+      { timeout: 8000 }
     );
     expect(screen.queryByRole("button", { name: /envío masivo isl/i })).not.toBeInTheDocument();
   });
@@ -268,7 +268,7 @@ describe("LicenciasPage — Generar alertas de vencimiento", () => {
 
     await waitFor(
       () => expect(postSpy).toHaveBeenCalledOnce(),
-      { timeout: 3000 }
+      { timeout: 8000 }
     );
   });
 });

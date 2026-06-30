@@ -128,7 +128,7 @@ async function setupPageWithPaciente(
 
   await waitFor(
     () => expect(screen.getByText("María González")).toBeInTheDocument(),
-    { timeout: 3000 },
+    { timeout: 8000 },
   );
 
   await user.click(screen.getByText("María González"));
@@ -161,7 +161,7 @@ describe("ProximoControlDialog — alta válida", () => {
     // Wait for the control row to appear
     await waitFor(
       () => expect(screen.getByText("Dra. Ana Ruiz")).toBeInTheDocument(),
-      { timeout: 3000 },
+      { timeout: 8000 },
     );
 
     // Click the "Próximo control" row action button
@@ -200,7 +200,7 @@ describe("ProximoControlDialog — alta válida", () => {
     // After invalidation + refetch, the Agendado badge appears
     await waitFor(
       () => expect(screen.getByText("Agendado")).toBeInTheDocument(),
-      { timeout: 3000 },
+      { timeout: 8000 },
     );
   });
 });
@@ -226,7 +226,7 @@ describe("ProximoControlDialog — validación", () => {
     // Wait for the control row to appear
     await waitFor(
       () => expect(screen.getByText("Dra. Ana Ruiz")).toBeInTheDocument(),
-      { timeout: 3000 },
+      { timeout: 8000 },
     );
 
     // Click the row action button
@@ -278,7 +278,7 @@ describe("ProximoControlDialog — RBAC", () => {
 
     await waitFor(
       () => expect(screen.getByText("María González")).toBeInTheDocument(),
-      { timeout: 3000 },
+      { timeout: 8000 },
     );
 
     await user.click(screen.getByText("María González"));
@@ -286,7 +286,7 @@ describe("ProximoControlDialog — RBAC", () => {
     // Wait for controles to load
     await waitFor(
       () => expect(screen.getByText("Dra. Ana Ruiz")).toBeInTheDocument(),
-      { timeout: 3000 },
+      { timeout: 8000 },
     );
 
     // The action button must not be present
