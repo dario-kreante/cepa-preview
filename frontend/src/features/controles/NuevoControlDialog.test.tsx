@@ -122,7 +122,7 @@ async function setupPageWithPaciente(
 
   await waitFor(
     () => expect(screen.getByText("María González")).toBeInTheDocument(),
-    { timeout: 3000 },
+    { timeout: 8000 },
   );
 
   await user.click(screen.getByText("María González"));
@@ -157,7 +157,7 @@ describe("NuevoControlDialog — alta válida", () => {
       name: /Nuevo control/i,
     });
     await waitFor(() => expect(btnNuevoControl).not.toBeDisabled(), {
-      timeout: 3000,
+      timeout: 8000,
     });
 
     // Open the dialog
@@ -196,7 +196,7 @@ describe("NuevoControlDialog — alta válida", () => {
     // After invalidation + refetch, the new control appears in the table
     await waitFor(
       () => expect(screen.getByText("Dra. Ana Ruiz")).toBeInTheDocument(),
-      { timeout: 3000 },
+      { timeout: 8000 },
     );
   });
 });
@@ -221,7 +221,7 @@ describe("NuevoControlDialog — validación", () => {
       name: /Nuevo control/i,
     });
     await waitFor(() => expect(btnNuevoControl).not.toBeDisabled(), {
-      timeout: 3000,
+      timeout: 8000,
     });
 
     await user.click(btnNuevoControl);

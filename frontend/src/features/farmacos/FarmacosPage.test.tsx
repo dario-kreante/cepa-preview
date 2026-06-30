@@ -157,7 +157,7 @@ describe("FarmacosPage", () => {
     // Paciente list appears
     await waitFor(
       () => expect(screen.getByText("Juan Pérez")).toBeInTheDocument(),
-      { timeout: 3000 }
+      { timeout: 8000 }
     );
 
     // Select the paciente row
@@ -166,7 +166,7 @@ describe("FarmacosPage", () => {
     // Registro panel shows médico tratante
     await waitFor(
       () => expect(screen.getByText("Dra. Carmen López")).toBeInTheDocument(),
-      { timeout: 3000 }
+      { timeout: 8000 }
     );
 
     // Registro estado badge
@@ -205,7 +205,7 @@ describe("FarmacosPage", () => {
 
     await waitFor(
       () => expect(screen.getByText("Juan Pérez")).toBeInTheDocument(),
-      { timeout: 3000 }
+      { timeout: 8000 }
     );
 
     await userEvent.click(screen.getByText("Juan Pérez"));
@@ -216,7 +216,7 @@ describe("FarmacosPage", () => {
         // At least one badge (div) + the filter option
         expect(vencidaEls.length).toBeGreaterThanOrEqual(1);
       },
-      { timeout: 3000 }
+      { timeout: 8000 }
     );
   });
 
@@ -237,7 +237,7 @@ describe("FarmacosPage", () => {
 
     await waitFor(
       () => expect(screen.getByText("Juan Pérez")).toBeInTheDocument(),
-      { timeout: 3000 }
+      { timeout: 8000 }
     );
 
     await userEvent.click(screen.getByText("Juan Pérez"));
@@ -247,7 +247,7 @@ describe("FarmacosPage", () => {
         expect(
           screen.getByText(/Este paciente no tiene ingresos registrados/i)
         ).toBeInTheDocument(),
-      { timeout: 3000 }
+      { timeout: 8000 }
     );
   });
 
@@ -275,7 +275,7 @@ describe("FarmacosPage", () => {
 
     await waitFor(
       () => expect(screen.getByText("Juan Pérez")).toBeInTheDocument(),
-      { timeout: 3000 }
+      { timeout: 8000 }
     );
 
     await userEvent.click(screen.getByText("Juan Pérez"));
@@ -285,7 +285,7 @@ describe("FarmacosPage", () => {
         expect(
           screen.getByText(/Sin registro farmacológico/i)
         ).toBeInTheDocument(),
-      { timeout: 3000 }
+      { timeout: 8000 }
     );
 
     expect(

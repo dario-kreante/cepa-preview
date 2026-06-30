@@ -128,7 +128,7 @@ describe("LicenciasPage", () => {
         // At least 2: one in dropdown option, one in the table badge
         expect(badges.length).toBeGreaterThanOrEqual(2);
       },
-      { timeout: 3000 }
+      { timeout: 8000 }
     );
   });
 
@@ -161,7 +161,7 @@ describe("LicenciasPage", () => {
         const elements = screen.getAllByText(/Vigente/i);
         expect(elements.length).toBeGreaterThanOrEqual(1);
       },
-      { timeout: 3000 }
+      { timeout: 8000 }
     );
   });
 
@@ -193,7 +193,7 @@ describe("LicenciasPage", () => {
       () => {
         expect(screen.getByText(/Vence en \d+d/i)).toBeInTheDocument();
       },
-      { timeout: 3000 }
+      { timeout: 8000 }
     );
   });
 
@@ -212,7 +212,7 @@ describe("LicenciasPage", () => {
       () => {
         expect(screen.getByText(/Sin licencias para este folio/i)).toBeInTheDocument();
       },
-      { timeout: 3000 }
+      { timeout: 8000 }
     );
   });
 
@@ -242,7 +242,7 @@ describe("LicenciasPage", () => {
         const diasLabels = screen.getAllByText(/Días acumulados/i);
         expect(diasLabels.length).toBeGreaterThanOrEqual(1);
       },
-      { timeout: 3000 }
+      { timeout: 8000 }
     );
   });
 

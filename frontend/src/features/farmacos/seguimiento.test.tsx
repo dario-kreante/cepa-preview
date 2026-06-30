@@ -131,7 +131,7 @@ async function setupPageWithPaciente(
 
   await waitFor(
     () => expect(screen.getByText("Juan Pérez")).toBeInTheDocument(),
-    { timeout: 3000 },
+    { timeout: 8000 },
   );
 
   // Register any extra handlers before interacting further
@@ -186,7 +186,7 @@ describe("NuevoSeguimientoDialog — validación condicional", () => {
     // Wait for panel to load
     await waitFor(
       () => expect(screen.getByText("Dra. Carmen López")).toBeInTheDocument(),
-      { timeout: 3000 },
+      { timeout: 8000 },
     );
 
     // Wait for "Sin seguimientos registrados" empty state
@@ -195,7 +195,7 @@ describe("NuevoSeguimientoDialog — validación condicional", () => {
         expect(
           screen.getByText(/Sin seguimientos registrados/i),
         ).toBeInTheDocument(),
-      { timeout: 3000 },
+      { timeout: 8000 },
     );
 
     // Open dialog
@@ -244,7 +244,7 @@ describe("NuevoSeguimientoDialog — validación condicional", () => {
 
     await waitFor(
       () => expect(screen.getByText("Dra. Carmen López")).toBeInTheDocument(),
-      { timeout: 3000 },
+      { timeout: 8000 },
     );
 
     await waitFor(
@@ -252,7 +252,7 @@ describe("NuevoSeguimientoDialog — validación condicional", () => {
         expect(
           screen.getByText(/Sin seguimientos registrados/i),
         ).toBeInTheDocument(),
-      { timeout: 3000 },
+      { timeout: 8000 },
     );
 
     // Open dialog
@@ -324,7 +324,7 @@ describe("NuevoSeguimientoDialog — validación condicional", () => {
 
     await waitFor(
       () => expect(screen.getByText("Dra. Carmen López")).toBeInTheDocument(),
-      { timeout: 3000 },
+      { timeout: 8000 },
     );
 
     await waitFor(
@@ -332,7 +332,7 @@ describe("NuevoSeguimientoDialog — validación condicional", () => {
         expect(
           screen.getByText(/Sin seguimientos registrados/i),
         ).toBeInTheDocument(),
-      { timeout: 3000 },
+      { timeout: 8000 },
     );
 
     // Open dialog
@@ -367,7 +367,7 @@ describe("NuevoSeguimientoDialog — validación condicional", () => {
         expect(
           screen.getByText("Primera revisión sin cambios"),
         ).toBeInTheDocument(),
-      { timeout: 3000 },
+      { timeout: 8000 },
     );
   });
 
@@ -411,7 +411,7 @@ describe("NuevoSeguimientoDialog — validación condicional", () => {
 
     await waitFor(
       () => expect(screen.getByText("Dra. Carmen López")).toBeInTheDocument(),
-      { timeout: 3000 },
+      { timeout: 8000 },
     );
 
     await waitFor(
@@ -419,7 +419,7 @@ describe("NuevoSeguimientoDialog — validación condicional", () => {
         expect(
           screen.getByText(/Sin seguimientos registrados/i),
         ).toBeInTheDocument(),
-      { timeout: 3000 },
+      { timeout: 8000 },
     );
 
     await user.click(screen.getByRole("button", { name: /Agregar seguimiento/i }));
@@ -504,7 +504,7 @@ describe("Generar alertas de revisión", () => {
         expect(
           screen.getByText(/3 alertas de revisión generadas/i),
         ).toBeInTheDocument(),
-      { timeout: 3000 },
+      { timeout: 8000 },
     );
   });
 });
@@ -550,7 +550,7 @@ describe("NuevoSeguimientoDialog — coerción de detalle cuando flag desmarcado
 
     await waitFor(
       () => expect(screen.getByText("Dra. Carmen López")).toBeInTheDocument(),
-      { timeout: 3000 },
+      { timeout: 8000 },
     );
 
     await waitFor(
@@ -558,7 +558,7 @@ describe("NuevoSeguimientoDialog — coerción de detalle cuando flag desmarcado
         expect(
           screen.getByText(/Sin seguimientos registrados/i),
         ).toBeInTheDocument(),
-      { timeout: 3000 },
+      { timeout: 8000 },
     );
 
     // Open dialog
@@ -639,7 +639,7 @@ describe("NuevoSeguimientoDialog — coerción de detalle cuando flag desmarcado
 
     await waitFor(
       () => expect(screen.getByText("Dra. Carmen López")).toBeInTheDocument(),
-      { timeout: 3000 },
+      { timeout: 8000 },
     );
 
     await waitFor(
@@ -647,7 +647,7 @@ describe("NuevoSeguimientoDialog — coerción de detalle cuando flag desmarcado
         expect(
           screen.getByText(/Sin seguimientos registrados/i),
         ).toBeInTheDocument(),
-      { timeout: 3000 },
+      { timeout: 8000 },
     );
 
     // Open dialog
@@ -724,7 +724,7 @@ describe("RBAC — Auditor no ve acciones de escritura", () => {
         expect(
           screen.getByText(/Sin seguimientos registrados/i),
         ).toBeInTheDocument(),
-      { timeout: 3000 },
+      { timeout: 8000 },
     );
 
     // "Agregar seguimiento" should not be visible

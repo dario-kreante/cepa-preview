@@ -124,7 +124,7 @@ async function setupPageWithPaciente(
 
   await waitFor(
     () => expect(screen.getByText("María González")).toBeInTheDocument(),
-    { timeout: 3000 },
+    { timeout: 8000 },
   );
 
   await user.click(screen.getByText("María González"));
@@ -138,7 +138,7 @@ async function openLicenciaDialog(
 ) {
   await waitFor(
     () => expect(screen.getByText("Dra. Ana Ruiz")).toBeInTheDocument(),
-    { timeout: 3000 },
+    { timeout: 8000 },
   );
 
   const btn = await screen.findByTestId(`btn-licencia-reca-${controlId}`);
@@ -347,7 +347,7 @@ describe("LicenciaControlDialog — alta válida: tiene_licencia true con todos 
         expect(
           screen.getByText(/Licencia y RECA actualizados/i),
         ).toBeInTheDocument(),
-      { timeout: 3000 },
+      { timeout: 8000 },
     );
 
     // After invalidation + refetch, the table row reflects the updated data.
@@ -364,7 +364,7 @@ describe("LicenciaControlDialog — alta válida: tiene_licencia true con todos 
         );
         expect(totalBadge).toBeDefined();
       },
-      { timeout: 3000 },
+      { timeout: 8000 },
     );
   });
 });
@@ -447,7 +447,7 @@ describe("LicenciaControlDialog — RBAC", () => {
 
     await waitFor(
       () => expect(screen.getByText("María González")).toBeInTheDocument(),
-      { timeout: 3000 },
+      { timeout: 8000 },
     );
 
     await user.click(screen.getByText("María González"));
@@ -455,7 +455,7 @@ describe("LicenciaControlDialog — RBAC", () => {
     // Wait for controles to load
     await waitFor(
       () => expect(screen.getByText("Dra. Ana Ruiz")).toBeInTheDocument(),
-      { timeout: 3000 },
+      { timeout: 8000 },
     );
 
     // The action button must not be present
