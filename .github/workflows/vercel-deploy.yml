@@ -1,0 +1,40 @@
+name: vercel-deploy
+on:
+  push:
+    branches: ["main"]
+    paths: ["frontend/**", ".github/workflows/vercel-deploy.yml"]
+  pull_request:
+    paths: ["frontend/**", ".github/workflows/vercel-deploy.yml"]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm install -g vercel@latest
+
+      # Deploy de producción: push directo a main
+      - name: Pull Vercel env (production)
+        if: github.event_name == 'push'
+        run: vercel pull --yes --environment=production --token=$VERCEL_TOKEN
+      - name: Build (production)
+        if: github.event_name == 'push'
+        run: vercel build --prod --token=$VERCEL_TOKEN
+      - name: Deploy (production)
+        if: github.event_name == 'push'
+        run: vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN
+
+      # Preview de PR
+      - name: Pull Vercel env (preview)
+        if: github.event_name == 'pull_request'
+        run: vercel pull --yes --environment=preview --token=$VERCEL_TOKEN
+      - name: Build (preview)
+        if: github.event_name == 'pull_request'
+        run: vercel build --token=$VERCEL_TOKEN
+      - name: Deploy (preview)
+        if: github.event_name == 'pull_request'
+        run: vercel deploy --prebuilt --token=$VERCEL_TOKEN
