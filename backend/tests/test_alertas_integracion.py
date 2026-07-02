@@ -327,6 +327,49 @@ def test_job_idempotente_no_duplica_en_segunda_ejecucion(db_session: Session):
     assert count == 1
 
 
+def test_job_idempotente_con_sesion_en_timezone_no_utc(db_session: Session):
+    """Regresión: `_cargar_alertas_activas` no debe duplicar alertas cuando la
+    conexión de BD tiene un timezone de sesión distinto de UTC.
+
+    `AlertaNotif.plazo_objetivo` se persiste en UTC a medianoche. Si el driver
+    devuelve ese datetime con el tzinfo de la sesión (p.ej. America/New_York,
+    UTC-4/-5), `.date()` extraía la fecha local en vez de la UTC — un desfase
+    de un día que rompía la clave de idempotencia (caso_id, tipo,
+    plazo_objetivo) y generaba una alerta duplicada en cada re-ejecución del
+    job. Detectado sembrando datos de desarrollo con la sesión local en
+    America/New_York (ver app/scripts/seed_dev_data.py).
+    """
+    from sqlalchemy import text
+
+    db_session.execute(text("SET TIME ZONE 'America/New_York'"))
+
+    ingreso = _make_ingreso(db_session, folio="F-TZ-001")
+    oda = Oda(
+        ingreso_id=ingreso.id,
+        identificador="ODA-TZ",
+        fecha_vencimiento=_today_plus(2),
+        vigente=True,
+    )
+    db_session.add(oda)
+    db_session.flush()
+
+    primera = ejecutar_job_alertas(db_session, actor="test")
+    segunda = ejecutar_job_alertas(db_session, actor="test")
+
+    assert primera == 1
+    assert segunda == 0, "la segunda ejecución no debe duplicar la alerta bajo timezone no-UTC"
+
+    from sqlalchemy import func, select
+
+    count = db_session.scalar(
+        select(func.count()).select_from(AlertaNotif).where(
+            AlertaNotif.tipo == "oda_por_vencer",
+            AlertaNotif.caso_id == oda.id,
+        )
+    )
+    assert count == 1
+
+
 def test_job_genera_nueva_alerta_por_nuevo_plazo(db_session: Session):
     """DD-D / RN-4: un nuevo plazo en el mismo caso genera una alerta adicional.
 

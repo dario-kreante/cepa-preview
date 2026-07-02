@@ -196,7 +196,11 @@ def _cargar_alertas_activas(db: Session) -> set[tuple]:
     for fila in filas:
         plazo = fila.plazo_objetivo
         if hasattr(plazo, "date"):
-            plazo = plazo.date()
+            # DD-E: plazo_objetivo se persiste en UTC (medianoche). Si la sesión de BD
+            # no está en UTC, el driver puede devolver el datetime con tzinfo local, y
+            # `.date()` extraería la fecha local en vez de la UTC (desfase de un día que
+            # rompe la idempotencia de RN-4 — ver bug de duplicados en alerta_notif).
+            plazo = plazo.astimezone(timezone.utc).date()
         resultado.add((fila.caso_id, fila.tipo, plazo))
     return resultado
 
