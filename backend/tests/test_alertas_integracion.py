@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import datetime
 
+import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
@@ -338,8 +339,15 @@ def test_job_idempotente_con_sesion_en_timezone_no_utc(db_session: Session):
     plazo_objetivo) y generaba una alerta duplicada en cada re-ejecución del
     job. Detectado sembrando datos de desarrollo con la sesión local en
     America/New_York (ver app/scripts/seed_dev_data.py).
+
+    `SET TIME ZONE` es sintaxis específica de Postgres (D15); en Oracle el
+    manejo de sesión/timezone es distinto, así que este test se omite ahí
+    — el fix en sí (normalizar a UTC antes de comparar) es portable.
     """
     from sqlalchemy import text
+
+    if db_session.get_bind().dialect.name != "postgresql":
+        pytest.skip("SET TIME ZONE es sintaxis específica de Postgres (D15)")
 
     db_session.execute(text("SET TIME ZONE 'America/New_York'"))
 

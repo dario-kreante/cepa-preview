@@ -40,7 +40,6 @@ from app.models.consentimiento import Consentimiento
 from app.models.control_medico import ControlMedico
 from app.models.ept import CasoEpt, ContactoEpt, PlazoEpt, ProcesoEpt
 from app.models.farmacos import (
-    Alerta,
     EsquemaIndicacion,
     Receta,
     RegistroFarmacologico,
