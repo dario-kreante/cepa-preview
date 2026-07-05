@@ -114,3 +114,29 @@ def test_field_type_invalido_es_error():
     campos.append(_field("nuevo_campo", field_type="imagen"))
     errores = validate_form_version(campos)
     assert any("field_type" in e["error"] or "tipo" in e["error"].lower() for e in errores)
+
+
+# TC-CEPA-111-001: field_key de campo custom con nomenclatura no estándar → error
+def test_field_key_custom_con_nomenclatura_no_estandar_bloquea_publicacion():
+    campos = _all_system_fields()
+    campos.append(_field("campoX1", field_type="text"))
+    errores = validate_form_version(campos)
+    assert any("campoX1" in e["error"] for e in errores)
+
+
+# Nomenclatura estándar: guiones, espacios o mayúsculas también deben rechazarse
+def test_field_key_custom_con_guion_o_espacio_bloquea_publicacion():
+    campos = _all_system_fields()
+    campos.append(_field("campo-nuevo", field_type="text"))
+    campos.append(_field("campo nuevo", field_type="text"))
+    errores = validate_form_version(campos)
+    assert any("campo-nuevo" in e["error"] for e in errores)
+    assert any("campo nuevo" in e["error"] for e in errores)
+
+
+# Nomenclatura estándar: snake_case válido (minúsculas, números, guion bajo) no genera error
+def test_field_key_custom_snake_case_valido_no_da_error():
+    campos = _all_system_fields()
+    campos.append(_field("campo_extra_2", field_type="text"))
+    errores = validate_form_version(campos)
+    assert not any("campo_extra_2" in e["error"] for e in errores)

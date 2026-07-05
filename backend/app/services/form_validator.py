@@ -9,9 +9,12 @@ Reglas implementadas (CEPA-111 RN-1 a RN-4):
 - Cada campo debe tener field_type en el conjunto válido y label no vacío.
 - Campos de tipo 'select' marcados required deben tener domain_values no vacío.
 - No puede haber field_key duplicado.
+- Campos custom (no-sistema) deben usar field_key en nomenclatura estándar (snake_case).
 """
 
 from __future__ import annotations
+
+import re
 
 # Identificadores normalizados de los 7 campos obligatorios del sistema (D6 / CEPA-111 RN-2).
 SYSTEM_REQUIRED_FIELDS: tuple[str, ...] = (
@@ -25,6 +28,10 @@ SYSTEM_REQUIRED_FIELDS: tuple[str, ...] = (
 )
 
 VALID_FIELD_TYPES: frozenset[str] = frozenset({"text", "number", "date", "select", "boolean"})
+
+# Nomenclatura estándar de field_key (snake_case: minúsculas, números y guion bajo).
+# Replica la regex del frontend (frontend/src/features/config-formularios/fieldSchema.ts).
+FIELD_KEY_PATTERN: re.Pattern[str] = re.compile(r"^[a-z0-9_]+$")
 
 
 class ParametrizationError(Exception):
@@ -124,7 +131,20 @@ def validate_form_version(fields: list[dict]) -> list[dict[str, str]]:
                 }
             )
 
-        # 3c. Select obligatorio debe tener domain_values
+        # 3c. Campos custom (no-sistema) deben usar field_key en nomenclatura estándar
+        if not f.get("system_locked", False) and key not in SYSTEM_REQUIRED_FIELDS:
+            if key and not FIELD_KEY_PATTERN.match(key):
+                errors.append(
+                    {
+                        "field_key": key,
+                        "error": (
+                            f"Campo '{key}' tiene field_key con nomenclatura no estándar. "
+                            "Debe usar solo minúsculas, números y guion bajo (snake_case)."
+                        ),
+                    }
+                )
+
+        # 3d. Select obligatorio debe tener domain_values
         if ftype == "select" and f.get("required", False):
             dv = f.get("domain_values")
             if not dv:
