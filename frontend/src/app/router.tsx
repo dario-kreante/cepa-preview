@@ -2,6 +2,7 @@ import { Navigate, Outlet, Route, Routes } from "react-router-dom";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { puedeEscribir, type Rol } from "@/lib/rbac";
 import { AppShell } from "./shell/AppShell";
+import { PantallaCargando } from "@/components/shell/PantallaCargando";
 import { LoginPage } from "@/features/auth/LoginPage";
 import { IngresosListaPage } from "@/features/ingresos/IngresosListaPage";
 import { AltaIngresoPage } from "@/features/ingresos/AltaIngresoPage";
@@ -21,7 +22,7 @@ import { PdfExtractPage } from "@/features/pdf-extract/PdfExtractPage";
 
 export function ProtectedRoute({ rolesEscritura }: { rolesEscritura?: boolean }) {
   const { rol, cargando } = useAuth();
-  if (cargando) return <div className="p-6 text-ink-500">Cargando…</div>;
+  if (cargando) return <PantallaCargando />;
   if (!rol) return <Navigate to="/login" replace />;
   if (rolesEscritura && !puedeEscribir(rol as Rol)) return <Navigate to="/" replace />;
   return <Outlet />;

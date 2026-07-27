@@ -4,12 +4,61 @@ import { tokenStore } from "./tokenStore";
 
 const baseUrl = import.meta.env.VITE_API_BASE_URL;
 
+/**
+ * El backend de staging vive en un plan que se duerme por inactividad: el primer
+ * request tras un rato tarda ~50s en despertarlo. Damos margen suficiente para el
+ * arranque en frío, pero nunca esperamos indefinidamente — sin este tope, un
+ * backend caído deja la UI colgada para siempre (no responde ni falla).
+ */
+export const TIEMPO_MAXIMO_MS = 60_000;
+
+/** El servidor no se pudo contactar (caído, sin red, DNS, CORS o timeout). */
+export class ErrorDeConexion extends Error {
+  constructor(causa?: unknown) {
+    super("No se pudo contactar con el servidor");
+    this.name = "ErrorDeConexion";
+    this.cause = causa;
+  }
+}
+
+/**
+ * `fetch` que siempre termina: falla pasado `tiempoMaximoMs` y normaliza
+ * cualquier fallo de transporte a `ErrorDeConexion`, para que la UI pueda
+ * distinguir "el servidor no contesta" de "el servidor contestó que no".
+ *
+ * El plazo se implementa con una carrera en vez de un `AbortSignal` propio: así
+ * respetamos el `signal` que ya trae `init` (React Query cancela sus consultas
+ * por ahí) y evitamos mezclar realms de `AbortController`. Contrapartida: la
+ * petición vencida sigue viva en segundo plano; su respuesta tardía se descarta.
+ */
+export async function fetchConTimeout(
+  input: RequestInfo | URL,
+  init?: RequestInit,
+  tiempoMaximoMs: number = TIEMPO_MAXIMO_MS,
+): Promise<Response> {
+  let temporizador: ReturnType<typeof setTimeout> | undefined;
+  const plazo = new Promise<never>((_, rechazar) => {
+    temporizador = setTimeout(
+      () => rechazar(new ErrorDeConexion(new Error(`sin respuesta en ${tiempoMaximoMs} ms`))),
+      tiempoMaximoMs,
+    );
+  });
+  try {
+    return await Promise.race([
+      globalThis.fetch(input, init).catch((causa) => { throw new ErrorDeConexion(causa); }),
+      plazo,
+    ]);
+  } finally {
+    clearTimeout(temporizador);
+  }
+}
+
 let refreshing: Promise<boolean> | null = null;
 
 async function doRefresh(): Promise<boolean> {
   const refresh = tokenStore.getRefresh();
   if (!refresh) return false;
-  const res = await fetch(`${baseUrl}/api/v1/auth/refresh`, {
+  const res = await fetchConTimeout(`${baseUrl}/api/v1/auth/refresh`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ refresh_token: refresh }),
@@ -41,12 +90,15 @@ const authMiddleware: Middleware = {
     // Build a fresh Request from the pre-consume clone with the updated token.
     const retried = new Request(original, { headers: new Headers(original.headers) });
     retried.headers.set("authorization", `Bearer ${tokenStore.getAccess()}`);
-    return fetch(retried);
+    return fetchConTimeout(retried);
   },
 };
 
 export const api = createClient<paths>({
   baseUrl,
-  fetch: (...args) => globalThis.fetch(...args),
+  // `fetchConTimeout` re-resuelve `globalThis.fetch` en cada llamada (necesario
+  // para que MSW intercepte en tests) y garantiza que ninguna petición quede
+  // pendiente para siempre si el backend no responde.
+  fetch: (...args) => fetchConTimeout(...args),
 });
 api.use(authMiddleware);

@@ -1,24 +1,34 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth/AuthContext";
+import { ErrorDeConexion } from "@/lib/apiClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { APP_NAME, APP_INITIAL, APP_SUBTITLE } from "@/lib/brand";
 
+const MENSAJE_SERVIDOR =
+  "No se pudo contactar con el servidor. Reintenta en unos minutos.";
+
 export function LoginPage() {
-  const { login } = useAuth();
+  const { login, errorSesion } = useAuth();
   const nav = useNavigate();
   const [u, setU] = useState(""); const [p, setP] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
 
+  // Si llegamos aquí porque no se pudo restaurar la sesión con el servidor caído,
+  // explicamos el motivo en vez de mostrar un formulario sin contexto.
+  const mensaje = error ?? (errorSesion === "servidor" ? MENSAJE_SERVIDOR : null);
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null); setEnviando(true);
     try { await login(u, p); nav("/"); }
-    catch { setError("Credenciales inválidas"); }
+    catch (e) {
+      setError(e instanceof ErrorDeConexion ? MENSAJE_SERVIDOR : "Credenciales inválidas");
+    }
     finally { setEnviando(false); }
   }
 
@@ -42,7 +52,7 @@ export function LoginPage() {
               <Label htmlFor="p">Contraseña</Label>
               <Input id="p" type="password" value={p} onChange={(e) => setP(e.target.value)} autoComplete="current-password" />
             </div>
-            {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+            {mensaje && <p role="alert" className="text-sm text-destructive">{mensaje}</p>}
             <Button type="submit" className="w-full" disabled={enviando}>
               {enviando ? "Ingresando…" : "Ingresar"}
             </Button>
