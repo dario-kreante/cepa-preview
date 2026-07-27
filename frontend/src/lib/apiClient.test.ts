@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { http, HttpResponse } from "msw";
+import { delay, http, HttpResponse } from "msw";
 import { server } from "@/test/msw/server";
-import { api } from "./apiClient";
+import { api, ErrorDeConexion, fetchConTimeout } from "./apiClient";
 import { tokenStore } from "./tokenStore";
 
 const BASE = import.meta.env.VITE_API_BASE_URL;
@@ -50,5 +50,26 @@ describe("apiClient", () => {
     expect(response.status).toBe(201);
     // the retried (authorized) call must have received the same body
     expect(bodies.at(-1)).toEqual(payload);
+  });
+});
+
+describe("apiClient — servidor caído o inalcanzable", () => {
+  it("aborta la petición si el servidor no responde dentro del plazo", async () => {
+    server.use(http.get(`${BASE}/api/v1/ingresos`, async () => { await delay("infinite"); }));
+    await expect(fetchConTimeout(`${BASE}/api/v1/ingresos`, {}, 30)).rejects.toBeInstanceOf(
+      ErrorDeConexion,
+    );
+  });
+
+  it("traduce un fallo de red a ErrorDeConexion", async () => {
+    server.use(http.get(`${BASE}/api/v1/ingresos`, () => HttpResponse.error()));
+    await expect(fetchConTimeout(`${BASE}/api/v1/ingresos`)).rejects.toBeInstanceOf(
+      ErrorDeConexion,
+    );
+  });
+
+  it("el cliente tipado propaga ErrorDeConexion en vez de quedarse colgado", async () => {
+    server.use(http.get(`${BASE}/api/v1/ingresos`, () => HttpResponse.error()));
+    await expect(api.GET("/api/v1/ingresos", {})).rejects.toBeInstanceOf(ErrorDeConexion);
   });
 });
