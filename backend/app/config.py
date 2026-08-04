@@ -40,6 +40,8 @@ class Settings(BaseSettings):
     saml_sp_entity_id: str = "https://sige-cepa.utalca.cl/saml/metadata"
     saml_sp_acs_url: str = "https://sige-cepa.utalca.cl/api/v1/auth/saml/acs"
     saml_idp_cert: str = ""
+    # A dónde vuelve el navegador tras el ACS, con el código de un solo uso.
+    frontend_url: str = "http://localhost:5173"
 
     # --- Autenticación / JWT (EPIC-00, parametrizable; D13) ---
     jwt_secret: str = "cambiar-en-produccion-secreto-jwt-cepa"

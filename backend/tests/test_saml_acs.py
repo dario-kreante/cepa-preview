@@ -71,15 +71,21 @@ def idp_configurado(monkeypatch):
     get_settings.cache_clear()
 
 
-def test_acs_con_asercion_firmada_emite_jwt_del_cepa(
+def test_acs_con_asercion_firmada_autentica_al_usuario_correcto(
     client, db_session: Session, idp_configurado
 ):
-    """Aserción válida del IdP configurado → tokens del CEPA con la identidad correcta.
+    """Aserción válida → sesión para la identidad que venía firmada.
 
     El RUT viaja firmado dentro de la aserción, así que manipularlo invalida la
     firma. Eso es lo que hace confiable la identidad, a diferencia del `?id=RUT`
     del wrapper.
+
+    El ACS ya no devuelve los tokens: redirige al frontend con un código de un
+    solo uso (ver test_saml_codigo_canje.py). Aquí se sigue ese código hasta la
+    sesión para comprobar a quién autentica.
     """
+    from urllib.parse import parse_qs, urlparse
+
     clave, cert = idp_configurado
     _usuario(db_session, rut="16998654-1", username="psaml")
     db_session.commit()
@@ -90,12 +96,16 @@ def test_acs_con_asercion_firmada_emite_jwt_del_cepa(
     )
     idp.firmar_assertion(resp, clave_pem=clave, cert_pem=cert)
 
-    r = client.post("/api/v1/auth/saml/acs", data={"SAMLResponse": idp.response_b64(resp)})
+    r = client.post(
+        "/api/v1/auth/saml/acs",
+        data={"SAMLResponse": idp.response_b64(resp)},
+        follow_redirects=False,
+    )
 
-    assert r.status_code == 200, r.text
-    tokens = r.json()
-    assert tokens["access_token"] and tokens["refresh_token"]
+    assert r.status_code == 303, r.text
+    code = parse_qs(urlparse(r.headers["location"]).query)["code"][0]
 
+    tokens = client.post("/api/v1/auth/saml/canjear", json={"code": code}).json()
     quien = client.get(
         "/whoami-test", headers={"Authorization": f"Bearer {tokens['access_token']}"}
     )

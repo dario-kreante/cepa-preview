@@ -5,6 +5,8 @@ Allí se valida la firma y solo entonces se resuelve el usuario del CEPA: el RUT
 llega dentro de la aserción firmada, no en un parámetro manipulable.
 """
 
+from urllib.parse import quote
+
 from fastapi import APIRouter, Depends, Form, HTTPException, Response, status
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
@@ -17,10 +19,12 @@ from app.auth.saml.sp import (
     generar_metadata_sp,
     validar_respuesta_saml,
 )
+from app.auth.saml.codigos import CodigoInvalido, almacen_codigos
 from app.auth.sso.service import UsuarioSsoNoRegistrado, resolver_usuario_por_rut
 from app.config import get_settings
 from app.db.session import get_db
-from app.schemas.auth import TokenPair
+from app.models.usuario import Usuario
+from app.schemas.auth import CanjearCodigoRequest, TokenPair
 
 router = APIRouter(prefix="/api/v1/auth/saml", tags=["auth"])
 
@@ -58,12 +62,18 @@ def metadata() -> Response:
     return Response(content=xml, media_type="application/xml")
 
 
-@router.post("/acs", response_model=TokenPair)
+@router.post("/acs")
 def acs(
     SAMLResponse: str = Form(..., description="Aserción SAML emitida por el IdP"),
+    RelayState: str = Form(""),
     db: Session = Depends(get_db),
-) -> TokenPair:
-    """Consume la aserción del IdP y emite el par de tokens del CEPA."""
+) -> RedirectResponse:
+    """Consume la aserción del IdP y devuelve el navegador al frontend.
+
+    No entrega los tokens aquí: emite un código de un solo uso y redirige. Así la
+    sesión no queda en la barra de direcciones ni en el historial, y el frontend
+    la recoge por POST contra /canjear.
+    """
     settings = get_settings()
 
     try:
@@ -83,6 +93,29 @@ def acs(
         )
 
     db.commit()
+    codigo = almacen_codigos.emitir(usuario_id=usuario.id)
+    destino = f"{settings.frontend_url.rstrip('/')}/auth/callback?code={codigo}"
+    if RelayState:
+        destino += f"&redirect={quote(RelayState, safe='')}"
+    return RedirectResponse(destino, status_code=status.HTTP_303_SEE_OTHER)
+
+
+@router.post("/canjear", response_model=TokenPair)
+def canjear(payload: CanjearCodigoRequest, db: Session = Depends(get_db)) -> TokenPair:
+    """Cambia un código de un solo uso por el par de tokens del CEPA."""
+    try:
+        usuario_id = almacen_codigos.canjear(payload.code)
+    except CodigoInvalido:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Código inválido o expirado"
+        )
+
+    usuario = db.get(Usuario, usuario_id)
+    if usuario is None or not usuario.activo:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuario inexistente o desactivado"
+        )
+
     return TokenPair(
         access_token=crear_access_token(usuario.id, usuario.username, usuario.rol),
         refresh_token=crear_refresh_token(usuario.id, usuario.username, usuario.rol),

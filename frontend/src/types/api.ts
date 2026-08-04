@@ -38,6 +38,113 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/sso/callback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Callback
+         * @description Verifica el ticket de UTalca y emite el par de tokens del CEPA.
+         */
+        get: operations["callback_api_v1_auth_sso_callback_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/saml/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Login
+         * @description Inicia el flujo SAML: redirige al IdP de UTalca con un AuthnRequest.
+         *
+         *     ``relay_state`` permite volver a la página desde la que se pidió el login;
+         *     el IdP lo devuelve intacto al ACS.
+         */
+        get: operations["login_api_v1_auth_saml_login_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/saml/metadata": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Metadata
+         * @description Metadata XML del SP, para entregar a DTI y registrar el SP en el IdP.
+         */
+        get: operations["metadata_api_v1_auth_saml_metadata_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/saml/acs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Acs
+         * @description Consume la aserción del IdP y devuelve el navegador al frontend.
+         *
+         *     No entrega los tokens aquí: emite un código de un solo uso y redirige. Así la
+         *     sesión no queda en la barra de direcciones ni en el historial, y el frontend
+         *     la recoge por POST contra /canjear.
+         */
+        post: operations["acs_api_v1_auth_saml_acs_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/saml/canjear": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Canjear
+         * @description Cambia un código de un solo uso por el par de tokens del CEPA.
+         */
+        post: operations["canjear_api_v1_auth_saml_canjear_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/usuarios": {
         parameters: {
             query?: never;
@@ -1806,10 +1913,31 @@ export interface components {
              */
             created_at: string;
         };
+        /** Body_acs_api_v1_auth_saml_acs_post */
+        Body_acs_api_v1_auth_saml_acs_post: {
+            /**
+             * Samlresponse
+             * @description Aserción SAML emitida por el IdP
+             */
+            SAMLResponse: string;
+            /**
+             * Relaystate
+             * @default
+             */
+            RelayState: string;
+        };
         /** Body_upload_pdf_api_v1_pdf_extract_upload_post */
         Body_upload_pdf_api_v1_pdf_extract_upload_post: {
             /** File */
             file: string;
+        };
+        /**
+         * CanjearCodigoRequest
+         * @description Canje del código de un solo uso emitido por el ACS SAML.
+         */
+        CanjearCodigoRequest: {
+            /** Code */
+            code: string;
         };
         /** CargaProfesionalItem */
         CargaProfesionalItem: {
@@ -4292,6 +4420,157 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AccessTokenResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    callback_api_v1_auth_sso_callback_get: {
+        parameters: {
+            query: {
+                /** @description RUT que devuelve el SSO de UTalca */
+                id: string;
+                /** @description Ticket de autenticación emitido por UTalca */
+                v: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TokenPair"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    login_api_v1_auth_saml_login_get: {
+        parameters: {
+            query?: {
+                relay_state?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    metadata_api_v1_auth_saml_metadata_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    acs_api_v1_auth_saml_acs_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/x-www-form-urlencoded": components["schemas"]["Body_acs_api_v1_auth_saml_acs_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    canjear_api_v1_auth_saml_canjear_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CanjearCodigoRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TokenPair"];
                 };
             };
             /** @description Validation Error */
