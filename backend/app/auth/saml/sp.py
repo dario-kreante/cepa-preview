@@ -32,8 +32,10 @@ def _settings_dict(*, entity_id: str, acs_url: str, cert_sp: str = "") -> dict:
                 "url": acs_url,
                 "binding": "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST",
             },
-            # El IdP de UTalca publica NameIDFormat 'unspecified'.
-            "NameIDFormat": "urn:oasis:names:tc:SAML:2.0:nameid-format:unspecified",
+            # 'transient' es lo que pide el propio sprovider.utalca.cl (visto al
+            # decodificar su AuthnRequest real). Implica que el NameID es efímero
+            # y que la identidad llega en los atributos de la aserción.
+            "NameIDFormat": "urn:oasis:names:tc:SAML:2.0:nameid-format:transient",
             "x509cert": cert_sp,
             "privateKey": "",
         },
@@ -51,6 +53,9 @@ def _settings_dict(*, entity_id: str, acs_url: str, cert_sp: str = "") -> dict:
             # identidad; sin esto el SP aceptaría cualquier POST.
             "wantAssertionsSigned": True,
             "wantMessagesSigned": False,
+            # El AuthnRequest real de UTalca no envía RequestedAuthnContext;
+            # exigir un contexto que su IdP no soporte provocaría un rechazo.
+            "requestedAuthnContext": False,
             "signatureAlgorithm": "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256",
             "digestAlgorithm": "http://www.w3.org/2001/04/xmlenc#sha256",
         },
@@ -70,6 +75,47 @@ def generar_metadata_sp(*, entity_id: str, acs_url: str, cert_sp: str = "") -> s
         raise ValueError(f"Metadata SP inválido: {errores}")
 
     return metadata.decode("utf-8") if isinstance(metadata, bytes) else metadata
+
+
+class SsoSamlNoConfigurado(Exception):
+    """Falta configuración para operar el SSO SAML (típicamente el cert del IdP)."""
+
+
+def construir_url_login(
+    *, entity_id: str, acs_url: str, idp_cert: str, relay_state: str = ""
+) -> str:
+    """Arma el AuthnRequest y devuelve la URL del IdP a la que redirigir.
+
+    Usa el binding HTTP-Redirect que publica el IdP de UTalca en su metadata:
+    el AuthnRequest viaja comprimido y en base64 dentro del query string.
+
+    Exige el certificado del IdP aunque el AuthnRequest no lo use: sin él la
+    aserción de vuelta sería irrechazable de validar, y no tiene sentido pedirle
+    credenciales al usuario para terminar en un 401.
+    """
+    if not idp_cert:
+        raise SsoSamlNoConfigurado(
+            "SSO SAML no configurado: falta el certificado del IdP"
+        )
+
+    settings = _settings_dict(entity_id=entity_id, acs_url=acs_url)
+    settings["idp"]["x509cert"] = idp_cert
+    request_data = {
+        "https": "on",
+        "http_host": acs_url.split("//", 1)[-1].split("/", 1)[0],
+        "script_name": "/" + acs_url.split("//", 1)[-1].split("/", 1)[-1],
+        "post_data": {},
+        "get_data": {},
+    }
+    auth = OneLogin_Saml2_Auth(request_data, old_settings=OneLogin_Saml2_Settings(settings))
+    # set_nameid_policy sí, pero sin RequestedAuthnContext: el AuthnRequest real de
+    # UTalca no lo envía, y exigir un contexto que el IdP no soporte lo haría fallar.
+    return auth.login(
+        return_to=relay_state or None,
+        set_nameid_policy=True,
+        force_authn=False,
+        is_passive=False,
+    )
 
 
 def validar_respuesta_saml(

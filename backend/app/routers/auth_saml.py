@@ -6,11 +6,14 @@ llega dentro de la aserción firmada, no en un parámetro manipulable.
 """
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Response, status
+from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
 from app.auth.jwt import crear_access_token, crear_refresh_token
 from app.auth.saml.sp import (
     AsercionSamlInvalida,
+    SsoSamlNoConfigurado,
+    construir_url_login,
     generar_metadata_sp,
     validar_respuesta_saml,
 )
@@ -20,6 +23,28 @@ from app.db.session import get_db
 from app.schemas.auth import TokenPair
 
 router = APIRouter(prefix="/api/v1/auth/saml", tags=["auth"])
+
+
+@router.get("/login")
+def login(relay_state: str = "") -> RedirectResponse:
+    """Inicia el flujo SAML: redirige al IdP de UTalca con un AuthnRequest.
+
+    ``relay_state`` permite volver a la página desde la que se pidió el login;
+    el IdP lo devuelve intacto al ACS.
+    """
+    settings = get_settings()
+    try:
+        url = construir_url_login(
+            entity_id=settings.saml_sp_entity_id,
+            acs_url=settings.saml_sp_acs_url,
+            idp_cert=settings.saml_idp_cert,
+            relay_state=relay_state,
+        )
+    except SsoSamlNoConfigurado as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)
+        )
+    return RedirectResponse(url, status_code=status.HTTP_303_SEE_OTHER)
 
 
 @router.get("/metadata")
