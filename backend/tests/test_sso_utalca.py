@@ -129,6 +129,33 @@ def test_ticket_valido_autentica_y_deja_traza_de_auditoria(db_session: Session):
     assert "LOGIN_SSO" in acciones
 
 
+@pytest.mark.parametrize(
+    "rut_del_sso",
+    ["16.998.654-1", "16998654-1", "16998654-k".upper().replace("K", "1"), " 16998654-1 "],
+)
+def test_rut_se_normaliza_antes_de_buscar_al_usuario(db_session: Session, rut_del_sso: str):
+    """El RUT se compara normalizado, venga como venga desde UTalca.
+
+    reserva-salas limpia puntos y guiones del valor que entrega el SSO
+    (hooks/useUser.ts), señal de que huemul lo devuelve con formato. Si aquí se
+    comparara el string crudo, un mismo RUT con distinta puntuación no encontraría
+    al usuario y el login fallaría de forma intermitente.
+    """
+    from app.auth.sso.service import autenticar_sso
+
+    _usuario_con_rut(db_session, rut="16998654-1", username="pnorm")
+
+    class _VerifierPermisivo:
+        def verificar(self, *, rut: str, ticket: str) -> None:
+            return None
+
+    usuario = autenticar_sso(
+        db_session, rut=rut_del_sso, ticket="t", verifier=_VerifierPermisivo()
+    )
+
+    assert usuario.username == "pnorm"
+
+
 def test_callback_sso_rechaza_con_la_configuracion_por_defecto(client, db_session: Session):
     """El endpoint desplegado no autentica a nadie mientras no haya verificador.
 

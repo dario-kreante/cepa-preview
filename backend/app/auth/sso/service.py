@@ -17,6 +17,21 @@ class UsuarioSsoNoRegistrado(Exception):
     """El RUT se autenticó en UTalca pero no tiene usuario habilitado en el CEPA."""
 
 
+def normalizar_rut(rut: str) -> str:
+    """Lleva un RUT a la forma canónica que se almacena: ``16998654-1``.
+
+    Quita puntos, espacios y separadores, y deja el dígito verificador en
+    mayúscula tras un guión. El SSO de UTalca entrega el RUT con formato
+    (reserva-salas lo limpia antes de usarlo), y los RUT cargados a mano suelen
+    traer puntuación inconsistente; normalizar en un solo lugar evita que el
+    login dependa de cómo venga escrito.
+    """
+    limpio = rut.strip().replace(".", "").replace("-", "").replace(" ", "").upper()
+    if len(limpio) < 2:
+        return limpio
+    return f"{limpio[:-1]}-{limpio[-1]}"
+
+
 def autenticar_sso(
     db: Session, *, rut: str, ticket: str, verifier: SsoVerifierProtocol
 ) -> Usuario:
@@ -28,7 +43,9 @@ def autenticar_sso(
     """
     verifier.verificar(rut=rut, ticket=ticket)
 
-    usuario = db.scalars(select(Usuario).where(Usuario.rut == rut)).one_or_none()
+    usuario = db.scalars(
+        select(Usuario).where(Usuario.rut == normalizar_rut(rut))
+    ).one_or_none()
     # Mismo mensaje para "no existe" y "desactivado": no se revela cuál es el caso.
     if usuario is None or not usuario.activo:
         raise UsuarioSsoNoRegistrado("RUT sin usuario habilitado en el CEPA")
