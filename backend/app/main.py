@@ -7,6 +7,7 @@ from slowapi.middleware import SlowAPIMiddleware
 from app.config import get_settings
 from app.middleware.rate_limit import limiter
 from app.routers import audit_log, auth, usuarios, ingresos, pacientes, odas, consentimientos
+from app.routers import auth_sso
 from app.routers import farmacos
 from app.routers import ept as ept_router
 from app.routers import reintegros
@@ -41,6 +42,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
 
 app.include_router(auth.router)
+app.include_router(auth_sso.router)
 app.include_router(usuarios.router)
 app.include_router(audit_log.router)
 app.include_router(ingresos.router)
