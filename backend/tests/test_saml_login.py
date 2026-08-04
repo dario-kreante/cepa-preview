@@ -35,15 +35,19 @@ def idp_configurado(monkeypatch):
     get_settings.cache_clear()
 
 
-def test_login_sin_sso_configurado_no_inicia_el_flujo(client):
+def test_login_sin_sso_configurado_devuelve_al_frontend_con_el_motivo(client):
     """Sin certificado del IdP, /login no manda al usuario a autenticarse.
 
-    Redirigir igualmente terminaría en un 401 del ACS tras pedirle credenciales
-    a la persona: mejor decir de entrada que el SSO no está disponible.
+    A estos endpoints llega el navegador por navegación, no el frontend por
+    fetch: responder un 503 con JSON deja a la persona en una pantalla técnica
+    sin salida. Se la devuelve al login con el motivo, para poder explicárselo.
     """
     r = client.get("/api/v1/auth/saml/login", follow_redirects=False)
 
-    assert r.status_code == 503
+    assert r.status_code == 303
+    destino = urlparse(r.headers["location"])
+    assert destino.path == "/login"
+    assert parse_qs(destino.query)["sso_error"] == ["no_configurado"]
 
 
 def test_login_redirige_al_idp_de_utalca_con_un_authnrequest(client, idp_configurado):

@@ -15,6 +15,26 @@ from app.auth.security import hash_password
 from app.models.usuario import Usuario
 from tests import saml_idp_falso as idp
 
+
+def _asegurar_rechazo(r) -> None:
+    """El ACS devuelve al login con el motivo, y sin nada que sirva para entrar.
+
+    El rechazo pasó de 401+JSON a redirección para que el usuario no quede en
+    una pantalla técnica; lo que no cambia es que no se emite sesión, y eso es
+    lo que estas comprobaciones vigilan.
+    """
+    from urllib.parse import parse_qs, urlparse
+
+    assert r.status_code == 303, r.text
+    destino = urlparse(r.headers["location"])
+    assert destino.path == "/login"
+    query = parse_qs(destino.query)
+    assert query["sso_error"] == ["autenticacion_fallida"]
+    # Ni tokens ni código canjeable: el rechazo no debe dejar puerta abierta.
+    assert "code" not in query
+    assert "access_token" not in r.headers["location"] and "eyJ" not in r.headers["location"]
+
+
 ENTITY_ID = "https://sige-cepa.utalca.cl/saml/metadata"
 ACS_URL = "https://sige-cepa.utalca.cl/api/v1/auth/saml/acs"
 
@@ -50,10 +70,13 @@ def test_acs_rechaza_si_no_hay_certificado_de_idp_configurado(client, db_session
     )
     idp.firmar_assertion(resp, clave_pem=clave, cert_pem=cert)
 
-    r = client.post("/api/v1/auth/saml/acs", data={"SAMLResponse": idp.response_b64(resp)})
+    r = client.post(
+        "/api/v1/auth/saml/acs",
+        data={"SAMLResponse": idp.response_b64(resp)},
+        follow_redirects=False,
+    )
 
-    assert r.status_code == 401
-    assert "access_token" not in r.text
+    _asegurar_rechazo(r)
 
 
 @pytest.fixture
@@ -131,10 +154,13 @@ def test_acs_rechaza_asercion_firmada_por_otro_emisor(
     )
     idp.firmar_assertion(resp, clave_pem=clave_atacante, cert_pem=cert_atacante)
 
-    r = client.post("/api/v1/auth/saml/acs", data={"SAMLResponse": idp.response_b64(resp)})
+    r = client.post(
+        "/api/v1/auth/saml/acs",
+        data={"SAMLResponse": idp.response_b64(resp)},
+        follow_redirects=False,
+    )
 
-    assert r.status_code == 401
-    assert "access_token" not in r.text
+    _asegurar_rechazo(r)
 
 
 def test_acs_rechaza_rut_sin_usuario_habilitado(client, db_session: Session, idp_configurado):
@@ -147,9 +173,13 @@ def test_acs_rechaza_rut_sin_usuario_habilitado(client, db_session: Session, idp
     )
     idp.firmar_assertion(resp, clave_pem=clave, cert_pem=cert)
 
-    r = client.post("/api/v1/auth/saml/acs", data={"SAMLResponse": idp.response_b64(resp)})
+    r = client.post(
+        "/api/v1/auth/saml/acs",
+        data={"SAMLResponse": idp.response_b64(resp)},
+        follow_redirects=False,
+    )
 
-    assert r.status_code == 401
+    _asegurar_rechazo(r)
 
 
 def test_metadata_sp_se_publica_como_xml(client):

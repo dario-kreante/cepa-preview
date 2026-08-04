@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,9 +16,22 @@ function irASsoInstitucional() {
   window.location.href = `${import.meta.env.VITE_API_BASE_URL}/api/v1/auth/saml/login`;
 }
 
+/**
+ * Mensajes de los fallos del SSO, que el backend informa devolviendo al login
+ * con ?sso_error=... Sin esto el usuario acabaría viendo un JSON del backend.
+ */
+const MENSAJES_SSO: Record<string, string> = {
+  no_configurado:
+    "El acceso con cuenta UTalca todavía no está habilitado. Ingresa con tu usuario y contraseña.",
+  autenticacion_fallida:
+    "No pudimos validar tu cuenta institucional. Si el problema persiste, contacta a Coordinación.",
+};
+
 export function LoginPage() {
   const { login } = useAuth();
   const nav = useNavigate();
+  const [params] = useSearchParams();
+  const avisoSso = MENSAJES_SSO[params.get("sso_error") ?? ""];
   const [u, setU] = useState(""); const [p, setP] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
@@ -42,6 +55,14 @@ export function LoginPage() {
           <p className="text-sm text-muted-foreground">{APP_SUBTITLE}</p>
         </CardHeader>
         <CardContent>
+          {avisoSso && (
+            <p
+              role="alert"
+              className="mb-4 rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground"
+            >
+              {avisoSso}
+            </p>
+          )}
           <form onSubmit={onSubmit} className="space-y-4">
             <div className="space-y-1.5">
               <Label htmlFor="u">Usuario</Label>

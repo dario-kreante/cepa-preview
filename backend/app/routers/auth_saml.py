@@ -29,6 +29,20 @@ from app.schemas.auth import CanjearCodigoRequest, TokenPair
 router = APIRouter(prefix="/api/v1/auth/saml", tags=["auth"])
 
 
+def _volver_al_login(motivo: str) -> RedirectResponse:
+    """Devuelve el navegador al login del frontend indicando por qué falló.
+
+    A /login y /acs llega el navegador por navegación, no el frontend por fetch:
+    responder JSON dejaría a la persona en una pantalla técnica sin salida. El
+    motivo es genérico a propósito —no distingue aserción inválida de usuario no
+    habilitado— para no revelar de más a quien no logró autenticarse.
+    """
+    frontend = get_settings().frontend_url.rstrip("/")
+    return RedirectResponse(
+        f"{frontend}/login?sso_error={motivo}", status_code=status.HTTP_303_SEE_OTHER
+    )
+
+
 @router.get("/login")
 def login(relay_state: str = "") -> RedirectResponse:
     """Inicia el flujo SAML: redirige al IdP de UTalca con un AuthnRequest.
@@ -44,10 +58,8 @@ def login(relay_state: str = "") -> RedirectResponse:
             idp_cert=settings.saml_idp_cert,
             relay_state=relay_state,
         )
-    except SsoSamlNoConfigurado as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)
-        )
+    except SsoSamlNoConfigurado:
+        return _volver_al_login("no_configurado")
     return RedirectResponse(url, status_code=status.HTTP_303_SEE_OTHER)
 
 
@@ -86,11 +98,9 @@ def acs(
         rut = _extraer_rut(atributos)
         usuario = resolver_usuario_por_rut(db, rut=rut, via="SAML")
     except (AsercionSamlInvalida, UsuarioSsoNoRegistrado):
-        # Respuesta idéntica en ambos casos: no se revela si el fallo fue de la
+        # Mismo destino en ambos casos: no se revela si el fallo fue de la
         # aserción o de la existencia del usuario.
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Autenticación SAML fallida"
-        )
+        return _volver_al_login("autenticacion_fallida")
 
     db.commit()
     codigo = almacen_codigos.emitir(usuario_id=usuario.id)
