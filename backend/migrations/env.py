@@ -6,6 +6,7 @@ from sqlalchemy import engine_from_config, pool
 import app.models  # noqa: F401  registra los modelos en Base.metadata
 from app.config import get_settings
 from app.db.base import Base
+from app.db.oracle_client import init_oracle_thick
 
 config = context.config
 
@@ -15,6 +16,9 @@ if config.config_file_name is not None:
 # Si el llamador (tests) no fijó la URL, se toma de la configuración de la app.
 if not config.get_main_option("sqlalchemy.url"):
     config.set_main_option("sqlalchemy.url", get_settings().database_url)
+
+# Alembic construye su propio engine, así que activa el modo Thick por su cuenta.
+init_oracle_thick()
 
 target_metadata = Base.metadata
 
