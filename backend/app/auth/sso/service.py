@@ -58,6 +58,35 @@ def normalizar_rut(rut: str) -> str:
     return f"{limpio}-{_digito_verificador(limpio)}"
 
 
+def resolver_usuario_por_rut(db: Session, *, rut: str, via: str = "SSO") -> Usuario:
+    """Resuelve el usuario del CEPA habilitado para un RUT ya acreditado.
+
+    Presupone que la identidad **ya fue verificada** por el caller (firma SAML o
+    ticket del wrapper); aquí solo se decide si esa persona tiene acceso.
+
+    ``via`` queda en la traza de auditoría para distinguir por qué camino entró.
+    Lanza ``UsuarioSsoNoRegistrado`` si el RUT no tiene usuario activo.
+    """
+    usuario = db.scalars(
+        select(Usuario).where(Usuario.rut == normalizar_rut(rut))
+    ).one_or_none()
+    # Mismo mensaje para "no existe" y "desactivado": no se revela cuál es el caso.
+    if usuario is None or not usuario.activo:
+        raise UsuarioSsoNoRegistrado("RUT sin usuario habilitado en el CEPA")
+
+    # Acción distinta de LOGIN: deja constancia de por qué vía entró.
+    record_audit(
+        db,
+        actor=usuario.username,
+        rol=usuario.rol,
+        action=f"LOGIN_{via}",
+        entity="usuario",
+        entity_id=str(usuario.id),
+    )
+    db.flush()
+    return usuario
+
+
 def autenticar_sso(
     db: Session, *, rut: str, ticket: str, verifier: SsoVerifierProtocol
 ) -> Usuario:
@@ -68,22 +97,4 @@ def autenticar_sso(
     No hace commit: el caller decide la transacción.
     """
     verifier.verificar(rut=rut, ticket=ticket)
-
-    usuario = db.scalars(
-        select(Usuario).where(Usuario.rut == normalizar_rut(rut))
-    ).one_or_none()
-    # Mismo mensaje para "no existe" y "desactivado": no se revela cuál es el caso.
-    if usuario is None or not usuario.activo:
-        raise UsuarioSsoNoRegistrado("RUT sin usuario habilitado en el CEPA")
-
-    # LOGIN_SSO, distinto de LOGIN: deja constancia de por qué vía entró.
-    record_audit(
-        db,
-        actor=usuario.username,
-        rol=usuario.rol,
-        action="LOGIN_SSO",
-        entity="usuario",
-        entity_id=str(usuario.id),
-    )
-    db.flush()
-    return usuario
+    return resolver_usuario_por_rut(db, rut=rut, via="SSO")

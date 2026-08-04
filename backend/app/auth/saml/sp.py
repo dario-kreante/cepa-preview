@@ -11,6 +11,7 @@ depende de ellos.
 """
 
 from onelogin.saml2.auth import OneLogin_Saml2_Auth
+from onelogin.saml2.errors import OneLogin_Saml2_Error
 from onelogin.saml2.settings import OneLogin_Saml2_Settings
 
 
@@ -80,6 +81,13 @@ def validar_respuesta_saml(
     por el IdP, esté vigente y sea para este SP. Lanza ``AsercionSamlInvalida``
     ante cualquier fallo: nunca devuelve datos de una aserción no verificada.
     """
+    if not idp_cert:
+        # Sin certificado no hay nada contra qué validar la firma: se rechaza en
+        # vez de continuar, para no autenticar con una aserción no verificada.
+        raise AsercionSamlInvalida(
+            "No hay certificado del IdP configurado: no se puede verificar la aserción"
+        )
+
     settings = _settings_dict(entity_id=entity_id, acs_url=acs_url)
     settings["idp"]["x509cert"] = idp_cert
 
@@ -93,8 +101,15 @@ def validar_respuesta_saml(
         "get_data": {},
     }
 
-    auth = OneLogin_Saml2_Auth(request_data, old_settings=OneLogin_Saml2_Settings(settings))
-    auth.process_response()
+    try:
+        auth = OneLogin_Saml2_Auth(
+            request_data, old_settings=OneLogin_Saml2_Settings(settings)
+        )
+        auth.process_response()
+    except OneLogin_Saml2_Error as exc:
+        # Configuración inválida o respuesta ilegible: en ambos casos no se pudo
+        # verificar nada, así que se trata como aserción inválida.
+        raise AsercionSamlInvalida(f"Respuesta SAML rechazada: {exc}") from exc
 
     errores = auth.get_errors()
     if errores or not auth.is_authenticated():

@@ -34,6 +34,13 @@ class Settings(BaseSettings):
     # verificadores soportados). El directorio debe estar además en LD_LIBRARY_PATH.
     oracle_client_lib_dir: str = ""
 
+    # --- SSO SAML institucional (IdP de UTalca) ---
+    # `saml_idp_cert` vacío deja el SP fail-closed: sin certificado no se puede
+    # verificar la firma de la aserción, así que el ACS no autentica a nadie.
+    saml_sp_entity_id: str = "https://sige-cepa.utalca.cl/saml/metadata"
+    saml_sp_acs_url: str = "https://sige-cepa.utalca.cl/api/v1/auth/saml/acs"
+    saml_idp_cert: str = ""
+
     # --- Autenticación / JWT (EPIC-00, parametrizable; D13) ---
     jwt_secret: str = "cambiar-en-produccion-secreto-jwt-cepa"
     jwt_algorithm: str = "HS256"
