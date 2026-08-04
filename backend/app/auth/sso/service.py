@@ -17,19 +17,45 @@ class UsuarioSsoNoRegistrado(Exception):
     """El RUT se autenticó en UTalca pero no tiene usuario habilitado en el CEPA."""
 
 
+def _digito_verificador(cuerpo: str) -> str:
+    """Calcula el DV de un RUT chileno por módulo 11."""
+    suma = 0
+    factor = 2
+    for digito in reversed(cuerpo):
+        suma += int(digito) * factor
+        factor = 2 if factor == 7 else factor + 1
+    resto = 11 - (suma % 11)
+    if resto == 11:
+        return "0"
+    if resto == 10:
+        return "K"
+    return str(resto)
+
+
 def normalizar_rut(rut: str) -> str:
     """Lleva un RUT a la forma canónica que se almacena: ``16998654-1``.
 
     Quita puntos, espacios y separadores, y deja el dígito verificador en
-    mayúscula tras un guión. El SSO de UTalca entrega el RUT con formato
-    (reserva-salas lo limpia antes de usarlo), y los RUT cargados a mano suelen
-    traer puntuación inconsistente; normalizar en un solo lugar evita que el
-    login dependa de cómo venga escrito.
+    mayúscula tras un guión.
+
+    El SSO de UTalca entrega el RUT **sin dígito verificador** (``16998654``),
+    verificado contra huemul con un login real; las cargas manuales, en cambio,
+    suelen traerlo con puntos y DV. Cuando falta el DV se calcula por módulo 11,
+    de modo que ambas formas convergen al mismo valor y el login funciona venga
+    como venga.
     """
-    limpio = rut.strip().replace(".", "").replace("-", "").replace(" ", "").upper()
-    if len(limpio) < 2:
+    limpio = rut.strip().replace(".", "").replace(" ", "").upper()
+    if not limpio:
         return limpio
-    return f"{limpio[:-1]}-{limpio[-1]}"
+
+    # El guión, o un DV 'K', delatan que el verificador ya viene incluido.
+    if "-" in limpio:
+        cuerpo, _, dv = limpio.rpartition("-")
+        return f"{cuerpo}-{dv}" if cuerpo else limpio
+    if limpio.endswith("K"):
+        return f"{limpio[:-1]}-K"
+
+    return f"{limpio}-{_digito_verificador(limpio)}"
 
 
 def autenticar_sso(

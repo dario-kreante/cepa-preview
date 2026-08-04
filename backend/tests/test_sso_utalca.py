@@ -131,7 +131,12 @@ def test_ticket_valido_autentica_y_deja_traza_de_auditoria(db_session: Session):
 
 @pytest.mark.parametrize(
     "rut_del_sso",
-    ["16.998.654-1", "16998654-1", "16998654-k".upper().replace("K", "1"), " 16998654-1 "],
+    [
+        "16998654",  # forma real que entrega huemul: SIN dígito verificador
+        "16.998.654-1",
+        "16998654-1",
+        " 16998654-1 ",
+    ],
 )
 def test_rut_se_normaliza_antes_de_buscar_al_usuario(db_session: Session, rut_del_sso: str):
     """El RUT se compara normalizado, venga como venga desde UTalca.
@@ -154,6 +159,25 @@ def test_rut_se_normaliza_antes_de_buscar_al_usuario(db_session: Session, rut_de
     )
 
     assert usuario.username == "pnorm"
+
+
+@pytest.mark.parametrize(
+    ("entrada", "esperado"),
+    [
+        ("16998654", "16998654-1"),  # caso real observado en el callback de huemul
+        ("16998654-1", "16998654-1"),
+        ("16.998.654-1", "16998654-1"),
+        ("11168636K", "11168636-K"),  # DV K sin guión (ejemplo de la doc de SALUTEM)
+        ("11168636-k", "11168636-K"),
+        ("6350459", "6350459-9"),  # RUT corto, DV calculado
+        ("", ""),
+    ],
+)
+def test_normalizar_rut_converge_a_la_forma_canonica(entrada: str, esperado: str):
+    """Toda variante de escritura de un RUT debe llegar al mismo valor almacenado."""
+    from app.auth.sso.service import normalizar_rut
+
+    assert normalizar_rut(entrada) == esperado
 
 
 def test_callback_sso_rechaza_con_la_configuracion_por_defecto(client, db_session: Session):
