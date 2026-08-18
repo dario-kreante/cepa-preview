@@ -19,3 +19,9 @@ class RefreshRequest(BaseModel):
 class AccessTokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
+
+
+class CanjearCodigoRequest(BaseModel):
+    """Canje del código de un solo uso emitido por el ACS SAML."""
+
+    code: str

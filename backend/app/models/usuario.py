@@ -32,6 +32,10 @@ class Usuario(Base):
     # DD-C (CEPA-102): correo de contacto para notificaciones de alerta.
     # Nullable: los usuarios sin email configurado se omiten en el envío.
     email: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    # SPIKE SSO UTalca: identificador que devuelve huemul.utalca.cl tras autenticar.
+    # Nullable porque los usuarios locales (login por contraseña) no lo necesitan;
+    # único porque un RUT identifica a una sola persona.
+    rut: Mapped[str | None] = mapped_column(String(12), nullable=True, unique=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, nullable=False
     )

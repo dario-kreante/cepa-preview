@@ -11,6 +11,8 @@ interface AuthState {
   username: string | null;
   cargando: boolean;
   login: (username: string, password: string) => Promise<void>;
+  /** Canjea el código de un solo uso que devuelve el SSO institucional. */
+  canjearCodigoSso: (code: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -63,12 +65,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setRol(r.rol); setUsername(r.username);
   }
 
+  async function canjearCodigoSso(code: string) {
+    const { data, error } = await api.POST("/api/v1/auth/saml/canjear", { body: { code } });
+    if (error || !data) throw new Error("Código SSO inválido o expirado");
+    tokenStore.setAccess(data.access_token);
+    tokenStore.setRefresh(data.refresh_token);
+    const r = rolDesdeToken(data.access_token);
+    setRol(r.rol); setUsername(r.username);
+  }
+
   function logout() {
     tokenStore.clear();
     setRol(null); setUsername(null);
   }
 
-  const value = useMemo(() => ({ rol, username, cargando, login, logout }), [rol, username, cargando]);
+  const value = useMemo(
+    () => ({ rol, username, cargando, login, canjearCodigoSso, logout }),
+    [rol, username, cargando],
+  );
   return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;
 }
 

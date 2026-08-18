@@ -3,6 +3,7 @@ import { useAuth } from "@/lib/auth/AuthContext";
 import { puedeEscribir, type Rol } from "@/lib/rbac";
 import { AppShell } from "./shell/AppShell";
 import { LoginPage } from "@/features/auth/LoginPage";
+import { SsoCallbackPage } from "@/features/auth/SsoCallbackPage";
 import { IngresosListaPage } from "@/features/ingresos/IngresosListaPage";
 import { AltaIngresoPage } from "@/features/ingresos/AltaIngresoPage";
 import { LicenciasPage } from "@/features/licencias/LicenciasPage";
@@ -31,6 +32,8 @@ export function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      {/* Aterrizaje del SSO institucional: canjea el código por la sesión. */}
+      <Route path="/auth/callback" element={<SsoCallbackPage />} />
       <Route element={<ProtectedRoute />}>
         <Route element={<AppShell />}>
           <Route path="/" element={<DashboardPage />} />

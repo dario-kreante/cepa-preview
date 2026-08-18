@@ -26,6 +26,23 @@ class Settings(BaseSettings):
             v = "postgresql+psycopg://" + v[len("postgresql://"):]
         return v
 
+    # --- Cliente Oracle en modo Thick ---
+    # El usuario institucional de UTalca (utcepa01) tiene un verificador de contraseña
+    # 0x939, que el modo Thin de python-oracledb no sabe negociar (DPY-3015). Apuntando
+    # esta variable al Instant Client se activa el modo Thick, que sí lo soporta.
+    # Vacío = modo Thin (por defecto; suficiente para PostgreSQL y para Oracle con
+    # verificadores soportados). El directorio debe estar además en LD_LIBRARY_PATH.
+    oracle_client_lib_dir: str = ""
+
+    # --- SSO SAML institucional (IdP de UTalca) ---
+    # `saml_idp_cert` vacío deja el SP fail-closed: sin certificado no se puede
+    # verificar la firma de la aserción, así que el ACS no autentica a nadie.
+    saml_sp_entity_id: str = "https://sige-cepa.utalca.cl/saml/metadata"
+    saml_sp_acs_url: str = "https://sige-cepa.utalca.cl/api/v1/auth/saml/acs"
+    saml_idp_cert: str = ""
+    # A dónde vuelve el navegador tras el ACS, con el código de un solo uso.
+    frontend_url: str = "http://localhost:5173"
+
     # --- Autenticación / JWT (EPIC-00, parametrizable; D13) ---
     jwt_secret: str = "cambiar-en-produccion-secreto-jwt-cepa"
     jwt_algorithm: str = "HS256"
