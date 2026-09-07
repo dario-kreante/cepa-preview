@@ -45,20 +45,22 @@ def push_ficha_clinica(
 
 @router.post(
     "/pull-salutem",
-    response_model=FichaClinicaRead | None,
+    response_model=list[FichaClinicaRead],
     dependencies=[Depends(_writer)],
 )
 def pull_desde_salutem_endpoint(
     payload: PullSalutemRequest,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
-) -> FichaClinicaRead | None:
+) -> list[FichaClinicaRead]:
     """Pull desde SALUTEM (solo lectura D12): trae datos y los persiste en CEPA.
 
-    Si SALUTEM no tiene datos para el folio, devuelve 200 con null.
+    El pull se ancla en el RUT del paciente del ingreso, así que puede traer
+    varias atenciones de una vez. Devuelve 200 con lista vacía si SALUTEM no
+    tiene nada nuevo para el folio.
     """
-    ficha = pull_desde_salutem(db, payload.folio)
-    if ficha is not None:
+    fichas = pull_desde_salutem(db, payload.folio)
+    for ficha in fichas:
         record_audit(
             db,
             actor=current_user.username,
@@ -66,9 +68,11 @@ def pull_desde_salutem_endpoint(
             entity="ficha_clinica",
             entity_id=str(ficha.id),
         )
+    if fichas:
         db.commit()
-        db.refresh(ficha)
-    return ficha
+        for ficha in fichas:
+            db.refresh(ficha)
+    return fichas
 
 
 @router.get(

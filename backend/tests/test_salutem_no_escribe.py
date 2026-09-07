@@ -38,7 +38,7 @@ def salutem_write_guard(monkeypatch):
 def test_d12_mock_no_dispara_en_operacion_de_lectura(salutem_write_guard):
     """El mock de guardia no falla en operaciones de lectura."""
     cliente = salutem_write_guard
-    resultado = cliente.get_paciente("12345")
+    resultado = cliente.resolver_persona("12345678-9")
     assert resultado is None  # mock devuelve None en lectura
 
 
@@ -85,6 +85,11 @@ def test_d12_pull_positivo_persiste_con_origen_salutem(monkeypatch, as_admin, db
     """
     from datetime import date
 
+    from app.integrations.salutem.models import (
+        AtencionSalutem,
+        CitaSalutem,
+        PersonaSalutem,
+    )
     from app.models.ficha_clinica import FichaClinica
     from app.models.ingreso import Ingreso
     from app.models.paciente import Paciente
@@ -108,10 +113,19 @@ def test_d12_pull_positivo_persiste_con_origen_salutem(monkeypatch, as_admin, db
     db_session.flush()
 
     class _PositiveGuardMock(_SalutemWriteGuardMock):
-        """Devuelve datos en get_ficha_clinica pero sigue bloqueando escrituras."""
+        """Devuelve una atención real siguiendo el contrato, sin permitir escrituras."""
 
-        def get_ficha_clinica(self, folio):  # noqa: ARG002
-            return {"nota": "sincronizada"}
+        def resolver_persona(self, rut):  # noqa: ARG002
+            return PersonaSalutem(salutem_id=42, identificacion=rut)
+
+        def listar_atenciones(self, salutem_id):  # noqa: ARG002
+            return [CitaSalutem(persona_id=42, cita_id=777, fecha=date(2026, 1, 15))]
+
+        def obtener_atencion(self, salutem_id, cita_id):  # noqa: ARG002
+            return AtencionSalutem(
+                cita=CitaSalutem(persona_id=42, cita_id=777, fecha=date(2026, 1, 15)),
+                contenido={"citaId": 777, "nota": "sincronizada"},
+            )
 
     guard = _PositiveGuardMock()
     monkeypatch.setattr("app.services.ficha_clinica.get_salutem_client", lambda: guard)
@@ -130,7 +144,7 @@ def test_d12_pull_positivo_persiste_con_origen_salutem(monkeypatch, as_admin, db
     ).scalar_one_or_none()
     assert ficha is not None, "La ficha no fue persistida en el dominio CEPA"
     assert ficha.origen == "SALUTEM"
-    assert ficha.contenido == {"nota": "sincronizada"}
+    assert ficha.contenido == {"citaId": 777, "nota": "sincronizada"}
 
     # Verificar que ningún método de escritura fue invocado (el guard sigue activo)
     with pytest.raises(AssertionError, match="VIOLACIÓN D12"):
