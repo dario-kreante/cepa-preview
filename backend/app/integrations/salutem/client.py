@@ -25,6 +25,21 @@ from app.integrations.salutem.models import (
     TipoFechaCita,
 )
 from app.integrations.salutem.protocol import SalutemClientProtocol
+from app.util.rut import RutInvalidoError, normalizar_rut
+
+
+def _identificacion_salutem(rut: str) -> str:
+    """Lleva el RUT al formato que exige SALUTEM: `<cuerpo>-<DV>`.
+
+    El CEPA persiste `<cuerpo><DV>` sin guion, y SALUTEM rechaza esa forma con
+    ERROR_IDENTIFICACION_NO_VALIDA. Un RUT que no valida se envía tal cual: no
+    se inventa uno, SALUTEM lo rechaza y el CEPA lo informa como 422.
+    """
+    try:
+        canonico = normalizar_rut(rut)
+    except RutInvalidoError:
+        return rut
+    return f"{canonico[:-1]}-{canonico[-1]}"
 
 
 class SalutemStubClient:
@@ -116,7 +131,8 @@ class SalutemHttpClient:
 
     def resolver_persona(self, rut: str) -> PersonaSalutem | None:
         r = self._get(
-            "personas", {"identificacion": rut, "agrupacion": "demograficos"}
+            "personas",
+            {"identificacion": _identificacion_salutem(rut), "agrupacion": "demograficos"},
         )
         if not r or "demograficos" not in r:
             return None
