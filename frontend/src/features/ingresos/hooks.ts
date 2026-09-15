@@ -6,8 +6,26 @@ import {
   obtenerLicenciasPorIngreso,
   obtenerControlesPorIngreso,
   obtenerRecetasPorIngreso,
+  listarFichasClinicas,
+  importarDesdeSalutem,
   type IngresoCreate,
 } from "./api";
+
+export function useFichasClinicas(folio: string | undefined) {
+  return useQuery({
+    queryKey: ["fichas-clinicas", folio],
+    queryFn: () => listarFichasClinicas(folio!),
+    enabled: folio !== undefined,
+  });
+}
+
+export function useImportarSalutem(folio: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => importarDesdeSalutem(folio!),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["fichas-clinicas", folio] }); },
+  });
+}
 
 export function useBuscarPacientes(q: string) {
   return useQuery({

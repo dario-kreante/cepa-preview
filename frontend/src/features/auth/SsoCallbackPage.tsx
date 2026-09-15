@@ -34,7 +34,9 @@ export function SsoCallbackPage() {
 
     canjearCodigoSso(code)
       .then(() => nav(destino, { replace: true }))
-      .catch(() => nav("/login", { replace: true }));
+      // UTalca ya autenticó a la persona: si el canje falla (código vencido, red
+      // bloqueada), volver al login en silencio parece que "no pasó nada".
+      .catch(() => nav("/login?sso_error=canje_fallido", { replace: true }));
   }, [code, destino, canjearCodigoSso, nav]);
 
   return (

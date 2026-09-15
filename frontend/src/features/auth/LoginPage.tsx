@@ -12,12 +12,12 @@ const MENSAJE_SERVIDOR =
   "No se pudo contactar con el servidor. Reintenta en unos minutos.";
 
 /**
- * Sale de la SPA hacia el backend, que arma el AuthnRequest y redirige al IdP
- * de UTalca. Es navegación del navegador, no fetch: el flujo SAML son
- * redirecciones y un POST del IdP de vuelta.
+ * Sale de la SPA hacia el backend, que decide el método habilitado en el entorno
+ * (SAML o huemul) y redirige a UTalca. Es navegación del navegador, no fetch:
+ * el flujo son redirecciones de ida y vuelta.
  */
 function irASsoInstitucional() {
-  window.location.href = `${import.meta.env.VITE_API_BASE_URL}/api/v1/auth/saml/login`;
+  window.location.href = `${import.meta.env.VITE_API_BASE_URL}/api/v1/auth/sso/login`;
 }
 
 /**
@@ -29,6 +29,8 @@ const MENSAJES_SSO: Record<string, string> = {
     "El acceso con cuenta UTalca todavía no está habilitado. Ingresa con tu usuario y contraseña.",
   autenticacion_fallida:
     "No pudimos validar tu cuenta institucional. Si el problema persiste, contacta a Coordinación.",
+  canje_fallido:
+    "Validamos tu cuenta UTalca, pero no pudimos completar el inicio de sesión. Intenta de nuevo en unos minutos; si el problema persiste, contacta a Coordinación.",
 };
 
 export function LoginPage() {

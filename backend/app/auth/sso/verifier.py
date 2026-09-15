@@ -45,3 +45,17 @@ class SsoVerifierNoConfigurado:
         raise TicketSsoInvalido(
             "Verificación SSO no configurada: no se puede validar el ticket de UTalca"
         )
+
+
+class SsoVerifierSinVerificacion:
+    """Acepta el RUT que devuelve huemul sin verificar nada. **Suplantable.**
+
+    Existe solo para probar el flujo con la cuenta UTalca en DEV mientras DTI
+    habilita la validación del token (compromiso: QA). El router lo entrega
+    únicamente con ``ENTORNO=dev`` y ``SSO_HUEMUL_MODO=sin_verificar``; cada
+    ingreso queda auditado como ``LOGIN_SSO_SIN_VERIFICAR``.
+    """
+
+    def verificar(self, *, rut: str, ticket: str) -> None:  # noqa: ARG002
+        if not rut.strip():
+            raise TicketSsoInvalido("huemul no devolvió un RUT")
