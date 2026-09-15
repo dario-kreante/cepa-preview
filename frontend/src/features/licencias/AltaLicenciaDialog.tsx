@@ -47,15 +47,23 @@ const ORIGEN_LABELS: Record<string, string> = {
   extra_sistema: "Extra-sistema",
 };
 
+/** Valores leídos de una indicación de SALUTEM. Lo que no trae, lo completa el administrativo. */
+export interface SugerenciaLicencia {
+  valores: Partial<Omit<LicenciaForm, "ingreso_id">>;
+  avisos: string[];
+}
+
 interface Props {
   folio: string;
   /** Known ingreso_id from historial. Undefined when no prior licencias exist. */
   ingresoId?: number;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Si viene, el formulario abre precargado y avisa que los datos son sugeridos. */
+  sugerencia?: SugerenciaLicencia;
 }
 
-export function AltaLicenciaDialog({ folio, ingresoId, open, onOpenChange }: Props) {
+export function AltaLicenciaDialog({ folio, ingresoId, open, onOpenChange, sugerencia }: Props) {
   const crearMutation = useCrearLicencia(folio);
 
   const {
@@ -79,12 +87,15 @@ export function AltaLicenciaDialog({ folio, ingresoId, open, onOpenChange }: Pro
     }
   }, [ingresoId, setValue]);
 
-  // Reset form when dialog closes
+  // Al abrir con una sugerencia, precarga lo leído; al cerrar, vuelve al formulario vacío.
   useEffect(() => {
+    if (open && sugerencia) {
+      reset({ ingreso_id: ingresoId, origen: "sistema", ...sugerencia.valores });
+    }
     if (!open) {
       reset({ ingreso_id: ingresoId, origen: "sistema" });
     }
-  }, [open, reset, ingresoId]);
+  }, [open, reset, ingresoId, sugerencia]);
 
   async function onSubmit(values: LicenciaForm) {
     // Coerce optional string fields to null for the backend contract
@@ -120,6 +131,23 @@ export function AltaLicenciaDialog({ folio, ingresoId, open, onOpenChange }: Pro
         <DialogHeader>
           <DialogTitle>Nueva licencia médica</DialogTitle>
           <p className="text-[12.5px] text-muted-foreground">Folio: {folio}</p>
+          {sugerencia && (
+            <div
+              role="note"
+              className="rounded-md border border-amber-300/60 bg-amber-50 px-3 py-2 text-[12px] text-amber-900"
+            >
+              <p className="font-medium">
+                Datos sugeridos desde SALUTEM: revisa y completa antes de registrar.
+              </p>
+              {sugerencia.avisos && sugerencia.avisos.length > 0 && (
+                <ul className="mt-1 list-disc pl-4 space-y-0.5">
+                  {sugerencia.avisos.map((a) => (
+                    <li key={a}>{a}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 py-2">

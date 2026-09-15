@@ -537,6 +537,7 @@ export function PatientSheet({ pacienteId, open, onOpenChange }: PatientSheetPro
                   {primaryIngreso?.folio ? (
                     <SalutemTab
                       folio={primaryIngreso.folio}
+                      ingresoId={primaryIngreso.id}
                       fichas={fichasSalutem}
                       cargando={fichasLoading}
                       error={fichasError}

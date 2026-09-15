@@ -32,8 +32,11 @@ export function useCrearLicencia(folio: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (body: LicenciaCreate) => crearLicencia(body),
-    onSuccess: () =>
-      qc.invalidateQueries({ queryKey: ["licencias", "folio", folio] }),
+    onSuccess: (_licencia, body) => {
+      qc.invalidateQueries({ queryKey: ["licencias", "folio", folio] });
+      // La ficha del paciente cuenta las licencias por ingreso, no por folio.
+      qc.invalidateQueries({ queryKey: ["ingresos", body.ingreso_id, "licencias"] });
+    },
   });
 }
 

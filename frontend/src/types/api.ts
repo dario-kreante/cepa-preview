@@ -1728,6 +1728,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/fichas-clinicas/{folio}/licencias-sugeridas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Licencias Sugeridas
+         * @description Licencias leídas de las indicaciones de SALUTEM, para revisión humana. No escribe nada.
+         */
+        get: operations["licencias_sugeridas_api_v1_fichas_clinicas__folio__licencias_sugeridas_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/licencias/folio/{folio}": {
         parameters: {
             query?: never;
@@ -3105,6 +3125,39 @@ export interface components {
             eeag_gaf?: number | null;
             /** Observaciones */
             observaciones?: string | null;
+        };
+        /**
+         * LicenciaSugeridaRead
+         * @description Una licencia leída de una atención de SALUTEM, todavía sin registrar.
+         *
+         *     Los campos que la indicación no trae quedan en None: los completa el
+         *     administrativo al registrarla. `avisos` explica lo que conviene revisar.
+         */
+        LicenciaSugeridaRead: {
+            /** Ficha Clinica Id */
+            ficha_clinica_id: number;
+            /**
+             * Cita Fecha
+             * Format: date
+             */
+            cita_fecha: string;
+            /** Texto */
+            texto: string;
+            tipo_lm: components["schemas"]["app__domain__enums_licencia__TipoLicencia"] | null;
+            tipo_reposo: components["schemas"]["app__domain__enums_licencia__TipoReposo"] | null;
+            origen: components["schemas"]["OrigenLicencia"];
+            /** Fecha Inicio */
+            fecha_inicio: string | null;
+            /** Fecha Termino */
+            fecha_termino: string | null;
+            /** Termino Calculado */
+            termino_calculado: boolean;
+            /** Cantidad Dias */
+            cantidad_dias: number | null;
+            /** Avisos */
+            avisos: string[];
+            /** Ya Registrada */
+            ya_registrada: boolean;
         };
         /**
          * LicenciaUpdate
@@ -7924,6 +7977,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FichaClinicaRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    licencias_sugeridas_api_v1_fichas_clinicas__folio__licencias_sugeridas_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                folio: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LicenciaSugeridaRead"][];
                 };
             };
             /** @description Validation Error */
