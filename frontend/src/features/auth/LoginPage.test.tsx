@@ -25,7 +25,7 @@ function montar() {
 async function ingresar() {
   await userEvent.type(screen.getByLabelText("Usuario"), "ana");
   await userEvent.type(screen.getByLabelText("Contraseña"), "secreta");
-  await userEvent.click(screen.getByRole("button", { name: /ingresar/i }));
+  await userEvent.click(screen.getByRole("button", { name: /^ingresar$/i }));
 }
 
 describe("LoginPage", () => {
@@ -52,6 +52,6 @@ describe("LoginPage", () => {
     montar();
     await ingresar();
     await screen.findByRole("alert");
-    expect(screen.getByRole("button", { name: /ingresar/i })).toBeEnabled();
+    expect(screen.getByRole("button", { name: /^ingresar$/i })).toBeEnabled();
   });
 });
