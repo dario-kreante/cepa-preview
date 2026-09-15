@@ -9,7 +9,7 @@ SALUTEM (D12).
 from datetime import date
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import false, select
 from sqlalchemy.orm import Session
 
 from app.domain.enums_licencia import OrigenLicencia, TipoLicencia, TipoReposo
@@ -59,7 +59,8 @@ def sugerir_licencias(db: Session, folio: str) -> list[LicenciaSugeridaRead]:
     registradas = list(
         db.scalars(
             select(LicenciaMedica).where(
-                LicenciaMedica.ingreso_id == ingreso.id, LicenciaMedica.anulada.is_(False)
+                # `== false()` y no `.is_(False)`: Oracle rechaza "IS 0" (ORA-00908).
+                LicenciaMedica.ingreso_id == ingreso.id, LicenciaMedica.anulada == false()
             )
         ).all()
     )
