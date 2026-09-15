@@ -93,6 +93,7 @@ function setupMocks() {
     http.get(`${BASE}/api/v1/registro-farmacologico/:ingreso_id/recetas`, () =>
       HttpResponse.json([])
     ),
+    http.get(`${BASE}/api/v1/fichas-clinicas/:folio`, () => HttpResponse.json([])),
   );
 }
 

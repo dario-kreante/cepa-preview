@@ -8,6 +8,33 @@ export type IngresoRead = components["schemas"]["IngresoRead"];
 export type LicenciaRead = components["schemas"]["app__schemas__licencia__LicenciaRead"];
 export type ControlMedicoRead = components["schemas"]["ControlMedicoRead"];
 export type RecetaRead = components["schemas"]["RecetaRead"];
+export type FichaClinicaRead = components["schemas"]["FichaClinicaRead"];
+
+export async function listarFichasClinicas(folio: string): Promise<FichaClinicaRead[]> {
+  const { data, error } = await api.GET("/api/v1/fichas-clinicas/{folio}", {
+    params: { path: { folio } },
+  });
+  if (error) throw new Error("No se pudieron cargar las atenciones de SALUTEM");
+  return data ?? [];
+}
+
+/**
+ * Trae desde SALUTEM las atenciones del paciente que caen en la ventana del
+ * ingreso. El backend explica en `detail` por qué falló (RUT rechazado, SALUTEM
+ * caído), y ese texto es lo que tiene que leer el usuario.
+ */
+export async function importarDesdeSalutem(folio: string): Promise<FichaClinicaRead[]> {
+  const { data, error } = await api.POST("/api/v1/fichas-clinicas/pull-salutem", {
+    body: { folio },
+  });
+  if (error) {
+    const detalle = (error as { detail?: unknown }).detail;
+    throw new Error(
+      typeof detalle === "string" ? detalle : "No se pudo importar desde SALUTEM",
+    );
+  }
+  return data ?? [];
+}
 
 export async function buscarPacientes(q: string): Promise<PacienteRead[]> {
   const { data, error } = await api.GET("/api/v1/pacientes/buscar", { params: { query: { q } } });

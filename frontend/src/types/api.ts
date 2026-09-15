@@ -1650,7 +1650,9 @@ export interface paths {
          * Pull Desde Salutem Endpoint
          * @description Pull desde SALUTEM (solo lectura D12): trae datos y los persiste en CEPA.
          *
-         *     Si SALUTEM no tiene datos para el folio, devuelve 200 con null.
+         *     El pull se ancla en el RUT del paciente del ingreso, así que puede traer
+         *     varias atenciones de una vez. Devuelve 200 con lista vacía si SALUTEM no
+         *     tiene nada nuevo para el folio.
          */
         post: operations["pull_desde_salutem_endpoint_api_v1_fichas_clinicas_pull_salutem_post"];
         delete?: never;
@@ -7745,7 +7747,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["FichaClinicaRead"] | null;
+                    "application/json": components["schemas"]["FichaClinicaRead"][];
                 };
             };
             /** @description Validation Error */

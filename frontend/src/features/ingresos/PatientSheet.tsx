@@ -22,8 +22,10 @@ import {
   useLicenciasPorIngreso,
   useControlesPorIngreso,
   useRecetasPorIngreso,
+  useFichasClinicas,
 } from "./hooks";
 import type { LicenciaRead, ControlMedicoRead, RecetaRead } from "./api";
+import { SalutemTab } from "./SalutemTab";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -253,6 +255,10 @@ export function PatientSheet({ pacienteId, open, onOpenChange }: PatientSheetPro
     useControlesPorIngreso(primaryIngresoId);
   const { data: recetas = [], isLoading: recLoading, isError: recError } =
     useRecetasPorIngreso(primaryIngresoId);
+  const { data: fichas = [], isLoading: fichasLoading, isError: fichasError } =
+    useFichasClinicas(primaryIngreso?.folio);
+  // La pestaña es de SALUTEM: las fichas enviadas por otros sistemas (push) no van acá.
+  const fichasSalutem = fichas.filter((f) => f.origen === "SALUTEM");
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -365,6 +371,7 @@ export function PatientSheet({ pacienteId, open, onOpenChange }: PatientSheetPro
                     { v: "licencias", l: `Licencias (${licencias.length})` },
                     { v: "farmacos", l: `Fármacos (${recetas.length})` },
                     { v: "controles", l: `Controles (${controles.length})` },
+                    { v: "salutem", l: `SALUTEM (${fichasSalutem.length})` },
                     { v: "obs", l: "Observaciones" },
                   ].map((t) => (
                     <TabsTrigger
@@ -493,6 +500,24 @@ export function PatientSheet({ pacienteId, open, onOpenChange }: PatientSheetPro
                     <TabError msg="No se pudieron cargar los controles." />
                   ) : (
                     <ControlesTab controles={controles} />
+                  )}
+                </TabsContent>
+
+                {/* -------- SALUTEM -------- */}
+                <TabsContent value="salutem" className="mt-0">
+                  {primaryIngreso?.folio ? (
+                    <SalutemTab
+                      folio={primaryIngreso.folio}
+                      fichas={fichasSalutem}
+                      cargando={fichasLoading}
+                      error={fichasError}
+                      canWrite={canWrite}
+                    />
+                  ) : (
+                    <EmptyState
+                      icon={<Stethoscope />}
+                      msg="El paciente no tiene un ingreso con folio para consultar SALUTEM"
+                    />
                   )}
                 </TabsContent>
 
