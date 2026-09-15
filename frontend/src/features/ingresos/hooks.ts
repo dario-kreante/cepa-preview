@@ -8,6 +8,7 @@ import {
   obtenerRecetasPorIngreso,
   listarFichasClinicas,
   importarDesdeSalutem,
+  obtenerLicenciasSugeridas,
   actualizarIngreso,
   type IngresoCreate,
   type IngresoUpdate,
@@ -25,7 +26,23 @@ export function useImportarSalutem(folio: string | undefined) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: () => importarDesdeSalutem(folio!),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["fichas-clinicas", folio] }); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["fichas-clinicas", folio] });
+      // Atenciones nuevas pueden traer licencias nuevas en sus indicaciones.
+      qc.invalidateQueries({ queryKey: ["licencias", "folio", folio, "sugeridas"] });
+    },
+  });
+}
+
+/**
+ * La clave cuelga de ["licencias", "folio", folio]: al registrar una licencia,
+ * useCrearLicencia invalida ese prefijo y la sugerencia pasa a "ya registrada".
+ */
+export function useLicenciasSugeridas(folio: string | undefined) {
+  return useQuery({
+    queryKey: ["licencias", "folio", folio, "sugeridas"],
+    queryFn: () => obtenerLicenciasSugeridas(folio!),
+    enabled: folio !== undefined,
   });
 }
 

@@ -10,7 +10,9 @@ from app.audit.service import record_audit
 from app.auth.deps import get_current_user, require_role
 from app.db.session import get_db
 from app.schemas.ficha_clinica import FichaClinicaCreate, FichaClinicaRead, PullSalutemRequest
+from app.schemas.licencia_sugerida import LicenciaSugeridaRead
 from app.services.ficha_clinica import crear_ficha, listar_fichas, pull_desde_salutem
+from app.services.licencias_sugeridas import sugerir_licencias
 
 router = APIRouter(prefix="/api/v1/fichas-clinicas", tags=["fichas-clinicas"])
 
@@ -83,3 +85,13 @@ def pull_desde_salutem_endpoint(
 def pull_fichas_clinicas(folio: str, db: Session = Depends(get_db)) -> list[FichaClinicaRead]:
     """Pull: entrega al sistema externo las fichas clínicas del CEPA para el folio (CA-3)."""
     return listar_fichas(db, folio)
+
+
+@router.get(
+    "/{folio}/licencias-sugeridas",
+    response_model=list[LicenciaSugeridaRead],
+    dependencies=[Depends(_reader)],
+)
+def licencias_sugeridas(folio: str, db: Session = Depends(get_db)) -> list[LicenciaSugeridaRead]:
+    """Licencias leídas de las indicaciones de SALUTEM, para revisión humana. No escribe nada."""
+    return sugerir_licencias(db, folio)

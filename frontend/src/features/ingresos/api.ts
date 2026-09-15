@@ -10,6 +10,16 @@ export type ControlMedicoRead = components["schemas"]["ControlMedicoRead"];
 export type RecetaRead = components["schemas"]["RecetaRead"];
 export type FichaClinicaRead = components["schemas"]["FichaClinicaRead"];
 export type IngresoUpdate = components["schemas"]["IngresoUpdate"];
+export type LicenciaSugeridaRead = components["schemas"]["LicenciaSugeridaRead"];
+
+/** Licencias leídas de las atenciones de SALUTEM ya importadas, para revisión humana. */
+export async function obtenerLicenciasSugeridas(folio: string): Promise<LicenciaSugeridaRead[]> {
+  const { data, error } = await api.GET("/api/v1/fichas-clinicas/{folio}/licencias-sugeridas", {
+    params: { path: { folio } },
+  });
+  if (error) throw new Error("No se pudieron leer las licencias de SALUTEM");
+  return data ?? [];
+}
 
 /** Edita la ficha del ingreso (BUG-2608-01). RUT y folio no forman parte del cuerpo. */
 export async function actualizarIngreso(

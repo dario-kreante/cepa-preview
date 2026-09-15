@@ -54,6 +54,7 @@ function setupMocks(fichasIniciales: unknown[] = []) {
       }),
     ),
     http.get(`${BASE}/api/v1/ingresos/:ingreso_id/licencias`, () => HttpResponse.json([])),
+    http.get(`${BASE}/api/v1/fichas-clinicas/:folio/licencias-sugeridas`, () => HttpResponse.json([])),
     http.get(`${BASE}/api/v1/controles-medicos/por-ingreso/:ingreso_id`, () => HttpResponse.json([])),
     http.get(`${BASE}/api/v1/registro-farmacologico/:ingreso_id/recetas`, () => HttpResponse.json([])),
     http.get(`${BASE}/api/v1/fichas-clinicas/:folio`, () => HttpResponse.json(fichas)),
