@@ -32,10 +32,10 @@ backend dormido produce exactamente el síntoma "guardé y no quedó guardado".
 |----|-----------|-----------|
 | BUG-2608-01 | **Reproducido — corregido 15-09-2026** | `PatientSheet.tsx:331` — el botón "Editar ficha" tenía `disabled` hardcodeado, igual que "Nueva licencia" y "Agendar control". **Corrección al triage:** el backend **no** tenía un endpoint para editar el ingreso (solo `/seguimiento`, `/consentimiento` y `/plan`). Se agregó `PUT /api/v1/ingresos/{id}` (todo salvo RUT y folio, auditado) y el diálogo "Editar ficha"; los otros dos botones abren los diálogos de alta de licencia y de control. Verificado en la VM el 15-09 que seguía deshabilitado antes del arreglo. |
 | BUG-2608-02 | **Reproducido — dos defectos distintos** | (a) El diálogo "Licencia / RECA" **desborda el viewport** a 1280×720: el título queda cortado sobre el borde superior, y el desplegable "Estado RECA" queda al fondo. (b) El desplegable ofrece un **estado de flujo** (Pendiente/Aprobado/Rechazado/En proceso/No aplica), no la **calificación** que pide la contraparte (EP/EC/AT/AC/NPE/No aplica) — ver v5 D20. |
-| BUG-2608-03 | **NO se reproduce en local** | `PATCH /api/v1/controles-medicos/33/licencia` → **200**, toast "Licencia y RECA actualizada", tabla refrescada con los valores nuevos. Apunta al backend dormido de Render, no al código. |
+| BUG-2608-03 | **NO se reproduce — cerrado 15-09-2026** | `PATCH /api/v1/controles-medicos/33/licencia` → **200**, toast "Licencia y RECA actualizada", tabla refrescada con los valores nuevos. Apunta al backend dormido de Render, no al código. **Verificado en la VM el 15-09:** el control 38 guardó y persistió tras recargar. |
 | BUG-2608-04 | **Reproducido — defecto real** | `AltaLicenciaDialog.tsx` presenta **cuatro** campos de fecha en dos pares sin agrupación visual: `Fecha inicio`/`Fecha término` (de la licencia) e `Inicio reposo`/`Fin reposo` (del reposo). Se leen como duplicados. Era la segunda de las dos hipótesis del ticket. |
 | BUG-2608-05 | **Reproducido — defecto real** | `ReintegroPage.tsx:352` — "Nuevo caso" es `disabled={!ingresoId}`: hay que buscar y seleccionar un paciente primero, pero **nada lo dice**. Sin `title` ni tooltip, y `disabled:pointer-events-none` impide incluso el hover. Verificado en el DOM: `{disabled: true, title: null}`. |
-| BUG-2608-06 | **NO se reproduce en local** | "Editar RECA" abre el diálogo con los valores precargados; `PATCH /api/v1/reintegros/2/reca` → **200**, toast "RECA actualizada". Mismo patrón que BUG-03. |
+| BUG-2608-06 | **NO se reproduce — cerrado 15-09-2026** | "Editar RECA" abre el diálogo con los valores precargados; `PATCH /api/v1/reintegros/2/reca` → **200**, toast "RECA actualizada". Mismo patrón que BUG-03. **Verificado en la VM el 15-09:** la RECA del caso 1 guardó, persistió y quedó auditada. |
 | BUG-2608-07 | **Reproducido — defecto real** | `AltaLicenciaDialog.tsx:129` — el rótulo es literalmente `Ingreso ID`, un identificador de base de datos expuesto al usuario. |
 
 ### Qué hacer con los dos que no se reproducen
@@ -120,7 +120,7 @@ tipo de RECA (D20: EP, EC, AT, AC, NPE, No aplica).
 - [x] El desplegable abre y permite seleccionar en el flujo completo del control. *(Catálogo D20 desplegado en la VM el 15-09-2026.)*
 - [x] Funciona con el desplegable cerca del borde inferior de la ventana (el popover se reubica).
 - [x] Verificado en viewport de 1366×768 además del ancho de escritorio. *(15-09-2026: con "Tiene licencia médica" marcado, el diálogo seguía desbordando, de -9 a 777 px. Se corrigió en la base de `DialogContent`, que ahora tiene alto máximo con scroll, y queda de 16 a 752 px con Guardar visible.)*
-- [ ] El valor seleccionado persiste tras guardar y recargar. *(Pendiente: requiere guardar en la VM.)*
+- [x] El valor seleccionado persiste tras guardar y recargar. *(VM, 15-09-2026: control 38 guardado como EC; tras recargar, el diálogo seguía mostrando EC, y en Oracle `estado_reca = 'EC'`. Después se volvió a `no_aplica`.)*
 
 ---
 
@@ -141,11 +141,11 @@ tipo de RECA (D20: EP, EC, AT, AC, NPE, No aplica).
 sistema muestra un error explícito y no descarta los datos del formulario.
 
 **Verificación de cierre**
-- [ ] Editar y guardar un control persiste tras recargar.
-- [ ] Un fallo de guardado (simulado: error 500 del backend) muestra un mensaje de error visible
-      y conserva los datos del formulario — **un guardado que falla nunca es silencioso**.
-- [ ] Test de integración crear → editar → releer sobre control médico.
-- [ ] Revisada la relación con `BUG-2608-01`, `-05` y `-06` (hipótesis de causa común).
+- [x] Editar y guardar un control persiste tras recargar. *(VM, 15-09-2026: `PATCH /api/v1/controles-medicos/38/licencia → 200`, traza `dramirezr · UPDATE · control_medico 38` y el valor sigue igual tras recargar. Con el backend despierto no se reproduce: confirma la hipótesis del Render dormido.)*
+- [x] Un fallo de guardado (simulado: error 500 del backend) muestra un mensaje de error visible
+      y conserva los datos del formulario — **un guardado que falla nunca es silencioso**. *(`LicenciaControlDialog` muestra `toast.error` y deja el diálogo abierto sin resetear el formulario.)*
+- [x] Test de integración crear → editar → releer sobre control médico. *(`test_control_medico_api.py`, `test_catalogo_reca_d20.py`.)*
+- [x] Revisada la relación con `BUG-2608-01`, `-05` y `-06` (hipótesis de causa común). *(Descartada en el triage del 04-09.)*
 
 ---
 
@@ -213,11 +213,11 @@ que efectivamente se estén renderizando dos veces.
 validaciones de coherencia temporal (`CEPA-041` RN-3) y la unicidad del Nº de RECA (RN-1).
 
 **Verificación de cierre**
-- [ ] Una RECA existente se edita y los cambios persisten tras recargar.
-- [ ] Las validaciones de coherencia temporal siguen activas y explican el rechazo (`TC-041-04`).
-- [ ] La unicidad de Nº de RECA no bloquea la edición del propio registro (causa candidata: la
-      validación de unicidad no excluye el registro que se está editando).
-- [ ] Perfil Auditor sigue sin poder editar (`TC-041-06`).
+- [x] Una RECA existente se edita y los cambios persisten tras recargar. *(VM, 15-09-2026: el tipo de la RECA del caso 1 se cambió de AT a AC; `PATCH /api/v1/reintegros/1/reca → 200`, traza `dramirezr · UPDATE · reca 1` y `tipo_reca = 'AC'` en Oracle. Después se volvió a AT.)*
+- [x] Las validaciones de coherencia temporal siguen activas y explican el rechazo (`TC-041-04`). *(`test_reca_api.py`: una verificación anterior a la medida → 422.)*
+- [x] La unicidad de Nº de RECA no bloquea la edición del propio registro (causa candidata: la
+      validación de unicidad no excluye el registro que se está editando). *(Verificado en la VM: la edición del 15-09 mantuvo `RECA-2026-00002` y guardó sin conflicto.)*
+- [x] Perfil Auditor sigue sin poder editar (`TC-041-06`). *(`test_reca_api.py`: `test_auditor_no_puede_crear_reca` → 403.)*
 
 ---
 
