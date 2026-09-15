@@ -1,5 +1,5 @@
 import { render, screen, waitFor } from "@testing-library/react";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { http, HttpResponse } from "msw";
 import { describe, expect, it } from "vitest";
 
@@ -23,11 +23,17 @@ function renderEnCallback(search: string) {
         <Routes>
           <Route path="/auth/callback" element={<SsoCallbackPage />} />
           <Route path="/" element={<p>Inicio</p>} />
-          <Route path="/login" element={<p>Pantalla de login</p>} />
+          <Route path="/login" element={<PantallaLogin />} />
         </Routes>
       </MemoryRouter>
     </AuthProvider>,
   );
+}
+
+/** Muestra la query con la que se llegó al login, para verificar el aviso. */
+function PantallaLogin() {
+  const { search } = useLocation();
+  return <p>Pantalla de login{search}</p>;
 }
 
 describe("SsoCallbackPage", () => {
@@ -53,7 +59,7 @@ describe("SsoCallbackPage", () => {
     expect(tokenStore.getRefresh()).toBe("refresh-xyz");
   });
 
-  it("vuelve al login si el código es inválido", async () => {
+  it("vuelve al login con aviso si el código es inválido", async () => {
     server.use(
       http.post(`${BASE}/api/v1/auth/saml/canjear`, () =>
         HttpResponse.json({ detail: "Código inválido o expirado" }, { status: 401 }),
@@ -62,12 +68,35 @@ describe("SsoCallbackPage", () => {
 
     renderEnCallback("?code=vencido");
 
-    await waitFor(() => expect(screen.getByText("Pantalla de login")).toBeInTheDocument());
+    await waitFor(() =>
+      expect(
+        screen.getByText("Pantalla de login?sso_error=canje_fallido"),
+      ).toBeInTheDocument(),
+    );
+  });
+
+  it("vuelve al login con aviso si la red impide canjear el código", async () => {
+    // Visto en la VM de UTalca: el navegador bloqueó la llamada a la API y la
+    // persona volvía al login sin ninguna explicación.
+    server.use(
+      http.post(`${BASE}/api/v1/auth/saml/canjear`, () => HttpResponse.error()),
+    );
+
+    renderEnCallback("?code=codigo-abc");
+
+    await waitFor(() =>
+      expect(
+        screen.getByText("Pantalla de login?sso_error=canje_fallido"),
+      ).toBeInTheDocument(),
+    );
   });
 
   it("no llama al backend si no viene código", async () => {
     renderEnCallback("");
 
-    await waitFor(() => expect(screen.getByText("Pantalla de login")).toBeInTheDocument());
+    // Sin código no hubo canje que fallar: login normal, sin aviso.
+    await waitFor(() =>
+      expect(screen.getByText("Pantalla de login")).toBeInTheDocument(),
+    );
   });
 });

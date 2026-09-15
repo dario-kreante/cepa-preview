@@ -30,6 +30,13 @@ describe("LoginPage — avisos del SSO", () => {
     expect(aviso).toHaveTextContent(/no pudimos validar/i);
   });
 
+  it("avisa cuando no se pudo completar el canje de la sesión institucional", () => {
+    renderLogin("?sso_error=canje_fallido");
+
+    const aviso = screen.getByRole("alert");
+    expect(aviso).toHaveTextContent(/no pudimos completar el inicio de sesión/i);
+  });
+
   it("no muestra ningún aviso en una entrada normal", () => {
     renderLogin();
 

@@ -29,6 +29,8 @@ const MENSAJES_SSO: Record<string, string> = {
     "El acceso con cuenta UTalca todavía no está habilitado. Ingresa con tu usuario y contraseña.",
   autenticacion_fallida:
     "No pudimos validar tu cuenta institucional. Si el problema persiste, contacta a Coordinación.",
+  canje_fallido:
+    "Validamos tu cuenta UTalca, pero no pudimos completar el inicio de sesión. Intenta de nuevo; si persiste, revisa tu conexión a la VPN.",
 };
 
 export function LoginPage() {
