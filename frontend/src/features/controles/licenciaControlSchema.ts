@@ -9,7 +9,8 @@
  *   - estado_reca y observaciones: siempre opcionales.
  */
 import { z } from "zod";
-import type { TipoLicencia, TipoReposo, EstadoReca } from "./api";
+import type { TipoLicencia, TipoReposo } from "./api";
+import { TIPO_RECA_VALUES } from "@/features/reintegro/recaSchema";
 
 const TIPO_LICENCIA_VALUES: [TipoLicencia, ...TipoLicencia[]] = [
   "1",
@@ -21,14 +22,6 @@ const TIPO_LICENCIA_VALUES: [TipoLicencia, ...TipoLicencia[]] = [
 ];
 
 const TIPO_REPOSO_VALUES: [TipoReposo, ...TipoReposo[]] = ["total", "parcial"];
-
-const ESTADO_RECA_VALUES: [EstadoReca, ...EstadoReca[]] = [
-  "pendiente",
-  "aprobado",
-  "rechazado",
-  "en_proceso",
-  "no_aplica",
-];
 
 export const licenciaControlSchema = z
   .object({
@@ -63,7 +56,7 @@ export const licenciaControlSchema = z
       .nullable(),
 
     estado_reca: z
-      .enum(ESTADO_RECA_VALUES, {
+      .enum(TIPO_RECA_VALUES, {
         invalid_type_error: "Estado RECA inválido",
       })
       .optional()

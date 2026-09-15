@@ -1,11 +1,13 @@
-"""Lógica de creación de ingresos (CEPA-010 + CEPA-011)."""
+"""Lógica de creación y edición de ingresos (CEPA-010 + CEPA-011, BUG-2608-01)."""
+
+from enum import Enum
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
 
 from app.models.ingreso import Ingreso
 from app.models.paciente import Paciente
-from app.schemas.ingreso import IngresoCreate
+from app.schemas.ingreso import IngresoCreate, IngresoUpdate
 from app.services.folio import folio_existe, siguiente_folio
 
 
@@ -92,5 +94,22 @@ def crear_ingreso(db, data: IngresoCreate) -> Ingreso:
         tipo_atencion=data.tipo_atencion,
     )
     db.add(ingreso)
+    db.flush()
+    return ingreso
+
+
+_CAMPOS_PACIENTE = {"nombre", "sexo", "edad", "region", "comuna", "telefono", "correo"}
+
+
+def actualizar_ingreso(db, ingreso_id: int, data: IngresoUpdate) -> Ingreso:
+    """Aplica solo los campos enviados; los del paciente se escriben en el paciente."""
+    ingreso = db.get(Ingreso, ingreso_id)
+    if ingreso is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ingreso no encontrado.")
+    for campo, valor in data.model_dump(exclude_unset=True).items():
+        if isinstance(valor, Enum):
+            valor = valor.value
+        destino = ingreso.paciente if campo in _CAMPOS_PACIENTE else ingreso
+        setattr(destino, campo, valor)
     db.flush()
     return ingreso

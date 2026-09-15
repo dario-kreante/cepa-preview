@@ -260,7 +260,7 @@ describe("LicenciaControlDialog — alta válida: tiene_licencia true con todos 
       tipo_licencia: "1",
       tipo_reposo: "total",
       gaf: 65,
-      estado_reca: "aprobado",
+      estado_reca: "EC",
     };
 
     const state = { controles: [MOCK_CONTROL] as ControlMedicoRead[] };
@@ -317,7 +317,7 @@ describe("LicenciaControlDialog — alta válida: tiene_licencia true con todos 
 
     // Select estado_reca
     const estadoRecaSelect = d.getByLabelText(/Estado RECA/i);
-    await user.selectOptions(estadoRecaSelect, "aprobado");
+    await user.selectOptions(estadoRecaSelect, "EC");
 
     // Submit
     const submitBtn = dialog.querySelector(
@@ -339,7 +339,7 @@ describe("LicenciaControlDialog — alta válida: tiene_licencia true con todos 
     expect(sentBody.tipo_licencia).toBe("1");
     expect(sentBody.tipo_reposo).toBe("total");
     expect(sentBody.gaf).toBe(65);
-    expect(sentBody.estado_reca).toBe("aprobado");
+    expect(sentBody.estado_reca).toBe("EC");
 
     // After success, toast confirms the update
     await waitFor(

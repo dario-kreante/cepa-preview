@@ -114,17 +114,7 @@ function ControlRow({ control, ingresoId, canWrite }: ControlRowProps) {
         {/* RECA */}
         <td className="px-4 py-3">
           {control.estado_reca ? (
-            <Badge
-              variant={
-                control.estado_reca === "aprobado"
-                  ? "success"
-                  : control.estado_reca === "rechazado"
-                  ? "destructive"
-                  : control.estado_reca === "en_proceso"
-                  ? "info"
-                  : "neutral"
-              }
-            >
+            <Badge variant="neutral">
               {ESTADO_RECA_LABELS[control.estado_reca]}
             </Badge>
           ) : (
@@ -242,11 +232,13 @@ function ControlesPanel({ ingresoId, canWrite }: ControlesPanelProps) {
               aria-label="Filtrar por RECA"
             >
               <option value="Todos">RECA: Todos</option>
-              <option value="pendiente">Pendiente</option>
-              <option value="aprobado">Aprobado</option>
-              <option value="rechazado">Rechazado</option>
-              <option value="en_proceso">En proceso</option>
-              <option value="no_aplica">No aplica</option>
+              {(Object.entries(ESTADO_RECA_LABELS) as [EstadoReca, string][]).map(
+                ([valor, label]) => (
+                  <option key={valor} value={valor}>
+                    {label}
+                  </option>
+                ),
+              )}
             </select>
             <ChevronRight className="absolute right-2 top-2.5 size-3.5 text-muted-foreground pointer-events-none rotate-90" />
           </div>

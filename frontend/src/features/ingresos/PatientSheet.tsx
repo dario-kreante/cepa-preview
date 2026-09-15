@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -26,6 +27,9 @@ import {
 } from "./hooks";
 import type { LicenciaRead, ControlMedicoRead, RecetaRead } from "./api";
 import { SalutemTab } from "./SalutemTab";
+import { EditarFichaDialog } from "./EditarFichaDialog";
+import { AltaLicenciaDialog } from "@/features/licencias/AltaLicenciaDialog";
+import { NuevoControlDialog } from "@/features/controles/NuevoControlDialog";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -260,6 +264,10 @@ export function PatientSheet({ pacienteId, open, onOpenChange }: PatientSheetPro
   // La pestaña es de SALUTEM: las fichas enviadas por otros sistemas (push) no van acá.
   const fichasSalutem = fichas.filter((f) => f.origen === "SALUTEM");
 
+  const [editarOpen, setEditarOpen] = useState(false);
+  const [licenciaOpen, setLicenciaOpen] = useState(false);
+  const [controlOpen, setControlOpen] = useState(false);
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="p-0 flex flex-col">
@@ -328,13 +336,13 @@ export function PatientSheet({ pacienteId, open, onOpenChange }: PatientSheetPro
           </SheetTitle>
 
           {/* Action buttons — only for writers */}
-          {canWrite && vista && (
+          {canWrite && vista && primaryIngreso && (
             <div className="flex items-center gap-2 mt-5">
               <Button
                 variant="secondary"
                 size="sm"
                 className="bg-white text-primary hover:bg-white/90"
-                disabled
+                onClick={() => setEditarOpen(true)}
               >
                 <Edit3 className="size-3.5" /> Editar ficha
               </Button>
@@ -342,7 +350,7 @@ export function PatientSheet({ pacienteId, open, onOpenChange }: PatientSheetPro
                 variant="outline"
                 size="sm"
                 className="bg-transparent border-white/30 text-white hover:bg-white/10"
-                disabled
+                onClick={() => setLicenciaOpen(true)}
               >
                 <FileText className="size-3.5" /> Nueva licencia
               </Button>
@@ -350,11 +358,32 @@ export function PatientSheet({ pacienteId, open, onOpenChange }: PatientSheetPro
                 variant="outline"
                 size="sm"
                 className="bg-transparent border-white/30 text-white hover:bg-white/10"
-                disabled
+                onClick={() => setControlOpen(true)}
               >
                 <Stethoscope className="size-3.5" /> Agendar control
               </Button>
             </div>
+          )}
+          {canWrite && vista && primaryIngreso && (
+            <>
+              <EditarFichaDialog
+                paciente={vista.paciente}
+                ingreso={primaryIngreso}
+                open={editarOpen}
+                onOpenChange={setEditarOpen}
+              />
+              <AltaLicenciaDialog
+                folio={primaryIngreso.folio}
+                ingresoId={primaryIngreso.id}
+                open={licenciaOpen}
+                onOpenChange={setLicenciaOpen}
+              />
+              <NuevoControlDialog
+                ingresoId={primaryIngreso.id}
+                open={controlOpen}
+                onOpenChange={setControlOpen}
+              />
+            </>
           )}
         </div>
 

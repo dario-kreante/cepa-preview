@@ -84,7 +84,7 @@ const MOCK_CONTROLES = [
     tipo_licencia: "1",
     tipo_reposo: "total",
     gaf: 65,
-    estado_reca: "aprobado",
+    estado_reca: "EC",
     observaciones: null,
   },
 ];
@@ -170,9 +170,9 @@ describe("ControlesPage", () => {
     // GAF numeric value
     expect(screen.getByText("65")).toBeInTheDocument();
 
-    // RECA badge — "aprobado" → "Aprobado" (also appears as a filter <option>)
-    const aprobadoEls = screen.getAllByText("Aprobado");
-    expect(aprobadoEls.length).toBeGreaterThanOrEqual(1);
+    // RECA badge — calificación D20 "EC" → "Enfermedad común (EC)" (also a filter <option>)
+    const recaEls = screen.getAllByText("Enfermedad común (EC)");
+    expect(recaEls.length).toBeGreaterThanOrEqual(1);
 
     // Agendado badge (proximo_agendado: true)
     expect(screen.getByText("Agendado")).toBeInTheDocument();

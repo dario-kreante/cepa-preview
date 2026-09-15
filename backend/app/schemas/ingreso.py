@@ -1,6 +1,6 @@
 from datetime import date
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 from app.domain.enums import (
     EstadoCaso,
@@ -61,6 +61,52 @@ class IngresoCreate(BaseModel):
         if v <= 0 or v > 130:
             raise ValueError("edad fuera de rango")
         return v
+
+
+class IngresoUpdate(BaseModel):
+    """Edición de la ficha de ingreso (BUG-2608-01 / CEPA-010). Actualización parcial.
+
+    RUT y folio no se editan: el RUT ancla la integración con SALUTEM y el folio
+    tiene reglas propias (PA-v5-01). Enviarlos es un 422, no se ignoran en silencio.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    # datos del paciente
+    nombre: str | None = None
+    sexo: Sexo | None = None
+    edad: int | None = None
+    region: str | None = None
+    comuna: str | None = None
+    telefono: str | None = None
+    correo: str | None = None
+    # datos del ingreso
+    diagnostico: str | None = None
+    tipo_derivacion: TipoDerivacion | None = None
+    tipo_ingreso: TipoIngreso | None = None
+    modelo_tratamiento: str | None = None
+    fecha_ingreso: date | None = None
+    fecha_diep_diat: date | None = None
+    razon_social: str | None = None
+    numero_siniestro: str | None = None
+
+    @field_validator("edad")
+    @classmethod
+    def _edad_positiva(cls, v: int | None) -> int | None:
+        if v is not None and (v <= 0 or v > 130):
+            raise ValueError("edad fuera de rango")
+        return v
+
+    @model_validator(mode="after")
+    def _obligatorios_no_se_vacian(self) -> "IngresoUpdate":
+        obligatorios = (
+            "nombre", "sexo", "edad", "region", "diagnostico",
+            "tipo_derivacion", "tipo_ingreso", "modelo_tratamiento", "fecha_ingreso",
+        )
+        vaciados = [c for c in obligatorios if c in self.model_fields_set and getattr(self, c) is None]
+        if vaciados:
+            raise ValueError(f"Campos obligatorios no pueden quedar vacíos: {', '.join(vaciados)}")
+        return self
 
 
 class PacienteRead(BaseModel):

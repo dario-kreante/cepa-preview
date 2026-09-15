@@ -9,6 +9,25 @@ export type LicenciaRead = components["schemas"]["app__schemas__licencia__Licenc
 export type ControlMedicoRead = components["schemas"]["ControlMedicoRead"];
 export type RecetaRead = components["schemas"]["RecetaRead"];
 export type FichaClinicaRead = components["schemas"]["FichaClinicaRead"];
+export type IngresoUpdate = components["schemas"]["IngresoUpdate"];
+
+/** Edita la ficha del ingreso (BUG-2608-01). RUT y folio no forman parte del cuerpo. */
+export async function actualizarIngreso(
+  ingresoId: number,
+  body: IngresoUpdate,
+): Promise<IngresoRead> {
+  const { data, error, response } = await api.PUT("/api/v1/ingresos/{ingreso_id}", {
+    params: { path: { ingreso_id: ingresoId } },
+    body,
+  });
+  if (error || !data) {
+    if (response.status === 404) throw new Error("El ingreso ya no existe.");
+    if (response.status === 422) throw new Error("Hay datos inválidos. Revisa los campos.");
+    if (response.status === 403) throw new Error("Tu perfil no puede editar fichas.");
+    throw new Error("El servidor no respondió. Intenta nuevamente.");
+  }
+  return data;
+}
 
 export async function listarFichasClinicas(folio: string): Promise<FichaClinicaRead[]> {
   const { data, error } = await api.GET("/api/v1/fichas-clinicas/{folio}", {

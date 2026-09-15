@@ -7,10 +7,22 @@
 import { z } from "zod";
 import type { TipoReca } from "./api";
 
-export const TIPO_RECA_VALUES = ["AT", "EP"] as const satisfies readonly TipoReca[];
+// Catálogo de calificación RECA — Decisiones v5 D20. Lo usa también el control médico.
+export const TIPO_RECA_VALUES = [
+  "EP",
+  "EC",
+  "AT",
+  "AC",
+  "NPE",
+  "no_aplica",
+] as const satisfies readonly TipoReca[];
 export const TIPO_RECA_LABELS: Record<TipoReca, string> = {
-  AT: "Accidente del trabajo (AT)",
   EP: "Enfermedad profesional (EP)",
+  EC: "Enfermedad común (EC)",
+  AT: "Accidente del trabajo (AT)",
+  AC: "Accidente común (AC)",
+  NPE: "NPE",
+  no_aplica: "No aplica",
 };
 
 const isoDate = z
