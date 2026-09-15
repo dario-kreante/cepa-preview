@@ -8,7 +8,8 @@ export type ControlMedicoCreate = components["schemas"]["ControlMedicoCreate"];
 export type ProximoControlUpdate = components["schemas"]["ProximoControlUpdate"];
 export type LicenciaUpdate = components["schemas"]["LicenciaUpdate"];
 
-export type EstadoReca = components["schemas"]["EstadoReca"];
+// Calificación RECA: mismo catálogo que la RECA del reintegro (D20).
+export type EstadoReca = components["schemas"]["TipoReca"];
 export type TipoLicencia =
   components["schemas"]["app__domain__enums_controles__TipoLicencia"];
 export type TipoReposo =

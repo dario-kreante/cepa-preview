@@ -3,10 +3,8 @@
 TipoDerivacion ya existe en app.domain.enums (EPIC-01); aquí solo se definen
 los enums específicos del reintegro.
 
-NOTA: el catálogo definitivo de TipoReca y los riesgos calificados está
-pendiente de confirmación con Coordinación (Decisiones v4, CEPA-041 nota).
-Esta lista provisional (AT / EP) es suficiente para pasar tests; ampliar
-cuando el equipo gestor CEPA entregue el catálogo completo.
+TipoReca es el catálogo de calificación RECA fijado en Decisiones v5 D20. El
+control médico (CEPA-062) lo usa también como `EstadoReca`.
 """
 
 from enum import Enum
@@ -23,10 +21,17 @@ class EstadoReintegro(str, Enum):
 
 
 class TipoReca(str, Enum):
-    """Tipo de RECA (Resolución de Calificación). Lista provisional — confirmar catálogo."""
+    """Calificación de la RECA (Resolución de Calificación) — Decisiones v5 D20.
 
-    AT = "AT"   # Accidente del Trabajo
-    EP = "EP"   # Enfermedad Profesional
+    El desarrollo de la sigla NPE está pendiente de confirmar con el CEPA.
+    """
+
+    EP = "EP"   # Enfermedad profesional
+    EC = "EC"   # Enfermedad común
+    AT = "AT"   # Accidente del trabajo
+    AC = "AC"   # Accidente común
+    NPE = "NPE"
+    NO_APLICA = "no_aplica"
 
 
 # TipoAlta is re-exported from app.domain.enums to avoid duplication.

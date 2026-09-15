@@ -597,7 +597,7 @@ def crear_controles_medicos(db, ingreso: Ingreso, licencias: list[LicenciaMedica
             tipo_licencia=lm_ref.tipo_lm if lm_ref else None,
             tipo_reposo=lm_ref.tipo_reposo if lm_ref else None,
             gaf=lm_ref.eeag_gaf if lm_ref else random.randint(45, 90),
-            estado_reca=random.choice(["pendiente", "aprobado", "en_proceso", "no_aplica"]),
+            estado_reca=random.choice(list(TipoReca)).value,
             observaciones="Evolución favorable, mantiene indicaciones." if random.random() < 0.5 else None,
         ))
 

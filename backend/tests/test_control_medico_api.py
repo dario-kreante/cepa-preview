@@ -236,7 +236,7 @@ def test_tc_062_01_licencia_con_datos_persistida(as_admin, db_session):
             "tipo_licencia": "1",
             "tipo_reposo": "total",
             "gaf": 55,
-            "estado_reca": "pendiente",
+            "estado_reca": "EP",
         },
     )
     assert r.status_code == 200, r.text
@@ -352,7 +352,7 @@ def test_tc_062_02_reca_visible_para_auditor(as_admin, as_auditor, db_session):
         f"/api/v1/controles-medicos/{ctrl['id']}/licencia",
         json={
             "tiene_licencia": False,
-            "estado_reca": "pendiente",
+            "estado_reca": "EP",
             "observaciones": "Reevaluar en próximo control",
         },
     )
@@ -360,7 +360,7 @@ def test_tc_062_02_reca_visible_para_auditor(as_admin, as_auditor, db_session):
     r = as_auditor.get(f"/api/v1/controles-medicos/{ctrl['id']}")
     assert r.status_code == 200
     body = r.json()
-    assert body["estado_reca"] == "pendiente"
+    assert body["estado_reca"] == "EP"
     assert body["observaciones"] == "Reevaluar en próximo control"
 
 

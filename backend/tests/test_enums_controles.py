@@ -1,4 +1,4 @@
-from app.domain.enums_controles import EstadoReca, TipoLicencia, TipoReposo
+from app.domain.enums_controles import TipoLicencia, TipoReposo
 
 
 def test_tipo_reposo_valores():
@@ -13,13 +13,3 @@ def test_tipo_licencia_incluye_tipos_basicos():
     assert "6" in valores
     # licencia extra-sistema (D7)
     assert "extra_sistema" in valores
-
-
-def test_estado_reca_valores():
-    assert {e.value for e in EstadoReca} == {
-        "pendiente",
-        "aprobado",
-        "rechazado",
-        "en_proceso",
-        "no_aplica",
-    }

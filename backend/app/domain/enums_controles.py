@@ -6,6 +6,8 @@ No se usan tipos enum nativos del motor (portabilidad D15).
 
 from enum import Enum
 
+from app.domain.reintegro_enums import TipoReca
+
 
 class TipoReposo(str, Enum):
     """Tipo de reposo de la licencia médica (CEPA-062 RN-2)."""
@@ -28,11 +30,6 @@ class TipoLicencia(str, Enum):
     EXTRA_SISTEMA = "extra_sistema"
 
 
-class EstadoReca(str, Enum):
-    """Estado de la Resolución de Calificación (RECA) asociada al control (CEPA-062 RN-5)."""
-
-    PENDIENTE = "pendiente"
-    APROBADO = "aprobado"
-    RECHAZADO = "rechazado"
-    EN_PROCESO = "en_proceso"
-    NO_APLICA = "no_aplica"
+# Calificación RECA asociada al control (CEPA-062 RN-5). Es el mismo catálogo que
+# la RECA del reintegro (Decisiones v5 D20); antes era un estado de flujo.
+EstadoReca = TipoReca

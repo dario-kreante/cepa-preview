@@ -38,6 +38,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/sso/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Login
+         * @description Inicia el acceso con cuenta UTalca por el método habilitado en este entorno.
+         *
+         *     Prioriza SAML (identidad firmada por el IdP) y cae a huemul solo si su modo
+         *     está habilitado. Sin ninguno, devuelve al login con el aviso correspondiente.
+         */
+        get: operations["login_api_v1_auth_sso_login_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/sso/callback": {
         parameters: {
             query?: never;
@@ -47,7 +70,7 @@ export interface paths {
         };
         /**
          * Callback
-         * @description Verifica el ticket de UTalca y emite el par de tokens del CEPA.
+         * @description Resuelve la identidad que devuelve huemul y entrega la sesión al frontend.
          */
         get: operations["callback_api_v1_auth_sso_callback_get"];
         put?: never;
@@ -247,6 +270,30 @@ export interface paths {
         put?: never;
         /** Crear */
         post: operations["crear_api_v1_ingresos_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ingresos/{ingreso_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Obtener Ingreso
+         * @description Consulta el estado actual de un ingreso (CA-2).
+         */
+        get: operations["obtener_ingreso_api_v1_ingresos__ingreso_id__get"];
+        /**
+         * Editar
+         * @description Edita la ficha de ingreso salvo RUT y folio (BUG-2608-01).
+         */
+        put: operations["editar_api_v1_ingresos__ingreso_id__put"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1703,26 +1750,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/ingresos/{ingreso_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Obtener Ingreso
-         * @description Consulta el estado actual de un ingreso (CA-2).
-         */
-        get: operations["obtener_ingreso_api_v1_ingresos__ingreso_id__get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/ingresos/{ingreso_id}/estado": {
         parameters: {
             query?: never;
@@ -2355,7 +2382,7 @@ export interface components {
             tipo_reposo: components["schemas"]["app__domain__enums_controles__TipoReposo"] | null;
             /** Gaf */
             gaf: number | null;
-            estado_reca: components["schemas"]["EstadoReca"] | null;
+            estado_reca: components["schemas"]["TipoReca"] | null;
             /** Observaciones */
             observaciones: string | null;
         };
@@ -2507,12 +2534,6 @@ export interface components {
          * @enum {string}
          */
         EstadoPropuesta: "borrador" | "confirmada" | "descartada";
-        /**
-         * EstadoReca
-         * @description Estado de la Resolución de Calificación (RECA) asociada al control (CEPA-062 RN-5).
-         * @enum {string}
-         */
-        EstadoReca: "pendiente" | "aprobado" | "rechazado" | "en_proceso" | "no_aplica";
         /**
          * EstadoReintegro
          * @description Estado del proceso de reintegro (CEPA-042 RN-1).
@@ -2955,6 +2976,42 @@ export interface components {
             /** Tratamiento Iniciado */
             tratamiento_iniciado: boolean;
         };
+        /**
+         * IngresoUpdate
+         * @description Edición de la ficha de ingreso (BUG-2608-01 / CEPA-010). Actualización parcial.
+         *
+         *     RUT y folio no se editan: el RUT ancla la integración con SALUTEM y el folio
+         *     tiene reglas propias (PA-v5-01). Enviarlos es un 422, no se ignoran en silencio.
+         */
+        IngresoUpdate: {
+            /** Nombre */
+            nombre?: string | null;
+            sexo?: components["schemas"]["Sexo"] | null;
+            /** Edad */
+            edad?: number | null;
+            /** Region */
+            region?: string | null;
+            /** Comuna */
+            comuna?: string | null;
+            /** Telefono */
+            telefono?: string | null;
+            /** Correo */
+            correo?: string | null;
+            /** Diagnostico */
+            diagnostico?: string | null;
+            tipo_derivacion?: components["schemas"]["TipoDerivacion"] | null;
+            tipo_ingreso?: components["schemas"]["TipoIngreso"] | null;
+            /** Modelo Tratamiento */
+            modelo_tratamiento?: string | null;
+            /** Fecha Ingreso */
+            fecha_ingreso?: string | null;
+            /** Fecha Diep Diat */
+            fecha_diep_diat?: string | null;
+            /** Razon Social */
+            razon_social?: string | null;
+            /** Numero Siniestro */
+            numero_siniestro?: string | null;
+        };
         /** JobResultado */
         JobResultado: {
             /** Alertas Generadas */
@@ -3070,7 +3127,7 @@ export interface components {
             tipo_reposo?: components["schemas"]["app__domain__enums_controles__TipoReposo"] | null;
             /** Gaf */
             gaf?: number | null;
-            estado_reca?: components["schemas"]["EstadoReca"] | null;
+            estado_reca?: components["schemas"]["TipoReca"] | null;
             /** Observaciones */
             observaciones?: string | null;
         };
@@ -4060,10 +4117,12 @@ export interface components {
         TipoPropuesta: "diaria" | "semanal" | "mensual";
         /**
          * TipoReca
-         * @description Tipo de RECA (Resolución de Calificación). Lista provisional — confirmar catálogo.
+         * @description Calificación de la RECA (Resolución de Calificación) — Decisiones v5 D20.
+         *
+         *     El desarrollo de la sigla NPE está pendiente de confirmar con el CEPA.
          * @enum {string}
          */
-        TipoReca: "AT" | "EP";
+        TipoReca: "EP" | "EC" | "AT" | "AC" | "NPE" | "no_aplica";
         /** TokenPair */
         TokenPair: {
             /** Access Token */
@@ -4435,13 +4494,33 @@ export interface operations {
             };
         };
     };
+    login_api_v1_auth_sso_login_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
     callback_api_v1_auth_sso_callback_get: {
         parameters: {
             query: {
                 /** @description RUT que devuelve el SSO de UTalca */
                 id: string;
-                /** @description Ticket de autenticación emitido por UTalca */
-                v: string;
+                /** @description Ticket que devuelve huemul (hoy la constante '1') */
+                v?: string;
             };
             header?: never;
             path?: never;
@@ -4455,7 +4534,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TokenPair"];
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */
@@ -4840,6 +4919,72 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IngresoRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    obtener_ingreso_api_v1_ingresos__ingreso_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ingreso_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IngresoRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    editar_api_v1_ingresos__ingreso_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ingreso_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IngresoUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -7810,37 +7955,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LicenciasResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    obtener_ingreso_api_v1_ingresos__ingreso_id__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                ingreso_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["IngresoRead"];
                 };
             };
             /** @description Validation Error */

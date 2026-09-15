@@ -31,6 +31,7 @@ import {
 } from "./licenciaControlSchema";
 import { useActualizarLicencia } from "./hooks";
 import type { ControlMedicoRead, TipoLicencia, TipoReposo, EstadoReca } from "./api";
+import { TIPO_RECA_LABELS } from "@/features/reintegro/recaSchema";
 
 // ── Friendly label maps (exhaustive) ─────────────────────────────────────────
 
@@ -48,13 +49,7 @@ export const TIPO_REPOSO_LABELS: Record<TipoReposo, string> = {
   parcial: "Parcial",
 };
 
-export const ESTADO_RECA_LABELS: Record<EstadoReca, string> = {
-  pendiente: "Pendiente",
-  aprobado: "Aprobado",
-  rechazado: "Rechazado",
-  en_proceso: "En proceso",
-  no_aplica: "No aplica",
-};
+export const ESTADO_RECA_LABELS: Record<EstadoReca, string> = TIPO_RECA_LABELS;
 
 // ── Component ─────────────────────────────────────────────────────────────────
 

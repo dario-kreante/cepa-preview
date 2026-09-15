@@ -10,11 +10,10 @@ def test_estado_reintegro_lista_cerrada():
     assert valores == {"pendiente", "parcial", "total"}
 
 
-def test_tipo_reca_existe():
-    # lista cerrada; los valores vienen del spec (pendiente de catálogo definitivo)
+def test_tipo_reca_es_el_catalogo_d20():
+    # Decisiones v5 D20: EP · EC · AT · AC · NPE · No aplica
     valores = {t.value for t in TipoReca}
-    assert "AT" in valores    # Accidente del Trabajo
-    assert "EP" in valores    # Enfermedad Profesional
+    assert valores == {"EP", "EC", "AT", "AC", "NPE", "no_aplica"}
 
 
 def test_tipo_alta_reintegro():
