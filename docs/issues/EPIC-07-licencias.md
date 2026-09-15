@@ -14,13 +14,15 @@
 - [CEPA-071](#cepa-071-cálculo-automático-de-días-acumulados-por-paciente) — Cálculo automático de días acumulados por paciente
 - [CEPA-072](#cepa-072-alerta-de-vencimiento-de-licencia) — Alerta de vencimiento de licencia
 - [CEPA-073](#cepa-073-trazabilidad-de-envío-a-isl-y-licencias-extra-sistema) — Trazabilidad de envío a ISL y licencias extra-sistema
+- [CEPA-074](#cepa-074-filtros-del-listado-de-licencias-médicas) — Filtros del listado de licencias médicas *(v5)*
+- [CEPA-075](#cepa-075-alerta-por-tramo-de-gaf-en-licencia-médica) — Alerta por tramo de GAF en licencia médica *(v5)*
 
 ### Glosario aplicable
 | Término | Definición |
 |---------|------------|
 | **LM** | Licencia Médica. Tipos relevantes: **1** (enfermedad común), **5** (enfermedad/accidente del trabajo curativa), **6** (patología del embarazo / prórroga). |
 | **ISL** | Instituto de Seguridad Laboral. Recibe el envío de las LM de casos de enfermedad/accidente laboral. |
-| **GAF / EEAG** | Escala de Evaluación de la Actividad Global (Global Assessment of Functioning). Valor 1–100. |
+| **GAF / EEAG** | Escala de Evaluación de la Actividad Global (Global Assessment of Functioning). **Se registra como un tramo entre dos porcentajes** (p. ej. `11-20%`), seleccionado de un catálogo cerrado (Decisiones v5 · D18). ~~Valor 1–100.~~ |
 | **Reposo** | Período de descanso prescrito en la LM. **Total** (incapacidad completa) o **parcial** (media jornada / actividad reducida). |
 | **77 BIS** | Art. 77 bis de la Ley 16.744: rechazo/recalificación de LM entre ISL y FONASA/ISAPRE. Una LM rechazada puede reasignarse de origen laboral a común (o viceversa). |
 | **Licencia extra-sistema** | LM gestionada fuera del Sistema CEPA (papel / IMED / otra mutualidad) que igualmente debe registrarse para que el acumulado de días sea fidedigno (v4 D7). |
@@ -85,6 +87,7 @@ Como **Administrativo del CEPA**, quiero **registrar una licencia médica con to
 
 ### Notas / Preguntas abiertas
 - Confirmar catálogo exacto de valores de `indicacion_de_reposo` (texto libre vs. lista) con Coordinación.
+- **Defectos abiertos:** `BUG-2608-04` (ítems de inicio y término de licencia repetidos — probable confusión entre las fechas de la licencia y las del reposo) y `BUG-2608-07` (el rótulo "ingreso ID" no se entiende).
 - Posible integración futura con IMED para precargar datos de la LM electrónica (PRD §8.3) — fuera de alcance v1.
 
 ---
@@ -172,7 +175,9 @@ Como **Administrativo del CEPA**, quiero **recibir una alerta cuando una licenci
   - **Entonces** no se genera (ni se mantiene) alerta de "por vencer" para esa LM
 
 ### Reglas de Negocio
-- **RN-1:** Umbral de alerta: la LM vence dentro de **3 días hábiles** (excluye sábados, domingos y festivos) contados desde la fecha de ejecución de la revisión.
+- **RN-1:** Umbral de alerta: la LM vence dentro de **3 días hábiles** (excluye sábados, domingos y festivos) contados desde la fecha de ejecución de la revisión. **El umbral es parametrizable por Coordinación** (v5 D21), no una constante del código; 3 días hábiles es el valor por defecto y está **pendiente de confirmación (PA-v5-04)**.
+- **RN-1b (v5 D21 — regla completa):** la alerta declara **disparador** = LM próxima a vencer; **umbral** = parametrizable; **destinatario** = administrativo asignado; **canal** = in-app (P0) / correo (P1); **mensaje** = texto parametrizable dirigido al usuario administrativo; **cierre** = LM renovada, vencida o anulada.
+- **RN-1c (v5 — reposo parcial):** las LM de **reposo parcial** se alertan de forma diferenciada de las de reposo total: el documento de la contraparte las menciona explícitamente junto a los días de vencimiento. La regla concreta es **PA-v5-04**; hasta definirla, el sistema marca visualmente el tipo de reposo en la alerta y **no** aplica un umbral distinto.
 - **RN-2:** El destinatario es el **administrativo asignado** al caso/paciente. Por v4 D1 NO se notifica a clínicos.
 - **RN-3:** Canal: **notificación in-app (P0)**. El correo electrónico es solo para alertas (v4 D12) y queda como **P1**.
 - **RN-4:** La revisión se ejecuta como tarea programada (job diario) — alinear con EPIC-10. Idempotente: no duplica la alerta si ya existe una activa para la misma LM.
@@ -187,6 +192,8 @@ Como **Administrativo del CEPA**, quiero **recibir una alerta cuando una licenci
 | TC-072-03 | Negativo | LM ya vencida o anentregada por 77 BIS | Ejecutar job de alertas | término=ayer / estado anulada | No se genera alerta de "por vencer" (CA-3 / RN-5) | Media |
 | TC-072-04 | Borde | LM que ya tiene una alerta activa | Reejecutar job el mismo día | alerta previa vigente | No se duplica la alerta (idempotencia, RN-4) | Media |
 | TC-072-05 | Permisos | Administrativo NO asignado al paciente | Revisar su panel de alertas | sesión de otro administrativo | No ve la alerta de esa LM (filtro por pacientes asignados, RN-2) | Alta |
+| TC-072-07 | Positivo | Coordinación cambia el umbral en configuración | Cambiar de 3 a 5 días hábiles y ejecutar el job | umbral=5 | El job usa el valor nuevo sin redespliegue (RN-1, v5 D21) | Alta |
+| TC-072-08 | Positivo | LM de reposo parcial próxima a vencer | Ejecutar job de alertas | tipo_reposo=parcial | La alerta identifica el reposo como parcial (RN-1c) | Media |
 | TC-072-06 | Permisos | Usuario perfil Clínico (sin acceso al sistema) | n/a | v4 D1 | Confirmado: no existe destinatario clínico; alerta solo administrativa | Media |
 
 ### Definición de Hecho (DoD)
@@ -199,6 +206,7 @@ Como **Administrativo del CEPA**, quiero **recibir una alerta cuando una licenci
 
 ### Notas / Preguntas abiertas
 - Confirmar fuente del calendario de **festivos** chilenos para el cálculo de días hábiles.
+- **Bloqueante (v5 PA-v5-04):** días de anticipación definitivos, tratamiento del **reposo parcial** y **texto del mensaje** para el usuario administrativo. La contraparte pidió explícitamente *"definir específicamente (regla)"*; el valor por defecto de 3 días hábiles **no está acordado**.
 - El detalle del motor de alertas/notificaciones (panel in-app, dedupe, email P1) se especifica en **EPIC-10 — Alertas y Tareas Automatizadas**; esta historia define el disparador específico de LM.
 
 ---
@@ -233,7 +241,7 @@ Como **Administrativo del CEPA**, quiero **registrar el envío de cada LM al ISL
   - **Entonces** ve todas las licencias (en-sistema y extra-sistema) con su trazabilidad ISL, en modo solo lectura
 
 ### Reglas de Negocio
-- **RN-1:** Campos de gestión §7.7.2: `envio_ISL` (estado + fecha), `EEAG_GAF` (1–100), `fecha_emision`, `observaciones`.
+- **RN-1:** Campos de gestión §7.7.2: `envio_ISL` (estado + fecha), `EEAG_GAF` (**tramo del catálogo `gaf_tramo`**, v5 D18 — ya no un valor 1–100), `fecha_emision`, `observaciones`.
 - **RN-2:** Estados de envío a ISL: {pendiente, enviado, rechazado}. `fecha_envio_ISL` obligatoria cuando estado = enviado o rechazado.
 - **RN-3:** El **historial completo de licencias por paciente** (§7.7.3) lista todas las LM del folio ordenadas cronológicamente, con su origen (en-sistema / extra-sistema), estado de envío y diagnóstico.
 - **RN-4:** Las **licencias extra-sistema** (v4 D7) se distinguen con una marca de origen y, al no tener envío ISL gestionado por CEPA, su estado ISL puede quedar como "no aplica / externo".
@@ -248,7 +256,7 @@ Como **Administrativo del CEPA**, quiero **registrar el envío de cada LM al ISL
 | TC-073-02 | Negativo | LM con envío marcado | Guardar estado=enviado sin fecha | fecha vacía | Error de validación: fecha de envío obligatoria (RN-2) | Alta |
 | TC-073-03 | Positivo | Paciente con LM extra-sistema | Registrar LM extra-sistema y abrir historial | origen=extra-sistema, 20 días | Aparece en historial marcada como extra-sistema y suma al acumulado (CA-3) | Alta |
 | TC-073-04 | Borde | LM rechazada vía 77 BIS | Registrar rechazo ISL + observación | estado=rechazado, motivo 77 BIS | Estado/observación reflejados; excluida del acumulado vigente (RN-5) | Media |
-| TC-073-05 | Borde | EEAG/GAF fuera de rango | Ingresar EEAG=150 | valor >100 | Rechazo: GAF debe estar en 1–100 (RN-1) | Media |
+| TC-073-05 | Borde | Catálogo de tramos de GAF cargado | Enviar un GAF que no corresponde a ningún tramo vía API | valor fuera del catálogo | Rechazo: solo se admiten tramos del catálogo (RN-1, v5 D18) | Media |
 | TC-073-06 | Permisos | Usuario perfil Auditor | Intentar editar estado de envío ISL | sesión Auditor | Edición denegada; consulta del historial permitida (RN-6 / RBAC) | Alta |
 
 ### Definición de Hecho (DoD)
@@ -262,6 +270,137 @@ Como **Administrativo del CEPA**, quiero **registrar el envío de cada LM al ISL
 ### Notas / Preguntas abiertas
 - Definir si el envío a ISL será manual o, a futuro, integrado vía API/IMED (PRD §8.3) — integración fuera de alcance v1.
 - Confirmar el conjunto mínimo de campos exigidos para una LM extra-sistema (puede faltar folio ISL u otros datos del flujo regular).
+- **Bloqueante (v5 PA-v5-03):** listado definitivo de tramos de GAF. Los valores de GAF ya cargados como entero requieren migración con traza del valor original.
+
+---
+
+## [CEPA-074] Filtros del listado de licencias médicas
+
+**Épica:** EPIC-07 — Licencias Médicas
+**Perfil:** Administrativo
+**Prioridad (MoSCoW):** P0 Must
+**Módulo PRD:** 7.7.3
+**Trazabilidad:** Decisiones v5 (revisión ambiente de pruebas, sección *Licencias médicas*) · PRD §9 (rendimiento)
+
+### Historia
+Como **Administrativo del CEPA**, quiero **filtrar el listado de licencias médicas por médico, rango de fecha de emisión, rango de fecha de vencimiento, RUT y nombre del usuario** para **encontrar una licencia concreta en el módulo con mayor volumen de datos del sistema sin recorrer 1.584+ registros**.
+
+### Criterios de Aceptación (Gherkin)
+- **CA-1**
+  - **Dado** que un administrativo abre el listado de licencias médicas
+  - **Cuando** revisa los filtros disponibles
+  - **Entonces** puede filtrar por **médico**, **rango de fecha de emisión**, **rango de fecha de vencimiento**, **RUT** y **nombre del usuario(a)**
+- **CA-2**
+  - **Dado** que el administrativo aplica varios filtros a la vez
+  - **Cuando** ejecuta la búsqueda
+  - **Entonces** el listado muestra únicamente las licencias que cumplen **todos** los filtros aplicados
+- **CA-3**
+  - **Dado** un filtro de rango de fechas
+  - **Cuando** el administrativo indica solo la fecha inicial o solo la final
+  - **Entonces** el rango se interpreta como abierto por el extremo no informado, sin obligar a completar ambos
+- **CA-4**
+  - **Dado** una combinación de filtros sin coincidencias
+  - **Cuando** se ejecuta la búsqueda
+  - **Entonces** el sistema informa "sin resultados" sin error y conservando los filtros aplicados
+- **CA-5**
+  - **Dado** el volumen real del módulo (1.584+ licencias)
+  - **Cuando** se aplica cualquier combinación de filtros
+  - **Entonces** el listado responde en **menos de 2 segundos** (RNF de rendimiento, PRD §9)
+
+### Reglas de Negocio
+- **RN-1:** Filtros disponibles: `médico`, `fecha_emision` (rango), `fecha_vencimiento` (rango), `RUT`, `nombre` (coincidencia parcial). Combinables con AND.
+- **RN-2:** Los rangos de fecha admiten extremo abierto (solo desde, solo hasta).
+- **RN-3:** El filtro por nombre es de coincidencia parcial e insensible a mayúsculas y acentos — un administrativo no escribe "Muñoz" con tilde correcta cada vez.
+- **RN-4:** El listado es **paginado** e indexado por los campos filtrables; el filtrado ocurre en el servidor, nunca cargando el total de registros al navegador.
+- **RN-5:** Los filtros aplicados se conservan al volver al listado desde el detalle de una licencia.
+- **RN-6 (Permisos):** Todos los perfiles operativos consultan; Auditor en solo lectura.
+
+### Test Cases
+| ID | Tipo | Precondición | Pasos | Datos | Resultado esperado | Prioridad |
+|----|------|--------------|-------|-------|--------------------|-----------|
+| TC-074-01 | Positivo | Listado con licencias de varios médicos | Filtrar por médico | Dr. X | Solo licencias de ese médico | Alta |
+| TC-074-02 | Positivo | Licencias en distintas fechas | Filtrar por rango de emisión + RUT | 01/06–30/06, RUT 11.111.111-1 | Solo las licencias que cumplen ambos filtros (RN-1) | Alta |
+| TC-074-03 | Borde | Filtro de rango de fechas | Informar solo "desde" | desde=01/06/2026 | Rango abierto hacia adelante; sin exigir "hasta" (RN-2) | Media |
+| TC-074-04 | Borde | Paciente de apellido "Muñoz" | Buscar por nombre sin tilde y en minúsculas | "munoz" | Encuentra el registro (RN-3) | Alta |
+| TC-074-05 | Negativo | — | Combinación de filtros sin coincidencias | médico X + junio 2019 | "Sin resultados", sin error, filtros conservados (CA-4) | Media |
+| TC-074-06 | No funcional | Base con el volumen real (1.584+ LM) | Aplicar filtros combinados y medir | — | Respuesta < 2 s (CA-5, PRD §9) | Alta |
+| TC-074-07 | Permisos | Sesión Auditor | Usar los filtros del listado | — | Consulta permitida; sin acceso a edición | Alta |
+
+### Definición de Hecho (DoD)
+- [ ] Filtros implementados y desplegados en QA
+- [ ] Todos los CA verificados
+- [ ] Filtrado y paginación **en el servidor**, con índices sobre los campos filtrables
+- [ ] Rendimiento verificado **contra el volumen real de datos**, no contra un set de prueba pequeño
+- [ ] Tests unitarios + integración en verde
+- [ ] Endpoint documentado en OpenAPI/Swagger
+- [ ] Demo validada con equipo gestor CEPA
+
+### Notas / Preguntas abiertas
+- Confirmar si "fecha de vencimiento" corresponde a `fecha_termino` de la LM o al fin del reposo — son campos distintos en `CEPA-070` (RN-1, RN-2) y la contraparte usó un único término. Relacionado con `BUG-2608-04`.
+- Evaluar si los filtros deben poder guardarse como vista predefinida por usuario (no pedido; posible P2).
+
+---
+
+## [CEPA-075] Alerta por tramo de GAF en licencia médica
+
+**Épica:** EPIC-07 — Licencias Médicas
+**Perfil:** Administrativo
+**Prioridad (MoSCoW):** P0 Must
+**Módulo PRD:** 7.7 · §7.11
+**Trazabilidad:** Decisiones v5: D18, D21 · PA-v5-03, PA-v5-04 · Ref. `CEPA-100`
+
+### Historia
+Como **Administrativo del CEPA**, quiero **que el sistema alerte cuando una licencia médica se registra con un tramo de GAF que requiere atención** para **detectar los casos de mayor deterioro funcional sin revisar licencia por licencia**.
+
+### Criterios de Aceptación (Gherkin)
+- **CA-1**
+  - **Dado** que se registra o actualiza una LM con un tramo de GAF
+  - **Cuando** ese tramo está dentro de los tramos configurados como "alertables"
+  - **Entonces** el sistema genera una alerta in-app para el administrativo asignado
+- **CA-2**
+  - **Dado** que se registra una LM con un tramo de GAF fuera de los tramos alertables
+  - **Cuando** corre la revisión de alertas
+  - **Entonces** no se genera alerta
+- **CA-3**
+  - **Dado** que Coordinación modifica qué tramos son alertables
+  - **Cuando** guarda la configuración
+  - **Entonces** las alertas siguientes usan la configuración nueva, sin redespliegue
+- **CA-4**
+  - **Dado** que una LM ya generó una alerta de GAF activa
+  - **Cuando** se reejecuta la revisión
+  - **Entonces** la alerta no se duplica
+
+### Reglas de Negocio
+- **RN-1 (v5 D21 — regla completa):** **disparador** = registro o actualización de una LM con tramo de GAF; **umbral** = conjunto de tramos marcados como alertables en configuración; **destinatario** = administrativo asignado (y Coordinación, a confirmar); **canal** = in-app (P0) / correo (P1); **mensaje** = texto parametrizable; **cierre** = LM actualizada a un tramo no alertable, o alerta gestionada por el administrativo.
+- **RN-2:** Los tramos alertables son **configurables por Coordinación**; no hay tramos alertables por defecto hasta que la contraparte los defina (**PA-v5-04**). Con la configuración vacía, la alerta simplemente no se dispara — nunca se inventa un criterio clínico.
+- **RN-3:** Depende del catálogo de tramos de `CEPA-062` RN-3 (v5 D18); esta historia **no puede implementarse antes** de que exista ese catálogo (**PA-v5-03**).
+- **RN-4:** Idempotencia sobre el motor de `CEPA-100`: una alerta activa por LM.
+- **RN-5 (Permisos):** Auditor visualiza en solo lectura; no genera ni cierra alertas.
+
+### Test Cases
+| ID | Tipo | Precondición | Pasos | Datos | Resultado esperado | Prioridad |
+|----|------|--------------|-------|-------|--------------------|-----------|
+| TC-075-01 | Positivo | Tramo `1-10%` configurado como alertable | Registrar LM con GAF=`1-10%` | tramo alertable | Alerta in-app generada para el administrativo asignado | Alta |
+| TC-075-02 | Negativo | Tramo `81-90%` no alertable | Registrar LM con GAF=`81-90%` | tramo no alertable | No se genera alerta (CA-2) | Alta |
+| TC-075-03 | Borde | Configuración de tramos alertables **vacía** | Registrar LM con cualquier tramo | sin configuración | No se genera ninguna alerta; el sistema no asume un criterio propio (RN-2) | Alta |
+| TC-075-04 | Positivo | Coordinación agrega un tramo alertable | Cambiar configuración y registrar LM en ese tramo | configuración nueva | Alerta generada sin redespliegue (CA-3) | Alta |
+| TC-075-05 | Borde | LM con alerta de GAF activa | Actualizar la LM sin cambiar el tramo | — | La alerta no se duplica (CA-4 / RN-4) | Media |
+| TC-075-06 | Permisos | Sesión Auditor | Intentar cerrar la alerta | — | Acción denegada; visualización permitida | Alta |
+
+### Definición de Hecho (DoD)
+- [ ] Alerta implementada sobre el motor de `CEPA-100` y desplegada en QA
+- [ ] Catálogo de tramos de GAF (v5 D18) implementado como precondición
+- [ ] Todos los CA verificados
+- [ ] **Regla escrita** (disparador, umbral, destinatario, canal, mensaje, cierre) documentada y visible en configuración
+- [ ] Tests unitarios + integración en verde, incluida la idempotencia y el caso de configuración vacía
+- [ ] Generación de alerta registrada en log de auditoría
+- [ ] **Tramos alertables y texto del mensaje definidos por la contraparte** — es un criterio clínico-administrativo, no técnico
+- [ ] Demo validada con equipo gestor CEPA
+
+### Notas / Preguntas abiertas
+- **Bloqueante (PA-v5-03):** sin el catálogo de tramos no hay nada sobre lo que alertar.
+- **Bloqueante (PA-v5-04):** qué tramos ameritan alerta y qué debe decir el mensaje. **No corresponde que lo decidamos nosotros**: es un umbral clínico-administrativo del CEPA.
+- Confirmar si Coordinación también recibe esta alerta o solo el administrativo asignado.
 
 ---
 

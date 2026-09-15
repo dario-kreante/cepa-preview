@@ -129,6 +129,7 @@ Como **Auditor**, quiero **abrir una vista consolidada de cada caso con todos su
 - Profesional (médico tratante, psicólogo, EPTista)
 - Estado del caso (activo, cerrado, derivado, etc.)
 - (Complementarios alineados a D5/§7.9: programa, tipo de alta, región/comuna, tipo de ingreso)
+- **Ampliados (v5 CHG-04):** convenio · tipo de ingreso · mes/año de ingreso — solicitados explícitamente por la contraparte en la revisión de agosto 2026
 
 **Salida del reporte:**
 - Datos verificables y trazables por caso (folio, nº siniestro, hitos)
@@ -166,12 +167,14 @@ Como **Auditor**, quiero **generar reportes de auditoría filtrando por período
 - **RN-4:** El reporte debe ser **descargable** en formato estándar para instituciones contraparte (alinear con §7.9 y la reportería de EPIC-09; este módulo aporta la dimensión de auditoría/cumplimiento).
 - **RN-5:** La generación de cada reporte se registra en el **log de auditoría** (EPIC-00): quién generó qué reporte, con qué filtros y cuándo.
 - **RN-6:** Filtros y dimensiones se alinean con las definiciones de dashboard/reportería (D5): diagnósticos, tipos de alta, profesional, programa, estado del caso, zona geográfica.
+- **RN-6b (v5):** Se agregan como filtros **convenio**, **tipo de ingreso** (`CEPA-017`) y **mes/año de ingreso**. El conjunto de filtros es **extensible por configuración**: la contraparte pidió "más apartados para realizar filtros" y enumeró ejemplos, no una lista cerrada — agregar un filtro nuevo no debe requerir un cambio de código.
 - **RN-7:** Solo Coordinación y Auditor generan/descargan reportes de auditoría; Auditor sin edición.
 
 ### Test Cases
 | ID | Tipo | Precondición | Pasos | Datos | Resultado esperado | Prioridad |
 |----|------|--------------|-------|-------|--------------------|-----------|
 | TC-051-01 | Positivo | Casos cargados en varios estados | Filtrar por período + diagnóstico + profesional + estado; ejecutar | Mayo 2026, Dx X, Dr. Y, Activo | Solo casos que cumplen todos los filtros, con hitos consolidados | Alta |
+| TC-051-07 | Positivo | Casos de distintos convenios y tipos de ingreso | Filtrar por convenio + tipo de ingreso + mes/año de ingreso | Convenio ISL, "Consulta espontánea", 08/2026 | Solo los casos que cumplen los tres filtros nuevos (RN-6b, v5) | Alta |
 | TC-051-02 | Positivo | Reporte generado | Descargar el reporte | Formato estándar | Archivo descargado con filtros como metadatos | Alta |
 | TC-051-03 | Positivo | Reporte descargado | Verificar trazabilidad de una fila | Folio + nº siniestro | Fila trazable hasta su módulo fuente | Media |
 | TC-051-04 | Negativo | Filtros sin coincidencias | Ejecutar reporte con combinación imposible | Período sin casos | Resultado vacío con mensaje claro, sin error | Media |

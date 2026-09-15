@@ -1,9 +1,15 @@
 # Backlog Sistema CEPA — Épicas, Historias de Usuario y Test Cases
 
-Backlog derivado del **PRD Sistema CEPA v1.0 (abril 2026)** + **comentarios de revisión v4**
-(ver [`00-decisiones-v4.md`](./00-decisiones-v4.md)). Cada historia incluye **Criterios de
-Aceptación** (Gherkin), **Reglas de Negocio** y **Test Cases**, según
+Backlog derivado del **PRD Sistema CEPA v1.0 (abril 2026)**, los **comentarios de revisión v4**
+(ver [`00-decisiones-v4.md`](./00-decisiones-v4.md)) y la **revisión del ambiente de pruebas de
+agosto 2026** (ver [`01-decisiones-v5.md`](./01-decisiones-v5.md)). Cada historia incluye
+**Criterios de Aceptación** (Gherkin), **Reglas de Negocio** y **Test Cases**, según
 [`_plantilla-historia.md`](./_plantilla-historia.md).
+
+> **Antes de tomar una historia**, revisar `01-decisiones-v5.md`: contiene dos cambios que
+> **contradicen decisiones v4 ya incorporadas** (el formato del GAF y el catálogo de tipo de
+> ingreso) y seis preguntas abiertas que bloquean reglas de negocio. Los defectos detectados en
+> ese mismo ambiente de pruebas están en [`BUGS-revision-2026-08.md`](./BUGS-revision-2026-08.md).
 
 - **Proyecto Linear:** `CEPA - Sistema SALUTEM` (equipo Kreante / KRE)
 - **Stack:** React (Vite) + TypeScript + Tailwind + shadcn/ui · **FastAPI (Python)** · **PostgreSQL (desarrollo/CI) / Oracle (producción objetivo)** vía SQLAlchemy + Alembic · JWT/RBAC
@@ -34,6 +40,14 @@ Aceptación** (Gherkin), **Reglas de Negocio** y **Test Cases**, según
 | EPIC-11 — Configurabilidad y Calidad de Datos | §7.13 | [EPIC-11-config-calidad.md](./EPIC-11-config-calidad.md) |
 | EPIC-12 — API de Integración | §8 | [EPIC-12-api.md](./EPIC-12-api.md) |
 
+## Documentos transversales
+
+| Documento | Contenido |
+|-----------|-----------|
+| [00-decisiones-v4.md](./00-decisiones-v4.md) | Decisiones D1–D15 de la revisión del PRD (abril 2026) |
+| [01-decisiones-v5.md](./01-decisiones-v5.md) | Decisiones D16–D22, cambios CHG-01…08 y preguntas abiertas PA-v5-01…06 de la revisión del ambiente de pruebas (agosto 2026) |
+| [BUGS-revision-2026-08.md](./BUGS-revision-2026-08.md) | Defectos BUG-2608-01…07 detectados al operar el ambiente de pruebas |
+
 ## Índice de Historias
 
 ### EPIC-00 — Plataforma base, Autenticación y RBAC
@@ -49,6 +63,8 @@ Aceptación** (Gherkin), **Reglas de Negocio** y **Test Cases**, según
 - **CEPA-014** Cierre y alta del caso — P0
 - **CEPA-015** Registro de ODAS y alerta de vencimiento — P0
 - **CEPA-016** Validador de consentimiento informado — P0
+- **CEPA-017** Fecha y tipo de ingreso en el formulario de nuevo ingreso — P0 *(v5)*
+- **CEPA-018** Marca "Fármacos al ingreso" (SI/NO) con detalle — P0 *(v5)*
 
 ### EPIC-02 — Gestión de Fármacos
 - **CEPA-020** Registro farmacológico vinculado al folio — P0
@@ -60,11 +76,13 @@ Aceptación** (Gherkin), **Reglas de Negocio** y **Test Cases**, según
 - **CEPA-030** Datos del caso EPT y del empleador — P0
 - **CEPA-031** Gestión del proceso EPT (plazos, testigos, entrevistas) — P0
 - **CEPA-032** Plazos de informe EPT / portal ISL y alertas — P0
+- **CEPA-033** Carga masiva de casos EPT desde Excel — P1 *(v5)*
 
 ### EPIC-04 — Seguimiento de Reintegro
 - **CEPA-040** Datos del caso de reintegro — P0
 - **CEPA-041** Proceso RECA y medidas correctivas — P0
 - **CEPA-042** Reintegro y cierre del caso — P0
+- **CEPA-043** Alerta de caso remitido a ISL — P0 *(v5)*
 
 ### EPIC-05 — Auditoría
 - **CEPA-050** Vista consolidada del caso (todos los hitos) — P0
@@ -80,6 +98,8 @@ Aceptación** (Gherkin), **Reglas de Negocio** y **Test Cases**, según
 - **CEPA-071** Cálculo automático de días acumulados por paciente — P0
 - **CEPA-072** Alerta de vencimiento de licencia — P0
 - **CEPA-073** Trazabilidad de envío a ISL y licencias extra-sistema — P0
+- **CEPA-074** Filtros del listado de licencias médicas — P0 *(v5)*
+- **CEPA-075** Alerta por tramo de GAF en licencia médica — P0 *(v5)*
 
 ### EPIC-08 — Agendamiento Inteligente
 - **CEPA-080** Propuesta automática de agenda según disponibilidad — P1

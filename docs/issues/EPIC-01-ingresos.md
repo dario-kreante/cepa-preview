@@ -18,6 +18,8 @@ Gestiona el ciclo de vida completo del paciente desde su ingreso hasta el alta: 
 | CEPA-014 | Cierre y alta del caso | Administrativo | P0 |
 | CEPA-015 | Registro de ODAS y alerta de vencimiento | Administrativo | P0 |
 | CEPA-016 | Validador de consentimiento informado | Administrativo | P0 |
+| CEPA-017 | Fecha y tipo de ingreso en el formulario de nuevo ingreso | Administrativo | P0 |
+| CEPA-018 | Marca "Fármacos al ingreso" (SI/NO) con detalle | Administrativo | P0 |
 
 ---
 
@@ -60,8 +62,8 @@ Como **administrativo del CEPA**, quiero **registrar un nuevo ingreso con todos 
 - **RN-3:** Si el RUT ya existe, el sistema pre-llena los datos del paciente y exige confirmación o actualización antes de crear el nuevo ingreso (un mismo paciente puede tener varios ingresos).
 - **RN-4:** Al guardar correctamente, el sistema genera un folio único (ver CEPA-011) y el registro queda visible de inmediato en búsquedas (RUT/nombre/folio).
 - **RN-5:** Un error de validación (RUT inválido u otro) nunca descarta los datos ya ingresados en el formulario.
-- **RN-6:** Tipos de derivación permitidos (v4 D4): DIEP, DIAT, PAPT a flujo AT, Reingreso FUMP, Reingreso SUSESO, Convenio U.Clínica, Proyecto, Particular, PAPT. El antiguo "convenio SOCORRO" ya no es válido.
-- **RN-7:** Campos del formulario (§7.1.1): folio, mes y fecha de ingreso, fecha DIEP/DIAT, datos del paciente (nombre, RUT, región, teléfono, correo), tipo de derivación, razón social / centro de trabajo.
+- **RN-6:** Tipos de derivación permitidos (v4 D4): DIEP, DIAT, PAPT a flujo AT, Reingreso FUMP, Reingreso SUSESO, Convenio U.Clínica, Proyecto, Particular, PAPT. El antiguo "convenio SOCORRO" ya no es válido. **⚠️ Catálogo provisorio (v5 D17):** la revisión de agosto 2026 entregó un catálogo distinto para `tipo de ingreso`, que no coincide con este. Ambos catálogos quedan parametrizables hasta resolver **PA-v5-02**.
+- **RN-7:** Campos del formulario (§7.1.1): folio, mes y fecha de ingreso, fecha DIEP/DIAT, datos del paciente (nombre, RUT, región, teléfono, correo), tipo de derivación, razón social / centro de trabajo. **Se suman (v5):** `tipo de ingreso` y `fecha de ingreso` como campos propios — ver `CEPA-017`; y la marca `fármacos al ingreso` — ver `CEPA-018`.
 
 ### Test Cases
 | ID | Tipo | Precondición | Pasos | Datos | Resultado esperado | Prioridad |
@@ -84,6 +86,8 @@ Como **administrativo del CEPA**, quiero **registrar un nuevo ingreso con todos 
 ### Notas / Preguntas abiertas
 - Confirmar catálogo de regiones/comunas y de diagnósticos a usar (alineación con dashboard, v4 D5).
 - Migración de los 846+ registros históricos puede arrastrar RUT/folios no estándar (ver PA7).
+- **Abierta (v5 D17 / PA-v5-02):** `tipo de ingreso` y `tipo de derivación` pueden ser el mismo campo mal nombrado. Si la contraparte lo confirma, esta historia absorbe `CEPA-017` y uno de los dos catálogos se descarta, con migración de los datos ya cargados.
+- **Defecto abierto:** `BUG-2608-01` — no fue posible editar la ficha después de crearla.
 
 ---
 
@@ -118,7 +122,8 @@ Como **administrativo del CEPA**, quiero **que el folio se genere automáticamen
 
 ### Reglas de Negocio
 - **RN-1:** El folio por defecto es secuencial automático, único y no reutilizable entre ingresos distintos.
-- **RN-2:** Existe opción de ingreso manual de folio para tres casos (v4 D2): reingresos que mantienen el folio anterior, folios pre-asignados desde el Excel histórico, e ingresos posteriores a las 15:00 (lun–jue) cargados con fecha del día hábil siguiente.
+- **RN-2:** Existe opción de ingreso manual de folio para tres casos (v4 D2): reingresos que mantienen el folio anterior, folios pre-asignados desde el Excel histórico, e ingresos posteriores a las 15:00 (lun–jue) cargados con fecha del día hábil siguiente. **Ampliado (v5 D16):** cada programa maneja sus folios internos, por lo que el ingreso manual es de **uso corriente y no una excepción** — la interfaz no debe presentarlo como un caso raro ni esconderlo tras una opción avanzada.
+- **RN-2b (v5 D16):** La **regla del folio debe estar escrita y visible para el usuario** en el punto de captura: formato esperado, si la secuencia es global o por programa, y qué hace el sistema ante una colisión. El formato exacto por programa es **PA-v5-01**; hasta resolverlo, la regla es parametrizable en configuración.
 - **RN-3:** Un folio manual no puede colisionar con un folio secuencial ya emitido salvo que sea un reingreso explícito del mismo paciente.
 - **RN-4:** Reingreso vs. nueva denuncia bajo el mismo RUT se diferencia por número de siniestro; un nuevo número de siniestro indica nueva denuncia.
 - **RN-5:** El contador secuencial automático debe continuar sin saltos no controlados tras un ingreso manual.
@@ -143,7 +148,7 @@ Como **administrativo del CEPA**, quiero **que el folio se genere automáticamen
 
 ### Notas / Preguntas abiertas
 - Pendiente confirmar con Coordinación si los reingresos generan nuevo folio o se diferencian solo por número de siniestro (v4 D2).
-- Definir formato del folio (prefijo/año/secuencial) compatible con folios históricos del Excel.
+- **Bloqueante (v5 D16 / PA-v5-01):** definir formato del folio (prefijo/año/secuencial) por programa, compatible con folios históricos del Excel, y qué ocurre si dos programas emiten el mismo número.
 
 ---
 
@@ -437,3 +442,126 @@ Como **administrativo del CEPA**, quiero **un validador que controle el estado d
 
 ### Notas / Preguntas abiertas
 - **Abierta (v4 D9):** definir cómo se adjunta / de dónde proviene el consentimiento (carga de archivo vs. referencia a ficha clínica SALUTEM/SAM). El aplicativo no escribe sobre SALUTEM (v4 D12).
+
+---
+
+## [CEPA-017] Fecha y tipo de ingreso en el formulario de nuevo ingreso
+
+**Épica:** EPIC-01 — Ingresos y Gestión de Pacientes
+**Perfil:** Administrativo
+**Prioridad (MoSCoW):** P0 Must
+**Módulo PRD:** 7.1.1
+**Trazabilidad:** Decisiones v5: D17 · PA-v5-02 · PRD §7.1.1 · (conflicto con v4 D4)
+
+### Historia
+Como **administrativo del CEPA**, quiero **registrar la fecha de ingreso y el tipo de ingreso desde un desplegable de valores válidos** para **clasificar cada caso según su vía de entrada al centro y poder segmentar la reportería por ese criterio**.
+
+### Criterios de Aceptación (Gherkin)
+- **CA-1**
+  - **Dado** que un administrativo abre el formulario de nuevo ingreso
+  - **Cuando** revisa los campos disponibles
+  - **Entonces** existen los campos **fecha de ingreso** (obligatorio) y **tipo de ingreso** (desplegable, obligatorio), distintos del campo `tipo de derivación`
+- **CA-2**
+  - **Dado** que el administrativo despliega el campo "tipo de ingreso"
+  - **Cuando** revisa las opciones
+  - **Entonces** solo aparecen valores del catálogo v5 (D17): DIEP, DIAT, DIEP sin EPT, Reingreso FUPM, Reingreso SUSESO, Reingreso ISL, Derivación otro prestador, Flujo PAPT, Convenio, Consulta espontánea, Proyecto
+- **CA-3**
+  - **Dado** que el administrativo intenta guardar sin fecha de ingreso o sin tipo de ingreso
+  - **Cuando** hace clic en guardar
+  - **Entonces** el sistema bloquea el guardado y resalta el campo faltante, sin descartar los datos ya ingresados
+- **CA-4**
+  - **Dado** un ingreso registrado con su tipo de ingreso
+  - **Cuando** Coordinación filtra el dashboard o el reporte de auditoría por tipo de ingreso
+  - **Entonces** el caso aparece bajo el valor con que fue registrado (alimenta CEPA-051 y CEPA-095)
+
+### Reglas de Negocio
+- **RN-1:** `tipo_de_ingreso` es un campo **distinto** de `tipo_de_derivación` (CEPA-010 RN-6). Ambos son obligatorios y ambos se registran por separado hasta que la contraparte confirme lo contrario (PA-v5-02).
+- **RN-2:** Catálogo cerrado y **parametrizable** de `tipo_de_ingreso` (v5 D17): DIEP · DIAT · DIEP sin EPT · Reingreso FUPM · Reingreso SUSESO · Reingreso ISL · Derivación otro prestador · Flujo PAPT · Convenio · Consulta espontánea · Proyecto. El catálogo vive en configuración, no en el código, porque está sujeto a confirmación.
+- **RN-3:** `fecha_de_ingreso` es obligatoria, no puede ser futura y es la fecha base del cálculo de semana de control (CEPA-060 RN-3).
+- **RN-4:** `tipo_de_ingreso` es una de las dimensiones de filtro de auditoría (CEPA-051) y de segmentación de adherencia (CEPA-095).
+- **RN-5 (Permisos):** Administrativo y Coordinación registran/editan; Auditor solo lectura.
+
+### Test Cases
+| ID | Tipo | Precondición | Pasos | Datos | Resultado esperado | Prioridad |
+|----|------|--------------|-------|-------|--------------------|-----------|
+| TC-017-01 | Positivo | Administrativo autenticado | Crear ingreso con fecha y tipo de ingreso; guardar | fecha=2026-09-01, tipo="Consulta espontánea" | Ingreso creado con ambos campos persistidos | Alta |
+| TC-017-02 | Positivo | Formulario abierto | Desplegar "tipo de ingreso" | — | Aparecen los 11 valores del catálogo v5, ninguno más | Alta |
+| TC-017-03 | Negativo | Formulario parcialmente lleno | Guardar sin tipo de ingreso | tipo vacío | Guardado bloqueado; campo resaltado; datos conservados | Alta |
+| TC-017-04 | Negativo | Formulario abierto | Enviar tipo de ingreso fuera de catálogo vía API | tipo="SOCORRO" | Rechazo por valor no permitido | Alta |
+| TC-017-05 | Borde | Formulario abierto | Ingresar fecha de ingreso futura | fecha = hoy + 1 día | Rechazo: la fecha de ingreso no puede ser futura | Media |
+| TC-017-06 | Permisos | Sesión Auditor | Intentar editar tipo de ingreso | — | Acceso denegado | Alta |
+
+### Definición de Hecho (DoD)
+- [ ] Campos implementados y desplegados en QA
+- [ ] Todos los CA verificados
+- [ ] Catálogo cargado desde configuración (no hardcodeado) y editable por Coordinación
+- [ ] Tests unitarios + integración en verde
+- [ ] Endpoint(s) documentados en OpenAPI/Swagger
+- [ ] Operaciones registradas en log de auditoría
+- [ ] **Catálogo confirmado por escrito con la contraparte (PA-v5-02) antes de considerar cerrada la historia**
+- [ ] Demo validada con equipo gestor CEPA
+
+### Notas / Preguntas abiertas
+- **Bloqueante (PA-v5-02):** el catálogo v5 no coincide con el de v4 D4 (`tipo de derivación`). Hay tres valores nuevos, dos posibles erratas (FUMP/FUPM, PAPT a flujo AT / Flujo PAPT) y dos pares que pueden ser sinónimos (Particular / Consulta espontánea, Convenio U.Clínica / Convenio). Ver comparación en `01-decisiones-v5.md` D17.
+- Si la contraparte confirma que son **un solo campo**, esta historia se fusiona con CEPA-010 y se descarta uno de los dos catálogos — el trabajo de migración de datos ya cargados debe considerarse en ese escenario.
+
+---
+
+## [CEPA-018] Marca "Fármacos al ingreso" (SI/NO) con detalle
+
+**Épica:** EPIC-01 — Ingresos y Gestión de Pacientes
+**Perfil:** Administrativo
+**Prioridad (MoSCoW):** P0 Must
+**Módulo PRD:** 7.1.1 · 7.2 (lectura)
+**Trazabilidad:** Decisiones v5: D19 · Decisiones v4: D7
+
+### Historia
+Como **administrativo del CEPA**, quiero **registrar al ingreso si el paciente llega con fármacos y cuáles** para **conocer la situación farmacológica basal del paciente antes de iniciar tratamiento, sin confundirla con las prescripciones que el CEPA emite después**.
+
+### Criterios de Aceptación (Gherkin)
+- **CA-1**
+  - **Dado** que un administrativo completa el formulario de nuevo ingreso
+  - **Cuando** llega al apartado "Fármacos al ingreso"
+  - **Entonces** debe indicar SÍ o NO como campo obligatorio
+- **CA-2**
+  - **Dado** que el administrativo marca "Fármacos al ingreso = SÍ"
+  - **Cuando** intenta guardar sin especificar el detalle
+  - **Entonces** el sistema exige el detalle de los fármacos antes de permitir el guardado
+- **CA-3**
+  - **Dado** que el administrativo marca "Fármacos al ingreso = NO"
+  - **Cuando** guarda el ingreso
+  - **Entonces** el sistema no exige detalle y el apartado queda como "sin fármacos al ingreso"
+- **CA-4**
+  - **Dado** un paciente con fármacos al ingreso registrados
+  - **Cuando** se consulta su registro farmacológico (EPIC-02) o su vista 360° (CEPA-012)
+  - **Entonces** los fármacos de ingreso se muestran **diferenciados** de los prescritos por el CEPA
+
+### Reglas de Negocio
+- **RN-1:** `farmacos_al_ingreso` es booleano obligatorio del ingreso (SÍ/NO), no del tratamiento.
+- **RN-2:** Si `farmacos_al_ingreso = SÍ`, el detalle es obligatorio: al menos un fármaco con su identificación. Si es NO, el detalle queda vacío y no se exige.
+- **RN-3:** Los fármacos de ingreso son **estado basal**, no prescripción del CEPA: se guardan con un origen distinguible y **no** cuentan como recetas emitidas (CEPA-022) ni disparan sus alertas.
+- **RN-4:** Se relacionan con los fármacos extra-sistema de v4 D7: un fármaco de ingreso es, por definición, extra-sistema.
+- **RN-5:** El dato queda disponible para las estadísticas de fármacos de CEPA-095, marcado por origen.
+- **RN-6 (Permisos):** Administrativo y Coordinación registran/editan; Auditor solo lectura.
+
+### Test Cases
+| ID | Tipo | Precondición | Pasos | Datos | Resultado esperado | Prioridad |
+|----|------|--------------|-------|-------|--------------------|-----------|
+| TC-018-01 | Positivo | Formulario de ingreso abierto | Marcar SÍ y detallar dos fármacos; guardar | SÍ + 2 fármacos | Ingreso guardado con marca y detalle | Alta |
+| TC-018-02 | Positivo | Formulario de ingreso abierto | Marcar NO y guardar | NO | Ingreso guardado sin exigir detalle | Alta |
+| TC-018-03 | Negativo | Marca en SÍ | Guardar sin detalle | SÍ + detalle vacío | Bloqueo: detalle obligatorio (RN-2) | Alta |
+| TC-018-04 | Negativo | Formulario de ingreso | Guardar sin responder SÍ/NO | campo vacío | Bloqueo: campo obligatorio (RN-1) | Alta |
+| TC-018-05 | Borde | Paciente con fármacos al ingreso y receta posterior del CEPA | Abrir vista 360° del paciente | mix de orígenes | Ambos visibles y **diferenciados** por origen (RN-3) | Alta |
+| TC-018-06 | Permisos | Sesión Auditor | Intentar editar el apartado | — | Acceso denegado | Alta |
+
+### Definición de Hecho (DoD)
+- [ ] Campo y detalle implementados y desplegados en QA
+- [ ] Todos los CA verificados
+- [ ] Diferenciación de origen visible en EPIC-02 y en la vista 360° (CEPA-012)
+- [ ] Tests unitarios + integración en verde
+- [ ] Endpoint(s) documentados en OpenAPI/Swagger
+- [ ] Operaciones registradas en log de auditoría
+- [ ] Demo validada con equipo gestor CEPA
+
+### Notas / Preguntas abiertas
+- Confirmar si el detalle es texto libre o debe seleccionarse desde el mismo catálogo de fármacos de EPIC-02. Texto libre es más rápido de operar pero inutiliza el dato para las estadísticas de CEPA-095.

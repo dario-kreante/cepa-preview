@@ -345,15 +345,31 @@ export function ReintegroPage() {
         </div>
         {canWrite && (
           <>
-            <Button
-              size="sm"
-              aria-label="Nuevo caso de reintegro"
-              data-testid="btn-nuevo-caso"
-              disabled={!ingresoId}
-              onClick={() => setNuevaOpen(true)}
-            >
-              <Plus className="size-3.5" /> Nuevo caso
-            </Button>
+            {/* BUG-2608-04/05: el botón depende de haber seleccionado un paciente. Antes quedaba
+                deshabilitado sin decir por qué —y `disabled:pointer-events-none` impedía incluso
+                el hover—, así que se leía como "el sistema no deja crear casos". El motivo ahora
+                se explica en texto visible, no solo en un tooltip. */}
+            <div className="flex flex-col items-end gap-1">
+              <Button
+                size="sm"
+                aria-label="Nuevo caso de reintegro"
+                data-testid="btn-nuevo-caso"
+                aria-describedby={!ingresoId ? "nuevo-caso-requisito" : undefined}
+                disabled={!ingresoId}
+                onClick={() => setNuevaOpen(true)}
+              >
+                <Plus className="size-3.5" /> Nuevo caso
+              </Button>
+              {!ingresoId && (
+                <p
+                  id="nuevo-caso-requisito"
+                  data-testid="nuevo-caso-requisito"
+                  className="text-[11.5px] text-muted-foreground"
+                >
+                  Busca y selecciona un paciente para crear su caso
+                </p>
+              )}
+            </div>
             {ingresoId && (
               <NuevoCasoReintegroDialog
                 ingresoId={ingresoId}

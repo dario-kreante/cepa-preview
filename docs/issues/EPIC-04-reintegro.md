@@ -23,6 +23,7 @@
 | CEPA-040 | Datos del caso de reintegro | Administrativo | §7.4.1 |
 | CEPA-041 | Proceso RECA y medidas correctivas | Administrativo | §7.4.2 |
 | CEPA-042 | Reintegro y cierre del caso | Administrativo | §7.4.3 |
+| CEPA-043 | Alerta de caso remitido a ISL | Administrativo | v5 D21 |
 
 ---
 
@@ -140,7 +141,8 @@ Como **Administrativo**, quiero **registrar la RECA del caso (fecha, tipo, núme
   - **Entonces** visualiza RECA, riesgos calificados y estado de medidas en modo solo lectura.
 
 ### Reglas de Negocio
-- **RN-1:** Nº de RECA único por caso; fecha y tipo de RECA obligatorios cuando se registra una RECA.
+- **RN-1:** Nº de RECA único por caso; fecha y tipo de RECA obligatorios cuando se registra una RECA. La unicidad se valida **excluyendo el propio registro en edición** (ver `BUG-2608-06`).
+- **RN-1b (v5 D20):** `tipo_de_RECA` es una **lista cerrada**: **EP** (enfermedad profesional) · **EC** (enfermedad común) · **AT** (accidente del trabajo) · **AC** (accidente común) · **NPE** · **No aplica**. Valores fuera del catálogo se rechazan. Esto cierra la pregunta abierta de esta historia.
 - **RN-2:** Si solicitud de medidas correctivas = Sí, son obligatorios el detalle de las medidas y la fecha de medidas.
 - **RN-3:** Fecha de verificación ≥ fecha de medidas ≥ fecha de RECA (coherencia temporal).
 - **RN-4:** Verificación = Sí requiere fecha de verificación registrada.
@@ -166,8 +168,10 @@ Como **Administrativo**, quiero **registrar la RECA del caso (fecha, tipo, núme
 - [ ] Demo validada con equipo gestor CEPA
 
 ### Notas / Preguntas abiertas
-- Confirmar catálogo de "tipo de RECA" y de "riesgos calificados" (lista cerrada vs. texto libre).
+- ~~Confirmar catálogo de "tipo de RECA"~~ — **resuelto (v5 D20):** EP · EC · AT · AC · NPE · No aplica. Pendiente menor: confirmar el desarrollo de la sigla **NPE**.
+- Confirmar catálogo de "riesgos calificados" (lista cerrada vs. texto libre).
 - Evaluar si se requiere alerta automática de medidas correctivas próximas a vencer (alinear con §7.11).
+- **Defecto abierto:** `BUG-2608-06` — no fue posible editar la RECA en el ambiente de pruebas.
 
 ---
 
@@ -239,3 +243,65 @@ Como **Administrativo**, quiero **registrar el estado y la fecha de reintegro (t
 - D11: confirmar con Coordinación si el cierre usa una sola fecha de alta (última atención) independiente del tipo, o fechas separadas para alta médica y psicológica.
 - Validar catálogo de "tipo de alta" (alta terapéutica, médica, psicológica, abandono, derivación — alinear con §7.1.3).
 - Confirmar si "reintegro total" debe disparar automáticamente el cierre de la LM asociada en el módulo de Licencias Médicas (§7.7).
+
+---
+
+## [CEPA-043] Alerta de caso remitido a ISL
+
+**Épica:** EPIC-04 — Seguimiento de Reintegro
+**Perfil:** Administrativo
+**Prioridad (MoSCoW):** P0 Must
+**Módulo PRD:** 7.4.3 · §7.11
+**Trazabilidad:** Decisiones v5: D21 · PA-v5-04 · Ref. `CEPA-042` RN-5 · `CEPA-100`
+
+### Historia
+Como **Administrativo del CEPA**, quiero **que el sistema me alerte cuando un caso queda marcado como remitido a ISL** para **no perder de vista los casos que salieron del centro y siguen esperando respuesta del organismo**.
+
+### Criterios de Aceptación (Gherkin)
+- **CA-1**
+  - **Dado** un caso de reintegro
+  - **Cuando** el administrativo lo marca como **"Remitido a ISL = Sí"**
+  - **Entonces** el sistema genera una alerta in-app para el administrativo asignado y para Coordinación
+- **CA-2**
+  - **Dado** un caso remitido a ISL sin respuesta registrada
+  - **Cuando** transcurre la ventana de seguimiento parametrizada
+  - **Entonces** el sistema genera una alerta de **seguimiento pendiente** sobre ese caso
+- **CA-3**
+  - **Dado** un caso remitido a ISL con respuesta ya registrada
+  - **Cuando** corre la revisión de alertas
+  - **Entonces** no se genera ni se mantiene alerta de seguimiento para ese caso (condición de cierre)
+- **CA-4**
+  - **Dado** que Coordinación ajusta la ventana de seguimiento en configuración
+  - **Cuando** guarda el nuevo valor
+  - **Entonces** las alertas siguientes usan el valor nuevo, sin requerir despliegue
+
+### Reglas de Negocio
+- **RN-1 (v5 D21):** La alerta declara explícitamente: **disparador** = `remitido_a_ISL` pasa a Sí; **umbral** = ventana de seguimiento parametrizable; **destinatarios** = administrativo asignado + Coordinación; **canal** = in-app (P0), correo (P1, v4 D12); **condición de cierre** = respuesta del ISL registrada o caso cerrado.
+- **RN-2:** El umbral es **parametrizable por Coordinación** en configuración; **no** es una constante del código. El valor por defecto es provisorio hasta resolver **PA-v5-04**.
+- **RN-3:** Idempotencia: no se duplica la alerta si ya existe una activa para el mismo caso (alinear con `CEPA-100`).
+- **RN-4:** Un caso cerrado o con respuesta ISL registrada no genera nuevas alertas.
+- **RN-5 (Permisos):** El Auditor ve las alertas de los casos que audita en solo lectura; no las cierra ni las genera.
+
+### Test Cases
+| ID | Tipo | Precondición | Pasos | Datos | Resultado esperado | Prioridad |
+|----|------|--------------|-------|-------|--------------------|-----------|
+| TC-043-01 | Positivo | Caso de reintegro activo | Marcar "Remitido a ISL = Sí" y guardar | remitido=Sí | Alerta in-app generada para administrativo asignado y Coordinación | Alta |
+| TC-043-02 | Positivo | Caso remitido hace más días que la ventana | Ejecutar job de alertas | ventana vencida, sin respuesta | Alerta de seguimiento pendiente generada (CA-2) | Alta |
+| TC-043-03 | Negativo | Caso remitido con respuesta ISL registrada | Ejecutar job de alertas | respuesta registrada | No se genera alerta (CA-3 / RN-4) | Alta |
+| TC-043-04 | Borde | Caso con alerta de seguimiento activa | Reejecutar el job el mismo día | alerta previa vigente | No se duplica la alerta (RN-3) | Media |
+| TC-043-05 | Positivo | Coordinación cambia la ventana en configuración | Cambiar valor y ejecutar el job | ventana nueva | El job usa el valor nuevo sin redespliegue (CA-4 / RN-2) | Alta |
+| TC-043-06 | Permisos | Sesión Auditor | Intentar cerrar la alerta | — | Acción denegada; visualización permitida | Alta |
+
+### Definición de Hecho (DoD)
+- [ ] Alerta implementada sobre el motor de `CEPA-100` y desplegada en QA
+- [ ] Todos los CA verificados
+- [ ] **Regla escrita** (disparador, umbral, destinatario, canal, mensaje, cierre) documentada y visible en configuración (v5 D21)
+- [ ] Umbral parametrizable verificado end-to-end, sin constantes en el código
+- [ ] Tests unitarios + integración en verde, incluida la idempotencia
+- [ ] Generación de alerta registrada en log de auditoría
+- [ ] **Texto del mensaje validado con la contraparte** — la alerta la lee un usuario administrativo, no un desarrollador
+- [ ] Demo validada con equipo gestor CEPA
+
+### Notas / Preguntas abiertas
+- **Bloqueante parcial (PA-v5-04):** falta el valor de la ventana de seguimiento y el texto del mensaje. Se implementa parametrizable con un valor por defecto **explícitamente marcado como provisorio**; ese valor no está acordado con la contraparte.
+- Definir dónde se registra la "respuesta del ISL" que cierra la alerta: ¿campo propio del caso de reintegro o se infiere del estado del caso?

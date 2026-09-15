@@ -314,8 +314,8 @@ Como **coordinadora del CEPA**, quiero **métricas de adherencia y de avance del
 ### Criterios de Aceptación (Gherkin)
 - **CA-1**
   - **Dado** que la coordinadora consulta la métrica de adherencia
-  - **Cuando** selecciona un recorte (paciente, programa, profesional o período)
-  - **Entonces** el sistema muestra el **% de adherencia = nº de citas realizadas / nº de citas agendadas** del recorte.
+  - **Cuando** selecciona un recorte (paciente, programa, profesional, **convenio**, **tipo de ingreso** o período)
+  - **Entonces** el sistema muestra el **% de adherencia = nº de citas realizadas / nº de citas agendadas** del recorte, y además el **indicador general** sin segmentar.
 - **CA-2**
   - **Dado** que la coordinadora consulta el avance del tratamiento
   - **Cuando** selecciona un caso o plan de tratamiento
@@ -331,6 +331,7 @@ Como **coordinadora del CEPA**, quiero **métricas de adherencia y de avance del
 
 ### Reglas de Negocio
 - **RN-1:** % adherencia = citas realizadas / citas agendadas (D5); el denominador excluye citas no aplicables según catálogo de estados acordado.
+- **RN-1b (v5 CHG-08):** La adherencia se expone como **indicador general** y segmentada por **profesional**, **convenio** y **tipo de ingreso** (`CEPA-017`), además de los recortes ya definidos. La contraparte pidió el indicador general primero y las segmentaciones como desglose.
 - **RN-2:** Avance del tratamiento mide etapa (sesiones realizadas vs. plan), sesiones restantes para posible alta y % por plan; debe contemplar los aumentos de sesiones entregados por ISL (D5).
 - **RN-3:** Estadísticas de fármacos se computan por tratamiento, programa y profesional, considerando el esquema farmacológico y fármacos extra-sistema (D7).
 - **RN-4:** QA de métricas obligatorio: cada métrica requiere validación de resultado y de proceso, con responsable definido (D5); no se publica sin validación.
@@ -341,6 +342,7 @@ Como **coordinadora del CEPA**, quiero **métricas de adherencia y de avance del
 | ID | Tipo | Precondición | Pasos | Datos | Resultado esperado | Prioridad |
 |----|------|--------------|-------|-------|--------------------|-----------|
 | TC-095-01 | Positivo | Paciente con 8 realizadas de 10 agendadas | Consultar adherencia del paciente | 8/10 | % adherencia = 80% | Alta |
+| TC-095-06 | Positivo | Casos de dos convenios y dos tipos de ingreso | Consultar adherencia general y luego segmentada | — | Indicador general correcto; la suma ponderada de los segmentos es consistente con el general (RN-1b) | Alta |
 | TC-095-02 | Positivo | Plan de 15 sesiones, 10 realizadas, +3 ISL | Consultar avance del tratamiento | 10/15 (+3 ISL) | Etapa, sesiones restantes y aumentos ISL correctos | Alta |
 | TC-095-03 | Borde | Paciente con 0 citas agendadas | Calcular adherencia | 0 agendadas | Sin división por cero; estado "no aplica/sin datos" | Media |
 | TC-095-04 | Positivo | Fármacos registrados | Estadísticas de fármacos por programa | Programa A | Estadísticas correctas por programa, incl. extra-sistema | Media |
@@ -357,6 +359,7 @@ Como **coordinadora del CEPA**, quiero **métricas de adherencia y de avance del
 
 ### Notas / Preguntas abiertas
 - Definir responsable de QA de métricas (D5) y catálogo de estados de cita que cuentan como "realizada" para adherencia.
+- **Pendiente (v5):** la contraparte pidió *"agregar ejemplo de referencia"* del indicador de adherencia. Acordar con Coordinación un ejemplo numérico de referencia contra el cual validar el cálculo antes de publicar la métrica (encaja con el QA de métricas de D5).
 - Confirmar planes de tratamiento de referencia (10/15/21 sesiones) y la regla de aumentos ISL con Coordinación.
 
 ---
