@@ -190,19 +190,27 @@ def test_callback_sso_rechaza_con_la_configuracion_por_defecto(client, db_sessio
     _usuario_con_rut(db_session, rut="55555555-5", username="pcallback")
     db_session.commit()
 
-    resp = client.get("/api/v1/auth/sso/callback", params={"id": "55555555-5", "v": "loquesea"})
+    resp = client.get(
+        "/api/v1/auth/sso/callback",
+        params={"id": "55555555-5", "v": "loquesea"},
+        follow_redirects=False,
+    )
 
-    assert resp.status_code == 401
-    assert "access_token" not in resp.text
+    # El callback lo abre el navegador: vuelve al login, sin sesión.
+    assert resp.status_code == 303
+    assert resp.headers["location"].endswith("/login?sso_error=autenticacion_fallida")
+    assert "code=" not in resp.headers["location"]
 
 
 def test_callback_con_verificador_real_emite_jwt_del_cepa(client, db_session: Session):
-    """Con un verificador que valida el ticket, el callback emite el JWT del CEPA.
+    """Con un verificador que valida el ticket, el callback entrega la sesión del CEPA.
 
     Demuestra que enchufar la implementación real de DTI es lo único que falta:
-    el resto del flujo ya funciona, y la sesión que entrega es el mismo par de
-    tokens del login por contraseña — no una cookie de confianza.
+    el callback redirige con un código de un solo uso que se canjea por el mismo
+    par de tokens del login por contraseña — no una cookie de confianza.
     """
+    from urllib.parse import parse_qs, urlparse
+
     from app.main import app
     from app.routers.auth_sso import get_sso_verifier
 
@@ -214,13 +222,21 @@ def test_callback_con_verificador_real_emite_jwt_del_cepa(client, db_session: Se
     )
     try:
         resp = client.get(
-            "/api/v1/auth/sso/callback", params={"id": "66666666-6", "v": "ticket-bueno"}
+            "/api/v1/auth/sso/callback",
+            params={"id": "66666666-6", "v": "ticket-bueno"},
+            follow_redirects=False,
         )
     finally:
         app.dependency_overrides.pop(get_sso_verifier, None)
 
-    assert resp.status_code == 200
-    cuerpo = resp.json()
+    assert resp.status_code == 303
+    destino = urlparse(resp.headers["location"])
+    assert destino.path == "/auth/callback"
+    codigo = parse_qs(destino.query)["code"][0]
+
+    canje = client.post("/api/v1/auth/saml/canjear", json={"code": codigo})
+    assert canje.status_code == 200
+    cuerpo = canje.json()
     assert cuerpo["access_token"]
     assert cuerpo["refresh_token"]
 

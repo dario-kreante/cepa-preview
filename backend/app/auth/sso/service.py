@@ -88,13 +88,19 @@ def resolver_usuario_por_rut(db: Session, *, rut: str, via: str = "SSO") -> Usua
 
 
 def autenticar_sso(
-    db: Session, *, rut: str, ticket: str, verifier: SsoVerifierProtocol
+    db: Session,
+    *,
+    rut: str,
+    ticket: str,
+    verifier: SsoVerifierProtocol,
+    via: str = "SSO",
 ) -> Usuario:
     """Autentica a un usuario a partir del retorno del SSO de UTalca.
 
     Lanza ``TicketSsoInvalido`` si el ticket no se puede verificar, y
     ``UsuarioSsoNoRegistrado`` si nadie con ese RUT está habilitado en el CEPA.
+    ``via`` distingue en la auditoría un ingreso verificado de uno que no lo fue.
     No hace commit: el caller decide la transacción.
     """
     verifier.verificar(rut=rut, ticket=ticket)
-    return resolver_usuario_por_rut(db, rut=rut, via="SSO")
+    return resolver_usuario_por_rut(db, rut=rut, via=via)

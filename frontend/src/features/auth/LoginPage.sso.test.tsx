@@ -32,11 +32,12 @@ describe("LoginPage — acceso institucional", () => {
     ).toBeInTheDocument();
   });
 
-  it("envía al usuario al inicio de sesión SAML del backend", async () => {
+  it("envía al usuario al inicio de sesión institucional del backend", async () => {
     renderLogin();
 
     await userEvent.click(screen.getByRole("button", { name: /cuenta utalca/i }));
 
-    expect(window.location.href).toBe(`${BASE}/api/v1/auth/saml/login`);
+    // El backend decide el método (SAML o huemul) según la configuración del entorno.
+    expect(window.location.href).toBe(`${BASE}/api/v1/auth/sso/login`);
   });
 });

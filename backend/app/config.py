@@ -1,4 +1,5 @@
 from functools import lru_cache
+from typing import Literal
 
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -42,6 +43,22 @@ class Settings(BaseSettings):
     saml_idp_cert: str = ""
     # A dónde vuelve el navegador tras el ACS, con el código de un solo uso.
     frontend_url: str = "http://localhost:5173"
+
+    # --- Entorno de despliegue ---
+    # Decide qué atajos de desarrollo se respetan. El valor por defecto es "prod"
+    # a propósito: olvidar configurarlo nunca debe abrir nada.
+    entorno: Literal["dev", "qa", "prod"] = "prod"
+
+    # --- Acceso UTalca vía huemul (wrapper de SSO institucional) ---
+    # huemul devuelve ?id=<RUT>&v=<ticket>, pero `v` es la constante "1": sin validar
+    # el token contra UTalca, cualquiera puede escribir el RUT de otra persona.
+    #   deshabilitado  -> el callback no autentica a nadie (por defecto)
+    #   sin_verificar  -> confía en el RUT; SOLO se respeta con entorno=dev
+    #   token          -> exige validar el token contra UTalca (pendiente de DTI)
+    sso_huemul_modo: Literal["deshabilitado", "sin_verificar", "token"] = "deshabilitado"
+    sso_huemul_login_url: str = "https://huemul.utalca.cl/sso/login.php"
+    # URL pública del callback del backend: huemul devuelve el navegador aquí.
+    sso_huemul_callback_url: str = "http://localhost:8000/api/v1/auth/sso/callback"
 
     # --- Autenticación / JWT (EPIC-00, parametrizable; D13) ---
     jwt_secret: str = "cambiar-en-produccion-secreto-jwt-cepa"
