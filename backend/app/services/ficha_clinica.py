@@ -8,6 +8,11 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.integrations.salutem.client import get_salutem_client
+from app.integrations.salutem.errors import (
+    SalutemError,
+    SalutemRequestError,
+    SalutemUnavailableError,
+)
 from app.models.ficha_clinica import FichaClinica
 from app.models.ingreso import Ingreso
 from app.schemas.ficha_clinica import FichaClinicaCreate
@@ -85,6 +90,39 @@ def _cita_ids_ya_persistidos(db: Session, folio: str) -> set[int]:
 
 
 def pull_desde_salutem(db: Session, folio: str) -> list[FichaClinica]:
+    """Pull desde SALUTEM traduciendo sus fallos a respuestas HTTP con sentido.
+
+    Sin esta traducción cualquier rechazo de SALUTEM llegaba al usuario como un
+    500 genérico, indistinguible de un bug del CEPA.
+    """
+    try:
+        return _pull_desde_salutem(db, folio)
+    except SalutemRequestError as e:
+        if e.codigo == "ERROR_IDENTIFICACION_NO_VALIDA":
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=(
+                    "SALUTEM no reconoce el RUT del paciente como válido. "
+                    "Revisa el RUT registrado en el ingreso."
+                ),
+            ) from e
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"SALUTEM rechazó la consulta ({e.codigo}).",
+        ) from e
+    except SalutemUnavailableError as e:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="SALUTEM no está respondiendo. Intenta de nuevo en unos minutos.",
+        ) from e
+    except SalutemError as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"No se pudo consultar SALUTEM ({e.codigo or 'error desconocido'}).",
+        ) from e
+
+
+def _pull_desde_salutem(db: Session, folio: str) -> list[FichaClinica]:
     """Pull desde SALUTEM anclado por RUT (solo lectura, D12).
 
     SALUTEM no conoce el folio del CEPA. El puente es el RUT del paciente:

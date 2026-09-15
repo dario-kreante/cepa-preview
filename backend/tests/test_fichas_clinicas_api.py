@@ -80,6 +80,52 @@ def test_pull_salutem_no_escribe_sobre_salutem(as_admin, ingreso_existente, monk
     # Si guard hubiera disparado AssertionError, el endpoint habría devuelto 500
 
 
+class _ClienteQueFalla:
+    """Cliente SALUTEM cuyo primer paso (resolver el RUT) lanza el error dado."""
+
+    def __init__(self, error):
+        self._error = error
+
+    def resolver_persona(self, rut):
+        raise self._error
+
+
+def test_pull_salutem_con_rut_rechazado_responde_422_y_no_500(
+    as_admin, ingreso_existente, monkeypatch
+):
+    """SALUTEM rechaza el RUT del paciente: es un dato a corregir, no una caída.
+
+    Visto en la VM de UTalca el 15-09-2026 con un paciente real de Oracle.
+    """
+    from app.integrations.salutem.errors import error_desde_codigo
+
+    monkeypatch.setattr(
+        "app.services.ficha_clinica.get_salutem_client",
+        lambda: _ClienteQueFalla(error_desde_codigo("ERROR_IDENTIFICACION_NO_VALIDA")),
+    )
+    r = as_admin.post(
+        "/api/v1/fichas-clinicas/pull-salutem",
+        json={"folio": ingreso_existente["folio"]},
+    )
+    assert r.status_code == 422, r.text
+    assert "RUT" in r.json()["detail"]
+
+
+def test_pull_salutem_caido_responde_503(as_admin, ingreso_existente, monkeypatch):
+    """Si SALUTEM no responde, el CEPA lo dice como servicio no disponible."""
+    from app.integrations.salutem.errors import SalutemUnavailableError
+
+    monkeypatch.setattr(
+        "app.services.ficha_clinica.get_salutem_client",
+        lambda: _ClienteQueFalla(SalutemUnavailableError("timeout")),
+    )
+    r = as_admin.post(
+        "/api/v1/fichas-clinicas/pull-salutem",
+        json={"folio": ingreso_existente["folio"]},
+    )
+    assert r.status_code == 503, r.text
+
+
 def test_ficha_folio_inexistente_devuelve_404(as_admin):
     """TC-121-04: folio no registrado → 404."""
     r = as_admin.get("/api/v1/fichas-clinicas/F-9999-0000")
