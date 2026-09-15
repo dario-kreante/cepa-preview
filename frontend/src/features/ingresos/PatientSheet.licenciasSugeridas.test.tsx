@@ -149,6 +149,31 @@ describe("PatientSheet — licencias detectadas en SALUTEM", () => {
     expect(dialogo.getByLabelText(/^diagnóstico$/i)).toHaveValue("");
   });
 
+  it("al registrar la licencia sugerida, el contador de la pestaña Licencias se actualiza", async () => {
+    setupMocks([SUGERENCIA_PENDIENTE]);
+    const licencias: unknown[] = [];
+    server.use(
+      http.get(`${BASE}/api/v1/ingresos/:ingreso_id/licencias`, () => HttpResponse.json(licencias)),
+      http.post(`${BASE}/api/v1/licencias`, async ({ request }) => {
+        const body = (await request.json()) as Record<string, unknown>;
+        const creada = { id: 500, anulada: false, envio_isl: "pendiente", ...body };
+        licencias.push(creada);
+        return HttpResponse.json(creada, { status: 201 });
+      }),
+    );
+    renderSheet();
+    await abrirPestanaSalutem();
+    expect(screen.getByRole("tab", { name: /licencias \(0\)/i })).toBeInTheDocument();
+
+    await userEvent.click(await screen.findByRole("button", { name: /revisar y registrar/i }));
+    const dialogo = within(await screen.findByRole("dialog", { name: /nueva licencia médica/i }));
+    await userEvent.type(dialogo.getByLabelText(/^diagnóstico$/i), "Trastorno adaptativo");
+    await userEvent.type(dialogo.getByLabelText(/fecha de emisión de la licencia/i), "2024-05-06");
+    await userEvent.click(dialogo.getByRole("button", { name: /registrar licencia/i }));
+
+    expect(await screen.findByRole("tab", { name: /licencias \(1\)/i })).toBeInTheDocument();
+  });
+
   it("sin licencias detectadas no muestra la sección", async () => {
     setupMocks([]);
     renderSheet();
