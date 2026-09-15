@@ -86,11 +86,11 @@ sistema no guarda. Las acciones son:
 persisten y quedan registrados en el log de auditoría (`CEPA-010` DoD).
 
 **Verificación de cierre**
-- [ ] El defecto se reprodujo antes de corregirlo (o se documentó por qué no se reprodujo).
-- [ ] Un ingreso existente se edita y los cambios persisten tras recargar la página.
-- [ ] La edición queda registrada en el log de auditoría con autor y fecha (`CEPA-003`).
-- [ ] Perfil Auditor sigue sin poder editar (regresión de RBAC, `TC-010-06`).
-- [ ] Test de integración que cubre el ciclo crear → editar → releer.
+- [x] El defecto se reprodujo antes de corregirlo (o se documentó por qué no se reprodujo).
+- [x] Un ingreso existente se edita y los cambios persisten tras recargar la página. *(VM, 15-09-2026: `PUT /api/v1/ingresos/30 → 200`.)*
+- [x] La edición queda registrada en el log de auditoría con autor y fecha (`CEPA-003`). *(VM: `dramirezr · UPDATE · ingreso 30`.)*
+- [x] Perfil Auditor sigue sin poder editar (regresión de RBAC, `TC-010-06`). *(`test_auditor_no_edita_ingreso`.)*
+- [x] Test de integración que cubre el ciclo crear → editar → releer. *(`backend/tests/test_ingreso_editar_api.py`.)*
 
 ---
 
@@ -117,10 +117,10 @@ tipo de RECA (D20: EP, EC, AT, AC, NPE, No aplica).
   defecto no se reproduce.
 
 **Verificación de cierre**
-- [ ] El desplegable abre y permite seleccionar en el flujo completo del control.
-- [ ] Funciona con el desplegable cerca del borde inferior de la ventana (el popover se reubica).
-- [ ] Verificado en viewport de 1366×768 además del ancho de escritorio.
-- [ ] El valor seleccionado persiste tras guardar y recargar.
+- [x] El desplegable abre y permite seleccionar en el flujo completo del control. *(Catálogo D20 desplegado en la VM el 15-09-2026.)*
+- [x] Funciona con el desplegable cerca del borde inferior de la ventana (el popover se reubica).
+- [x] Verificado en viewport de 1366×768 además del ancho de escritorio. *(15-09-2026: con "Tiene licencia médica" marcado, el diálogo seguía desbordando, de -9 a 777 px. Se corrigió en la base de `DialogContent`, que ahora tiene alto máximo con scroll, y queda de 16 a 752 px con Guardar visible.)*
+- [ ] El valor seleccionado persiste tras guardar y recargar. *(Pendiente: requiere guardar en la VM.)*
 
 ---
 
