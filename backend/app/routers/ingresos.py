@@ -8,12 +8,12 @@ from app.db.session import get_db
 from app.models.ingreso import Ingreso
 from app.models.plan_tratamiento import PlanTratamiento
 from app.schemas.consentimiento import ConsentimientoRead, ConsentimientoUpdate
-from app.schemas.ingreso import IngresoCierre, IngresoCreate, IngresoRead
+from app.schemas.ingreso import IngresoCierre, IngresoCreate, IngresoRead, IngresoUpdate
 from app.schemas.plan_tratamiento import PlanTratamientoRead, PlanTratamientoUpsert
 from app.schemas.seguimiento import SeguimientoRead, SeguimientoUpdate, ValidacionPlazo
 from app.services.cierre import cerrar_ingreso
 from app.services.consentimiento import iniciar_tratamiento, upsert_consentimiento
-from app.services.ingreso import crear_ingreso
+from app.services.ingreso import actualizar_ingreso, crear_ingreso
 from app.services.seguimiento import upsert_seguimiento, validar_plazo
 
 router = APIRouter(prefix="/api/v1/ingresos", tags=["ingresos"])
@@ -42,6 +42,27 @@ def crear(
     ingreso = crear_ingreso(db, payload)
     record_audit(
         db, actor=current_user.username, action="CREATE", entity="ingreso", entity_id=str(ingreso.id)
+    )
+    db.commit()
+    db.refresh(ingreso)
+    return ingreso
+
+
+@router.put(
+    "/{ingreso_id}",
+    response_model=IngresoRead,
+    dependencies=[Depends(_writer)],
+)
+def editar(
+    ingreso_id: int,
+    payload: IngresoUpdate,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+) -> IngresoRead:
+    """Edita la ficha de ingreso salvo RUT y folio (BUG-2608-01)."""
+    ingreso = actualizar_ingreso(db, ingreso_id, payload)
+    record_audit(
+        db, actor=current_user.username, action="UPDATE", entity="ingreso", entity_id=str(ingreso.id)
     )
     db.commit()
     db.refresh(ingreso)

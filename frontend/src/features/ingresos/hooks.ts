@@ -8,7 +8,9 @@ import {
   obtenerRecetasPorIngreso,
   listarFichasClinicas,
   importarDesdeSalutem,
+  actualizarIngreso,
   type IngresoCreate,
+  type IngresoUpdate,
 } from "./api";
 
 export function useFichasClinicas(folio: string | undefined) {
@@ -72,5 +74,17 @@ export function useCrearIngreso() {
   return useMutation({
     mutationFn: (body: IngresoCreate) => crearIngreso(body),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["pacientes"] }); },
+  });
+}
+
+export function useActualizarIngreso(pacienteId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ ingresoId, body }: { ingresoId: number; body: IngresoUpdate }) =>
+      actualizarIngreso(ingresoId, body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["pacientes", pacienteId, "vista360"] });
+      qc.invalidateQueries({ queryKey: ["pacientes", "buscar"] });
+    },
   });
 }
