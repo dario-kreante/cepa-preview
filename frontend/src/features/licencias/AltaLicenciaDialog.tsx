@@ -126,13 +126,17 @@ export function AltaLicenciaDialog({ folio, ingresoId, open, onOpenChange }: Pro
           {/* ingreso_id — hidden when prop is known; visible otherwise */}
           <div>
             <Label htmlFor="ingreso_id">
-              Ingreso ID{" "}
+              N.º de ingreso del paciente{" "}
               {ingresoId === undefined && (
                 <span className="text-[11px] text-muted-foreground font-normal">
-                  (no encontrado en historial — ingresa manualmente)
+                  (no se encontró en el historial — ingrésalo manualmente)
                 </span>
               )}
             </Label>
+            <p className="text-[11.5px] text-muted-foreground mb-1">
+              Identificador interno del ingreso al que se asocia esta licencia. No es el RUT ni el
+              folio de la licencia médica.
+            </p>
             <Input
               id="ingreso_id"
               type="number"
@@ -182,17 +186,21 @@ export function AltaLicenciaDialog({ folio, ingresoId, open, onOpenChange }: Pro
             </div>
           </div>
 
-          {/* Row: fecha_inicio + fecha_termino */}
+          {/* Fechas de la licencia — agrupadas para no confundirlas con las del reposo (BUG-2608-04) */}
+          <fieldset className="rounded-md border border-border/70 p-3 space-y-3">
+            <legend className="px-1 text-[11.5px] font-medium uppercase tracking-wide text-muted-foreground">
+              Fechas de la licencia
+            </legend>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="fecha_inicio">Fecha inicio</Label>
+              <Label htmlFor="fecha_inicio">Fecha inicio de la licencia</Label>
               <Input id="fecha_inicio" type="date" {...register("fecha_inicio")} />
               {errors.fecha_inicio && (
                 <p className="text-[11.5px] text-destructive mt-1">{errors.fecha_inicio.message}</p>
               )}
             </div>
             <div>
-              <Label htmlFor="fecha_termino">Fecha término</Label>
+              <Label htmlFor="fecha_termino">Fecha término de la licencia</Label>
               <Input id="fecha_termino" type="date" {...register("fecha_termino")} />
               {errors.fecha_termino && (
                 <p className="text-[11.5px] text-destructive mt-1">{errors.fecha_termino.message}</p>
@@ -202,30 +210,40 @@ export function AltaLicenciaDialog({ folio, ingresoId, open, onOpenChange }: Pro
 
           {/* fecha_emision */}
           <div>
-            <Label htmlFor="fecha_emision">Fecha emisión</Label>
+            <Label htmlFor="fecha_emision">Fecha de emisión de la licencia</Label>
             <Input id="fecha_emision" type="date" {...register("fecha_emision")} />
             {errors.fecha_emision && (
               <p className="text-[11.5px] text-destructive mt-1">{errors.fecha_emision.message}</p>
             )}
           </div>
+          </fieldset>
 
-          {/* Row: inicio_reposo + fin_reposo */}
+          {/* Fechas del reposo — par distinto del anterior (BUG-2608-04) */}
+          <fieldset className="rounded-md border border-border/70 p-3 space-y-3">
+            <legend className="px-1 text-[11.5px] font-medium uppercase tracking-wide text-muted-foreground">
+              Fechas del reposo
+            </legend>
+            <p className="text-[11.5px] text-muted-foreground">
+              El período de reposo indicado en la licencia. Puede no coincidir con las fechas de la
+              licencia.
+            </p>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="inicio_reposo">Inicio reposo</Label>
+              <Label htmlFor="inicio_reposo">Inicio del reposo</Label>
               <Input id="inicio_reposo" type="date" {...register("inicio_reposo")} />
               {errors.inicio_reposo && (
                 <p className="text-[11.5px] text-destructive mt-1">{errors.inicio_reposo.message}</p>
               )}
             </div>
             <div>
-              <Label htmlFor="fin_reposo">Fin reposo</Label>
+              <Label htmlFor="fin_reposo">Fin del reposo</Label>
               <Input id="fin_reposo" type="date" {...register("fin_reposo")} />
               {errors.fin_reposo && (
                 <p className="text-[11.5px] text-destructive mt-1">{errors.fin_reposo.message}</p>
               )}
             </div>
           </div>
+          </fieldset>
 
           {/* Row: cantidad_dias + folio_lm */}
           <div className="grid grid-cols-2 gap-4">

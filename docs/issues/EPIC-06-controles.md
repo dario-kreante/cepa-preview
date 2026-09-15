@@ -10,8 +10,8 @@
 > control con estado de agenda en SALUTEM/SAM, y licencias/RECA asociadas.
 
 ## Glosario de la épica
-- **GAF / EEAG:** Escala de Evaluación de la Actividad Global (Global Assessment of Functioning). Puntaje 0–100 del funcionamiento global del paciente.
-- **RECA:** Resolución de Calificación (documento de la mutualidad/ISL).
+- **GAF / EEAG:** Escala de Evaluación de la Actividad Global (Global Assessment of Functioning) del funcionamiento global del paciente. **Se registra como un tramo entre dos valores porcentuales** (p. ej. `11-20%`), no como un número suelto (Decisiones v5 · D18). La definición anterior como entero 0–100 quedó obsoleta.
+- **RECA:** Resolución de Calificación (documento de la mutualidad/ISL). Tipos válidos (v5 D20): **EP · EC · AT · AC · NPE · No aplica**.
 - **LM:** Licencia Médica.
 - **Reposo total:** la persona no puede trabajar durante el período de la licencia.
 - **Reposo parcial:** la persona puede trabajar parcialmente (media jornada u horario reducido) durante la licencia.
@@ -152,7 +152,7 @@ Como **Administrativo**, quiero **programar el día del próximo control y regis
 **Perfil:** Administrativo
 **Prioridad (MoSCoW):** P0 Must
 **Módulo PRD:** 7.6
-**Trazabilidad:** PRD §7.6.3 · §7.6.4 · Decisiones v4: D1, D8
+**Trazabilidad:** PRD §7.6.3 · §7.6.4 · Decisiones v4: D1, D8 · Decisiones v5: D18, D20 · PA-v5-03, PA-v5-06
 
 ### Historia
 Como **Administrativo**, quiero **registrar la licencia médica asociada al control (término, total de días, tipo, reposo, GAF) y el estado RECA con observaciones** para **consolidar en el control toda la información de seguimiento administrativo del paciente sin recurrir a planillas separadas**.
@@ -166,10 +166,10 @@ Como **Administrativo**, quiero **registrar la licencia médica asociada al cont
   - **Dado** que un control marca **Licencia = no**
   - **Cuando** se guarda el control
   - **Entonces** el sistema no exige los campos de licencia y los deja vacíos/no aplica.
-- **CA-3**
-  - **Dado** que se ingresa el GAF
-  - **Cuando** el valor está fuera del rango 0–100
-  - **Entonces** el sistema rechaza el valor e informa el rango válido.
+- **CA-3** *(reemplazado por v5 D18)*
+  - **Dado** que el administrativo registra el GAF
+  - **Cuando** despliega el campo
+  - **Entonces** selecciona un **tramo** del catálogo (p. ej. `11-20%`); el campo no admite digitar un número libre.
 - **CA-4**
   - **Dado** que el administrativo registra el **estado RECA** y **observaciones generales**
   - **Cuando** guarda el control
@@ -178,25 +178,32 @@ Como **Administrativo**, quiero **registrar la licencia médica asociada al cont
 ### Reglas de Negocio
 - **RN-1:** Si `licencia = sí`, los campos resumen de término de LM, total de días de LM, tipo de licencia y tipo de reposo son **obligatorios**. Si `licencia = no`, se omiten.
 - **RN-2:** `tipo_reposo` ∈ {total, parcial}. `total_días_LM` es entero ≥ 1.
-- **RN-3:** `GAF` (GAF/EEAG) es entero en rango **0–100**; valores fuera de rango se rechazan.
+- **RN-3 (reemplazada por v5 D18):** `GAF` es una referencia a un **tramo** del catálogo `gaf_tramo`, cada uno con `porcentaje_min` y `porcentaje_max` enteros, `min < max`, tramos contiguos y sin solapamiento. No se acepta un entero suelto. ~~Definición anterior: entero 0–100.~~ El listado exacto de tramos es **PA-v5-03**; hasta confirmarlo, el catálogo se siembra con los tramos estándar EEAG de 10 puntos (1-10 … 91-100), marcados como provisorios.
+- **RN-3b:** Los datos de GAF ya cargados como entero requieren **migración** al tramo que los contiene; la migración debe dejar traza del valor original.
 - **RN-4:** `tipo_licencia` toma valores del catálogo de tipos de LM (ej. tipo 1, 5, 6 — consistente con §7.7.1).
 - **RN-5:** El estado RECA y las observaciones generales son siempre editables independientemente del valor de `licencia`.
+- **RN-5b (v5 D20):** El desplegable de RECAS es una **lista cerrada**: **EP · EC · AT · AC · NPE · No aplica**. Consistente con `CEPA-041` RN-1b.
 - **RN-6 (Permisos):** Coordinación y Administrativo editan; Auditor solo lectura (sin edición de datos — PRD §5.3).
 
 ### Test Cases
 | ID | Tipo | Precondición | Pasos | Datos | Resultado esperado | Prioridad |
 |----|------|--------------|-------|-------|--------------------|-----------|
-| TC-062-01 | Positivo | Control existente con licencia=sí | Completar datos de LM y GAF; guardar | total_días=15, tipo_reposo=total, tipo_licencia=1, GAF=55 | Datos de licencia y GAF persistidos en el control | Alta |
+| TC-062-01 | Positivo | Control existente con licencia=sí | Completar datos de LM y seleccionar tramo de GAF; guardar | total_días=15, tipo_reposo=total, tipo_licencia=1, GAF=`11-20%` | Datos de licencia y tramo de GAF persistidos en el control | Alta |
 | TC-062-02 | Positivo | Control existente | Registrar estado RECA y observaciones; guardar | estado_RECA="Pendiente", obs="Reevaluar en próximo control" | Estado RECA y observaciones persistidos y visibles para Auditor | Alta |
 | TC-062-03 | Negativo | Control con licencia=sí | Guardar sin total de días ni tipo de reposo | campos LM vacíos | Bloqueo: campos de licencia obligatorios | Alta |
-| TC-062-04 | Negativo | Control con GAF informado | Ingresar GAF fuera de rango y guardar | GAF=120 | Error: GAF debe estar entre 0 y 100; no persiste | Alta |
+| TC-062-04 | Negativo | Control con GAF informado | Enviar un GAF que no corresponde a ningún tramo del catálogo vía API | GAF=120 | Rechazo: valor fuera del catálogo de tramos; no persiste (v5 D18) | Alta |
+| TC-062-04b | Positivo | Catálogo de tramos cargado | Desplegar el campo GAF en el formulario | — | Solo se ofrecen tramos del catálogo; no hay entrada numérica libre | Alta |
+| TC-062-07 | Negativo | Catálogo de RECAS cargado | Enviar un tipo de RECA fuera de catálogo vía API | RECA="XX" | Rechazo: valor fuera de {EP, EC, AT, AC, NPE, No aplica} (v5 D20) | Alta |
 | TC-062-05 | Borde | Control con licencia=no | Guardar sin datos de LM | licencia=no | Guardado correcto; campos de LM vacíos/no aplica | Media |
 | TC-062-06 | Permisos | Usuario perfil Auditor autenticado | Intentar editar licencia/RECA del control | — | Acceso denegado; solo lectura | Alta |
 
 ### Definición de Hecho (DoD)
 - [ ] CRUD/flujo implementado y desplegado en QA
 - [ ] Todos los CA verificados
-- [ ] Validación de rango GAF (0–100) y obligatoriedad condicional de LM en verde
+- [ ] GAF implementado como catálogo de tramos (v5 D18); sin entrada numérica libre en la interfaz
+- [ ] Migración de valores de GAF previamente cargados como entero, con traza del valor original
+- [ ] Desplegable de RECAS con el catálogo cerrado de v5 D20 y **verificado que abre y permite seleccionar** (`BUG-2608-02`)
+- [ ] Obligatoriedad condicional de LM en verde
 - [ ] Tests unitarios + integración en verde
 - [ ] Endpoint(s) documentados en OpenAPI/Swagger
 - [ ] Operaciones registradas en log de auditoría
@@ -205,3 +212,6 @@ Como **Administrativo**, quiero **registrar la licencia médica asociada al cont
 ### Notas / Preguntas abiertas
 - La licencia registrada aquí es un **resumen** asociado al control; el módulo de Licencias Médicas (§7.7 / EPIC futura) es la fuente de verdad del detalle y de los días acumulados. Confirmar si este resumen se deriva automáticamente de ese módulo o se digita aparte.
 - Contemplar licencias médicas **extra-sistema** (Decisiones v4 · D7) en el catálogo de tipo de licencia.
+- **Bloqueante (v5 PA-v5-06):** el resumen de controles del panel derecho — ¿se alimenta de la ficha clínica de SALUTEM (lectura vía API, EPIC-12) o es digitación manual del administrativo? La contraparte lo preguntó explícitamente; la respuesta cambia el alcance de esta historia y su dependencia con EPIC-12.
+- **Bloqueante (v5 PA-v5-03):** listado definitivo de tramos de GAF.
+- **Defectos abiertos:** `BUG-2608-02` (el desplegable de RECAS no se abre) y `BUG-2608-03` (no se guardan las actualizaciones manuales).

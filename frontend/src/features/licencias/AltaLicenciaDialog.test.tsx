@@ -86,26 +86,26 @@ describe("AltaLicenciaDialog", () => {
     await user.selectOptions(origenSelect, "sistema");
 
     // Set fecha_inicio AFTER fecha_termino (incoherent)
-    const fechaInicioInput = screen.getByLabelText(/fecha inicio/i);
+    const fechaInicioInput = screen.getByLabelText(/fecha inicio de la licencia/i);
     await user.clear(fechaInicioInput);
     await user.type(fechaInicioInput, "2026-06-15");
 
-    const fechaTerminoInput = screen.getByLabelText(/fecha término/i);
+    const fechaTerminoInput = screen.getByLabelText(/fecha término de la licencia/i);
     await user.clear(fechaTerminoInput);
     await user.type(fechaTerminoInput, "2026-06-10"); // BEFORE inicio → invalid
 
     // fecha_emision
-    const fechaEmisionInput = screen.getByLabelText(/fecha emisión/i);
+    const fechaEmisionInput = screen.getByLabelText(/fecha de emisión de la licencia/i);
     await user.clear(fechaEmisionInput);
     await user.type(fechaEmisionInput, "2026-06-14");
 
     // inicio_reposo
-    const inicioReposoInput = screen.getByLabelText(/inicio reposo/i);
+    const inicioReposoInput = screen.getByLabelText(/inicio del reposo/i);
     await user.clear(inicioReposoInput);
     await user.type(inicioReposoInput, "2026-06-15");
 
     // fin_reposo
-    const finReposoInput = screen.getByLabelText(/fin reposo/i);
+    const finReposoInput = screen.getByLabelText(/fin del reposo/i);
     await user.clear(finReposoInput);
     await user.type(finReposoInput, "2026-06-20");
 
@@ -186,23 +186,23 @@ describe("AltaLicenciaDialog", () => {
     const origenSelect = screen.getByLabelText(/origen/i);
     await user.selectOptions(origenSelect, "sistema");
 
-    const fechaInicioInput = screen.getByLabelText(/fecha inicio/i);
+    const fechaInicioInput = screen.getByLabelText(/fecha inicio de la licencia/i);
     await user.clear(fechaInicioInput);
     await user.type(fechaInicioInput, "2026-06-01");
 
-    const fechaTerminoInput = screen.getByLabelText(/fecha término/i);
+    const fechaTerminoInput = screen.getByLabelText(/fecha término de la licencia/i);
     await user.clear(fechaTerminoInput);
     await user.type(fechaTerminoInput, "2026-06-14");
 
-    const fechaEmisionInput = screen.getByLabelText(/fecha emisión/i);
+    const fechaEmisionInput = screen.getByLabelText(/fecha de emisión de la licencia/i);
     await user.clear(fechaEmisionInput);
     await user.type(fechaEmisionInput, "2026-05-31");
 
-    const inicioReposoInput = screen.getByLabelText(/inicio reposo/i);
+    const inicioReposoInput = screen.getByLabelText(/inicio del reposo/i);
     await user.clear(inicioReposoInput);
     await user.type(inicioReposoInput, "2026-06-01");
 
-    const finReposoInput = screen.getByLabelText(/fin reposo/i);
+    const finReposoInput = screen.getByLabelText(/fin del reposo/i);
     await user.clear(finReposoInput);
     await user.type(finReposoInput, "2026-06-14");
 

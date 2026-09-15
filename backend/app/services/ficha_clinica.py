@@ -47,20 +47,81 @@ def listar_fichas(db: Session, folio: str) -> list[FichaClinica]:
     )
 
 
-def pull_desde_salutem(db: Session, folio: str) -> FichaClinica | None:
-    """Pull desde SALUTEM: obtiene datos clínicos (solo lectura) y los persiste en CEPA.
+def _en_ventana_del_ingreso(fecha, ingreso: Ingreso) -> bool:
+    """¿La atención cae dentro del episodio que representa este folio?
 
-    D12 garantizado: get_salutem_client() solo expone métodos de lectura.
-    Si SALUTEM no tiene datos para el folio, devuelve None.
+    El anclaje es por RUT, así que SALUTEM devuelve TODA la historia de la
+    persona, incluidas atenciones de otros ingresos. La ventana del ingreso es
+    lo que decide cuáles le pertenecen: desde `fecha_ingreso` y, si el caso ya
+    cerró, hasta `fecha_alta`.
+
+    Una atención sin fecha no es atribuible a ningún episodio y se descarta.
     """
-    _obtener_ingreso_por_folio(db, folio)
+    if fecha is None:
+        return False
+    if fecha < ingreso.fecha_ingreso:
+        return False
+    return not (ingreso.fecha_alta is not None and fecha > ingreso.fecha_alta)
+
+
+def _cita_ids_ya_persistidos(db: Session, folio: str) -> set[int]:
+    """`citaId` de las atenciones de SALUTEM ya guardadas para este folio.
+
+    Hace idempotente el pull: repetirlo no duplica fichas. El `citaId` se lee
+    del contenido crudo porque `ficha_clinica` no tiene columna para el
+    identificador de origen.
+    """
+    fichas = db.scalars(
+        select(FichaClinica).where(
+            FichaClinica.folio == folio, FichaClinica.origen == "SALUTEM"
+        )
+    ).all()
+    ids: set[int] = set()
+    for f in fichas:
+        cita_id = (f.contenido or {}).get("citaId")
+        if cita_id is not None:
+            ids.add(int(cita_id))
+    return ids
+
+
+def pull_desde_salutem(db: Session, folio: str) -> list[FichaClinica]:
+    """Pull desde SALUTEM anclado por RUT (solo lectura, D12).
+
+    SALUTEM no conoce el folio del CEPA. El puente es el RUT del paciente:
+
+        folio → Ingreso.paciente.rut → resolver_persona() → salutem_id
+              → listar_atenciones() → obtener_atencion() por cada una
+
+    Se persisten en el dominio CEPA las atenciones que caen dentro de la
+    ventana del ingreso y que no estuvieran ya guardadas. Devuelve las fichas
+    nuevas; lista vacía si SALUTEM no tiene nada que aportar.
+    """
+    ingreso = _obtener_ingreso_por_folio(db, folio)
     cliente = get_salutem_client()
-    # Solo lectura sobre SALUTEM (D12): get_ficha_clinica es un método de lectura
-    datos_salutem = cliente.get_ficha_clinica(folio)
-    if datos_salutem is None:
-        return None
-    # Persistir en el dominio CEPA (no en SALUTEM)
-    return crear_ficha(
-        db,
-        FichaClinicaCreate(folio=folio, origen="SALUTEM", contenido=datos_salutem),
-    )
+
+    # Solo lectura sobre SALUTEM (D12): ningún método de este flujo escribe.
+    persona = cliente.resolver_persona(ingreso.paciente.rut)
+    if persona is None:
+        return []
+
+    ya_guardados = _cita_ids_ya_persistidos(db, folio)
+    nuevas: list[FichaClinica] = []
+
+    for cita in cliente.listar_atenciones(persona.salutem_id):
+        if cita.cita_id in ya_guardados:
+            continue
+        if not _en_ventana_del_ingreso(cita.fecha, ingreso):
+            continue
+        atencion = cliente.obtener_atencion(persona.salutem_id, cita.cita_id)
+        if atencion is None:
+            continue
+        nuevas.append(
+            crear_ficha(
+                db,
+                FichaClinicaCreate(
+                    folio=folio, origen="SALUTEM", contenido=atencion.contenido
+                ),
+            )
+        )
+
+    return nuevas

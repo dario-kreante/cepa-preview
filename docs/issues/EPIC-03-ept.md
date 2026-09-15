@@ -223,3 +223,71 @@ Como **administrativo**, quiero **gestionar los plazos de informe EPT y portal I
 - Definir la ventana de anticipación de la alerta de plazo EPT / entrega ISL (días hábiles) en conjunto con EPIC-10.
 - Confirmar si "estado" de envío maneja valores adicionales (p. ej. rechazado/reenviado por el portal ISL) además de pendiente/enviado.
 - Confirmar si el reporte de cumplimiento de plazos ISL es parte de EPIC-09 (Reportería) o de esta épica.
+
+---
+
+## [CEPA-033] Carga masiva de casos EPT desde Excel
+
+**Épica:** EPIC-03 — Seguimiento EPT (Estudio de Puesto de Trabajo)
+**Perfil:** Administrativo
+**Prioridad (MoSCoW):** P1 Should
+**Módulo PRD:** 7.3
+**Trazabilidad:** Decisiones v5: D22 · PA-v5-05 · Ref. `CEPA-030`
+
+### Historia
+Como **Administrativo del CEPA**, quiero **cargar varios casos EPT de una vez desde una planilla Excel, vinculándolos por folio** para **incorporar los casos que hoy se llevan en planilla sin digitarlos uno a uno, y sin arrastrar sus errores al sistema**.
+
+### Criterios de Aceptación (Gherkin)
+- **CA-1**
+  - **Dado** que un administrativo dispone de la planilla Excel de casos EPT
+  - **Cuando** la sube al sistema
+  - **Entonces** el sistema muestra una **previsualización** con las filas interpretadas antes de confirmar la carga
+- **CA-2**
+  - **Dado** una planilla con filas válidas e inválidas
+  - **Cuando** el administrativo ejecuta la carga
+  - **Entonces** el sistema **no carga nada** y entrega un reporte de errores fila por fila indicando columna y motivo
+- **CA-3**
+  - **Dado** una planilla cuyas filas son todas válidas
+  - **Cuando** el administrativo confirma la carga
+  - **Entonces** los casos EPT quedan creados y **vinculados al folio** indicado en cada fila, visibles en el listado de EPT
+- **CA-4**
+  - **Dado** una fila cuyo folio no existe en el módulo de Ingresos
+  - **Cuando** se valida la planilla
+  - **Entonces** esa fila se marca como error, indicando el folio inexistente
+- **CA-5**
+  - **Dado** un caso EPT que ya existe para el mismo folio
+  - **Cuando** la planilla lo trae de nuevo
+  - **Entonces** el sistema lo señala como duplicado y el administrativo decide explícitamente si omitir o actualizar
+
+### Reglas de Negocio
+- **RN-1:** La carga es **transaccional**: o se cargan todas las filas válidas confirmadas, o ninguna. No se admiten cargas a medias que dejen la planilla y el sistema desincronizados.
+- **RN-2:** Toda fila debe traer un **folio existente** en Ingresos (§7.1); el folio es la clave de vinculación (v5 D22). Una fila sin folio válido no se carga.
+- **RN-3:** La validación es previa y completa: se reportan **todos** los errores de la planilla en una pasada, no el primero que aparece.
+- **RN-4:** El mapeo de columnas de la planilla a campos de `CEPA-030` está definido en configuración, no en el código: la planilla del CEPA puede cambiar.
+- **RN-5:** Cada carga masiva queda registrada en el log de auditoría: quién cargó, qué archivo, cuántas filas y con qué resultado.
+- **RN-6:** La carga manual caso a caso (`CEPA-030`) sigue siendo el camino primario; la carga masiva no la reemplaza.
+- **RN-7 (Permisos):** Solo Administrativo y Coordinación cargan; Auditor no.
+
+### Test Cases
+| ID | Tipo | Precondición | Pasos | Datos | Resultado esperado | Prioridad |
+|----|------|--------------|-------|-------|--------------------|-----------|
+| TC-033-01 | Positivo | Planilla de 10 filas válidas; folios existentes | Subir, previsualizar y confirmar | 10 filas OK | 10 casos EPT creados y vinculados a su folio | Alta |
+| TC-033-02 | Negativo | Planilla de 10 filas, 2 con folio inexistente | Subir y validar | folios 99998, 99999 | Ninguna fila cargada; reporte señala las 2 filas con su motivo (RN-1, RN-3) | Alta |
+| TC-033-03 | Negativo | Planilla con columna obligatoria vacía en 3 filas | Subir y validar | 3 filas incompletas | Reporte lista **las 3** en una sola pasada, no solo la primera (RN-3) | Alta |
+| TC-033-04 | Borde | Caso EPT ya existente para el folio 1024 | Subir planilla que lo incluye | folio 1024 duplicado | Marcado como duplicado; requiere decisión explícita (CA-5) | Alta |
+| TC-033-05 | Borde | Planilla vacía o sin las columnas esperadas | Subir archivo | archivo sin cabeceras válidas | Error claro de formato; no se carga nada | Media |
+| TC-033-06 | Permisos | Sesión Auditor | Intentar acceder a la carga masiva | — | Acceso denegado | Alta |
+
+### Definición de Hecho (DoD)
+- [ ] Carga masiva implementada y desplegada en QA
+- [ ] Todos los CA verificados
+- [ ] **Probada con la planilla real del CEPA**, no solo con un archivo de prueba construido por nosotros
+- [ ] Mapeo de columnas en configuración, documentado
+- [ ] Tests unitarios + integración en verde, incluida la transaccionalidad (RN-1)
+- [ ] Endpoint documentado en OpenAPI/Swagger
+- [ ] Carga registrada en log de auditoría
+- [ ] Demo validada con equipo gestor CEPA
+
+### Notas / Preguntas abiertas
+- **Bloqueante (PA-v5-05):** Pilar ofreció enviar el Excel de casos EPT en el correo del 27-08-2026. **Sin esa planilla no se puede fijar el mapeo de columnas ni las validaciones**, y cualquier implementación previa es una conjetura sobre su formato.
+- Definir si la carga masiva admite **actualizar** casos existentes o solo crear (CA-5 deja la decisión al usuario; el alcance técnico de "actualizar" debe acotarse).

@@ -19,6 +19,28 @@ if (typeof globalThis.ResizeObserver === "undefined") {
   };
 }
 
+// Node 26 expone un `localStorage` propio que queda `undefined` salvo que se arranque con
+// `--localstorage-file`, y que tiene precedencia sobre el que provee jsdom. El resultado es que
+// `tokenStore` revienta con "Cannot read properties of undefined (reading 'removeItem')" en
+// tests que en el navegador funcionan sin problema. Se instala un reemplazo en memoria cuando
+// el global no sirve.
+if (typeof globalThis.localStorage === "undefined" || globalThis.localStorage === null) {
+  const store = new Map<string, string>();
+  Object.defineProperty(globalThis, "localStorage", {
+    configurable: true,
+    value: {
+      getItem: (k: string) => (store.has(k) ? store.get(k)! : null),
+      setItem: (k: string, v: string) => void store.set(k, String(v)),
+      removeItem: (k: string) => void store.delete(k),
+      clear: () => store.clear(),
+      key: (i: number) => [...store.keys()][i] ?? null,
+      get length() {
+        return store.size;
+      },
+    },
+  });
+}
+
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
 afterEach(() => server.resetHandlers());
 afterAll(() => server.close());

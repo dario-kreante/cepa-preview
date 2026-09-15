@@ -65,6 +65,15 @@ class Settings(BaseSettings):
     # --- Rate limiting (CEPA-120 RN-4) ---
     rate_limit_per_minute: int = 60
 
+    # --- Integración SALUTEM (D12, solo lectura) ---
+    # La empresa va en la RUTA, no como parámetro: .../salutem/{empresa}/personas
+    # Vacíos = integración deshabilitada; la fábrica devuelve el stub y no se
+    # sale a la red (fail-closed, mismo criterio que SMTP y SAML).
+    salutem_base_url: str = "https://qa.salutem.cl/api/integraciones/salutem"
+    salutem_empresa: str = ""
+    salutem_api_key: str = ""
+    salutem_timeout_s: float = 30.0
+
     # --- IMED feature flag (CEPA-122, P2, PA5) ---
     imed_enabled: bool = False
 
