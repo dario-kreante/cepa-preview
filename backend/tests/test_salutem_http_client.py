@@ -300,3 +300,38 @@ def test_con_configuracion_completa_la_fabrica_devuelve_el_cliente_http(
     cliente = get_salutem_client()
     assert isinstance(cliente, SalutemHttpClient)
     assert cliente._empresa == "96"
+
+
+# ── obtener_persona (sync fase 1) ─────────────────────────────────────────────
+
+
+def test_obtener_persona_envia_persona_id_en_el_cuerpo():
+    vistos = []
+
+    def handler(request):
+        vistos.append((request.url.path, json.loads(request.content)))
+        return _ok(
+            {"demograficos": {"SALUTEM_ID": 338735, "identificacion": "11168636-k", "nombres": "ALEX"}}
+        )
+
+    persona = _cliente(handler).obtener_persona(338735)
+
+    assert persona is not None
+    assert persona.salutem_id == 338735
+    assert vistos == [
+        (
+            f"/api/integraciones/salutem/{EMPRESA}/personas",
+            {"persona_id": 338735, "agrupacion": "demograficos"},
+        )
+    ]
+
+
+def test_obtener_persona_inexistente_devuelve_none():
+    cliente = _cliente(lambda request: _falla("ERROR_PERSONA_NO_EXISTE"))
+    assert cliente.obtener_persona(1) is None
+
+
+def test_stub_obtener_persona_devuelve_none():
+    from app.integrations.salutem.client import SalutemStubClient
+
+    assert SalutemStubClient().obtener_persona(1) is None

@@ -54,6 +54,9 @@ class SalutemStubClient:
     def resolver_persona(self, rut: str) -> PersonaSalutem | None:  # noqa: ARG002
         return None
 
+    def obtener_persona(self, salutem_id: int) -> PersonaSalutem | None:  # noqa: ARG002
+        return None
+
     def listar_atenciones(self, salutem_id: int) -> list[CitaSalutem]:  # noqa: ARG002
         return []
 
@@ -134,6 +137,12 @@ class SalutemHttpClient:
             "personas",
             {"identificacion": _identificacion_salutem(rut), "agrupacion": "demograficos"},
         )
+        if not r or "demograficos" not in r:
+            return None
+        return PersonaSalutem.desde_api(r["demograficos"])
+
+    def obtener_persona(self, salutem_id: int) -> PersonaSalutem | None:
+        r = self._get("personas", {"persona_id": salutem_id, "agrupacion": "demograficos"})
         if not r or "demograficos" not in r:
             return None
         return PersonaSalutem.desde_api(r["demograficos"])
