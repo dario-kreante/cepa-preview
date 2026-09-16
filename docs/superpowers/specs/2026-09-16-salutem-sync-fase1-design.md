@@ -70,7 +70,7 @@ backend/app/services/salutem_sync/
   incremental.py         # ventanas caliente / tibia / fría
   vinculacion.py         # paso 2: copia → ficha_clinica
 backend/app/scripts/salutem_sync.py      # CLI: backfill | caliente | tibia | fria | vincular | estado
-backend/app/routers/salutem_sync.py      # GET /api/v1/salutem/sync/estado (admin)
+backend/app/routers/salutem_sync.py      # GET /api/v1/salutem/sync/estado (Coordinación)
 backend/migrations/versions/1250_salutem_copia.py
 ```
 
@@ -86,7 +86,7 @@ create/update/delete/push/write/patch.
 | `salutem_id` | BigInteger PK | `SALUTEM_ID` |
 | `rut` | String(12), índice, nullable | RUT normalizado CEPA (`<cuerpo><DV>`), para vincular |
 | `contenido` | PortableJSON | respuesta cruda de `demograficos` |
-| `hash` | String(64) | sha256 del contenido canónico |
+| `hash_contenido` | String(64) | sha256 del contenido canónico (`hash` se evita por ser palabra clave en Oracle) |
 | `visto_primera_vez` / `visto_ultima_vez` / `cambiado_en` | DateTime(tz) | |
 
 **`salutem_cita`**
@@ -97,7 +97,7 @@ create/update/delete/push/write/patch.
 | `fecha_cita` | Date, índice | |
 | `fecha_creacion` | DateTime, nullable | `citaFechaCreacion` |
 | `estado_id` | Integer | |
-| `contenido`, `hash`, `visto_*`, `cambiado_en` | | igual que persona |
+| `contenido`, `hash_contenido`, `visto_*`, `cambiado_en` | | igual que persona |
 | `desaparecida_en` | DateTime(tz), nullable | no volvió en un barrido completo de su día |
 
 **`salutem_atencion`**
@@ -106,21 +106,21 @@ create/update/delete/push/write/patch.
 | `cita_id` | BigInteger PK | una atención por cita |
 | `persona_id` | BigInteger, índice | |
 | `fecha_cita` | Date, índice | |
-| `contenido`, `hash`, `visto_*`, `cambiado_en`, `desaparecida_en` | | |
-| `hash_vinculado` | String(64), nullable | hash que el paso 2 ya aplicó; si difiere de `hash`, está pendiente |
+| `contenido`, `hash_contenido`, `visto_*`, `cambiado_en`, `desaparecida_en` | | |
+| `hash_vinculado` | String(64), nullable | hash que el paso 2 ya aplicó; si difiere de `hash_contenido`, está pendiente |
 
-**`salutem_sync_dia`** — checkpoint de la carga inicial y de la ventana fría
+**`salutem_sync_dia`** — checkpoint de la carga inicial
 | `fecha` Date + `tipo` Integer (PK compuesta) | `completado_en` DateTime(tz) | `citas` Integer |
 
 **`salutem_sync_ejecucion`** — bitácora
-| `id` PK | `modo` String(20) | `inicio`, `fin` | `estado` (`en_curso`/`ok`/`error`/`omitida`) |
+| `id` PK | `modo` String(20) | `inicio`, `fin` | `estado` (`en_curso`/`ok`/`con_errores`/`error`/`omitida`) |
 | `llamadas`, `nuevos`, `cambiados`, `desaparecidos` Integer | `error` String(2000) nullable |
 
 **`salutem_sync_lease`** — una fila por nombre (`"salutem"`)
 | `nombre` String(30) PK | `dueno` String(80) | `vence_en` DateTime(tz) |
 
 Cambio en tabla existente — **`ficha_clinica`**: se agregan `salutem_cita_id` (BigInteger, nullable,
-índice) y `eliminada_en_origen` (DateTime(tz), nullable). La migración rellena `salutem_cita_id` desde
+índice **no único**: Oracle consideraría duplicadas dos filas `(ingreso_id, NULL)` de fichas push) y `eliminada_en_origen` (DateTime(tz), nullable). La migración rellena `salutem_cita_id` desde
 `contenido.citaId` en las filas con `origen = 'SALUTEM'` (en Python, porque el JSON en Oracle es CLOB).
 
 ## Detección de cambios
@@ -178,7 +178,7 @@ Mientras corre, tiene el lease: los sync incrementales del cron registran `omiti
 | `fria` | `30 3 * * *` | por fecha de cita: últimos 90 días y próximos 180; re-trae atenciones de los últimos 30 días; vinculación completa | ~2.500 + ~1.500 |
 
 "Hoy" se calcula en `America/Santiago`. Cada modo termina ejecutando la vinculación de lo pendiente
-(`hash != hash_vinculado`), salvo `fria`, que re-vincula todo.
+(`hash_contenido != hash_vinculado`), salvo `fria`, que re-vincula todo.
 
 ## Paso 2: vinculación con el dominio CEPA
 
@@ -195,8 +195,9 @@ Consecuencias:
   porque las atenciones sin paciente quedan pendientes. Para acotar el costo, la vinculación de los modos
   caliente/tibia considera pendientes también las atenciones de personas cuyo paciente CEPA tenga un
   ingreso creado o editado desde la última ejecución.
-- El botón actual "pull-salutem" se mantiene, pero pasa a: refrescar esa persona en la copia (lectura
-  directa a SALUTEM) + vincular. Mismo contrato HTTP.
+- El botón actual "pull-salutem" se mantiene igual (lectura directa a SALUTEM por RUT), pero ahora
+  guarda `salutem_cita_id` y deduplica por esa columna, así no choca con las fichas que crea el sync.
+  Mismo contrato HTTP.
 - Licencias sugeridas no cambia: ya lee `ficha_clinica` en cada consulta. Debe ignorar fichas con
   `eliminada_en_origen`.
 
@@ -226,10 +227,11 @@ Consecuencias:
 
 ## Observabilidad
 
-- `GET /api/v1/salutem/sync/estado` (rol admin): última ejecución por modo (estado, inicio, fin, contadores),
+- `GET /api/v1/salutem/sync/estado` (rol Coordinación): última ejecución por modo (estado, inicio, fin, contadores),
   primer día con datos, totales de la copia, atenciones pendientes de vincular, y `atrasado: true` si la última
   `caliente` exitosa tiene más de 20 minutos.
 - `python -m app.scripts.salutem_sync estado`: lo mismo por consola.
+- `python -m app.scripts.salutem_sync vincular [--todo]`: re-ejecuta solo el paso 2, con lease y bitácora.
 - Pantalla en el frontend: fuera de esta fase (se usa el endpoint).
 
 ## Pruebas
