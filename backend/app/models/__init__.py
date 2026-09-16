@@ -28,3 +28,9 @@ from app.models.tareas import TareaItem  # noqa: F401
 from app.models.form_definition import FieldDef, FormDefinition, FormVersion  # noqa: F401
 from app.models.ficha_clinica import FichaClinica  # noqa: F401
 from app.models.imed_payload import ImedPayload  # noqa: F401
+from app.models.salutem_copia import SalutemAtencion, SalutemCita, SalutemPersona  # noqa: F401
+from app.models.salutem_sync import (  # noqa: F401
+    SalutemSyncDia,
+    SalutemSyncEjecucion,
+    SalutemSyncLease,
+)
