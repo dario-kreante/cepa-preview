@@ -33,23 +33,37 @@ def rellenar_salutem_cita_id(conn) -> int:
     """Copia contenido.citaId a la columna nueva en las fichas de SALUTEM.
 
     Se hace en Python porque en Oracle el JSON es un CLOB y no hay una
-    expresión SQL portable para leerlo.
+    expresión SQL portable para leerlo. Robusta y re-ejecutable: solo toca
+    filas de SALUTEM aún sin rellenar, y salta silenciosamente contenido que
+    no es un dict o cuyo citaId no es convertible a entero.
     """
     filas = conn.execute(
-        sa.text("SELECT id, contenido FROM ficha_clinica WHERE origen = 'SALUTEM'")
+        sa.text(
+            "SELECT id, contenido FROM ficha_clinica "
+            "WHERE origen = 'SALUTEM' AND salutem_cita_id IS NULL"
+        )
     ).all()
     rellenadas = 0
     for fila_id, contenido in filas:
         if hasattr(contenido, "read"):  # LOB de Oracle
             contenido = contenido.read()
         if isinstance(contenido, str):
-            contenido = json.loads(contenido)
-        cita_id = (contenido or {}).get("citaId")
+            try:
+                contenido = json.loads(contenido)
+            except ValueError:
+                continue
+        if not isinstance(contenido, dict):
+            continue
+        cita_id = contenido.get("citaId")
         if cita_id is None:
+            continue
+        try:
+            cita_id = int(cita_id)
+        except (TypeError, ValueError):
             continue
         conn.execute(
             sa.text("UPDATE ficha_clinica SET salutem_cita_id = :cita WHERE id = :id"),
-            {"cita": int(cita_id), "id": fila_id},
+            {"cita": cita_id, "id": fila_id},
         )
         rellenadas += 1
     return rellenadas

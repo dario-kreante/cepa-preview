@@ -12,6 +12,16 @@ def test_el_falso_cumple_el_protocolo():
     assert isinstance(SalutemFalso(), SalutemClientProtocol)
 
 
+def test_el_falso_resuelve_persona_con_rut_normalizado():
+    falso = SalutemFalso()
+    falso.agregar_persona(501, "12345678-5")
+
+    resultado = falso.resolver_persona("123456785")
+
+    assert resultado is not None
+    assert resultado.salutem_id == 501
+
+
 # ── hash ─────────────────────────────────────────────────────────────────────
 
 

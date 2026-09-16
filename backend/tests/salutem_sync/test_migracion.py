@@ -61,3 +61,35 @@ def test_rellena_salutem_cita_id_desde_el_contenido(db_session, ingreso_fixture)
     assert rellenadas >= 1
     assert db_session.get(FichaClinica, de_salutem.id).salutem_cita_id == 425562
     assert db_session.get(FichaClinica, de_push.id).salutem_cita_id is None
+
+
+def test_no_rompe_con_contenido_sin_cita_id(db_session, ingreso_fixture):
+    sin_cita_id = FichaClinica(
+        ingreso_id=ingreso_fixture.id,
+        folio=ingreso_fixture.folio,
+        origen="SALUTEM",
+        contenido={"sin": "citaId"},
+    )
+    db_session.add(sin_cita_id)
+    db_session.flush()
+
+    _migracion().rellenar_salutem_cita_id(db_session.connection())
+    db_session.expire_all()
+
+    assert db_session.get(FichaClinica, sin_cita_id.id).salutem_cita_id is None
+
+
+def test_no_rompe_con_cita_id_no_convertible_a_entero(db_session, ingreso_fixture):
+    cita_id_invalido = FichaClinica(
+        ingreso_id=ingreso_fixture.id,
+        folio=ingreso_fixture.folio,
+        origen="SALUTEM",
+        contenido={"citaId": "no-numero"},
+    )
+    db_session.add(cita_id_invalido)
+    db_session.flush()
+
+    _migracion().rellenar_salutem_cita_id(db_session.connection())
+    db_session.expire_all()
+
+    assert db_session.get(FichaClinica, cita_id_invalido.id).salutem_cita_id is None

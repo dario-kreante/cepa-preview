@@ -18,6 +18,15 @@ from app.integrations.salutem.models import (
     PersonaSalutem,
     TipoFechaCita,
 )
+from app.util.rut import RutInvalidoError, normalizar_rut
+
+
+def _normalizar_o_tal_cual(rut: str) -> str:
+    """Normaliza el RUT como hace el cliente real; si no valida, lo deja tal cual."""
+    try:
+        return normalizar_rut(rut)
+    except RutInvalidoError:
+        return rut
 
 
 class SalutemFalso:
@@ -73,8 +82,9 @@ class SalutemFalso:
 
     def resolver_persona(self, rut: str) -> PersonaSalutem | None:
         self._registrar("resolver_persona", rut)
+        buscado = _normalizar_o_tal_cual(rut)
         for p in self.personas.values():
-            if p["identificacion"] == rut:
+            if _normalizar_o_tal_cual(p["identificacion"]) == buscado:
                 return PersonaSalutem.desde_api(p)
         return None
 
@@ -86,9 +96,10 @@ class SalutemFalso:
     def listar_atenciones(self, salutem_id: int) -> list[CitaSalutem]:
         self._registrar("listar_atenciones", salutem_id)
         return [
-            CitaSalutem.desde_api(self.citas[cita_id])
+            CitaSalutem.desde_api(cita)
             for cita_id in self.atenciones
-            if self.citas[cita_id]["personaId"] == salutem_id
+            if (cita := self.citas.get(cita_id)) is not None
+            and cita["personaId"] == salutem_id
         ]
 
     def obtener_atencion(self, salutem_id: int, cita_id: int) -> AtencionSalutem | None:
