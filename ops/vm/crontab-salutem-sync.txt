@@ -1,0 +1,5 @@
+# Sync SALUTEM (fase 1). Agregar al crontab de segicepa SIN borrar las entradas @reboot ni el watchdog.
+# El lease en BD evita que dos modos se pisen: si uno está corriendo, el otro queda "omitida".
+*/5 * * * * $HOME/sige-cepa/run-salutem-sync.sh caliente
+7 * * * * $HOME/sige-cepa/run-salutem-sync.sh tibia
+30 3 * * * $HOME/sige-cepa/run-salutem-sync.sh fria
