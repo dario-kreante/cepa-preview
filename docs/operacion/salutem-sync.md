@@ -112,4 +112,20 @@ Requiere aprobación explícita de Darío, la clave de producción y el aviso a 
 Para retirar del todo: `crontab -l | grep -v 'run-salutem-sync' | crontab -`.
 
 ## Validación en QA (antes de producción)
-Registrar aquí los resultados de la Task 15 del plan.
+
+Hecha el 2026-09-16 contra `qa.salutem.cl`, empresa 96, con una BD Postgres local (`cepa_salutem_qa`). Solo lectura.
+
+| Verificación | Resultado |
+|---|---|
+| `obtener_persona` por `persona_id` | ✅ Devuelve la persona; coincide con `resolver_persona` por RUT |
+| Estabilidad del hash (dos barridos seguidos de 2025-01-22) | ✅ Vuelta 1: 52 citas, 141 registros nuevos, 98 llamadas. Vuelta 2: 0 nuevos, 0 cambiados, 9 llamadas. `CAMPOS_VOLATILES` queda vacío |
+| Re-lectura de atenciones (`refrescar_atenciones`) | ✅ 0 cambios falsos |
+| Atenciones fuera del estado Atendido | ✅ Ninguna en la muestra (5 Anuladas, 3 No Asiste; sin citas en otros estados ese día). `ESTADOS_CON_ATENCION` queda solo Atendido. Muestra chica: revisar en producción |
+| `backfill --desde 2026-09-01` | ✅ `ok`, 196 días (180 futuros), 2.808 llamadas en 26 min (~1,8 llamadas/s efectivas). El rango no tenía citas; la verificación por persona recuperó 999 atenciones históricas (2023-02-16 a 2026-01-21) |
+| `caliente` | ✅ `ok`, 27 llamadas en 40 s |
+| Vinculación con un paciente CEPA de prueba (RUT de una persona de QA, ingreso desde 2023-01-01) | ✅ 78 atenciones → 78 fichas; segunda vinculación completa: 0 nuevas, 0 actualizadas |
+| `estado` | ✅ `atrasado: false`, 0 atenciones pendientes |
+
+Hallazgo corregido: el aviso de "atenciones anteriores" comparaba contra el primer día con citas y no se emitía si el rango barrido no tenía ninguna (caso de este backfill). Ahora compara contra el primer día barrido.
+
+Estimaciones para producción: la API responde ~0,5–0,6 s por llamada, así que el ritmo real ronda 1,8 llamadas/s aunque el límite configurado sea 2. En QA los datos llegan hasta 2026-01-21, más de 7 meses sin citas: en producción conviene revisar el log del backfill por si se detiene antes de la historia real, y apoyarse en la verificación por persona.

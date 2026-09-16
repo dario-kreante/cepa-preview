@@ -154,8 +154,8 @@ def _ejecutar_modo(
         )
         if r.atenciones_anteriores:
             log.warning(
-                "%d atenciones son anteriores al primer día con citas: re-ejecutar con --desde más antiguo",
-                r.atenciones_anteriores,
+                "%d atenciones son anteriores al primer día barrido (%s): re-ejecutar con --desde más antiguo",
+                r.atenciones_anteriores, r.primer_dia_barrido,
             )
         return r.contadores, r.errores
     ventana = {"caliente": ventana_caliente, "tibia": ventana_tibia, "fria": ventana_fria}[modo]

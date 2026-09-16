@@ -101,6 +101,24 @@ def test_la_verificacion_recupera_atenciones_que_el_barrido_no_vio(db_session, s
     assert db_session.get(SalutemAtencion, 9200) is not None
 
 
+def test_avisa_atenciones_anteriores_aunque_el_rango_barrido_no_tenga_citas(db_session, salutem, ritmo):
+    # Visto en QA: SALUTEM tenía datos hasta enero y el rango barrido estaba vacío.
+    salutem.agregar_persona(501)
+    salutem.agregar_cita(9200, 501, HOY - 400 * DIA, EstadoCitaSalutem.ATENDIDO)
+    salutem.agregar_atencion(9200)
+    # La persona entra a la copia por una cita futura, como en un backfill real.
+    salutem.agregar_cita(9300, 501, HOY + DIA, EstadoCitaSalutem.AGENDADO)
+
+    r = ejecutar_backfill(
+        db_session, salutem, ritmo, hoy=HOY, ahora=AHORA,
+        desde=HOY - 2 * DIA, dias_futuro=1, verificar=True,
+    )
+
+    assert r.primer_dia_con_datos is None
+    assert r.primer_dia_barrido == HOY - 2 * DIA
+    assert r.atenciones_anteriores == 1
+
+
 def test_dias_fallidos_no_se_confunden_con_vacios_y_abortan(db_session, salutem, ritmo):
     """Si SALUTEM rechaza todos los días pasados, el backfill no debe gastar miles de
     llamadas creyendo que son días vacíos: debe abortar tras DIAS_FALLIDOS_PARA_ABORTAR

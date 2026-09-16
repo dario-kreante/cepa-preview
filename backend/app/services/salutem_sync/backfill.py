@@ -45,8 +45,10 @@ class ResultadoBackfill:
     dias_barridos: int = 0
     dias_con_error: int = 0
     primer_dia_con_datos: date | None = None
+    # Día más antiguo recorrido hacia atrás (barrido o ya registrado).
+    primer_dia_barrido: date | None = None
     atenciones_recuperadas: int = 0
-    # Recuperadas con fecha anterior al primer día con citas: sugiere re-ejecutar con --desde.
+    # Recuperadas con fecha anterior al primer día barrido: sugiere re-ejecutar con --desde.
     atenciones_anteriores: int = 0
     contadores: Contadores = field(default_factory=Contadores)
     errores: list[str] = field(default_factory=list)
@@ -121,6 +123,7 @@ def ejecutar_backfill(
                 resultado.primer_dia_con_datos = dia
             else:
                 vacios += 1
+        resultado.primer_dia_barrido = dia
         dia -= _UN_DIA
 
     if verificar:
@@ -139,7 +142,9 @@ def _verificar_completitud(
 ) -> None:
     """Pide la historia de cada persona y trae las atenciones que la copia no tiene."""
     personas = db.scalars(select(SalutemPersona.salutem_id).order_by(SalutemPersona.salutem_id)).all()
-    limite = resultado.primer_dia_con_datos
+    # Se compara contra el rango recorrido y no contra el primer día con citas: si el
+    # rango no tenía ninguna (visto en QA), igual hay que avisar de la historia anterior.
+    limite = resultado.primer_dia_barrido
     for n, persona_id in enumerate(personas, start=1):
         # Una sola consulta por persona (sin cargar el CLOB de contenido) en vez de un
         # `db.get` por cada cita: `copia` hace flush tras cada `add`, así que el select
