@@ -5,7 +5,7 @@ import pytest
 from app.integrations.salutem.errors import SalutemAuthError
 from app.integrations.salutem.models import EstadoCitaSalutem, TipoFechaCita
 from app.models.salutem_copia import SalutemAtencion, SalutemCita, SalutemPersona
-from app.services.salutem_sync.barrido import barrer_dia, refrescar_atenciones
+from app.services.salutem_sync.barrido import ORDEN_ESTADOS, barrer_dia, refrescar_atenciones
 from tests.salutem_sync.conftest import AHORA
 
 DIA = date(2025, 1, 22)
@@ -93,6 +93,34 @@ def test_credencial_rechazada_se_propaga(db_session, con_datos, ritmo):
     con_datos.credencial_rechazada = True
     with pytest.raises(SalutemAuthError):
         barrer_dia(db_session, con_datos, ritmo, DIA, POR_CITA, AHORA)
+
+
+def test_orden_estados_tiene_los_9_estados_exactamente_una_vez():
+    assert set(ORDEN_ESTADOS) == set(EstadoCitaSalutem)
+    assert len(ORDEN_ESTADOS) == 9
+
+
+def test_cita_que_avanza_de_recepcionado_a_atendido_entre_estados_no_se_pierde(
+    db_session, con_datos, ritmo
+):
+    """Si una cita avanza de RECEPCIONADO a ATENDIDO entre que se consulta un estado y
+    el siguiente, el orden de barrido (lifecycle, no numérico) debe seguir viéndola:
+    RECEPCIONADO se consulta antes que ATENDIDO."""
+    con_datos.citas[9002]["estadoCitaId"] = int(EstadoCitaSalutem.RECEPCIONADO)
+    barrer_dia(db_session, con_datos, ritmo, DIA, POR_CITA, AHORA)
+
+    def mover_a_atendido(dia: date, estado: int) -> None:
+        if estado == int(EstadoCitaSalutem.ATENDIDO):
+            con_datos.citas[9002]["estadoCitaId"] = int(EstadoCitaSalutem.ATENDIDO)
+            con_datos.agregar_atencion(9002, anamnesis="avance a atendido")
+
+    con_datos.antes_de_listar = mover_a_atendido
+
+    r = barrer_dia(db_session, con_datos, ritmo, DIA, POR_CITA, DESPUES)
+
+    assert r.contadores.desaparecidos == 0
+    assert db_session.get(SalutemCita, 9002).desaparecida_en is None
+    assert db_session.get(SalutemAtencion, 9002) is not None
 
 
 def test_refrescar_detecta_ediciones_y_atenciones_borradas(db_session, con_datos, ritmo):

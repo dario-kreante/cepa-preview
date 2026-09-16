@@ -17,6 +17,27 @@ from app.services.salutem_sync.tipos import Contadores, Resultado
 # Hipótesis a validar en QA (Task 15): solo las citas atendidas tienen ficha clínica.
 ESTADOS_CON_ATENCION = frozenset({int(EstadoCitaSalutem.ATENDIDO)})
 
+# Orden de ciclo de vida, no numérico: una cita avanza AGENDADO → ... → ATENDIDO (o
+# ANULADO/NO_ASISTE). Consultar en orden de id numérico (AGENDADO=1, ANULADO=2,
+# ATENDIDO=3, AGENDADO_WEB=4, CONFIRMADO=5, CONFIRMADO_WEB=6, CONFIRMADO_EMAIL=7,
+# RECEPCIONADO=8, NO_ASISTE=9) deja huecos: una cita que avanza de RECEPCIONADO(8) a
+# ATENDIDO(3) entre que se consulta un estado y el siguiente ya pasó por ATENDIDO sin
+# encontrarla y nunca vuelve a consultarlo, así que queda sin ver en ningún estado y
+# se marcaría desaparecida por error. Consultando en orden de ciclo de vida, el estado
+# al que una cita avanza siempre se consulta después del que tenía, así que como mucho
+# aparece dos veces (una por estado) y los duplicados los absorbe `vistas` (es un set).
+ORDEN_ESTADOS = (
+    EstadoCitaSalutem.AGENDADO,
+    EstadoCitaSalutem.AGENDADO_WEB,
+    EstadoCitaSalutem.CONFIRMADO,
+    EstadoCitaSalutem.CONFIRMADO_WEB,
+    EstadoCitaSalutem.CONFIRMADO_EMAIL,
+    EstadoCitaSalutem.RECEPCIONADO,
+    EstadoCitaSalutem.ATENDIDO,
+    EstadoCitaSalutem.ANULADO,
+    EstadoCitaSalutem.NO_ASISTE,
+)
+
 
 @dataclass
 class ResultadoDia:
@@ -44,7 +65,7 @@ def barrer_dia(
     resultado = ResultadoDia(fecha=fecha, tipo=tipo)
     vistas: set[int] = set()
 
-    for estado in EstadoCitaSalutem:
+    for estado in ORDEN_ESTADOS:
         try:
             citas = ritmo.llamar(cliente.listar_citas, fecha, estado, tipo)
         except SalutemRequestError as e:
@@ -57,7 +78,7 @@ def barrer_dia(
             resultado.contadores.registrar(guardado)
             asegurar_persona(db, cliente, ritmo, cita.persona_id, ahora, resultado.contadores)
             if cita.estado_id in ESTADOS_CON_ATENCION and (
-                guardado is not Resultado.IGUAL or db.get(SalutemAtencion, cita.cita_id) is None
+                guardado is not Resultado.IGUAL or not _atencion_existe(db, cita.cita_id)
             ):
                 traer_atencion(
                     db, cliente, ritmo, cita.persona_id, cita.cita_id, ahora, resultado.contadores
@@ -87,6 +108,11 @@ def asegurar_persona(
     persona = ritmo.llamar(cliente.obtener_persona, persona_id)
     if persona is not None:
         contadores.registrar(copia.guardar_persona(db, persona, ahora))
+
+
+def _atencion_existe(db: Session, cita_id: int) -> bool:
+    """Como `db.get(SalutemAtencion, cita_id) is None` pero sin cargar el CLOB de contenido."""
+    return db.scalar(select(SalutemAtencion.cita_id).where(SalutemAtencion.cita_id == cita_id)) is not None
 
 
 def traer_atencion(

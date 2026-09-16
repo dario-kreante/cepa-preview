@@ -204,7 +204,7 @@ Consecuencias:
 ## Robustez
 
 - **Lease** (`salutem_sync_lease`): `UPDATE … SET dueno, vence_en WHERE nombre = 'salutem' AND vence_en < ahora`;
-  si afecta 0 filas, otro proceso lo tiene → ejecución `omitida`. Duración 10 min, renovada tras cada día
+  si afecta 0 filas, otro proceso lo tiene → ejecución `omitida`. Duración 30 min, renovada tras cada día
   barrido. Un proceso muerto libera solo al vencer. Portable, sin transacciones largas en Oracle.
 - **Ritmo:** limitador de `SALUTEM_SYNC_LLAMADAS_POR_SEG` (2 por defecto).
 - **Errores:**

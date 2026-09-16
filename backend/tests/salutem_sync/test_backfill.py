@@ -1,9 +1,15 @@
 from datetime import date, timedelta
 
+import pytest
+
 from app.integrations.salutem.models import EstadoCitaSalutem, TipoFechaCita
 from app.models.salutem_copia import SalutemAtencion, SalutemCita
 from app.models.salutem_sync import SalutemSyncDia
-from app.services.salutem_sync.backfill import ejecutar_backfill
+from app.services.salutem_sync.backfill import (
+    DIAS_FALLIDOS_PARA_ABORTAR,
+    BackfillAbortadoError,
+    ejecutar_backfill,
+)
 from tests.salutem_sync.conftest import AHORA
 
 HOY = date(2026, 9, 16)
@@ -93,6 +99,40 @@ def test_la_verificacion_recupera_atenciones_que_el_barrido_no_vio(db_session, s
     assert r.atenciones_recuperadas == 1
     assert r.atenciones_anteriores == 1
     assert db_session.get(SalutemAtencion, 9200) is not None
+
+
+def test_dias_fallidos_no_se_confunden_con_vacios_y_abortan(db_session, salutem, ritmo):
+    """Si SALUTEM rechaza todos los días pasados, el backfill no debe gastar miles de
+    llamadas creyendo que son días vacíos: debe abortar tras DIAS_FALLIDOS_PARA_ABORTAR
+    días fallidos seguidos, sin llegar nunca a `dias_vacios_para_parar`."""
+    for i in range(20):
+        dia = HOY - i * DIA
+        for estado in EstadoCitaSalutem:
+            salutem.dias_con_error.add((dia, int(estado)))
+
+    with pytest.raises(BackfillAbortadoError):
+        ejecutar_backfill(
+            db_session, salutem, ritmo, hoy=HOY, ahora=AHORA,
+            dias_vacios_para_parar=3, dias_futuro=0, verificar=False,
+        )
+
+    # No se detuvo por días vacíos (habría bastado con 3 días): abortó tras los fallidos.
+    assert len(_dias_barridos_por_cita(salutem)) == DIAS_FALLIDOS_PARA_ABORTAR
+
+
+def test_dia_fallido_entre_dias_con_datos_no_cuenta_como_vacio(db_session, salutem, ritmo):
+    salutem.agregar_persona(501)
+    salutem.agregar_cita(9001, 501, HOY - DIA, EstadoCitaSalutem.AGENDADO)
+    salutem.agregar_cita(9002, 501, HOY - 3 * DIA, EstadoCitaSalutem.AGENDADO)
+    for estado in EstadoCitaSalutem:
+        salutem.dias_con_error.add((HOY - 2 * DIA, int(estado)))
+
+    r = ejecutar_backfill(
+        db_session, salutem, ritmo, hoy=HOY, ahora=AHORA,
+        dias_vacios_para_parar=2, dias_futuro=0, verificar=False,
+    )
+
+    assert r.primer_dia_con_datos == HOY - 3 * DIA
 
 
 def test_avisa_al_terminar_cada_dia(db_session, salutem, ritmo):

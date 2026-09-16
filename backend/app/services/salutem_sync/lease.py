@@ -13,14 +13,22 @@ from sqlalchemy.orm import Session
 from app.models.salutem_sync import SalutemSyncLease
 
 NOMBRE = "salutem"
-DURACION = timedelta(minutes=10)
+DURACION = timedelta(minutes=30)
 _LIBRE = datetime(2000, 1, 1, tzinfo=timezone.utc)
 
 
 def tomar_lease(
     db: Session, dueno: str, ahora: datetime, duracion: timedelta = DURACION
 ) -> bool:
-    """Toma o renueva el lease. False si otro proceso lo tiene vigente. Confirma la transacción."""
+    """Toma o renueva el lease. False si otro proceso lo tiene vigente. Confirma la transacción.
+
+    `ahora` se normaliza a UTC: en Oracle `DateTime(timezone=True)` compila a DATE y
+    python-oracledb descarta el tzinfo al bindear, así que un `ahora` con otro huso
+    correría el lease.
+    """
+    if ahora.tzinfo is None:
+        raise ValueError("ahora debe ser un datetime aware (con tzinfo)")
+    ahora = ahora.astimezone(timezone.utc)
     resultado = db.execute(
         update(SalutemSyncLease)
         .where(

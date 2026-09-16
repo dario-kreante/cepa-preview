@@ -1,4 +1,7 @@
 from datetime import timedelta
+from zoneinfo import ZoneInfo
+
+import pytest
 
 from app.models.salutem_sync import SalutemSyncEjecucion, SalutemSyncLease
 from app.services.salutem_sync.bitacora import abrir_ejecucion, cerrar_ejecucion, registrar_omitida
@@ -23,7 +26,20 @@ def test_el_mismo_dueno_lo_renueva(db_session):
 
 def test_un_lease_vencido_se_recupera(db_session):
     assert tomar_lease(db_session, "proceso-a", AHORA)
-    assert tomar_lease(db_session, "proceso-b", AHORA + timedelta(minutes=11))
+    assert tomar_lease(db_session, "proceso-b", AHORA + timedelta(minutes=31))
+
+
+def test_tomar_lease_normaliza_horario_no_utc(db_session):
+    """Un `ahora` con tzinfo distinto de UTC (p.ej. hora local de Santiago) se comporta
+    igual que el mismo instante en UTC: otro dueño no puede tomarlo 1 minuto después."""
+    ahora_santiago = AHORA.astimezone(ZoneInfo("America/Santiago"))
+    assert tomar_lease(db_session, "proceso-a", ahora_santiago)
+    assert not tomar_lease(db_session, "proceso-b", AHORA + timedelta(minutes=1))
+
+
+def test_tomar_lease_rechaza_horario_naive(db_session):
+    with pytest.raises(ValueError):
+        tomar_lease(db_session, "proceso-a", AHORA.replace(tzinfo=None))
 
 
 def test_soltar_lo_libera(db_session):

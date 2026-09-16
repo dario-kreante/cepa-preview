@@ -4,6 +4,7 @@ Implementa `SalutemClientProtocol` con los mismos formatos crudos que la API
 real (claves camelCase, fechas como string) y registra cada llamada.
 """
 
+from collections.abc import Callable
 from datetime import date
 
 from app.integrations.salutem.errors import (
@@ -40,6 +41,8 @@ class SalutemFalso:
         # Cuántas de las próximas llamadas fallan con SalutemUnavailableError.
         self.caidas_pendientes = 0
         self.credencial_rechazada = False
+        # Hook de prueba: se invoca al empezar `listar_citas`, después de `_registrar`.
+        self.antes_de_listar: Callable[[date, int], None] | None = None
 
     # ── Carga de datos ─────────────────────────────────────────────────────
     def agregar_persona(self, salutem_id: int, rut: str = "12345678-5", **extra) -> None:
@@ -116,6 +119,8 @@ class SalutemFalso:
         por: TipoFechaCita = TipoFechaCita.FECHA_CITA,
     ) -> list[CitaSalutem]:
         self._registrar("listar_citas", dia, int(estado), int(por))
+        if self.antes_de_listar is not None:
+            self.antes_de_listar(dia, int(estado))
         if (dia, int(estado)) in self.dias_con_error:
             raise SalutemRequestError("rechazada", codigo="ERROR_INTERVALO_SUPERADO")
         campo = "citaFecha" if por == TipoFechaCita.FECHA_CITA else "citaFechaCreacion"

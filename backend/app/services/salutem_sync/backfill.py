@@ -23,6 +23,14 @@ from app.services.salutem_sync.tipos import Contadores, Resultado
 
 DIAS_FUTURO = 180
 _UN_DIA = timedelta(days=1)
+# Días seguidos que fallan por completo (sin completar y sin citas) antes de abortar.
+# Sin este tope, un rango de fechas que SALUTEM rechaza (p.ej. muy antiguo) se
+# confundiría con días vacíos y el backfill gastaría miles de llamadas en vano.
+DIAS_FALLIDOS_PARA_ABORTAR = 7
+
+
+class BackfillAbortadoError(RuntimeError):
+    """El backfill abortó tras varios días seguidos que fallaron por completo."""
 
 
 @dataclass
@@ -66,6 +74,7 @@ def ejecutar_backfill(
 
     dia = hoy
     vacios = 0
+    fallidos_seguidos = 0
     while True:
         if desde is not None and dia < desde:
             break
@@ -74,20 +83,37 @@ def ejecutar_backfill(
         registrado = db.get(SalutemSyncDia, (dia, int(tipo))) if dia < hoy else None
         if registrado is not None:
             citas = registrado.citas
+            completo = True  # Un día registrado es completo por definición.
         else:
             barrido = barrer_dia(db, cliente, ritmo, dia, tipo, ahora)
             resultado.sumar_dia(barrido)
             citas = barrido.citas
+            completo = barrido.completo
             # Hoy no se registra: sigue cambiando. Un día con errores tampoco: se reintenta.
             if barrido.completo and dia < hoy:
                 db.add(SalutemSyncDia(fecha=dia, tipo=int(tipo), citas=citas, completado_en=ahora))
                 db.commit()
             al_terminar_dia()
-        if citas > 0:
-            vacios = 0
-            resultado.primer_dia_con_datos = dia
+        if not completo and citas == 0:
+            # Un día que falló entero no es un día vacío: no sabemos si tenía citas.
+            # Contarlo como vacío haría que un rango rechazado por SALUTEM (p.ej. muy
+            # antiguo) se confundiera con "no hay más datos" y gastara miles de
+            # llamadas antes de pararse. En cambio, si fallan demasiados seguidos,
+            # se aborta explícitamente.
+            fallidos_seguidos += 1
+            if fallidos_seguidos >= DIAS_FALLIDOS_PARA_ABORTAR:
+                raise BackfillAbortadoError(
+                    f"backfill abortado: {fallidos_seguidos} días fallidos seguidos "
+                    f"hasta {dia.isoformat()}; últimos errores: "
+                    f"{resultado.errores[-fallidos_seguidos:]}"
+                )
         else:
-            vacios += 1
+            fallidos_seguidos = 0
+            if citas > 0:
+                vacios = 0
+                resultado.primer_dia_con_datos = dia
+            else:
+                vacios += 1
         dia -= _UN_DIA
 
     if verificar:
@@ -108,8 +134,16 @@ def _verificar_completitud(
     personas = db.scalars(select(SalutemPersona.salutem_id).order_by(SalutemPersona.salutem_id)).all()
     limite = resultado.primer_dia_con_datos
     for n, persona_id in enumerate(personas, start=1):
+        # Una sola consulta por persona (sin cargar el CLOB de contenido) en vez de un
+        # `db.get` por cada cita: `copia` hace flush tras cada `add`, así que el select
+        # ve también las atenciones agregadas en esta misma transacción.
+        ya = set(
+            db.scalars(
+                select(SalutemAtencion.cita_id).where(SalutemAtencion.persona_id == persona_id)
+            )
+        )
         for cita in ritmo.llamar(cliente.listar_atenciones, persona_id):
-            if db.get(SalutemAtencion, cita.cita_id) is not None:
+            if cita.cita_id in ya:
                 continue
             guardado = traer_atencion(
                 db, cliente, ritmo, persona_id, cita.cita_id, ahora, resultado.contadores
