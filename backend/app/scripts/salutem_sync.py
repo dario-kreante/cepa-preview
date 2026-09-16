@@ -10,6 +10,7 @@ Uso (desde backend/):
 import argparse
 import json
 import logging
+import os
 import sys
 from datetime import date, datetime, timezone
 from logging.handlers import RotatingFileHandler
@@ -36,48 +37,68 @@ def construir_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _configurar_log(ruta: str) -> None:
-    if ruta:
+def _ruta_log_por_modo(ruta: str, modo: str) -> str:
+    """Un archivo de log por modo: evita que dos procesos roten el mismo archivo.
+
+    "salutem-sync.log" + "caliente" -> "salutem-sync-caliente.log".
+    """
+    if not ruta:
+        return ruta
+    raiz, ext = os.path.splitext(ruta)
+    return f"{raiz}-{modo}{ext}"
+
+
+def _configurar_log(ruta: str, modo: str) -> None:
+    ruta_modo = _ruta_log_por_modo(ruta, modo)
+    if ruta_modo:
         handler: logging.Handler = RotatingFileHandler(
-            ruta, maxBytes=10 * 1024 * 1024, backupCount=5, encoding="utf-8"
+            ruta_modo, maxBytes=10 * 1024 * 1024, backupCount=5, encoding="utf-8"
         )
     else:
         handler = logging.StreamHandler()
     handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s %(message)s"))
-    raiz = logging.getLogger()
-    raiz.setLevel(logging.INFO)
-    raiz.addHandler(handler)
+    logging.basicConfig(handlers=[handler], level=logging.INFO, force=True)
+    # httpx/httpcore son muy verborrágicos en INFO (loguean cada request); no aportan nada
+    # al log del sync y solo tapan lo que sí importa.
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("httpcore").setLevel(logging.WARNING)
 
 
 def main(argv: list[str] | None = None) -> int:
     args = construir_parser().parse_args(argv)
-    settings = get_settings()
-    _configurar_log(settings.salutem_sync_log)
+    try:
+        settings = get_settings()
+        _configurar_log(settings.salutem_sync_log, args.modo)
 
-    with SessionLocal() as db:
-        if args.modo == "estado":
-            estado = estado_sync(db, datetime.now(timezone.utc))
-            print(json.dumps(estado.model_dump(mode="json"), indent=2, ensure_ascii=False))
-            return 0
-        if not settings.salutem_sync_habilitado:
-            logging.getLogger("salutem_sync").info(
-                "Sync SALUTEM deshabilitado (SALUTEM_SYNC_HABILITADO=false)"
+        with SessionLocal() as db:
+            if args.modo == "estado":
+                estado = estado_sync(db, datetime.now(timezone.utc))
+                print(json.dumps(estado.model_dump(mode="json"), indent=2, ensure_ascii=False))
+                return 0
+            if not settings.salutem_sync_habilitado:
+                logging.getLogger("salutem_sync").info(
+                    "Sync SALUTEM deshabilitado (SALUTEM_SYNC_HABILITADO=false)"
+                )
+                return 0
+            return correr(
+                args.modo,
+                db,
+                get_salutem_client(),
+                Ritmo(settings.salutem_sync_llamadas_por_seg),
+                ahora=lambda: datetime.now(timezone.utc),
+                habilitado=True,
+                opciones=Opciones(
+                    desde=getattr(args, "desde", None),
+                    verificar=not getattr(args, "sin_verificar", False),
+                    dias_vacios_para_parar=settings.salutem_backfill_dias_vacios,
+                    vincular_todo=getattr(args, "todo", False),
+                ),
             )
-            return 0
-        return correr(
-            args.modo,
-            db,
-            get_salutem_client(),
-            Ritmo(settings.salutem_sync_llamadas_por_seg),
-            ahora=lambda: datetime.now(timezone.utc),
-            habilitado=True,
-            opciones=Opciones(
-                desde=getattr(args, "desde", None),
-                verificar=not getattr(args, "sin_verificar", False),
-                dias_vacios_para_parar=settings.salutem_backfill_dias_vacios,
-                vincular_todo=getattr(args, "todo", False),
-            ),
+    except Exception:
+        logging.getLogger("salutem_sync").exception(
+            "Falla inesperada en el sync SALUTEM (modo=%s)", args.modo
         )
+        return 1
 
 
 if __name__ == "__main__":

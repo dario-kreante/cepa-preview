@@ -1,8 +1,25 @@
 from datetime import datetime, timedelta, timezone
 
 from app.models.salutem_sync import SalutemSyncEjecucion
+from app.schemas.salutem_sync import EjecucionRead
 
 URL = "/api/v1/salutem/sync/estado"
+
+
+def test_ejecucion_read_asume_utc_en_datetimes_naive():
+    # Oracle devuelve naive UTC; sin normalizar, el JSON queda sin offset.
+    ejecucion = EjecucionRead(
+        modo="caliente",
+        estado="ok",
+        inicio=datetime(2026, 9, 16, 12, 0, 0),
+        fin=None,
+        llamadas=1,
+        nuevos=0,
+        cambiados=0,
+        desaparecidos=0,
+        error=None,
+    )
+    assert ejecucion.inicio.tzinfo == timezone.utc
 
 
 def _ejecucion(db, modo, estado, hace_min):

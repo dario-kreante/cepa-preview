@@ -1,6 +1,6 @@
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 
 
 class EjecucionRead(BaseModel):
@@ -15,6 +15,15 @@ class EjecucionRead(BaseModel):
     cambiados: int
     desaparecidos: int
     error: str | None
+
+    @field_validator("inicio", "fin", mode="after")
+    @classmethod
+    def _asumir_utc_si_naive(cls, valor: datetime | None) -> datetime | None:
+        # Oracle devuelve datetimes naive en UTC; sin esto, pydantic los serializa
+        # sin offset y el consumidor no sabe en qué zona están.
+        if valor is not None and valor.tzinfo is None:
+            return valor.replace(tzinfo=timezone.utc)
+        return valor
 
 
 class EstadoSyncRead(BaseModel):
