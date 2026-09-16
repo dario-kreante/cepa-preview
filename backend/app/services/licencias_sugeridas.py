@@ -53,7 +53,12 @@ def sugerir_licencias(db: Session, folio: str) -> list[LicenciaSugeridaRead]:
     ingreso = _obtener_ingreso_por_folio(db, folio)
     fichas = db.scalars(
         select(FichaClinica)
-        .where(FichaClinica.folio == folio, FichaClinica.origen == "SALUTEM")
+        .where(
+            FichaClinica.folio == folio,
+            FichaClinica.origen == "SALUTEM",
+            # Una atención borrada en SALUTEM no debe seguir sugiriendo licencias.
+            FichaClinica.eliminada_en_origen.is_(None),
+        )
         .order_by(FichaClinica.id)
     ).all()
     registradas = list(

@@ -20,6 +20,8 @@ class FichaClinicaRead(BaseModel):
     origen: str
     contenido: dict[str, Any]
     created_at: datetime
+    salutem_cita_id: int | None = None
+    eliminada_en_origen: datetime | None = None
 
 
 class PullSalutemRequest(BaseModel):
