@@ -149,3 +149,98 @@ def test_refrescar_avisa_en_cada_lote_para_renovar_el_lease(db_session, con_dato
     )
 
     assert len(avisos) >= 2
+
+
+# ── Un registro rechazado no detiene la corrida ───────────────────────────────
+
+
+def test_atencion_rechazada_se_registra_y_sigue_con_las_demas(db_session, con_datos, ritmo):
+    con_datos.agregar_cita(9003, 501, DIA, EstadoCitaSalutem.ATENDIDO)
+    con_datos.agregar_atencion(9003, anamnesis="tercera")
+    con_datos.citas_con_error.add(9001)
+
+    r = barrer_dia(db_session, con_datos, ritmo, DIA, POR_CITA, AHORA)
+
+    assert not r.completo
+    assert r.errores == ["cita 9001: ERROR_RARO"]
+    assert r.citas == 3
+    assert db_session.get(SalutemCita, 9001) is not None
+    assert db_session.get(SalutemAtencion, 9001) is None
+    assert db_session.get(SalutemAtencion, 9003) is not None
+
+
+def test_atencion_rechazada_no_marca_desaparecidas(db_session, con_datos, ritmo):
+    barrer_dia(db_session, con_datos, ritmo, DIA, POR_CITA, AHORA)
+    del con_datos.citas[9002]
+    con_datos.atenciones[9001]["anamnesis"] = "editada"
+    con_datos.citas[9001]["citaHoraInicio"] = "10:00"  # la cita cambia: se vuelve a pedir
+    con_datos.citas_con_error.add(9001)
+
+    r = barrer_dia(db_session, con_datos, ritmo, DIA, POR_CITA, DESPUES)
+
+    assert not r.completo
+    assert r.contadores.desaparecidos == 0
+    assert db_session.get(SalutemCita, 9002).desaparecida_en is None
+
+
+def test_persona_rechazada_se_registra_y_sigue_con_las_demas_citas(db_session, con_datos, ritmo):
+    con_datos.agregar_persona(502, "11111111-1")
+    con_datos.agregar_cita(9003, 502, DIA, EstadoCitaSalutem.ATENDIDO)
+    con_datos.agregar_atencion(9003)
+    con_datos.personas_con_error.add(501)
+
+    r = barrer_dia(db_session, con_datos, ritmo, DIA, POR_CITA, AHORA)
+
+    assert not r.completo
+    assert "cita 9001: ERROR_RARO" in r.errores
+    assert db_session.get(SalutemPersona, 501) is None
+    assert db_session.get(SalutemPersona, 502) is not None
+    assert db_session.get(SalutemAtencion, 9003) is not None
+
+
+def test_listado_con_error_no_catalogado_se_registra(db_session, con_datos, ritmo):
+    from app.integrations.salutem.errors import SalutemError
+
+    con_datos.error_de_listado = SalutemError("raro", codigo="ERROR_RARO")
+    con_datos.dias_con_error.add((DIA, int(EstadoCitaSalutem.AGENDADO)))
+
+    r = barrer_dia(db_session, con_datos, ritmo, DIA, POR_CITA, AHORA)
+
+    assert not r.completo
+    assert r.errores == [f"{DIA.isoformat()} estado {int(EstadoCitaSalutem.AGENDADO)}: ERROR_RARO"]
+    assert db_session.get(SalutemAtencion, 9001) is not None
+
+
+def test_listado_con_caida_persistente_se_propaga(db_session, con_datos, ritmo):
+    from app.integrations.salutem.errors import SalutemUnavailableError
+
+    con_datos.caidas_pendientes = 100
+    with pytest.raises(SalutemUnavailableError):
+        barrer_dia(db_session, con_datos, ritmo, DIA, POR_CITA, AHORA)
+
+
+def test_refrescar_sigue_tras_una_atencion_rechazada(db_session, con_datos, ritmo):
+    con_datos.agregar_cita(9003, 501, DIA, EstadoCitaSalutem.ATENDIDO)
+    con_datos.agregar_atencion(9003)
+    barrer_dia(db_session, con_datos, ritmo, DIA, POR_CITA, AHORA)
+    con_datos.citas_con_error.add(9001)
+    con_datos.atenciones[9003]["anamnesis"] = "editada"
+    errores: list[str] = []
+
+    contadores = refrescar_atenciones(
+        db_session, con_datos, ritmo, DIA, DIA, DESPUES, errores=errores
+    )
+
+    assert contadores.cambiados == 1
+    assert errores == ["cita 9001: ERROR_RARO"]
+    assert db_session.get(SalutemAtencion, 9003).contenido["anamnesis"] == "editada"
+
+
+def test_credencial_rechazada_al_traer_atencion_se_propaga(db_session, con_datos, ritmo):
+    def rechazar(dia: date, estado: int) -> None:
+        if estado == int(EstadoCitaSalutem.ATENDIDO):
+            con_datos.credencial_rechazada = True
+
+    con_datos.antes_de_listar = rechazar
+    with pytest.raises(SalutemAuthError):
+        barrer_dia(db_session, con_datos, ritmo, DIA, POR_CITA, AHORA)

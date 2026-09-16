@@ -17,7 +17,14 @@ from app.integrations.salutem.models import TipoFechaCita
 from app.integrations.salutem.protocol import SalutemClientProtocol
 from app.models.salutem_copia import SalutemAtencion, SalutemPersona
 from app.models.salutem_sync import SalutemSyncDia
-from app.services.salutem_sync.barrido import ResultadoDia, barrer_dia, traer_atencion
+from app.integrations.salutem.errors import SalutemError
+from app.services.salutem_sync.barrido import (
+    ResultadoDia,
+    barrer_dia,
+    describir_error,
+    es_error_de_registro,
+    traer_atencion,
+)
 from app.services.salutem_sync.ritmo import Ritmo
 from app.services.salutem_sync.tipos import Contadores, Resultado
 
@@ -142,12 +149,25 @@ def _verificar_completitud(
                 select(SalutemAtencion.cita_id).where(SalutemAtencion.persona_id == persona_id)
             )
         )
-        for cita in ritmo.llamar(cliente.listar_atenciones, persona_id):
+        try:
+            listadas = ritmo.llamar(cliente.listar_atenciones, persona_id)
+        except SalutemError as e:
+            if not es_error_de_registro(e):
+                raise
+            resultado.errores.append(f"persona {persona_id}: {describir_error(e)}")
+            listadas = []
+        for cita in listadas:
             if cita.cita_id in ya:
                 continue
-            guardado = traer_atencion(
-                db, cliente, ritmo, persona_id, cita.cita_id, ahora, resultado.contadores
-            )
+            try:
+                guardado = traer_atencion(
+                    db, cliente, ritmo, persona_id, cita.cita_id, ahora, resultado.contadores
+                )
+            except SalutemError as e:
+                if not es_error_de_registro(e):
+                    raise
+                resultado.errores.append(f"cita {cita.cita_id}: {describir_error(e)}")
+                continue
             if guardado is Resultado.NUEVO:
                 resultado.atenciones_recuperadas += 1
                 if limite is not None and cita.fecha is not None and cita.fecha < limite:

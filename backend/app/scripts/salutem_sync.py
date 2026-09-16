@@ -2,7 +2,7 @@
 
 Uso (desde backend/):
     .venv/bin/python -m app.scripts.salutem_sync caliente | tibia | fria
-    .venv/bin/python -m app.scripts.salutem_sync backfill [--desde AAAA-MM-DD] [--sin-verificar]
+    .venv/bin/python -m app.scripts.salutem_sync backfill [--desde AAAA-MM-DD] [--dias-futuro N] [--sin-verificar]
     .venv/bin/python -m app.scripts.salutem_sync vincular [--todo]
     .venv/bin/python -m app.scripts.salutem_sync estado
 """
@@ -18,6 +18,7 @@ from logging.handlers import RotatingFileHandler
 from app.config import get_settings
 from app.db.session import SessionLocal
 from app.integrations.salutem.client import get_salutem_client
+from app.services.salutem_sync.backfill import DIAS_FUTURO
 from app.services.salutem_sync.estado import estado_sync
 from app.services.salutem_sync.orquestador import Opciones, correr
 from app.services.salutem_sync.ritmo import Ritmo
@@ -28,6 +29,9 @@ def construir_parser() -> argparse.ArgumentParser:
     modos = parser.add_subparsers(dest="modo", required=True)
     backfill = modos.add_parser("backfill", help="Carga inicial completa")
     backfill.add_argument("--desde", type=date.fromisoformat, help="No barrer antes de esta fecha")
+    backfill.add_argument(
+        "--dias-futuro", type=int, default=DIAS_FUTURO, help="Días hacia adelante a barrer (180)"
+    )
     backfill.add_argument("--sin-verificar", action="store_true", help="Omitir la verificación por persona")
     for modo in ("caliente", "tibia", "fria"):
         modos.add_parser(modo)
@@ -90,6 +94,7 @@ def main(argv: list[str] | None = None) -> int:
                 opciones=Opciones(
                     desde=getattr(args, "desde", None),
                     verificar=not getattr(args, "sin_verificar", False),
+                    dias_futuro=getattr(args, "dias_futuro", DIAS_FUTURO),
                     dias_vacios_para_parar=settings.salutem_backfill_dias_vacios,
                     vincular_todo=getattr(args, "todo", False),
                 ),

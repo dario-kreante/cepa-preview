@@ -153,3 +153,53 @@ def test_d12_pull_positivo_persiste_con_origen_salutem(monkeypatch, as_admin, db
         guard.create({})
     with pytest.raises(AssertionError, match="VIOLACIÓN D12"):
         guard.update("id", {})
+
+
+# ── Superficie del cliente SALUTEM: solo lectura ──────────────────────────────
+
+METODOS_LECTURA_APROBADOS = frozenset(
+    {"resolver_persona", "obtener_persona", "listar_atenciones", "obtener_atencion", "listar_citas"}
+)
+
+
+def _metodos_publicos(cls) -> set[str]:
+    return {n for n in dir(cls) if not n.startswith("_") and callable(getattr(cls, n))}
+
+
+@pytest.mark.parametrize("nombre", ["SalutemClientProtocol", "SalutemHttpClient", "SalutemStubClient"])
+def test_d12_el_cliente_solo_expone_los_metodos_de_lectura_aprobados(nombre):
+    """Un método nuevo en el cliente obliga a revisar este test: D12 se decide a propósito."""
+    from app.integrations.salutem import client, protocol
+
+    cls = getattr(client, nombre, None) or getattr(protocol, nombre)
+    assert _metodos_publicos(cls) == METODOS_LECTURA_APROBADOS
+
+
+def test_d12_el_cliente_http_solo_emite_get():
+    from datetime import date
+
+    import httpx
+
+    from app.integrations.salutem.client import SalutemHttpClient
+    from app.integrations.salutem.models import EstadoCitaSalutem
+
+    metodos: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        metodos.append(request.method)
+        return httpx.Response(200, json={"estado": True, "respuesta": []})
+
+    cliente = SalutemHttpClient(
+        base_url="https://qa.salutem.cl/api/integraciones/salutem",
+        empresa="96",
+        api_key="k",
+        transport=httpx.MockTransport(handler),
+    )
+    cliente.resolver_persona("11111111-1")
+    cliente.obtener_persona(1)
+    cliente.listar_atenciones(1)
+    cliente.obtener_atencion(1, 2)
+    cliente.listar_citas(date(2026, 9, 16), EstadoCitaSalutem.ATENDIDO)
+
+    assert len(metodos) == 5
+    assert set(metodos) == {"GET"}

@@ -63,3 +63,9 @@ def test_main_devuelve_1_si_la_bd_no_responde(monkeypatch):
     monkeypatch.setattr(cli, "SessionLocal", truena)
     monkeypatch.setattr(cli, "get_settings", lambda: Settings(_env_file=None))
     assert cli.main(["estado"]) == 1
+
+
+def test_parser_backfill_dias_futuro():
+    parser = cli.construir_parser()
+    assert parser.parse_args(["backfill"]).dias_futuro == 180
+    assert parser.parse_args(["backfill", "--dias-futuro", "30"]).dias_futuro == 30

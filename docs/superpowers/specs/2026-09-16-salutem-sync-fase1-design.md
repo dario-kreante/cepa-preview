@@ -152,7 +152,7 @@ atenciones en otros estados (por ejemplo Recepcionado), se amplía la lista en c
 
 ## Carga inicial (backfill)
 
-`python -m app.scripts.salutem_sync backfill [--desde AAAA-MM-DD] [--hasta-futuro 180]`
+`python -m app.scripts.salutem_sync backfill [--desde AAAA-MM-DD] [--dias-futuro 180]`
 
 1. **Futuro:** barre por fecha de cita desde mañana hasta +180 días (agendas ya creadas).
 2. **Pasado:** desde hoy hacia atrás, día por día, por fecha de cita. Salta los días ya registrados en

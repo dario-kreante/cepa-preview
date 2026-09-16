@@ -94,7 +94,7 @@ def ventana_tibia(
     resultado.contadores.sumar(
         refrescar_atenciones(
             db, cliente, ritmo, hoy - TIBIA_ATENCIONES_DIAS * _UN_DIA, hoy, ahora,
-            al_avanzar=al_terminar_dia,
+            al_avanzar=al_terminar_dia, errores=resultado.errores,
         )
     )
     return resultado
@@ -116,7 +116,7 @@ def ventana_fria(
     resultado.contadores.sumar(
         refrescar_atenciones(
             db, cliente, ritmo, hoy - FRIA_ATENCIONES_DIAS * _UN_DIA, hoy, ahora,
-            al_avanzar=al_terminar_dia,
+            al_avanzar=al_terminar_dia, errores=resultado.errores,
         )
     )
     return resultado

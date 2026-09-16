@@ -7,7 +7,11 @@ from datetime import date, datetime
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.integrations.salutem.errors import SalutemRequestError
+from app.integrations.salutem.errors import (
+    SalutemAuthError,
+    SalutemError,
+    SalutemUnavailableError,
+)
 from app.integrations.salutem.models import EstadoCitaSalutem, TipoFechaCita
 from app.integrations.salutem.protocol import SalutemClientProtocol
 from app.models.salutem_copia import SalutemAtencion, SalutemPersona
@@ -40,6 +44,22 @@ ORDEN_ESTADOS = (
 )
 
 
+def es_error_de_registro(e: BaseException) -> bool:
+    """True si el error afecta a un registro puntual y la corrida puede seguir.
+
+    Una credencial rechazada o SALUTEM caído (tras los reintentos de `Ritmo`) valen
+    para todo lo que queda: esos abortan la corrida. Cualquier otro rechazo
+    (petición inválida, código no catalogado) se registra y se salta ese registro.
+    """
+    return isinstance(e, SalutemError) and not isinstance(
+        e, (SalutemAuthError, SalutemUnavailableError)
+    )
+
+
+def describir_error(e: SalutemError) -> str:
+    return e.codigo or type(e).__name__
+
+
 @dataclass
 class ResultadoDia:
     fecha: date
@@ -69,21 +89,31 @@ def barrer_dia(
     for estado in ORDEN_ESTADOS:
         try:
             citas = ritmo.llamar(cliente.listar_citas, fecha, estado, tipo)
-        except SalutemRequestError as e:
+        except SalutemError as e:
+            if not es_error_de_registro(e):
+                raise
             resultado.completo = False
-            resultado.errores.append(f"{fecha.isoformat()} estado {int(estado)}: {e.codigo}")
+            resultado.errores.append(f"{fecha.isoformat()} estado {int(estado)}: {describir_error(e)}")
             continue
         for cita in citas:
             vistas.add(cita.cita_id)
             guardado = copia.guardar_cita(db, cita, ahora)
             resultado.contadores.registrar(guardado)
-            asegurar_persona(db, cliente, ritmo, cita.persona_id, ahora, resultado.contadores)
-            if cita.estado_id in ESTADOS_CON_ATENCION and (
-                guardado is not Resultado.IGUAL or not _atencion_existe(db, cita.cita_id)
-            ):
-                traer_atencion(
-                    db, cliente, ritmo, cita.persona_id, cita.cita_id, ahora, resultado.contadores
-                )
+            try:
+                asegurar_persona(db, cliente, ritmo, cita.persona_id, ahora, resultado.contadores)
+                if cita.estado_id in ESTADOS_CON_ATENCION and (
+                    guardado is not Resultado.IGUAL or not _atencion_existe(db, cita.cita_id)
+                ):
+                    traer_atencion(
+                        db, cliente, ritmo, cita.persona_id, cita.cita_id, ahora, resultado.contadores
+                    )
+            except SalutemError as e:
+                if not es_error_de_registro(e):
+                    raise
+                # Un día con un registro sin traer no está completo: no se marcan
+                # desaparecidas y el backfill no lo registra, así que se reintenta.
+                resultado.completo = False
+                resultado.errores.append(f"cita {cita.cita_id}: {describir_error(e)}")
 
     resultado.citas = len(vistas)
     # Solo por fecha de cita y con los 9 estados respondidos se puede afirmar que
@@ -104,7 +134,10 @@ def asegurar_persona(
     ahora: datetime,
     contadores: Contadores,
 ) -> None:
-    if db.get(SalutemPersona, persona_id) is not None:
+    existe = db.scalar(
+        select(SalutemPersona.salutem_id).where(SalutemPersona.salutem_id == persona_id)
+    )
+    if existe is not None:
         return
     persona = ritmo.llamar(cliente.obtener_persona, persona_id)
     if persona is not None:
@@ -145,11 +178,13 @@ def refrescar_atenciones(
     ahora: datetime,
     lote: int = 50,
     al_avanzar: Callable[[], None] = lambda: None,
+    errores: list[str] | None = None,
 ) -> Contadores:
     """Vuelve a traer las atenciones de un rango de fechas para detectar ediciones.
 
     `al_avanzar` se llama en cada lote confirmado: en la fría son cientos de llamadas
-    y el orquestador lo usa para renovar el lease.
+    y el orquestador lo usa para renovar el lease. Las atenciones que SALUTEM rechaza
+    se saltan y se anotan en `errores` (si se pasa).
     """
     contadores = Contadores()
     claves = db.execute(
@@ -162,7 +197,13 @@ def refrescar_atenciones(
         .order_by(SalutemAtencion.cita_id)
     ).all()
     for i, (persona_id, cita_id) in enumerate(claves, start=1):
-        traer_atencion(db, cliente, ritmo, persona_id, cita_id, ahora, contadores)
+        try:
+            traer_atencion(db, cliente, ritmo, persona_id, cita_id, ahora, contadores)
+        except SalutemError as e:
+            if not es_error_de_registro(e):
+                raise
+            if errores is not None:
+                errores.append(f"cita {cita_id}: {describir_error(e)}")
         if i % lote == 0:
             db.commit()
             al_avanzar()

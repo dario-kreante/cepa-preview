@@ -9,6 +9,7 @@ from datetime import date
 
 from app.integrations.salutem.errors import (
     SalutemAuthError,
+    SalutemError,
     SalutemRequestError,
     SalutemUnavailableError,
 )
@@ -30,6 +31,10 @@ def _normalizar_o_tal_cual(rut: str) -> str:
         return rut
 
 
+def _error_no_catalogado() -> SalutemError:
+    return SalutemError("no catalogado", codigo="ERROR_RARO")
+
+
 class SalutemFalso:
     def __init__(self) -> None:
         self.personas: dict[int, dict] = {}
@@ -38,6 +43,11 @@ class SalutemFalso:
         self.llamadas: list[tuple] = []
         # (dia, estado) que SALUTEM rechaza con SalutemRequestError.
         self.dias_con_error: set[tuple[date, int]] = set()
+        # Si se define, `dias_con_error` levanta este error en vez de SalutemRequestError.
+        self.error_de_listado: SalutemError | None = None
+        # Registros puntuales que SALUTEM rechaza con un código no catalogado.
+        self.citas_con_error: set[int] = set()
+        self.personas_con_error: set[int] = set()
         # Cuántas de las próximas llamadas fallan con SalutemUnavailableError.
         self.caidas_pendientes = 0
         self.credencial_rechazada = False
@@ -93,6 +103,8 @@ class SalutemFalso:
 
     def obtener_persona(self, salutem_id: int) -> PersonaSalutem | None:
         self._registrar("obtener_persona", salutem_id)
+        if salutem_id in self.personas_con_error:
+            raise _error_no_catalogado()
         p = self.personas.get(salutem_id)
         return PersonaSalutem.desde_api(p) if p else None
 
@@ -107,6 +119,8 @@ class SalutemFalso:
 
     def obtener_atencion(self, salutem_id: int, cita_id: int) -> AtencionSalutem | None:
         self._registrar("obtener_atencion", salutem_id, cita_id)
+        if cita_id in self.citas_con_error:
+            raise _error_no_catalogado()
         cita = self.citas.get(cita_id)
         if cita_id not in self.atenciones or cita is None or cita["personaId"] != salutem_id:
             return None
@@ -122,6 +136,8 @@ class SalutemFalso:
         if self.antes_de_listar is not None:
             self.antes_de_listar(dia, int(estado))
         if (dia, int(estado)) in self.dias_con_error:
+            if self.error_de_listado is not None:
+                raise self.error_de_listado
             raise SalutemRequestError("rechazada", codigo="ERROR_INTERVALO_SUPERADO")
         campo = "citaFecha" if por == TipoFechaCita.FECHA_CITA else "citaFechaCreacion"
         return [

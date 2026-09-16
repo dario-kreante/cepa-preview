@@ -41,9 +41,21 @@ Requiere aprobación explícita de Darío, la clave de producción y el aviso a 
 5. Carga inicial fuera de horario:
    `nohup ~/sige-cepa/run-salutem-sync.sh backfill > /dev/null 2>&1 &`
    Seguir con `tail -F ~/sige-cepa/logs/salutem-sync-backfill.log` (un archivo por modo; ver
-   la sección de logs más abajo). Se puede cortar y relanzar: retoma.
+   la sección de logs más abajo). Se puede cortar y relanzar: retoma (salta los días ya
+   registrados), pero:
+   - Una ejecución cortada (`kill`, `timeout`/SIGTERM, caída de la VM) no suelta el lease de
+     la base: queda tomado hasta 30 minutos. Si se relanza antes, la nueva ejecución registra
+     `omitida` y sale con código 0 sin hacer nada. Esperar 30 minutos desde el corte antes de
+     relanzar; si hay dudas, revisar con `run-salutem-sync.sh estado` (y el log del modo) que
+     el relanzamiento no haya quedado como `omitida`.
+   - Cada relanzamiento vuelve a barrer los 180 días futuros (~14 min a 2 llamadas/s) antes
+     de seguir con el pasado.
 6. Al terminar, revisar el log: primer día con datos, días con error y la advertencia de
    "atenciones anteriores" (si aparece, relanzar con `--desde` más antiguo).
+   Sin `--desde`, lo normal es que el backfill termine porque SALUTEM rechaza las fechas
+   antiguas: el log muestra `BackfillAbortadoError` con la fecha D donde abortó, y en ese
+   caso **no** corrieron la verificación por persona ni la vinculación. Relanzar con
+   `--desde` = D + 1 día (los días ya registrados se saltan) para que ambas se ejecuten.
 7. Instalar el cron de forma idempotente (usar rutas absolutas, no relativas al checkout):
    ```
    crontab -l > ~/crontab-backup-$(date +%F).txt
@@ -57,7 +69,8 @@ Requiere aprobación explícita de Darío, la clave de producción y el aviso a 
    entradas (por ejemplo tras editar `crontab-salutem-sync.txt` y copiarlo de nuevo).
 
    Para revertir: `crontab -l | grep -v 'run-salutem-sync' | crontab -` (o restaurar el
-   backup del paso 1 con `crontab ~/crontab-backup-<fecha>.txt`).
+   backup hecho en la primera línea de este paso 7 con
+   `crontab ~/crontab-backup-<fecha>.txt`).
 
 ## Logs
 - Cada modo escribe su propio archivo, derivado de `SALUTEM_SYNC_LOG`: con
@@ -74,9 +87,24 @@ Requiere aprobación explícita de Darío, la clave de producción y el aviso a 
 ## Operación diaria
 - Estado: `~/sige-cepa/run-salutem-sync.sh estado` o `GET /api/v1/salutem/sync/estado` (Coordinación).
 - `atrasado: true` → revisar `~/sige-cepa/logs/salutem-sync-caliente.log` y la última ejecución con `estado = error`.
-- `con_errores` → algún día fue rechazado por SALUTEM; la ventana siguiente lo reintenta.
+- `con_errores` → la ejecución terminó pero algo quedó sin traer: un día rechazado por
+  SALUTEM, un registro puntual rechazado (una cita, persona o atención), o un error de
+  vinculación. El detalle está en el campo `error` de esa ejecución. La ventana siguiente
+  lo reintenta. Solo una credencial rechazada o SALUTEM caído tras los reintentos detienen
+  la ejecución (`estado = error`).
+- Cada noche la `fria` (~35–40 min) tiene el lease: entre ~03:30 y 04:15 las `caliente`
+  quedan `omitida` y `estado` puede mostrar `atrasado: true`. Es esperado; si sigue atrasado
+  pasadas las 04:30, revisar.
 - Revincular todo tras cambiar la regla de ventana: `run-salutem-sync.sh vincular --todo`
   (también requiere `SALUTEM_SYNC_HABILITADO=true`).
+
+## Límites conocidos
+- Una atención borrada en SALUTEM con fecha de más de 30 días atrás no se detecta en la
+  operación diaria (la `fria` relee solo el último mes): solo la marca una nueva
+  verificación de backfill.
+- Achicar la ventana de un ingreso o corregir el RUT de un paciente no desvincula las fichas
+  ya vinculadas. Las fichas que correspondan tras corregir un RUT sí se vinculan en la `fria`
+  de esa noche.
 
 ## Apagar
 `SALUTEM_SYNC_HABILITADO=false` en el `.env`. El cron sigue corriendo pero cada ejecución

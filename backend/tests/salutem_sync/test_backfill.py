@@ -143,3 +143,60 @@ def test_avisa_al_terminar_cada_dia(db_session, salutem, ritmo):
         al_terminar_dia=lambda: avisos.append(1),
     )
     assert len(avisos) == 4  # 2 futuros + hoy + ayer
+
+
+def test_la_verificacion_sigue_tras_registros_rechazados(db_session, salutem, ritmo):
+    salutem.agregar_persona(501)
+    salutem.agregar_persona(502, "11111111-1")
+    salutem.agregar_cita(9001, 501, HOY, EstadoCitaSalutem.AGENDADO)
+    salutem.agregar_cita(9002, 502, HOY, EstadoCitaSalutem.AGENDADO)
+    # Atenciones que el barrido no ve (la cita no está Atendida): solo las trae la verificación.
+    salutem.agregar_cita(9100, 501, HOY - 400 * DIA, EstadoCitaSalutem.ATENDIDO)
+    salutem.agregar_atencion(9100)
+    salutem.agregar_cita(9101, 501, HOY - 401 * DIA, EstadoCitaSalutem.ATENDIDO)
+    salutem.agregar_atencion(9101)
+    salutem.agregar_cita(9200, 502, HOY - 400 * DIA, EstadoCitaSalutem.ATENDIDO)
+    salutem.agregar_atencion(9200)
+    salutem.citas_con_error.add(9100)
+    ejecutar_backfill(
+        db_session, salutem, ritmo, hoy=HOY, ahora=AHORA,
+        desde=HOY, dias_futuro=0, verificar=False,
+    )
+
+    r = ejecutar_backfill(
+        db_session, salutem, ritmo, hoy=HOY, ahora=AHORA,
+        desde=HOY, dias_futuro=0, verificar=True,
+    )
+
+    assert "cita 9100: ERROR_RARO" in r.errores
+    assert db_session.get(SalutemAtencion, 9101) is not None
+    assert db_session.get(SalutemAtencion, 9200) is not None
+
+
+def test_la_verificacion_sigue_si_se_rechaza_el_listado_de_una_persona(
+    db_session, salutem, ritmo, monkeypatch
+):
+    from app.integrations.salutem.errors import SalutemError
+
+    salutem.agregar_persona(501)
+    salutem.agregar_persona(502, "11111111-1")
+    salutem.agregar_cita(9001, 501, HOY, EstadoCitaSalutem.AGENDADO)
+    salutem.agregar_cita(9002, 502, HOY, EstadoCitaSalutem.AGENDADO)
+    salutem.agregar_cita(9200, 502, HOY - 400 * DIA, EstadoCitaSalutem.ATENDIDO)
+    salutem.agregar_atencion(9200)
+    original = salutem.listar_atenciones
+
+    def listar(salutem_id):
+        if salutem_id == 501:
+            raise SalutemError("raro", codigo="ERROR_RARO")
+        return original(salutem_id)
+
+    monkeypatch.setattr(salutem, "listar_atenciones", listar)
+
+    r = ejecutar_backfill(
+        db_session, salutem, ritmo, hoy=HOY, ahora=AHORA,
+        desde=HOY, dias_futuro=0, verificar=True,
+    )
+
+    assert "persona 501: ERROR_RARO" in r.errores
+    assert db_session.get(SalutemAtencion, 9200) is not None
