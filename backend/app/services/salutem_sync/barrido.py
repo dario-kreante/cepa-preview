@@ -1,5 +1,6 @@
 """Barrido de SALUTEM hacia la copia local: un día a la vez (solo lectura, D12)."""
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import date, datetime
 
@@ -143,8 +144,13 @@ def refrescar_atenciones(
     hasta: date,
     ahora: datetime,
     lote: int = 50,
+    al_avanzar: Callable[[], None] = lambda: None,
 ) -> Contadores:
-    """Vuelve a traer las atenciones de un rango de fechas para detectar ediciones."""
+    """Vuelve a traer las atenciones de un rango de fechas para detectar ediciones.
+
+    `al_avanzar` se llama en cada lote confirmado: en la fría son cientos de llamadas
+    y el orquestador lo usa para renovar el lease.
+    """
     contadores = Contadores()
     claves = db.execute(
         select(SalutemAtencion.persona_id, SalutemAtencion.cita_id)
@@ -159,5 +165,6 @@ def refrescar_atenciones(
         traer_atencion(db, cliente, ritmo, persona_id, cita_id, ahora, contadores)
         if i % lote == 0:
             db.commit()
+            al_avanzar()
     db.commit()
     return contadores

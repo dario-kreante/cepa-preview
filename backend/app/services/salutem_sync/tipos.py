@@ -1,6 +1,7 @@
 """Tipos compartidos por los módulos del sync."""
 
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from enum import Enum
 
 MODOS = ("backfill", "caliente", "tibia", "fria", "vincular")
@@ -30,3 +31,15 @@ class Contadores:
         self.nuevos += otros.nuevos
         self.cambiados += otros.cambiados
         self.desaparecidos += otros.desaparecidos
+
+
+def a_utc(ahora: datetime) -> datetime:
+    """Normaliza a UTC antes de guardar o comparar.
+
+    En Oracle `DateTime(timezone=True)` compila a DATE y python-oracledb descarta el
+    tzinfo al bindear: un `ahora` en otro huso quedaría corrido. Un naive se rechaza
+    porque no hay forma de saber en qué huso está.
+    """
+    if ahora.tzinfo is None:
+        raise ValueError("ahora debe ser un datetime aware (con tzinfo)")
+    return ahora.astimezone(timezone.utc)

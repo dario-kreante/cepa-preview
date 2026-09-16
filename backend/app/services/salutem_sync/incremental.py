@@ -68,8 +68,11 @@ def ventana_caliente(
     resultado = ResultadoVentana()
     local = ahora.astimezone(ZONA)
     hoy = local.date()
-    # Pasada la medianoche, lo creado en los últimos minutos de ayer aún no se barrió.
-    creacion = [hoy - _UN_DIA, hoy] if local.hour < 1 else [hoy]
+    # En la primera hora del día también se barre la creación de ayer: lo creado en sus
+    # últimos minutos aún no se barrió. Restar una hora real (sobre `ahora`, no sobre la
+    # hora local, cuya aritmética es de reloj) en vez de mirar `hour < 1` cubre el salto
+    # 24:00→01:00 del cambio de horario y una corrida perdida cerca de la medianoche.
+    creacion = sorted({hoy_en_santiago(ahora - timedelta(hours=1)), hoy})
     _barrer(db, cliente, ritmo, creacion, TipoFechaCita.FECHA_CREACION, ahora, resultado, al_terminar_dia)
     _barrer(db, cliente, ritmo, [hoy, hoy + _UN_DIA], TipoFechaCita.FECHA_CITA, ahora, resultado, al_terminar_dia)
     return resultado
@@ -89,7 +92,10 @@ def ventana_tibia(
         TipoFechaCita.FECHA_CITA, ahora, resultado, al_terminar_dia,
     )
     resultado.contadores.sumar(
-        refrescar_atenciones(db, cliente, ritmo, hoy - TIBIA_ATENCIONES_DIAS * _UN_DIA, hoy, ahora)
+        refrescar_atenciones(
+            db, cliente, ritmo, hoy - TIBIA_ATENCIONES_DIAS * _UN_DIA, hoy, ahora,
+            al_avanzar=al_terminar_dia,
+        )
     )
     return resultado
 
@@ -108,6 +114,9 @@ def ventana_fria(
         TipoFechaCita.FECHA_CITA, ahora, resultado, al_terminar_dia,
     )
     resultado.contadores.sumar(
-        refrescar_atenciones(db, cliente, ritmo, hoy - FRIA_ATENCIONES_DIAS * _UN_DIA, hoy, ahora)
+        refrescar_atenciones(
+            db, cliente, ritmo, hoy - FRIA_ATENCIONES_DIAS * _UN_DIA, hoy, ahora,
+            al_avanzar=al_terminar_dia,
+        )
     )
     return resultado

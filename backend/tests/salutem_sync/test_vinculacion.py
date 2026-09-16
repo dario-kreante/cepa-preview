@@ -8,7 +8,7 @@ from app.models.ficha_clinica import FichaClinica
 from app.models.ingreso import Ingreso
 from app.models.paciente import Paciente
 from app.models.salutem_copia import SalutemAtencion
-from app.services.salutem_sync import copia
+from app.services.salutem_sync import copia, vinculacion
 from app.services.salutem_sync.vinculacion import ACTOR, vincular
 from tests.salutem_sync.conftest import AHORA
 
@@ -129,3 +129,63 @@ def test_un_ingreso_nuevo_recibe_atenciones_ya_vinculadas(db_session):
     r = vincular(db_session, AHORA, ingresos_desde=hace_un_rato)
 
     assert r.fichas_nuevas == 1
+
+
+def test_vincular_avisa_en_cada_lote_para_renovar_el_lease(db_session):
+    _ingreso(db_session, _paciente(db_session))
+    _copiar(db_session)
+    avisos = []
+
+    vincular(db_session, AHORA, lote=1, al_avanzar=lambda: avisos.append(1))
+
+    assert avisos
+
+
+def test_una_atencion_que_falla_no_bloquea_a_las_demas(db_session, monkeypatch):
+    ingreso = _ingreso(db_session, _paciente(db_session))
+    _copiar(db_session, cita_id=9001)
+    _copiar(db_session, cita_id=9002)
+    aplicar_real = vinculacion._aplicar
+
+    def aplicar_que_falla(db, atencion, *args, **kwargs):
+        if atencion.cita_id == 9001:
+            raise RuntimeError("contenido corrupto")
+        return aplicar_real(db, atencion, *args, **kwargs)
+
+    monkeypatch.setattr(vinculacion, "_aplicar", aplicar_que_falla)
+
+    r = vincular(db_session, AHORA)
+
+    assert [f.salutem_cita_id for f in _fichas(db_session)] == [9002]
+    assert _fichas(db_session)[0].ingreso_id == ingreso.id
+    assert db_session.get(SalutemAtencion, 9001).hash_vinculado is None
+    assert db_session.get(SalutemAtencion, 9002).hash_vinculado is not None
+    assert len(r.errores) == 1
+    assert "cita 9001: RuntimeError" in r.errores[0]
+    assert r.fichas_nuevas == 1
+
+
+def test_ingresos_superpuestos_reciben_una_ficha_cada_uno_sin_duplicar(db_session):
+    paciente = _paciente(db_session)
+    uno = _ingreso(db_session, paciente, folio="F-SYNC-1", desde=date(2026, 1, 1))
+    dos = _ingreso(db_session, paciente, folio="F-SYNC-2", desde=date(2026, 2, 1))
+    _copiar(db_session, fecha=date(2026, 2, 10))
+
+    primera = vincular(db_session, AHORA, todo=True)
+    segunda = vincular(db_session, AHORA, todo=True)
+
+    assert primera.fichas_nuevas == 2
+    assert sorted(f.ingreso_id for f in _fichas(db_session)) == sorted([uno.id, dos.id])
+    assert segunda.fichas_nuevas == 0
+    assert len(_fichas(db_session)) == 2
+
+
+def test_ingresos_desde_no_revisa_pacientes_con_ingresos_anteriores_al_corte(db_session):
+    _ingreso(db_session, _paciente(db_session))
+    _copiar(db_session)
+    vincular(db_session, AHORA)
+
+    corte = datetime.now(timezone.utc) + timedelta(minutes=5)
+    r = vincular(db_session, AHORA, ingresos_desde=corte)
+
+    assert r.atenciones_revisadas == 0

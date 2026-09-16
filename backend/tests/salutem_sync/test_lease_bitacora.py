@@ -6,7 +6,7 @@ import pytest
 from app.models.salutem_sync import SalutemSyncEjecucion, SalutemSyncLease
 from app.services.salutem_sync.bitacora import abrir_ejecucion, cerrar_ejecucion, registrar_omitida
 from app.services.salutem_sync.lease import soltar_lease, tomar_lease
-from app.services.salutem_sync.tipos import Contadores
+from app.services.salutem_sync.tipos import Contadores, a_utc
 from tests.salutem_sync.conftest import AHORA
 
 
@@ -76,3 +76,24 @@ def test_bitacora_recorta_errores_largos(db_session):
 def test_registra_una_ejecucion_omitida(db_session):
     omitida = registrar_omitida(db_session, "caliente", AHORA)
     assert db_session.get(SalutemSyncEjecucion, omitida.id).estado == "omitida"
+
+
+def test_abrir_marca_como_error_las_ejecuciones_abandonadas(db_session):
+    abandonada = abrir_ejecucion(db_session, "fria", AHORA - timedelta(hours=2))
+    reciente = abrir_ejecucion(db_session, "caliente", AHORA - timedelta(minutes=5))
+
+    abrir_ejecucion(db_session, "tibia", AHORA)
+
+    db_session.expire_all()
+    assert db_session.get(SalutemSyncEjecucion, abandonada.id).estado == "error"
+    assert "abandonada" in db_session.get(SalutemSyncEjecucion, abandonada.id).error
+    assert db_session.get(SalutemSyncEjecucion, abandonada.id).fin is not None
+    assert db_session.get(SalutemSyncEjecucion, reciente.id).estado == "en_curso"
+
+
+def test_a_utc_rechaza_naive_y_convierte_a_utc():
+    with pytest.raises(ValueError):
+        a_utc(AHORA.replace(tzinfo=None))
+    convertido = a_utc(AHORA.astimezone(ZoneInfo("America/Santiago")))
+    assert convertido == AHORA
+    assert convertido.utcoffset() == timedelta(0)

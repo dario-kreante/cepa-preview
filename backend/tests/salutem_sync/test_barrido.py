@@ -136,3 +136,16 @@ def test_refrescar_detecta_ediciones_y_atenciones_borradas(db_session, con_datos
     assert contadores.desaparecidos == 1
     assert db_session.get(SalutemAtencion, 9001).contenido["anamnesis"] == "editada"
     assert db_session.get(SalutemAtencion, 9003).desaparecida_en is not None
+
+
+def test_refrescar_avisa_en_cada_lote_para_renovar_el_lease(db_session, con_datos, ritmo):
+    con_datos.agregar_cita(9003, 501, DIA, EstadoCitaSalutem.ATENDIDO)
+    con_datos.agregar_atencion(9003)
+    barrer_dia(db_session, con_datos, ritmo, DIA, POR_CITA, AHORA)
+    avisos = []
+
+    refrescar_atenciones(
+        db_session, con_datos, ritmo, DIA, DIA, DESPUES, lote=1, al_avanzar=lambda: avisos.append(1)
+    )
+
+    assert len(avisos) >= 2

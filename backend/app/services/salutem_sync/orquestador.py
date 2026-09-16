@@ -78,22 +78,26 @@ def correr(
         registrar_omitida(db, modo, inicio)
         return 0
 
-    ingresos_desde = _ultimo_inicio_exitoso(db)
-    ejecucion = abrir_ejecucion(db, modo, inicio)
-
     def renovar() -> None:
         if not tomar_lease(db, dueno, ahora()):
             raise LeasePerdidoError(f"El lease dejó de pertenecer a {dueno}")
 
+    ejecucion = None
     try:
+        ingresos_desde = _ultimo_inicio_exitoso(db)
+        ejecucion = abrir_ejecucion(db, modo, inicio)
         contadores, errores = _ejecutar_modo(modo, db, cliente, ritmo, inicio, opciones, renovar)
         vinculacion = vincular(
             db,
             ahora(),
             todo=modo in _VINCULAN_TODO or (modo == "vincular" and opciones.vincular_todo),
             ingresos_desde=ingresos_desde,
+            al_avanzar=renovar,
         )
+        errores = errores + vinculacion.errores
         log.info("Modo %s terminado: %s, vinculación %s", modo, contadores, vinculacion)
+        # Si otro proceso tomó el lease, esta corrida pudo pisarse con la suya: no es `ok`.
+        renovar()
         cerrar_ejecucion(
             db,
             ejecucion,
@@ -105,15 +109,24 @@ def correr(
         )
         return 0
     except Exception as e:  # noqa: BLE001 — cualquier falla debe quedar en la bitácora
-        db.rollback()
         log.exception("Modo %s falló", modo)
-        cerrar_ejecucion(
-            db, ejecucion, estado="error", ahora=ahora(),
-            llamadas=ritmo.llamadas, error=f"{type(e).__name__}: {e}",
-        )
+        # Si la base misma está caída, registrar el error también falla: se loguea y
+        # el código de salida igual informa el error al cron.
+        try:
+            db.rollback()
+            if ejecucion is not None:
+                cerrar_ejecucion(
+                    db, ejecucion, estado="error", ahora=ahora(),
+                    llamadas=ritmo.llamadas, error=f"{type(e).__name__}: {e}",
+                )
+        except Exception:  # noqa: BLE001
+            log.exception("No se pudo registrar el error del modo %s en la bitácora", modo)
         return 1
     finally:
-        soltar_lease(db, dueno)
+        try:
+            soltar_lease(db, dueno)
+        except Exception:  # noqa: BLE001 — el lease vence solo al cabo de DURACION
+            log.exception("No se pudo soltar el lease de %s", dueno)
 
 
 def _ejecutar_modo(

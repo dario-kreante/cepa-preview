@@ -36,7 +36,10 @@ class FichaClinica(Base):
     # No único a propósito: la misma cita SALUTEM puede mapear legítimamente a fichas
     # de más de un ingreso del mismo paciente (ventanas que se superponen), y filas
     # legacy pueden repetir citaId. La deduplicación por (ingreso_id, salutem_cita_id)
-    # la hace la aplicación (vinculación / pull), bajo el lease del sync.
+    # la hace la aplicación: la vinculación y el pull manual buscan antes de insertar.
+    # El pull manual no toma el lease del sync, así que un pull y una corrida
+    # simultáneos aún podrían duplicar en una ventana estrecha; aceptado en la fase 1
+    # (las licencias sugeridas ya colapsan menciones repetidas).
     __table_args__ = (Index("ix_ficha_clin_sal_cita", "salutem_cita_id"),)
 
     id: Mapped[int] = mapped_column(BigInteger, Identity(always=False), primary_key=True)

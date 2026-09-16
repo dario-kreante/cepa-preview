@@ -66,3 +66,10 @@ def test_un_dia_con_error_queda_en_los_errores_de_la_ventana(db_session, salutem
     salutem.dias_con_error.add((HOY, int(EstadoCitaSalutem.ATENDIDO)))
     r = ventana_caliente(db_session, salutem, ritmo, AHORA)
     assert r.errores
+
+
+def test_caliente_tras_el_salto_de_horario_incluye_la_creacion_de_ayer(db_session, salutem, ritmo):
+    # 2026-09-06 en Chile: 24:00 pasa a 01:00. 04:30 UTC = 01:30 local, 30 min reales después de medianoche.
+    tras_el_salto = datetime(2026, 9, 6, 4, 30, tzinfo=timezone.utc)
+    ventana_caliente(db_session, salutem, ritmo, tras_el_salto)
+    assert (date(2026, 9, 5), CREACION) in _pares(salutem)

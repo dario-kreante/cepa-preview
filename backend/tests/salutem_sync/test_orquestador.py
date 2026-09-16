@@ -8,8 +8,10 @@ from app.models.ficha_clinica import FichaClinica
 from app.models.ingreso import Ingreso
 from app.models.paciente import Paciente
 from app.models.salutem_sync import SalutemSyncEjecucion, SalutemSyncLease
+from app.services.salutem_sync import orquestador
 from app.services.salutem_sync.lease import tomar_lease
 from app.services.salutem_sync.orquestador import Opciones, correr
+from app.services.salutem_sync.vinculacion import ResultadoVinculacion
 from tests.salutem_sync.conftest import AHORA
 
 HOY = date(2026, 9, 16)
@@ -104,3 +106,47 @@ def test_vincular_no_llama_a_salutem(db_session, salutem, ritmo):
     assert _correr(db_session, salutem, ritmo, modo="vincular", opciones=Opciones(vincular_todo=True)) == 0
     assert salutem.llamadas == []
     assert _ejecuciones(db_session, "vincular")[0].estado == "ok"
+
+
+def test_si_pierde_el_lease_termina_en_error_sin_soltar_el_ajeno(db_session, salutem, ritmo, monkeypatch):
+    llamadas = []
+
+    def tomar_una_vez(db, dueno, ahora):
+        llamadas.append(dueno)
+        if len(llamadas) == 1:
+            return tomar_lease(db, dueno, ahora)
+        # Otro proceso lo tomó mientras este trabajaba.
+        tomar_lease(db, "intruso", AHORA + timedelta(hours=1))
+        return False
+
+    monkeypatch.setattr(orquestador, "tomar_lease", tomar_una_vez)
+
+    assert _correr(db_session, salutem, ritmo, modo="vincular") == 1
+
+    (ejecucion,) = _ejecuciones(db_session, "vincular")
+    assert ejecucion.estado == "error"
+    assert "LeasePerdidoError" in ejecucion.error
+    assert db_session.get(SalutemSyncLease, "salutem").dueno == "intruso"
+
+
+def test_errores_de_vinculacion_dejan_la_ejecucion_con_errores(db_session, salutem, ritmo, monkeypatch):
+    def vincular_con_error(*args, **kwargs):
+        return ResultadoVinculacion(errores=["cita 9001: RuntimeError: x"])
+
+    monkeypatch.setattr(orquestador, "vincular", vincular_con_error)
+
+    assert _correr(db_session, salutem, ritmo, modo="vincular") == 0
+
+    (ejecucion,) = _ejecuciones(db_session, "vincular")
+    assert ejecucion.estado == "con_errores"
+    assert "cita 9001" in ejecucion.error
+
+
+def test_si_falla_al_abrir_la_bitacora_suelta_el_lease(db_session, salutem, ritmo, monkeypatch):
+    def abrir_que_falla(*args, **kwargs):
+        raise RuntimeError("bitácora caída")
+
+    monkeypatch.setattr(orquestador, "abrir_ejecucion", abrir_que_falla)
+
+    assert _correr(db_session, salutem, ritmo) == 1
+    assert db_session.get(SalutemSyncLease, "salutem").dueno is None
