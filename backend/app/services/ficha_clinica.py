@@ -30,7 +30,9 @@ def _obtener_ingreso_por_folio(db: Session, folio: str) -> Ingreso:
     return ingreso
 
 
-def crear_ficha(db: Session, data: FichaClinicaCreate) -> FichaClinica:
+def crear_ficha(
+    db: Session, data: FichaClinicaCreate, *, salutem_cita_id: int | None = None
+) -> FichaClinica:
     """Push: persiste datos clínicos recibidos en el dominio CEPA (D12)."""
     ingreso = _obtener_ingreso_por_folio(db, data.folio)
     ficha = FichaClinica(
@@ -38,6 +40,7 @@ def crear_ficha(db: Session, data: FichaClinicaCreate) -> FichaClinica:
         folio=data.folio,
         origen=data.origen,
         contenido=data.contenido,
+        salutem_cita_id=salutem_cita_id,
     )
     db.add(ficha)
     db.flush()
@@ -70,23 +73,19 @@ def _en_ventana_del_ingreso(fecha, ingreso: Ingreso) -> bool:
 
 
 def _cita_ids_ya_persistidos(db: Session, folio: str) -> set[int]:
-    """`citaId` de las atenciones de SALUTEM ya guardadas para este folio.
+    """`salutem_cita_id` de las fichas ya guardadas para este folio.
 
-    Hace idempotente el pull: repetirlo no duplica fichas. El `citaId` se lee
-    del contenido crudo porque `ficha_clinica` no tiene columna para el
-    identificador de origen.
+    Hace idempotente el pull y evita duplicar las fichas que crea el sync. La
+    migración 1250 rellenó la columna en las fichas anteriores a ella.
     """
-    fichas = db.scalars(
-        select(FichaClinica).where(
-            FichaClinica.folio == folio, FichaClinica.origen == "SALUTEM"
-        )
-    ).all()
-    ids: set[int] = set()
-    for f in fichas:
-        cita_id = (f.contenido or {}).get("citaId")
-        if cita_id is not None:
-            ids.add(int(cita_id))
-    return ids
+    return set(
+        db.scalars(
+            select(FichaClinica.salutem_cita_id).where(
+                FichaClinica.folio == folio,
+                FichaClinica.salutem_cita_id.is_not(None),
+            )
+        ).all()
+    )
 
 
 def pull_desde_salutem(db: Session, folio: str) -> list[FichaClinica]:
@@ -159,6 +158,7 @@ def _pull_desde_salutem(db: Session, folio: str) -> list[FichaClinica]:
                 FichaClinicaCreate(
                     folio=folio, origen="SALUTEM", contenido=atencion.contenido
                 ),
+                salutem_cita_id=cita.cita_id,
             )
         )
 

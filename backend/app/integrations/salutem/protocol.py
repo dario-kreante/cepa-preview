@@ -53,6 +53,13 @@ class SalutemClientProtocol(Protocol):
         """
         ...
 
+    def obtener_persona(self, salutem_id: int) -> PersonaSalutem | None:
+        """Trae una persona por su id de SALUTEM. None si no existe.
+
+        El sync conoce a las personas por el `personaId` de sus citas, no por RUT.
+        """
+        ...
+
     def listar_atenciones(self, salutem_id: int) -> list[CitaSalutem]:
         """Lista las atenciones de una persona, sin el contenido clínico.
 

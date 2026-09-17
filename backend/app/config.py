@@ -91,6 +91,16 @@ class Settings(BaseSettings):
     salutem_api_key: str = ""
     salutem_timeout_s: float = 30.0
 
+    # --- Sync SALUTEM (fase 1, solo lectura) ---
+    # Apagado por defecto: el cron puede quedar instalado sin que nada salga a la red.
+    salutem_sync_habilitado: bool = False
+    # No se conoce el límite de la API: se parte conservador y se ajusta con FabricApp.
+    salutem_sync_llamadas_por_seg: float = 2.0
+    # La carga inicial se detiene tras esta cantidad de días seguidos sin citas.
+    salutem_backfill_dias_vacios: int = 365
+    # Vacío = log a stderr. En la VM: ~/sige-cepa/logs/salutem-sync.log
+    salutem_sync_log: str = ""
+
     # --- IMED feature flag (CEPA-122, P2, PA5) ---
     imed_enabled: bool = False
 
