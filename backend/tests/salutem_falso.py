@@ -50,6 +50,9 @@ class SalutemFalso:
         self.personas_con_error: set[int] = set()
         # Cuántas de las próximas llamadas fallan con SalutemUnavailableError.
         self.caidas_pendientes = 0
+        # Días en los que SALUTEM está caído: cada llamada de ese día falla (p.ej. HTTP 504).
+        self.dias_caidos: set[date] = set()
+        self.personas_caidas: set[int] = set()
         self.credencial_rechazada = False
         # Hook de prueba: se invoca al empezar `listar_citas`, después de `_registrar`.
         self.antes_de_listar: Callable[[date, int], None] | None = None
@@ -110,6 +113,8 @@ class SalutemFalso:
 
     def listar_atenciones(self, salutem_id: int) -> list[CitaSalutem]:
         self._registrar("listar_atenciones", salutem_id)
+        if salutem_id in self.personas_caidas:
+            raise SalutemUnavailableError("SALUTEM devolvió un cuerpo ilegible (HTTP 504)")
         return [
             CitaSalutem.desde_api(cita)
             for cita_id in self.atenciones
@@ -135,6 +140,8 @@ class SalutemFalso:
         self._registrar("listar_citas", dia, int(estado), int(por))
         if self.antes_de_listar is not None:
             self.antes_de_listar(dia, int(estado))
+        if dia in self.dias_caidos:
+            raise SalutemUnavailableError("SALUTEM devolvió un cuerpo ilegible (HTTP 504)")
         if (dia, int(estado)) in self.dias_con_error:
             if self.error_de_listado is not None:
                 raise self.error_de_listado
