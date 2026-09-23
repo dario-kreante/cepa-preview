@@ -17,7 +17,7 @@ from app.integrations.salutem.models import TipoFechaCita
 from app.integrations.salutem.protocol import SalutemClientProtocol
 from app.models.salutem_copia import SalutemAtencion, SalutemPersona
 from app.models.salutem_sync import SalutemSyncDia
-from app.integrations.salutem.errors import SalutemError
+from app.integrations.salutem.errors import SalutemError, SalutemUnavailableError
 from app.services.salutem_sync.barrido import (
     ResultadoDia,
     barrer_dia,
@@ -61,6 +61,30 @@ class ResultadoBackfill:
             self.errores.extend(dia.errores)
 
 
+def _barrer_dia_tolerante(
+    db: Session,
+    cliente: SalutemClientProtocol,
+    ritmo: Ritmo,
+    dia: date,
+    tipo: TipoFechaCita,
+    ahora: datetime,
+) -> ResultadoDia:
+    """Barre un día tratando una caída de SALUTEM como día fallido, no como fin de la corrida.
+
+    El backfill dura horas: que un HTTP 504 pasajero (visto en la VM el 2026-09-17,
+    tras 38.420 llamadas) tire la corrida entera obliga a relanzarla a mano. El día
+    queda sin registrar y se reintenta en la próxima pasada; si SALUTEM sigue caído,
+    el contador de días fallidos seguidos aborta igual, sin insistir miles de veces.
+    """
+    try:
+        return barrer_dia(db, cliente, ritmo, dia, tipo, ahora)
+    except SalutemUnavailableError as e:
+        db.rollback()
+        return ResultadoDia(
+            fecha=dia, tipo=tipo, completo=False, errores=[f"{dia.isoformat()}: {e}"]
+        )
+
+
 def ejecutar_backfill(
     db: Session,
     cliente: SalutemClientProtocol,
@@ -78,7 +102,9 @@ def ejecutar_backfill(
     tipo = TipoFechaCita.FECHA_CITA
 
     for i in range(1, dias_futuro + 1):
-        resultado.sumar_dia(barrer_dia(db, cliente, ritmo, hoy + i * _UN_DIA, tipo, ahora))
+        resultado.sumar_dia(
+            _barrer_dia_tolerante(db, cliente, ritmo, hoy + i * _UN_DIA, tipo, ahora)
+        )
         al_terminar_dia()
 
     dia = hoy
@@ -94,7 +120,7 @@ def ejecutar_backfill(
             citas = registrado.citas
             completo = True  # Un día registrado es completo por definición.
         else:
-            barrido = barrer_dia(db, cliente, ritmo, dia, tipo, ahora)
+            barrido = _barrer_dia_tolerante(db, cliente, ritmo, dia, tipo, ahora)
             resultado.sumar_dia(barrido)
             citas = barrido.citas
             completo = barrido.completo
@@ -157,7 +183,9 @@ def _verificar_completitud(
         try:
             listadas = ritmo.llamar(cliente.listar_atenciones, persona_id)
         except SalutemError as e:
-            if not es_error_de_registro(e):
+            # Una caída pasajera no debe tirar la verificación de miles de personas:
+            # se anota y se sigue con la siguiente.
+            if not (es_error_de_registro(e) or isinstance(e, SalutemUnavailableError)):
                 raise
             resultado.errores.append(f"persona {persona_id}: {describir_error(e)}")
             listadas = []
