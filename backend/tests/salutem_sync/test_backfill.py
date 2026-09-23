@@ -218,3 +218,52 @@ def test_la_verificacion_sigue_si_se_rechaza_el_listado_de_una_persona(
 
     assert "persona 501: ERROR_RARO" in r.errores
     assert db_session.get(SalutemAtencion, 9200) is not None
+
+
+def test_un_dia_con_salutem_caido_no_mata_la_carga_inicial(db_session, salutem, ritmo):
+    """Visto en la VM el 2026-09-17: tras 8 h y 38.420 llamadas, un HTTP 504 de SALUTEM
+    abortó el backfill entero. Un día caído se trata como día fallido y se sigue."""
+    salutem.agregar_persona(501)
+    salutem.agregar_cita(9001, 501, HOY - 2 * DIA, EstadoCitaSalutem.AGENDADO)
+    salutem.dias_caidos.add(HOY - DIA)
+
+    r = ejecutar_backfill(
+        db_session, salutem, ritmo, hoy=HOY, ahora=AHORA,
+        desde=HOY - 3 * DIA, dias_futuro=0, verificar=False,
+    )
+
+    assert r.dias_con_error == 1
+    assert any("504" in e for e in r.errores)
+    # El día caído no queda registrado (se reintenta), los demás sí.
+    assert db_session.get(SalutemSyncDia, (HOY - DIA, int(TipoFechaCita.FECHA_CITA))) is None
+    assert db_session.get(SalutemSyncDia, (HOY - 2 * DIA, int(TipoFechaCita.FECHA_CITA))) is not None
+    assert db_session.get(SalutemCita, 9001) is not None
+
+
+def test_salutem_caido_muchos_dias_seguidos_aborta(db_session, salutem, ritmo):
+    for i in range(20):
+        salutem.dias_caidos.add(HOY - i * DIA)
+
+    with pytest.raises(BackfillAbortadoError):
+        ejecutar_backfill(
+            db_session, salutem, ritmo, hoy=HOY, ahora=AHORA,
+            dias_vacios_para_parar=365, dias_futuro=0, verificar=False,
+        )
+
+
+def test_la_verificacion_sigue_si_una_persona_falla_por_caida(db_session, salutem, ritmo):
+    salutem.agregar_persona(501)
+    salutem.agregar_persona(502, "11111111-1")
+    salutem.agregar_cita(9001, 501, HOY - DIA, EstadoCitaSalutem.ATENDIDO)
+    salutem.agregar_atencion(9001)
+    salutem.agregar_cita(9002, 502, HOY - DIA, EstadoCitaSalutem.ATENDIDO)
+    salutem.agregar_atencion(9002)
+    salutem.personas_caidas.add(501)
+
+    r = ejecutar_backfill(
+        db_session, salutem, ritmo, hoy=HOY, ahora=AHORA,
+        desde=HOY - DIA, dias_futuro=0, verificar=True,
+    )
+
+    assert any("persona 501" in e and "504" in e for e in r.errores)
+    assert db_session.get(SalutemAtencion, 9002) is not None

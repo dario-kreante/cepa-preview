@@ -57,7 +57,8 @@ def es_error_de_registro(e: BaseException) -> bool:
 
 
 def describir_error(e: SalutemError) -> str:
-    return e.codigo or type(e).__name__
+    """Código de SALUTEM, o tipo y mensaje cuando no hay código (p.ej. un HTTP 504)."""
+    return e.codigo or f"{type(e).__name__}: {e}"
 
 
 @dataclass
