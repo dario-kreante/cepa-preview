@@ -189,3 +189,31 @@ def test_ingresos_desde_no_revisa_pacientes_con_ingresos_anteriores_al_corte(db_
     r = vincular(db_session, AHORA, ingresos_desde=corte)
 
     assert r.atenciones_revisadas == 0
+
+
+def test_vincula_por_id_de_salutem_a_una_persona_sin_rut(db_session):
+    """Los pacientes de prueba de SALUTEM no tienen RUT: se cruzan por su id."""
+    copia.guardar_persona(
+        db_session,
+        PersonaSalutem.desde_api(
+            {"SALUTEM_ID": 1332404, "identificacion": "sin_id_1216018", "tipoIdentificacion": "SIN IDENTIFICACION"}
+        ),
+        AHORA,
+    )
+    copia.guardar_atencion(
+        db_session,
+        AtencionSalutem.desde_api({"personaId": 1332404, "citaId": 9100, "citaFecha": "2026-02-10"}),
+        AHORA,
+    )
+    paciente = Paciente(
+        rut="111111111", nombre="Paciente prueba", sexo="F", edad=40, region="Maule",
+        salutem_persona_id=1332404,
+    )
+    db_session.add(paciente)
+    db_session.flush()
+    ingreso = _ingreso(db_session, paciente)
+
+    r = vincular(db_session, AHORA)
+
+    assert r.fichas_nuevas == 1
+    assert _fichas(db_session)[0].ingreso_id == ingreso.id

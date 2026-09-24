@@ -18,6 +18,7 @@ from app.audit.service import record_audit
 from app.models.ficha_clinica import FichaClinica
 from app.models.ingreso import Ingreso
 from app.models.paciente import Paciente
+from app.services.salutem_sync.filtro import cruce_con_paciente
 from app.models.salutem_copia import SalutemAtencion, SalutemPersona
 from app.services.ficha_clinica import _en_ventana_del_ingreso
 from app.services.salutem_sync.tipos import a_utc
@@ -65,7 +66,7 @@ def vincular(
     consulta = (
         select(SalutemAtencion.cita_id, Paciente.id)
         .join(SalutemPersona, SalutemPersona.salutem_id == SalutemAtencion.persona_id)
-        .join(Paciente, Paciente.rut == SalutemPersona.rut)
+        .join(Paciente, cruce_con_paciente())
         .order_by(SalutemAtencion.cita_id)
     )
     if not todo:

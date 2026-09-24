@@ -6,6 +6,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.models.paciente import Paciente
+from app.services.salutem_sync.filtro import cruce_con_paciente
 from app.models.salutem_copia import SalutemAtencion, SalutemCita, SalutemPersona
 from app.models.salutem_sync import SalutemSyncEjecucion
 from app.schemas.salutem_sync import EjecucionRead, EstadoSyncRead
@@ -40,7 +41,7 @@ def estado_sync(db: Session, ahora: datetime) -> EstadoSyncRead:
         select(func.count())
         .select_from(SalutemAtencion)
         .join(SalutemPersona, SalutemPersona.salutem_id == SalutemAtencion.persona_id)
-        .join(Paciente, Paciente.rut == SalutemPersona.rut)
+        .join(Paciente, cruce_con_paciente())
         .where(
             or_(
                 SalutemAtencion.hash_vinculado.is_(None),
