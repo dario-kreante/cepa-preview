@@ -63,7 +63,7 @@ documento **no las reemplaza**: registra el hueco entre lo que exigen y lo que h
 | COMP-2609-26 | Anonimizar SALUTEM QA (hoy trae identidades reales) | Dependencia externa | Integración SALUTEM | Alta | FabricApp |
 | COMP-2609-27 | Integración IMED (P2, construida y apagada) | Dependencia externa | API | Baja | CEPA (PA5) + IMED |
 | COMP-2609-28 | WhatsApp como canal de alertas (fuera de v1) | Dependencia externa | Alertas | Baja | CEPA + Meta (WABA) |
-| COMP-2609-29 | Purgar de la VM la copia de SALUTEM y el ingreso de prueba con RUT real | Operación | Datos / VM | Alta | — |
+| COMP-2609-29 | Purgar de la VM la copia de SALUTEM y el ingreso de prueba con RUT real | Operación (**resuelta 25-09**) | Datos / VM | Alta | — |
 | COMP-2609-30 | Migración de los ~846 registros históricos | Operación | Ingresos | Media | PA7 + planilla limpia |
 | COMP-2609-31 | Cifrado y retención de datos de salud mental | Operación | Plataforma | Media | PA3 (DTI / Mario) |
 
@@ -752,6 +752,25 @@ riesgo que no depende de nadie más para cerrarse.
       que el próximo sync no las vuelva a traer.
 - [ ] Dejar constancia (fecha, quién, conteos antes y después) en este ticket, sin datos
       personales.
+
+**Constancia (25-09-2026, 13:30 aprox.)** — Ejecutada por Darío Ramírez (Kreante) con un script
+de un solo uso (modo prueba primero; auditoría con actor `purga-comp-2609-29`). Sin respaldo de
+las filas borradas, a propósito.
+
+| Tabla | Antes | Después |
+|---|---|---|
+| `salutem_atencion` | 38.394 | 66 |
+| `salutem_cita` | 46.384 | 164 |
+| `salutem_persona` | 4.210 | 6 |
+| Ingreso F-2026-0061 | 1 (con 4 fichas SALUTEM) | 0 |
+| Paciente de ese ingreso (sin otros ingresos) | 1 | 0 |
+
+- Quedan solo las 6 personas de prueba de `SALUTEM_SYNC_PERSONAS_PERMITIDAS` (configurada en el
+  `.env` de la VM desde el 24-09), así que el sync no vuelve a traer personas reales. Decisión del
+  25-09: de aquí en adelante solo se sincronizan pacientes de prueba; un paciente de prueba nuevo
+  se agrega a esa lista.
+- Logs de `~/sige-cepa/logs/`: sin RUT ni identificadores de personas (conteo de patrones = 0).
+- Los 6 pacientes de prueba siguen completos en SIGE (revisado en la VM).
 
 ## [COMP-2609-30] Migración de los ~846 registros históricos (PA7)
 
