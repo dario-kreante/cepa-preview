@@ -7,12 +7,15 @@ IMPORTANTE: el endpoint POST /recetas/alertas/generar se registra ANTES de
 /{ingreso_id}/* para evitar que FastAPI intente parsear "recetas" como entero.
 """
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.audit.service import record_audit
 from app.auth.deps import get_current_user, require_role
 from app.db.session import get_db
+from app.models.farmacos import RegistroFarmacologico
+from app.models.ingreso import Ingreso
 from app.schemas.farmacos import (
     AlertaRead,
     EsquemaIndicacionBody,
@@ -233,7 +236,15 @@ def crear_receta_endpoint(
     dependencies=[Depends(_reader)],
 )
 def listar_recetas_endpoint(ingreso_id: int, db: Session = Depends(get_db)):
-    registro = obtener_registro_por_ingreso(db, ingreso_id)
+    # Un ingreso recién creado aún no tiene registro farmacológico: sin registro no hay
+    # recetas, y eso no es un error. Solo un ingreso inexistente responde 404.
+    if db.get(Ingreso, ingreso_id) is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, f"No existe el ingreso {ingreso_id}.")
+    registro = db.scalar(
+        select(RegistroFarmacologico).where(RegistroFarmacologico.ingreso_id == ingreso_id)
+    )
+    if registro is None:
+        return []
     return listar_recetas(db, registro.id)
 
 
