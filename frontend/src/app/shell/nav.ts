@@ -13,6 +13,7 @@ import {
   SlidersHorizontal,
   LayoutGrid,
   FileScan,
+  BellRing,
   type LucideIcon,
 } from "lucide-react";
 import type { Rol } from "@/lib/rbac";
@@ -91,6 +92,12 @@ export const NAV: NavSection[] = [
         label: "Ventanas de proceso",
         icon: LayoutGrid,
       },
+      {
+        to: "/config-alertas",
+        label: "Umbrales de alerta",
+        icon: BellRing,
+        roles: ["Coordinacion"],
+      },
     ],
   },
 ];
@@ -122,6 +129,7 @@ export const TITLE_MAP: Record<string, string> = {
   "/usuarios": "Usuarios y roles",
   "/config-formularios": "Formularios dinámicos",
   "/ventanas-proceso": "Ventanas de proceso",
+  "/config-alertas": "Umbrales de alerta",
   "/configuracion": "Configuración",
   "/ayuda": "Ayuda y soporte",
 };
@@ -143,6 +151,7 @@ export const CRUMBS_MAP: Record<string, string> = {
   "/usuarios": "Inicio · Administración · Usuarios y roles",
   "/config-formularios": "Inicio · Administración · Formularios dinámicos",
   "/ventanas-proceso": "Inicio · Administración · Ventanas de proceso",
+  "/config-alertas": "Inicio · Administración · Umbrales de alerta",
   "/configuracion": "Inicio · Configuración",
   "/ayuda": "Inicio · Ayuda y soporte",
 };

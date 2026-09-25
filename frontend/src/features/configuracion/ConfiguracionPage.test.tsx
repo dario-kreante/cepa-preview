@@ -18,8 +18,12 @@ function renderComo(rol: keyof typeof TOKENS) {
 }
 
 describe("ConfiguracionPage (COMP-2609-02)", () => {
-  it("Coordinación ve usuarios, formularios y ventanas de proceso", () => {
+  it("Coordinación ve usuarios, formularios, ventanas de proceso y umbrales de alerta", () => {
     renderComo("Coordinacion");
+    expect(screen.getByRole("link", { name: /Umbrales de alerta/i })).toHaveAttribute(
+      "href",
+      "/config-alertas",
+    );
     expect(screen.getByRole("link", { name: /Usuarios y roles/i })).toHaveAttribute("href", "/usuarios");
     expect(screen.getByRole("link", { name: /Formularios dinámicos/i })).toHaveAttribute(
       "href",
@@ -38,6 +42,7 @@ describe("ConfiguracionPage (COMP-2609-02)", () => {
       expect(screen.getByRole("link", { name: /Ventanas de proceso/i })).toBeInTheDocument();
       expect(screen.queryByRole("link", { name: /Usuarios y roles/i })).not.toBeInTheDocument();
       expect(screen.queryByRole("link", { name: /Formularios dinámicos/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole("link", { name: /Umbrales de alerta/i })).not.toBeInTheDocument();
     },
   );
 });
