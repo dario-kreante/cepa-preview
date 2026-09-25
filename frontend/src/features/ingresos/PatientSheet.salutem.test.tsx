@@ -142,20 +142,27 @@ describe("PatientSheet — pestaña SALUTEM", () => {
     });
   });
 
-  it("la pestaña Controles también muestra las atenciones de SALUTEM", async () => {
-    setupMocks([
-      fichaSalutem(1, 900, "2025-01-22", "Psiquiatría"),
-      fichaSalutem(2, 901, "2025-03-05", "Psicología"),
-    ]);
+  it("la pestaña Controles marca los controles creados desde SALUTEM", async () => {
+    setupMocks();
+    server.use(
+      http.get(`${BASE}/api/v1/controles-medicos/por-ingreso/:ingreso_id`, () =>
+        HttpResponse.json([
+          {
+            id: 300, ingreso_id: 55, fecha_control: "2025-03-05", semana_control: 10,
+            medico_tratante: "DRA. PAULA ROJAS", region_derivacion: "Maule",
+            proximo_control: null, proximo_agendado: false, tiene_licencia: false,
+            resumen_termino_lm: null, total_dias_lm: null, tipo_licencia: null,
+            tipo_reposo: null, gaf: null, estado_reca: null, observaciones: null,
+            origen: "SALUTEM", salutem_cita_id: 901,
+          },
+        ]),
+      ),
+    );
     renderSheet();
     await screen.findByText("Paciente Prueba");
     await userEvent.click(await screen.findByRole("tab", { name: /Controles/i }));
 
-    const seccion = await screen.findByRole("region", { name: /Atenciones en SALUTEM \(2\)/i });
-    const items = within(seccion).getAllByRole("listitem");
-    expect(items[0]).toHaveTextContent("Psicología");
-    expect(items[1]).toHaveTextContent("Psiquiatría");
-    // Sin controles del CEPA, igual se ve lo que viene de SALUTEM.
-    expect(screen.getByText("Sin controles registrados")).toBeInTheDocument();
+    const tarjeta = (await screen.findByText(/DRA\. PAULA ROJAS/)).closest("div.p-4") as HTMLElement;
+    expect(within(tarjeta).getByText("SALUTEM")).toBeInTheDocument();
   });
 });

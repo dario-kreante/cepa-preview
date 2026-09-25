@@ -1748,6 +1748,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/salutem/sync/estado": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Estado */
+        get: operations["estado_api_v1_salutem_sync_estado_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/licencias/folio/{folio}": {
         parameters: {
             query?: never;
@@ -2405,6 +2422,13 @@ export interface components {
             estado_reca: components["schemas"]["TipoReca"] | null;
             /** Observaciones */
             observaciones: string | null;
+            /**
+             * Origen
+             * @default CEPA
+             */
+            origen: string;
+            /** Salutem Cita Id */
+            salutem_cita_id?: number | null;
         };
         /** CumplimientoConvenioItem */
         CumplimientoConvenioItem: {
@@ -2454,6 +2478,30 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+        };
+        /** EjecucionRead */
+        EjecucionRead: {
+            /** Modo */
+            modo: string;
+            /** Estado */
+            estado: string;
+            /**
+             * Inicio
+             * Format: date-time
+             */
+            inicio: string;
+            /** Fin */
+            fin: string | null;
+            /** Llamadas */
+            llamadas: number;
+            /** Nuevos */
+            nuevos: number;
+            /** Cambiados */
+            cambiados: number;
+            /** Desaparecidos */
+            desaparecidos: number;
+            /** Error */
+            error: string | null;
         };
         /**
          * EsquemaIndicacionBody
@@ -2560,6 +2608,25 @@ export interface components {
          * @enum {string}
          */
         EstadoReintegro: "pendiente" | "parcial" | "total";
+        /** EstadoSyncRead */
+        EstadoSyncRead: {
+            /** Ultimas */
+            ultimas: {
+                [key: string]: components["schemas"]["EjecucionRead"];
+            };
+            /** Primer Dia Con Datos */
+            primer_dia_con_datos: string | null;
+            /** Personas */
+            personas: number;
+            /** Citas */
+            citas: number;
+            /** Atenciones */
+            atenciones: number;
+            /** Atenciones Pendientes */
+            atenciones_pendientes: number;
+            /** Atrasado */
+            atrasado: boolean;
+        };
         /**
          * EstadoTarea
          * @description Estados de una tarea operativa (RN-3 de CEPA-103).
@@ -2624,6 +2691,10 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /** Salutem Cita Id */
+            salutem_cita_id?: number | null;
+            /** Eliminada En Origen */
+            eliminada_en_origen?: string | null;
         };
         /**
          * FieldDefIn
@@ -8017,6 +8088,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    estado_api_v1_salutem_sync_estado_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EstadoSyncRead"];
                 };
             };
         };

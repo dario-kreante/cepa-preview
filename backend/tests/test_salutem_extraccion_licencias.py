@@ -215,3 +215,15 @@ def test_formato_acordado_avisa_si_dias_y_fechas_no_cuadran():
     assert m.fecha_termino == date(2026, 9, 15)
     assert len(m.avisos) == 1
     assert "días" in m.avisos[0].lower()
+
+
+def test_reconoce_la_abreviatura_lm_de_los_medicos():
+    """En SALUTEM QA los médicos escriben "LM tipo 6 por 15 dias" (sin "licencia")."""
+    m = extraer_licencia("Se indica LM tipo 6 por 15 dias, fecha de inicio 14 de abril GAF 50", date(2024, 4, 14))
+    assert m is not None
+    assert m.clase == ClaseMencion.LICENCIA
+    assert (m.tipo_licencia, m.dias) == ("6", 15)
+
+
+def test_lm_en_minusculas_dentro_de_otra_palabra_no_es_licencia():
+    assert extraer_licencia("Paciente con film de rayos, control en 15 dias", date(2024, 4, 14)) is None

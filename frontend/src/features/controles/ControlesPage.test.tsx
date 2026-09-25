@@ -246,37 +246,23 @@ describe("ControlesPage", () => {
     );
   });
 
-  it("muestra, junto a los controles del CEPA, las atenciones de SALUTEM del ingreso", async () => {
-    const ficha = (id: number, fecha: string, especialidad: string, origen = "SALUTEM") => ({
-      id,
-      folio: "F-2026-0064",
-      origen,
-      created_at: "2026-09-25T12:00:00Z",
-      contenido: {
-        citaId: 9000 + id,
-        citaFecha: fecha,
-        especialidadNombre: especialidad,
-        profesionalNombre: "Dra. Paula Rojas",
-        estadoCitaNombre: "Atendido",
-        sucursalNombre: "Sucursal Demo 135",
-      },
-    });
+  it("marca los controles creados desde SALUTEM y deja los del CEPA sin marca", async () => {
     server.use(
       http.get(`${BASE}/api/v1/pacientes/buscar`, () => HttpResponse.json([MOCK_PACIENTE])),
       http.get(`${BASE}/api/v1/pacientes/:pacienteId/vista-360`, () =>
-        HttpResponse.json({
-          ...MOCK_VISTA_360,
-          ingresos: [{ ...MOCK_VISTA_360.ingresos[0], folio: "F-2026-0064" }],
-        })
+        HttpResponse.json(MOCK_VISTA_360)
       ),
       http.get(`${BASE}/api/v1/controles-medicos/por-ingreso/:ingresoId`, () =>
-        HttpResponse.json(MOCK_CONTROLES)
-      ),
-      http.get(`${BASE}/api/v1/fichas-clinicas/:folio`, () =>
         HttpResponse.json([
-          ficha(1, "2023-04-04", "Psicología"),
-          ficha(2, "2024-08-30", "Evaluación psiquiátrica"),
-          ficha(3, "2024-09-01", "Nota enviada por otro sistema", "PUSH"),
+          { ...MOCK_CONTROLES[0], origen: "CEPA", salutem_cita_id: null },
+          {
+            ...MOCK_CONTROLES[0],
+            id: 201,
+            fecha_control: "2026-03-17",
+            medico_tratante: "DRA. PAULA ROJAS",
+            origen: "SALUTEM",
+            salutem_cita_id: 5001,
+          },
         ])
       )
     );
@@ -288,20 +274,9 @@ describe("ControlesPage", () => {
     );
     await userEvent.click(await screen.findByText("Juan Pérez", {}, { timeout: 8000 }));
 
-    const seccion = await screen.findByRole(
-      "region",
-      { name: /Atenciones en SALUTEM \(2\)/i },
-      { timeout: 8000 }
-    );
-    // Solo las de SALUTEM, de la más reciente a la más antigua.
-    const items = within(seccion).getAllByRole("listitem");
-    expect(items).toHaveLength(2);
-    expect(items[0]).toHaveTextContent("Evaluación psiquiátrica");
-    expect(items[0]).toHaveTextContent("30/08/2024");
-    expect(items[1]).toHaveTextContent("Psicología");
-    expect(within(seccion).getByText(/solo lectura/i)).toBeInTheDocument();
-    expect(screen.queryByText("Nota enviada por otro sistema")).not.toBeInTheDocument();
-    // Los controles del CEPA siguen ahí.
-    expect(screen.getByText("Dr. Andrés Molina")).toBeInTheDocument();
+    const deSalutem = (await screen.findByText("DRA. PAULA ROJAS", {}, { timeout: 8000 })).closest("tr")!;
+    expect(within(deSalutem).getByText("SALUTEM")).toBeInTheDocument();
+    const delCepa = screen.getByText("Dr. Andrés Molina").closest("tr")!;
+    expect(within(delCepa).queryByText("SALUTEM")).not.toBeInTheDocument();
   });
 });

@@ -27,7 +27,6 @@ import {
 } from "./hooks";
 import type { LicenciaRead, ControlMedicoRead, RecetaRead } from "./api";
 import { SalutemTab } from "./SalutemTab";
-import { AtencionesSalutem } from "@/features/controles/AtencionesSalutem";
 import { EditarFichaDialog } from "./EditarFichaDialog";
 import { AltaLicenciaDialog } from "@/features/licencias/AltaLicenciaDialog";
 import { NuevoControlDialog } from "@/features/controles/NuevoControlDialog";
@@ -210,8 +209,13 @@ function ControlesTab({ controles }: { controles: ControlMedicoRead[] }) {
               <Stethoscope className="size-5" />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="font-semibold text-[13px]">
+              <div className="font-semibold text-[13px] flex items-center gap-1.5">
                 Semana {c.semana_control} · {c.medico_tratante}
+                {c.origen === "SALUTEM" && (
+                  <Badge variant="info" title="Creado automáticamente desde una atención de SALUTEM">
+                    SALUTEM
+                  </Badge>
+                )}
               </div>
               <div className="text-[11px] text-muted-foreground">
                 {formatDate(c.fecha_control)} · {c.region_derivacion}
@@ -529,14 +533,7 @@ export function PatientSheet({ pacienteId, open, onOpenChange }: PatientSheetPro
                   ) : ctrlError ? (
                     <TabError msg="No se pudieron cargar los controles." />
                   ) : (
-                    <div className="space-y-4">
-                      <ControlesTab controles={controles} />
-                      <AtencionesSalutem
-                        fichas={fichasSalutem}
-                        cargando={fichasLoading}
-                        error={fichasError}
-                      />
-                    </div>
+                    <ControlesTab controles={controles} />
                   )}
                 </TabsContent>
 
