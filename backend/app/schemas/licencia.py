@@ -58,6 +58,8 @@ class LicenciaISLUpdate(BaseModel):
     envio_isl: EstadoEnvioISL
     fecha_envio_isl: date | None = None
     eeag_gaf: Annotated[int | None, Field(ge=1, le=100)] = None
+    # Tramo del catálogo gaf_tramo (v5 D18). Si no viene, se deriva de ``eeag_gaf``.
+    eeag_gaf_tramo: str | None = Field(default=None, max_length=10)
     observaciones: str | None = None
 
     @model_validator(mode="after")
@@ -96,6 +98,7 @@ class LicenciaRead(BaseModel):
     envio_isl: EstadoEnvioISL
     fecha_envio_isl: date | None
     eeag_gaf: int | None
+    eeag_gaf_tramo: str | None = None
     observaciones: str | None
     anulada: bool
 

@@ -39,7 +39,7 @@ import logging
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 
-from sqlalchemy import select
+from sqlalchemy import false, or_, select
 from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
@@ -185,6 +185,9 @@ VENTANAS_DEFAULT: dict[str, dict] = {
     TipoAlerta.ODA_POR_VENCER.value:       {"dias": 7, "habiles": False},
     TipoAlerta.CONTROL_MEDICO.value:       {"dias": 7, "habiles": False},
     TipoAlerta.CONSENTIMIENTO_PENDIENTE.value: {"dias": 30, "habiles": False},
+    # CEPA-075: "dias" = límite superior del tramo umbral de GAF. Desactivada por defecto:
+    # sin criterio de la contraparte no se alerta (RN-2); 30 es provisorio (COMP-2609-13).
+    TipoAlerta.GAF_LICENCIA.value: {"dias": 30, "habiles": False, "activo": False},
 }
 
 
@@ -455,6 +458,57 @@ def _construir_hitos_receta(db: Session, ventanas: dict[str, dict] | None = None
     return hitos
 
 
+def _construir_alertas_gaf(
+    db: Session, ventanas: dict[str, dict], alertas_activas: set[tuple]
+) -> list[ResultadoAlerta]:
+    """Alerta de licencia con tramo de GAF en o bajo el umbral configurado (CEPA-075).
+
+    No es un plazo: la licencia alerta mientras su tramo esté en o bajo el umbral
+    (``hasta`` del tramo ≤ ``dias`` de la configuración). Si solo tiene el entero anterior a
+    D18, se usa el tramo que lo contiene. Una alerta activa por licencia (RN-4): la clave de
+    idempotencia usa ``inicio_reposo`` como fecha fija de la licencia.
+    Destinatario: Ingreso.profesional_id, o None (PA).
+    """
+    from app.domain.gaf import tramo_que_contiene
+    from app.models.licencia import LicenciaMedica  # local import
+    from app.services.gaf_tramos import cargar_tramos
+
+    config = ventanas.get(TipoAlerta.GAF_LICENCIA.value)
+    if not config or not config.get("activo", False):
+        return []
+    umbral = config["dias"]
+    tramos = cargar_tramos(db)
+    por_etiqueta = {t.etiqueta: t for t in tramos}
+
+    filas = db.scalars(
+        select(LicenciaMedica).where(
+            LicenciaMedica.anulada == false(),
+            or_(LicenciaMedica.eeag_gaf_tramo.isnot(None), LicenciaMedica.eeag_gaf.isnot(None)),
+        )
+    ).all()
+    resultados = []
+    for lm in filas:
+        tramo = por_etiqueta.get(lm.eeag_gaf_tramo) if lm.eeag_gaf_tramo else None
+        if tramo is None and lm.eeag_gaf_tramo is None:
+            tramo = tramo_que_contiene(lm.eeag_gaf, tramos)
+        if tramo is None or tramo.hasta > umbral:
+            continue
+        clave = (lm.id, TipoAlerta.GAF_LICENCIA.value, lm.inicio_reposo)
+        if clave in alertas_activas:
+            continue
+        resultados.append(
+            ResultadoAlerta(
+                tipo=TipoAlerta.GAF_LICENCIA.value,
+                caso_id=lm.id,
+                caso_tipo="licencia",
+                usuario_id=_resolver_usuario(lm.ingreso_id, db),
+                plazo_objetivo=lm.inicio_reposo,
+                ventana_dias=umbral,
+            )
+        )
+    return resultados
+
+
 def ejecutar_job_alertas(
     db: Session, *, actor: str = "sistema", hoy: date | None = None
 ) -> int:
@@ -484,6 +538,7 @@ def ejecutar_job_alertas(
     resultados = evaluar_plazos(
         hitos, hoy=hoy, alertas_activas=alertas_activas, festivos=festivos
     )
+    resultados.extend(_construir_alertas_gaf(db, ventanas, alertas_activas))
 
     for r in resultados:
         alerta = AlertaNotif(

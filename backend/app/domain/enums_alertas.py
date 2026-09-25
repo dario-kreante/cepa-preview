@@ -8,7 +8,7 @@ from enum import Enum
 
 
 class TipoAlerta(str, Enum):
-    """Los 7 tipos de alerta soportados (RN-1 de CEPA-100)."""
+    """Tipos de alerta del motor: los 7 de CEPA-100 más el GAF de licencia (CEPA-075)."""
 
     CONTROL_MEDICO = "control_medico"
     VENCIMIENTO_LICENCIA = "vencimiento_licencia"
@@ -17,6 +17,8 @@ class TipoAlerta(str, Enum):
     CONSENTIMIENTO_PENDIENTE = "consentimiento_pendiente"
     RECETA_POR_RENOVAR = "receta_por_renovar"
     ODA_POR_VENCER = "oda_por_vencer"
+    # CEPA-075 / COMP-2609-20: no es un plazo; alerta por tramo de GAF de la licencia.
+    GAF_LICENCIA = "gaf_licencia"
 
 
 class EstadoAlerta(str, Enum):

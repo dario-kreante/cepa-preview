@@ -17,6 +17,7 @@ from app.schemas.control_medico import (
     LicenciaUpdate,
     ProximoControlUpdate,
 )
+from app.services.gaf_tramos import resolver_tramo
 from app.services.semana_control import FechaControlInvalidaError, calcular_semana_control
 
 
@@ -153,7 +154,15 @@ def actualizar_licencia(
         control.tipo_reposo = None
 
     # GAF, RECA y observaciones siempre editables (RN-5)
-    control.gaf = data.gaf
+    # GAF (v5 D18): el formulario elige un tramo del catálogo; el entero se conserva por
+    # compatibilidad y solo cambia si se envía. Sin tramo explícito, se deriva del entero.
+    enviados = data.model_fields_set
+    if "gaf" in enviados:
+        control.gaf = data.gaf
+    if "gaf_tramo" in enviados:
+        control.gaf_tramo = resolver_tramo(db, data.gaf_tramo, None)
+    elif "gaf" in enviados:
+        control.gaf_tramo = resolver_tramo(db, None, data.gaf)
     control.estado_reca = data.estado_reca.value if data.estado_reca else None
     control.observaciones = data.observaciones
     db.flush()

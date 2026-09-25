@@ -24,6 +24,7 @@ def test_tabla_y_columnas():
         "envio_isl",
         "fecha_envio_isl",
         "eeag_gaf",
+        "eeag_gaf_tramo",
         "observaciones",
         "anulada",
         "created_at",

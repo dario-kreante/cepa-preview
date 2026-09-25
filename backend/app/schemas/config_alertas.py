@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.domain.enums_alertas import TipoAlerta
 
@@ -14,6 +14,13 @@ class ConfigAlertaItem(BaseModel):
     dias: int = Field(ge=0, le=365)
     habiles: bool
     activo: bool
+
+    @model_validator(mode="after")
+    def _umbral_gaf(self) -> "ConfigAlertaItem":
+        # En gaf_licencia ``dias`` es el límite superior del tramo umbral (porcentaje GAF).
+        if self.tipo == TipoAlerta.GAF_LICENCIA and self.dias > 100:
+            raise ValueError("El umbral de GAF va de 0 a 100")
+        return self
 
 
 class ConfigAlertaRead(ConfigAlertaItem):

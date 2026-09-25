@@ -8,7 +8,7 @@ Tres schemas de escritura independientes para alinear con las tres historias:
 
 from datetime import date
 
-from pydantic import BaseModel, ConfigDict, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.domain.enums_controles import EstadoReca, TipoLicencia, TipoReposo
 
@@ -53,6 +53,8 @@ class LicenciaUpdate(BaseModel):
     tipo_licencia: TipoLicencia | None = None
     tipo_reposo: TipoReposo | None = None
     gaf: int | None = None
+    # Tramo del catálogo gaf_tramo (v5 D18). Si no viene, se deriva del entero ``gaf``.
+    gaf_tramo: str | None = Field(default=None, max_length=10)
     estado_reca: EstadoReca | None = None
     observaciones: str | None = None
 
@@ -112,7 +114,7 @@ class ControlMedicoRead(BaseModel):
     tipo_licencia: TipoLicencia | None
     tipo_reposo: TipoReposo | None
     gaf: int | None
-    # Tramo de GAF leído de SALUTEM ("51-60"); None en los controles cargados en SIGE.
+    # Tramo de GAF ("51-60"): el de SALUTEM o el elegido del catálogo gaf_tramo en SIGE.
     gaf_tramo: str | None = None
     estado_reca: EstadoReca | None
     observaciones: str | None

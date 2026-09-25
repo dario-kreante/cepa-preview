@@ -30,6 +30,7 @@ class LicenciaRead(BaseModel):
     fecha_termino: date
     diagnostico: str
     eeag_gaf: int | None
+    eeag_gaf_tramo: str | None = None
     envio_isl: EstadoEnvioISL
     anulada: bool
 

@@ -58,6 +58,8 @@ class LicenciaMedica(Base):
     envio_isl: Mapped[str] = mapped_column(String(15), nullable=False, default="pendiente")
     fecha_envio_isl: Mapped[date | None] = mapped_column(Date, nullable=True)
     eeag_gaf: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Tramo de GAF del catálogo gaf_tramo ("41-50", v5 D18); eeag_gaf queda por compatibilidad.
+    eeag_gaf_tramo: Mapped[str | None] = mapped_column(String(10), nullable=True)
     observaciones: Mapped[str | None] = mapped_column(Text, nullable=True)
     # Control
     anulada: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)

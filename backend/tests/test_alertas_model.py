@@ -57,7 +57,8 @@ def test_enum_tipo_alerta_contiene_todos_los_tipos_rn1():
     assert "consentimiento_pendiente" in tipos
     assert "receta_por_renovar" in tipos
     assert "oda_por_vencer" in tipos
-    assert len(tipos) == 7
+    assert "gaf_licencia" in tipos  # CEPA-075 / COMP-2609-20
+    assert len(tipos) == 8
 
 
 def test_enum_estado_alerta():

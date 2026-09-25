@@ -16,11 +16,11 @@ from app.models.config_alerta import ConfigAlerta, Festivo
 
 
 def cargar_ventanas(db: Session) -> dict[str, dict]:
-    """Devuelve {tipo: {"dias", "habiles", "activo"}} para los 7 tipos del motor."""
+    """Devuelve {tipo: {"dias", "habiles", "activo"}} para todos los tipos del motor."""
     from app.services.alertas import VENTANAS_DEFAULT
 
     ventanas = {
-        tipo: {"dias": v["dias"], "habiles": v["habiles"], "activo": True}
+        tipo: {"dias": v["dias"], "habiles": v["habiles"], "activo": v.get("activo", True)}
         for tipo, v in VENTANAS_DEFAULT.items()
     }
     for fila in db.scalars(select(ConfigAlerta)):
