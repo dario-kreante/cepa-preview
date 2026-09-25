@@ -2815,28 +2815,6 @@ export interface components {
             /** Receta Registrada */
             receta_registrada: boolean;
         };
-        /** FestivoCreate */
-        FestivoCreate: {
-            /**
-             * Fecha
-             * Format: date
-             */
-            fecha: string;
-            /** Descripcion */
-            descripcion: string;
-        };
-        /** FestivoRead */
-        FestivoRead: {
-            /** Id */
-            id: number;
-            /**
-             * Fecha
-             * Format: date
-             */
-            fecha: string;
-            /** Descripcion */
-            descripcion: string;
-        };
         /**
          * FarmacosIngresoRead
          * @description Registro farmacológico de un ingreso con su esquema de indicaciones y recetas.
@@ -2878,6 +2856,28 @@ export interface components {
              * @default []
              */
             recetas: components["schemas"]["RecetaRead"][];
+        };
+        /** FestivoCreate */
+        FestivoCreate: {
+            /**
+             * Fecha
+             * Format: date
+             */
+            fecha: string;
+            /** Descripcion */
+            descripcion: string;
+        };
+        /** FestivoRead */
+        FestivoRead: {
+            /** Id */
+            id: number;
+            /**
+             * Fecha
+             * Format: date
+             */
+            fecha: string;
+            /** Descripcion */
+            descripcion: string;
         };
         /**
          * FichaClinicaCreate
