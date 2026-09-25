@@ -134,7 +134,7 @@ describe("PatientSheet", () => {
     });
   });
 
-  it("muestra las 5 pestañas", async () => {
+  it("muestra las pestañas de la ficha", async () => {
     setupMocks();
     renderSheet(7);
     await waitFor(() => {
@@ -144,7 +144,8 @@ describe("PatientSheet", () => {
     expect(screen.getByRole("tab", { name: /Licencias/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Fármacos/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Controles/i })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /Observaciones/i })).toBeInTheDocument();
+    // COMP-2609-05: no se muestra una pestaña de un módulo inexistente.
+    expect(screen.queryByRole("tab", { name: /Observaciones/i })).not.toBeInTheDocument();
   });
 
   it("muestra la licencia en la pestaña Licencias", async () => {

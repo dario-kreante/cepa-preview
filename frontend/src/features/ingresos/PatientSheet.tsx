@@ -406,7 +406,6 @@ export function PatientSheet({ pacienteId, open, onOpenChange }: PatientSheetPro
                     { v: "farmacos", l: `Fármacos (${recetas.length})` },
                     { v: "controles", l: `Controles (${controles.length})` },
                     { v: "salutem", l: `SALUTEM (${fichasSalutem.length})` },
-                    { v: "obs", l: "Observaciones" },
                   ].map((t) => (
                     <TabsTrigger
                       key={t.v}
@@ -556,17 +555,6 @@ export function PatientSheet({ pacienteId, open, onOpenChange }: PatientSheetPro
                   )}
                 </TabsContent>
 
-                {/* -------- Observaciones -------- */}
-                <TabsContent value="obs" className="mt-0">
-                  <Card>
-                    <CardContent className="p-6 text-[13px] text-muted-foreground leading-relaxed">
-                      <p className="text-center py-4">Sin observaciones registradas.</p>
-                      <p className="text-[11px] text-muted-foreground pt-3 border-t text-center">
-                        Módulo de observaciones clínicas — pendiente (ciclo futuro)
-                      </p>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
               </div>
             </Tabs>
           )}
