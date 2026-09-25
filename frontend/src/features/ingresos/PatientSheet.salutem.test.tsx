@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { http, HttpResponse } from "msw";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
@@ -140,5 +140,22 @@ describe("PatientSheet — pestaña SALUTEM", () => {
     await waitFor(() => {
       expect(screen.getByRole("alert")).toHaveTextContent(/RUT del paciente/i);
     });
+  });
+
+  it("la pestaña Controles también muestra las atenciones de SALUTEM", async () => {
+    setupMocks([
+      fichaSalutem(1, 900, "2025-01-22", "Psiquiatría"),
+      fichaSalutem(2, 901, "2025-03-05", "Psicología"),
+    ]);
+    renderSheet();
+    await screen.findByText("Paciente Prueba");
+    await userEvent.click(await screen.findByRole("tab", { name: /Controles/i }));
+
+    const seccion = await screen.findByRole("region", { name: /Atenciones en SALUTEM \(2\)/i });
+    const items = within(seccion).getAllByRole("listitem");
+    expect(items[0]).toHaveTextContent("Psicología");
+    expect(items[1]).toHaveTextContent("Psiquiatría");
+    // Sin controles del CEPA, igual se ve lo que viene de SALUTEM.
+    expect(screen.getByText("Sin controles registrados")).toBeInTheDocument();
   });
 });
