@@ -27,6 +27,7 @@ import {
 } from "./hooks";
 import type { LicenciaRead, ControlMedicoRead, RecetaRead } from "./api";
 import { SalutemTab } from "./SalutemTab";
+import { AtencionesSalutem } from "@/features/controles/AtencionesSalutem";
 import { EditarFichaDialog } from "./EditarFichaDialog";
 import { AltaLicenciaDialog } from "@/features/licencias/AltaLicenciaDialog";
 import { NuevoControlDialog } from "@/features/controles/NuevoControlDialog";
@@ -528,7 +529,14 @@ export function PatientSheet({ pacienteId, open, onOpenChange }: PatientSheetPro
                   ) : ctrlError ? (
                     <TabError msg="No se pudieron cargar los controles." />
                   ) : (
-                    <ControlesTab controles={controles} />
+                    <div className="space-y-4">
+                      <ControlesTab controles={controles} />
+                      <AtencionesSalutem
+                        fichas={fichasSalutem}
+                        cargando={fichasLoading}
+                        error={fichasError}
+                      />
+                    </div>
                   )}
                 </TabsContent>
 

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { http, HttpResponse } from "msw";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
@@ -244,5 +244,64 @@ describe("ControlesPage", () => {
         ).toBeInTheDocument(),
       { timeout: 8000 }
     );
+  });
+
+  it("muestra, junto a los controles del CEPA, las atenciones de SALUTEM del ingreso", async () => {
+    const ficha = (id: number, fecha: string, especialidad: string, origen = "SALUTEM") => ({
+      id,
+      folio: "F-2026-0064",
+      origen,
+      created_at: "2026-09-25T12:00:00Z",
+      contenido: {
+        citaId: 9000 + id,
+        citaFecha: fecha,
+        especialidadNombre: especialidad,
+        profesionalNombre: "Dra. Paula Rojas",
+        estadoCitaNombre: "Atendido",
+        sucursalNombre: "Sucursal Demo 135",
+      },
+    });
+    server.use(
+      http.get(`${BASE}/api/v1/pacientes/buscar`, () => HttpResponse.json([MOCK_PACIENTE])),
+      http.get(`${BASE}/api/v1/pacientes/:pacienteId/vista-360`, () =>
+        HttpResponse.json({
+          ...MOCK_VISTA_360,
+          ingresos: [{ ...MOCK_VISTA_360.ingresos[0], folio: "F-2026-0064" }],
+        })
+      ),
+      http.get(`${BASE}/api/v1/controles-medicos/por-ingreso/:ingresoId`, () =>
+        HttpResponse.json(MOCK_CONTROLES)
+      ),
+      http.get(`${BASE}/api/v1/fichas-clinicas/:folio`, () =>
+        HttpResponse.json([
+          ficha(1, "2023-04-04", "Psicología"),
+          ficha(2, "2024-08-30", "Evaluación psiquiátrica"),
+          ficha(3, "2024-09-01", "Nota enviada por otro sistema", "PUSH"),
+        ])
+      )
+    );
+
+    renderPage();
+    await userEvent.type(
+      screen.getByPlaceholderText("Buscar por RUT, folio, nombre o ID SALUTEM"),
+      "Juan"
+    );
+    await userEvent.click(await screen.findByText("Juan Pérez", {}, { timeout: 8000 }));
+
+    const seccion = await screen.findByRole(
+      "region",
+      { name: /Atenciones en SALUTEM \(2\)/i },
+      { timeout: 8000 }
+    );
+    // Solo las de SALUTEM, de la más reciente a la más antigua.
+    const items = within(seccion).getAllByRole("listitem");
+    expect(items).toHaveLength(2);
+    expect(items[0]).toHaveTextContent("Evaluación psiquiátrica");
+    expect(items[0]).toHaveTextContent("30/08/2024");
+    expect(items[1]).toHaveTextContent("Psicología");
+    expect(within(seccion).getByText(/solo lectura/i)).toBeInTheDocument();
+    expect(screen.queryByText("Nota enviada por otro sistema")).not.toBeInTheDocument();
+    // Los controles del CEPA siguen ahí.
+    expect(screen.getByText("Dr. Andrés Molina")).toBeInTheDocument();
   });
 });
