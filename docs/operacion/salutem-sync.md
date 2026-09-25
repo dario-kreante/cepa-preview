@@ -96,7 +96,12 @@ Requiere aprobación explícita de Darío, la clave de producción y el aviso a 
   quedan `omitida` y `estado` puede mostrar `atrasado: true`. Es esperado; si sigue atrasado
   pasadas las 04:30, revisar.
 - Revincular todo tras cambiar la regla de ventana: `run-salutem-sync.sh vincular --todo`
-  (también requiere `SALUTEM_SYNC_HABILITADO=true`).
+  (también requiere `SALUTEM_SYNC_HABILITADO=true`). Hazlo también después de desplegar un
+  cambio en cómo se arman fichas o controles desde la copia.
+  Corrido a mano, `vincular` imprime el resultado en la consola. Si el cron tiene el lease,
+  reintenta cada 20 s hasta 5 minutos (`--esperar N` para cambiar el límite, `0` para no
+  esperar). Si no lo consigue, avisa "omitido" y sale con código 3: no vinculó nada. `backfill`
+  omitido por lease también sale con 3. Los modos del cron siguen saliendo con 0.
 
 ## Límites conocidos
 - Una atención borrada en SALUTEM con fecha de más de 30 días atrás no se detecta en la

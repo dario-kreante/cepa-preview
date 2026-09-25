@@ -12,6 +12,7 @@ import json
 import logging
 import os
 import sys
+import time
 from datetime import date, datetime, timezone
 from logging.handlers import RotatingFileHandler
 
@@ -21,8 +22,12 @@ from app.db.session import SessionLocal
 from app.integrations.salutem.client import get_salutem_client
 from app.services.salutem_sync.backfill import DIAS_FUTURO
 from app.services.salutem_sync.estado import estado_sync
-from app.services.salutem_sync.orquestador import Opciones, correr
+from app.services.salutem_sync.orquestador import MANUALES, OMITIDO, Opciones, correr
 from app.services.salutem_sync.ritmo import Ritmo
+
+
+# Cada cuánto reintentar `vincular` mientras otro proceso tiene el lease.
+_PAUSA_LEASE_SEG = 20
 
 
 def construir_parser() -> argparse.ArgumentParser:
@@ -38,6 +43,12 @@ def construir_parser() -> argparse.ArgumentParser:
         modos.add_parser(modo)
     vincular = modos.add_parser("vincular", help="Solo el paso copia → ficha_clinica")
     vincular.add_argument("--todo", action="store_true", help="Revisar todas las atenciones")
+    vincular.add_argument(
+        "--esperar",
+        type=int,
+        default=5,
+        help="Minutos a esperar si otro proceso del sync tiene el lease (5; 0 = no esperar)",
+    )
     modos.add_parser("estado", help="Mostrar el estado del sync")
     return parser
 
@@ -60,9 +71,15 @@ def _configurar_log(ruta: str, modo: str) -> None:
             ruta_modo, maxBytes=10 * 1024 * 1024, backupCount=5, encoding="utf-8"
         )
     else:
-        handler = logging.StreamHandler()
+        handler = logging.StreamHandler(sys.stdout if modo in MANUALES else sys.stderr)
     handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s %(message)s"))
-    logging.basicConfig(handlers=[handler], level=logging.INFO, force=True)
+    handlers = [handler]
+    if ruta_modo and modo in MANUALES:
+        # Corrido a mano, el resultado tiene que verse en la consola además del archivo.
+        consola = logging.StreamHandler(sys.stdout)
+        consola.setFormatter(logging.Formatter("%(message)s"))
+        handlers.append(consola)
+    logging.basicConfig(handlers=handlers, level=logging.INFO, force=True)
     # httpx/httpcore son muy verborrágicos en INFO (loguean cada request); no aportan nada
     # al log del sync y solo tapan lo que sí importa.
     logging.getLogger("httpx").setLevel(logging.WARNING)
@@ -85,28 +102,54 @@ def main(argv: list[str] | None = None) -> int:
                     "Sync SALUTEM deshabilitado (SALUTEM_SYNC_HABILITADO=false)"
                 )
                 return 0
-            return correr(
-                args.modo,
-                db,
-                envolver_si_corresponde(
-                    get_salutem_client(), settings.salutem_sync_personas_permitidas_ids
-                ),
-                Ritmo(settings.salutem_sync_llamadas_por_seg),
-                ahora=lambda: datetime.now(timezone.utc),
-                habilitado=True,
-                opciones=Opciones(
-                    desde=getattr(args, "desde", None),
-                    verificar=not getattr(args, "sin_verificar", False),
-                    dias_futuro=getattr(args, "dias_futuro", DIAS_FUTURO),
-                    dias_vacios_para_parar=settings.salutem_backfill_dias_vacios,
-                    vincular_todo=getattr(args, "todo", False),
-                ),
-            )
+            def ejecutar() -> int:
+                return _correr(args, db, settings)
+
+            codigo = ejecutar()
+            if args.modo == "vincular":
+                for _ in range(args.esperar * 60 // _PAUSA_LEASE_SEG):
+                    if codigo != OMITIDO:
+                        break
+                    print(
+                        f"Lease ocupado: otro proceso del sync está corriendo; "
+                        f"reintento en {_PAUSA_LEASE_SEG} s.",
+                        flush=True,
+                    )
+                    time.sleep(_PAUSA_LEASE_SEG)
+                    codigo = ejecutar()
+            if codigo == OMITIDO:
+                que = "no se vinculó nada" if args.modo == "vincular" else "no se ejecutó nada"
+                print(
+                    f"Modo {args.modo} omitido: otro proceso del sync tiene el lease, {que}. "
+                    "Vuelve a intentarlo en unos minutos.",
+                    flush=True,
+                )
+            return codigo
     except Exception:
         logging.getLogger("salutem_sync").exception(
             "Falla inesperada en el sync SALUTEM (modo=%s)", args.modo
         )
         return 1
+
+
+def _correr(args: argparse.Namespace, db, settings) -> int:
+    return correr(
+        args.modo,
+        db,
+        envolver_si_corresponde(
+            get_salutem_client(), settings.salutem_sync_personas_permitidas_ids
+        ),
+        Ritmo(settings.salutem_sync_llamadas_por_seg),
+        ahora=lambda: datetime.now(timezone.utc),
+        habilitado=True,
+        opciones=Opciones(
+            desde=getattr(args, "desde", None),
+            verificar=not getattr(args, "sin_verificar", False),
+            dias_futuro=getattr(args, "dias_futuro", DIAS_FUTURO),
+            dias_vacios_para_parar=settings.salutem_backfill_dias_vacios,
+            vincular_todo=getattr(args, "todo", False),
+        ),
+    )
 
 
 if __name__ == "__main__":
