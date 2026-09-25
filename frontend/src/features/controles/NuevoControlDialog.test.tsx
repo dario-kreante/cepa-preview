@@ -78,6 +78,7 @@ const MOCK_CONTROL: ControlMedicoRead = {
   gaf: null,
   estado_reca: null,
   observaciones: null,
+  origen: "CEPA",
 };
 
 // ── Helpers ──────────────────────────────────────────────────────────────────

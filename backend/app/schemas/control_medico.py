@@ -114,3 +114,6 @@ class ControlMedicoRead(BaseModel):
     gaf: int | None
     estado_reca: EstadoReca | None
     observaciones: str | None
+    # "CEPA" = cargado en SIGE; "SALUTEM" = creado por el sync desde una atención.
+    origen: str = "CEPA"
+    salutem_cita_id: int | None = None

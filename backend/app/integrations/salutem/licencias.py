@@ -35,7 +35,9 @@ _RE_ALTA = re.compile(
 )
 _RE_REINCORPORACION = re.compile(r"(?:a\s+partir\s+del?|desde\s+el)\s*" + _FECHA, re.IGNORECASE)
 _RE_SIN_LICENCIA = re.compile(r"\bsin\s+licencia\b", re.IGNORECASE)
-_RE_LICENCIA = re.compile(r"\blicencia\b", re.IGNORECASE)
+# "LM" es como abrevian los médicos ("Se indica LM tipo 6 por 15 dias"); solo en
+# mayúsculas, para no confundirla con "lm" dentro de otra palabra.
+_RE_LICENCIA = re.compile(r"(?i:\blicencia\b)|\bLM\b")
 _RE_EXTRA_SISTEMA = re.compile(r"extra\s*-?\s*sistema", re.IGNORECASE)
 _RE_TIPO = re.compile(r"\btipo(?:\s+de\s+licencia)?\s*:?\s*(\d)\b", re.IGNORECASE)
 _RE_REPOSO = re.compile(r"\b(total|parcial)\b", re.IGNORECASE)

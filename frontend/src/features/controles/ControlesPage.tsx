@@ -9,7 +9,6 @@ import { useAuth } from "@/lib/auth/AuthContext";
 import { puedeEscribir, type Rol } from "@/lib/rbac";
 import { useBuscarPacientes, useVista360 } from "@/features/ingresos/hooks";
 import { useControlesPorIngreso } from "./hooks";
-import { AtencionesSalutemDelFolio } from "./AtencionesSalutem";
 import { NuevoControlDialog } from "./NuevoControlDialog";
 import { ProximoControlDialog } from "./ProximoControlDialog";
 import {
@@ -54,7 +53,14 @@ function ControlRow({ control, ingresoId, canWrite }: ControlRowProps) {
       <tr className="border-b hover:bg-muted/40 transition-colors">
         {/* Fecha control */}
         <td className="px-4 py-3 font-mono text-[12px] text-muted-foreground">
-          {fmtDate(control.fecha_control)}
+          <div className="flex items-center gap-1.5">
+            {fmtDate(control.fecha_control)}
+            {control.origen === "SALUTEM" && (
+              <Badge variant="info" title="Creado automáticamente desde una atención de SALUTEM">
+                SALUTEM
+              </Badge>
+            )}
+          </div>
         </td>
 
         {/* Próximo control */}
@@ -367,7 +373,6 @@ export function ControlesPage() {
     selectedPaciente?.id ?? null
   );
   const ingresoId: number | undefined = vista?.ingresos?.[0]?.id;
-  const folio: string | undefined = vista?.ingresos?.[0]?.folio;
 
   // KPI counts from the controles query (React Query deduplicates via cache key)
   const { data: controlesForKpi = [] } = useControlesPorIngreso(ingresoId ?? 0);
@@ -525,7 +530,6 @@ export function ControlesPage() {
                 Controles médicos
               </h2>
               <ControlesPanel ingresoId={ingresoId} canWrite={canWrite} />
-              {folio && <AtencionesSalutemDelFolio folio={folio} />}
             </div>
           )}
         </div>
