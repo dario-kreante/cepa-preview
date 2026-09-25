@@ -11,6 +11,7 @@ import { puedeEscribir, type Rol } from "@/lib/rbac";
 import { useBuscarPacientes, useVista360 } from "@/features/ingresos/hooks";
 import { useRegistro, useRecetas, useGenerarAlertasRevision } from "./hooks";
 import { EsquemaPanel } from "./EsquemaPanel";
+import { FarmacosSugeridosPanel } from "./FarmacosSugeridosPanel";
 import { SeguimientoPanel } from "./SeguimientoPanel";
 import { CrearRegistroDialog } from "./CrearRegistroDialog";
 import { NuevaRecetaDialog } from "./NuevaRecetaDialog";
@@ -521,6 +522,11 @@ export function FarmacosPage() {
             <>
               <RegistroPanel ingresoId={ingresoId} canWrite={canWrite} />
               <EsquemaPanel
+                ingresoId={ingresoId}
+                registro={registroForPage}
+                canWrite={canWrite}
+              />
+              <FarmacosSugeridosPanel
                 ingresoId={ingresoId}
                 registro={registroForPage}
                 canWrite={canWrite}

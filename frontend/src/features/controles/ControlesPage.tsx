@@ -113,6 +113,11 @@ function ControlRow({ control, ingresoId, canWrite }: ControlRowProps) {
                 {control.gaf}
               </span>
             </div>
+          ) : control.gaf_tramo ? (
+            // SALUTEM registra el GAF por tramo ("51-60"), no como número.
+            <span className="text-[12px] font-mono text-muted-foreground" title="Tramo de GAF (SALUTEM)">
+              {control.gaf_tramo}
+            </span>
           ) : (
             <span className="text-[13px] text-muted-foreground">—</span>
           )}

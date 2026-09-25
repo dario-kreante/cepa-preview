@@ -112,6 +112,8 @@ class ControlMedicoRead(BaseModel):
     tipo_licencia: TipoLicencia | None
     tipo_reposo: TipoReposo | None
     gaf: int | None
+    # Tramo de GAF leído de SALUTEM ("51-60"); None en los controles cargados en SIGE.
+    gaf_tramo: str | None = None
     estado_reca: EstadoReca | None
     observaciones: str | None
     # "CEPA" = cargado en SIGE; "SALUTEM" = creado por el sync desde una atención.

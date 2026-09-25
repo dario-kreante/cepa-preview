@@ -612,6 +612,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/registro-farmacologico/{ingreso_id}/sugeridos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Farmacos Sugeridos Endpoint
+         * @description Medicamentos leídos de las recetas de SALUTEM, para revisión humana. No escribe nada.
+         */
+        get: operations["farmacos_sugeridos_endpoint_api_v1_registro_farmacologico__ingreso_id__sugeridos_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/registro-farmacologico/{ingreso_id}/seguimiento": {
         parameters: {
             query?: never;
@@ -2419,6 +2439,8 @@ export interface components {
             tipo_reposo: components["schemas"]["app__domain__enums_controles__TipoReposo"] | null;
             /** Gaf */
             gaf: number | null;
+            /** Gaf Tramo */
+            gaf_tramo?: string | null;
             estado_reca: components["schemas"]["TipoReca"] | null;
             /** Observaciones */
             observaciones: string | null;
@@ -2660,6 +2682,37 @@ export interface components {
          * @enum {string}
          */
         FactorRiesgo: "carga" | "organizacion_trabajo" | "factores_psicosociales" | "violencia_laboral" | "condiciones_ergonomicas" | "otro";
+        /**
+         * FarmacoSugeridoRead
+         * @description Un medicamento leído de una receta de SALUTEM, estructurado para el esquema.
+         *
+         *     `cita_fecha` es la atención más reciente que lo receta y sirve como fecha de
+         *     emisión de la receta. `en_esquema` y `receta_registrada` dicen si ya se cargó.
+         */
+        FarmacoSugeridoRead: {
+            /** Ficha Clinica Id */
+            ficha_clinica_id: number;
+            /**
+             * Cita Fecha
+             * Format: date
+             */
+            cita_fecha: string;
+            /** Profesional */
+            profesional: string | null;
+            /** Texto */
+            texto: string;
+            /** Medicamento */
+            medicamento: string;
+            /** Dosis */
+            dosis: string;
+            frecuencia: components["schemas"]["FrecuenciaFarmaco"];
+            /** Avisos */
+            avisos: string[];
+            /** En Esquema */
+            en_esquema: boolean;
+            /** Receta Registrada */
+            receta_registrada: boolean;
+        };
         /**
          * FichaClinicaCreate
          * @description Payload de push de datos clínicos (sistema externo → CEPA).
@@ -5801,6 +5854,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RecetaRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    farmacos_sugeridos_endpoint_api_v1_registro_farmacologico__ingreso_id__sugeridos_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ingreso_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FarmacoSugeridoRead"][];
                 };
             };
             /** @description Validation Error */

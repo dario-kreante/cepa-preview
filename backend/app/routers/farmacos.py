@@ -16,6 +16,7 @@ from app.auth.deps import get_current_user, require_role
 from app.db.session import get_db
 from app.models.farmacos import RegistroFarmacologico
 from app.models.ingreso import Ingreso
+from app.schemas.farmaco_sugerido import FarmacoSugeridoRead
 from app.schemas.farmacos import (
     AlertaRead,
     EsquemaIndicacionBody,
@@ -40,6 +41,7 @@ from app.services.farmacos import (
     listar_seguimientos,
     obtener_registro_por_ingreso,
 )
+from app.services.farmacos_sugeridos import sugerir_farmacos
 
 router = APIRouter(prefix="/api/v1/registro-farmacologico", tags=["farmacos"])
 
@@ -228,6 +230,16 @@ def crear_receta_endpoint(
     db.commit()
     db.refresh(receta)
     return receta
+
+
+@router.get(
+    "/{ingreso_id}/sugeridos",
+    response_model=list[FarmacoSugeridoRead],
+    dependencies=[Depends(_reader)],
+)
+def farmacos_sugeridos_endpoint(ingreso_id: int, db: Session = Depends(get_db)):
+    """Medicamentos leídos de las recetas de SALUTEM, para revisión humana. No escribe nada."""
+    return sugerir_farmacos(db, ingreso_id)
 
 
 @router.get(
