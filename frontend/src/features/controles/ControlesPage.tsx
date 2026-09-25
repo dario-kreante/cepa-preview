@@ -99,9 +99,15 @@ function ControlRow({ control, ingresoId, canWrite }: ControlRowProps) {
           )}
         </td>
 
-        {/* GAF — mini horizontal bar 0-100 */}
+        {/* GAF — tramo; si no hay, el entero con mini barra 0-100 */}
         <td className="px-4 py-3">
-          {control.gaf != null ? (
+          {control.gaf_tramo ? (
+            // v5 D18: el GAF es un tramo ("51-60"), de SALUTEM o elegido en SIGE.
+            <span className="text-[12px] font-mono text-muted-foreground" title="Tramo de GAF">
+              {control.gaf_tramo}
+            </span>
+          ) : control.gaf != null ? (
+            // Entero cargado antes de D18 que no cae en ningún tramo.
             <div className="flex items-center gap-2">
               <div className="w-16 h-1.5 rounded-full bg-muted overflow-hidden">
                 <div
@@ -113,11 +119,6 @@ function ControlRow({ control, ingresoId, canWrite }: ControlRowProps) {
                 {control.gaf}
               </span>
             </div>
-          ) : control.gaf_tramo ? (
-            // SALUTEM registra el GAF por tramo ("51-60"), no como número.
-            <span className="text-[12px] font-mono text-muted-foreground" title="Tramo de GAF (SALUTEM)">
-              {control.gaf_tramo}
-            </span>
           ) : (
             <span className="text-[13px] text-muted-foreground">—</span>
           )}

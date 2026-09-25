@@ -46,7 +46,7 @@ documento **no las reemplaza**: registra el hueco entre lo que exigen y lo que h
 | COMP-2609-09 | Mostrar las atenciones de SALUTEM dentro de Controles médicos | Historia (**resuelta 25-09**) | Controles | Alta | PA-v5-06 (parcial) |
 | COMP-2609-10 | Reglas del folio por programa | Decisión pendiente | Ingresos | Media | PA-v5-01 |
 | COMP-2609-11 | Catálogos de tipo de ingreso y tipo de derivación | Decisión pendiente | Ingresos | Alta | PA-v5-02 |
-| COMP-2609-12 | Tramos de GAF | Decisión pendiente | Controles / Licencias | Alta | PA-v5-03 |
+| COMP-2609-12 | Tramos de GAF | Decisión pendiente (**catálogo provisorio implementado 25-09**) | Controles / Licencias | Alta | PA-v5-03 (solo confirmar la segmentación) |
 | COMP-2609-13 | Umbrales y textos de las alertas de licencias y fármacos | Decisión pendiente | Alertas | Media | PA-v5-04 |
 | COMP-2609-14 | Planilla Excel de casos EPT | Decisión pendiente | EPT | Media | PA-v5-05 |
 | COMP-2609-15 | Origen del resumen de controles | Decisión pendiente | Controles | Media | PA-v5-06 |
@@ -54,7 +54,7 @@ documento **no las reemplaza**: registra el hueco entre lo que exigen y lo que h
 | COMP-2609-17 | "Detalles de la ficha" comprometidos por la contraparte | Decisión pendiente | Ingresos | Media | Respuesta de Pilar |
 | COMP-2609-18 | Ejemplo numérico de referencia para la adherencia | Decisión pendiente | Reportería | Media | Respuesta de Pilar |
 | COMP-2609-19 | Carga masiva de casos EPT desde Excel | Historia | EPT | Media | COMP-2609-14 |
-| COMP-2609-20 | Alerta por tramo de GAF en licencia médica | Historia | Licencias / Alertas | Media | COMP-2609-12, COMP-2609-13 |
+| COMP-2609-20 | Alerta por tramo de GAF en licencia médica | Historia (**implementada desactivada 25-09**) | Licencias / Alertas | Media | COMP-2609-13 (solo el umbral y el texto) |
 | COMP-2609-21 | Activar el servidor de QA | Dependencia externa | Plataforma | Alta | DTI |
 | COMP-2609-22 | SSO institucional seguro (SAML o validación del token huemul) | Dependencia externa | Autenticación | Alta | DTI |
 | COMP-2609-23 | Servidor SMTP institucional para alertas por correo | Dependencia externa | Alertas | Media | DTI (PA6) |
@@ -489,8 +489,18 @@ controles creados desde SALUTEM guardan ese tramo en `control_medico.gaf_tramo` 
 Controles lo muestra. Es un buen indicio de que la escala es la estándar de 10 en 10, pero hay que
 confirmarlo con Pilar. Los controles y licencias cargados en SIGE siguen pidiendo un número.
 
-**Al recibir la respuesta:** ajustar el catálogo sembrado; si cambia la segmentación, remapear los
-datos migrados.
+**Estado:** catálogo provisorio implementado el 25-09-2026 (rama `claude/lote4-gaf-tramos`,
+migración `1300`). Tabla `gaf_tramo` (desde, hasta, etiqueta, orden, activo, provisorio) sembrada
+con los 10 tramos EEAG de 10 en 10, marcados `provisorio`; `GET /api/v1/gaf-tramos` para los tres
+roles; helper `tramo_que_contiene()` en `backend/app/domain/gaf.py`. Los formularios de GAF
+(Licencia/RECA del control y envío ISL de la licencia) eligen el tramo de un select; se guarda en
+`control_medico.gaf_tramo` y en la nueva `licencia_medica.eeag_gaf_tramo`. Los enteros se
+conservan y la migración rellenó el tramo de las filas que ya tenían entero (un 0 no cae en ningún
+tramo y queda como entero). Las tablas de Controles y Licencias muestran el tramo, o el entero si
+no hay tramo. **Sigue pendiente** la confirmación de Pilar (PA-v5-03).
+
+**Al recibir la respuesta:** ajustar el catálogo sembrado (y quitar la marca `provisorio`); si
+cambia la segmentación, remapear los datos migrados.
 
 ---
 
@@ -610,10 +620,22 @@ anonimizada como fixture.
 **Bloqueado por:** `COMP-2609-12` (tramos) y `COMP-2609-13` (qué tramos alertan)
 **Historia de origen:** `CEPA-075` (P0, v5)
 
-No construida: no hay catálogo de tramos donde marcar cuáles son "alertables". Depende primero de
-implementar el catálogo (`COMP-2609-12`, que puede hacerse con valores provisorios) y de la
-configuración de alertas (`COMP-2609-07`). Una vez disponibles, la regla de `CEPA-075` RN-1 se
-implementa como un tipo más del motor.
+**Estado:** implementada **desactivada** el 25-09-2026 (rama `claude/lote4-gaf-tramos`,
+migración `1300`). Es un tipo más del motor (`gaf_licencia` en `config_alerta`): el job diario
+genera una alerta in-app por licencia no anulada cuyo tramo de GAF está **en o bajo** un tramo
+umbral (si la licencia solo tiene el entero, se usa el tramo que lo contiene). Idempotente (una
+alerta activa por licencia) y registrada en auditoría con actor sistema. Coordinación la activa y
+elige el tramo umbral en `/config-alertas`, sin redespliegue (CA-3).
+
+Decisiones provisorias: se sembró **desactivada** para respetar `CEPA-075` RN-2 (sin criterio de la
+contraparte no se alerta); el umbral sembrado es `21-30` (tramos 1-10, 11-20 y 21-30), solo como
+valor inicial al activarla. El criterio es "en o bajo un tramo" y no un conjunto arbitrario de
+tramos: cubre el caso clínico esperado (alertar el mayor deterioro funcional) con la configuración
+existente. El texto del mensaje es el genérico del motor.
+
+**Al recibir la respuesta (`COMP-2609-13`):** cargar el tramo umbral y activarla desde
+`/config-alertas`; si Pilar define un conjunto no contiguo de tramos alertables, cambiar el umbral
+por una marca por tramo en `gaf_tramo`.
 
 ---
 

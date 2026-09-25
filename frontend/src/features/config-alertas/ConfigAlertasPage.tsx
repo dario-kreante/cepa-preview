@@ -3,7 +3,8 @@
  *
  * Edita, por tipo de alerta, la ventana de aviso (días), si se cuenta en días hábiles y si
  * el tipo está activo; y administra el calendario de festivos que descuenta el conteo de
- * días hábiles. El job diario lee estos valores en cada ejecución: no requiere despliegue.
+ * días hábiles. En "GAF de licencia" (CEPA-075) el umbral es un tramo de GAF: alerta si el
+ * tramo de la licencia está en o bajo él. El job diario lee estos valores en cada ejecución: no requiere despliegue.
  */
 import { useState } from "react";
 import { toast } from "sonner";
@@ -22,7 +23,8 @@ import {
   useFestivos,
   useGuardarConfig,
 } from "./hooks";
-import { TIPO_LABELS, type ConfigAlertaItem, type ConfigAlertaRead } from "./api";
+import { TIPO_GAF, TIPO_LABELS, type ConfigAlertaItem, type ConfigAlertaRead } from "./api";
+import { useGafTramos } from "@/features/gaf-tramos/hooks";
 
 function Th({ children }: { children: React.ReactNode }) {
   return (
@@ -76,6 +78,7 @@ function UmbralesCard() {
 
 function UmbralesForm({ inicial }: { inicial: ConfigAlertaRead[] }) {
   const guardar = useGuardarConfig();
+  const { data: tramos = [] } = useGafTramos();
   const [filas, setFilas] = useState<ConfigAlertaItem[]>(() =>
     inicial.map(({ tipo, dias, habiles, activo }) => ({ tipo, dias, habiles, activo })),
   );
@@ -104,7 +107,7 @@ function UmbralesForm({ inicial }: { inicial: ConfigAlertaRead[] }) {
           <thead>
             <tr className="bg-muted/30 border-b">
               <Th>Tipo de alerta</Th>
-              <Th>Días de anticipación</Th>
+              <Th>Días de anticipación / umbral</Th>
               <Th>Días hábiles</Th>
               <Th>Activo</Th>
             </tr>
@@ -112,27 +115,54 @@ function UmbralesForm({ inicial }: { inicial: ConfigAlertaRead[] }) {
           <tbody>
             {filas.map((f) => {
               const nombre = TIPO_LABELS[f.tipo] ?? f.tipo;
+              const esGaf = f.tipo === TIPO_GAF;
               return (
                 <tr key={f.tipo} className="border-b" data-testid={`fila-${f.tipo}`}>
-                  <td className="px-4 py-3 font-medium">{nombre}</td>
-                  <td className="px-4 py-3">
-                    <Input
-                      type="number"
-                      min={0}
-                      max={365}
-                      aria-label={`Días ${nombre}`}
-                      className="h-8 w-[90px]"
-                      value={Number.isNaN(f.dias) ? "" : f.dias}
-                      onChange={(e) => cambiar(f.tipo, { dias: e.target.valueAsNumber })}
-                    />
+                  <td className="px-4 py-3 font-medium">
+                    {nombre}
+                    {esGaf && (
+                      <p className="text-[11.5px] font-normal text-muted-foreground">
+                        Alerta si el tramo de GAF de la licencia está en o bajo el umbral
+                      </p>
+                    )}
                   </td>
                   <td className="px-4 py-3">
-                    <input
-                      type="checkbox"
-                      aria-label={`Hábiles ${nombre}`}
-                      checked={f.habiles}
-                      onChange={(e) => cambiar(f.tipo, { habiles: e.target.checked })}
-                    />
+                    {esGaf ? (
+                      <select
+                        aria-label={`Tramo umbral ${nombre}`}
+                        className="h-8 rounded-md border border-input bg-background px-2 text-[13px]"
+                        value={String(f.dias)}
+                        onChange={(e) => cambiar(f.tipo, { dias: Number(e.target.value) })}
+                      >
+                        {tramos.map((t) => (
+                          <option key={t.id} value={String(t.hasta)}>
+                            {t.etiqueta}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <Input
+                        type="number"
+                        min={0}
+                        max={365}
+                        aria-label={`Días ${nombre}`}
+                        className="h-8 w-[90px]"
+                        value={Number.isNaN(f.dias) ? "" : f.dias}
+                        onChange={(e) => cambiar(f.tipo, { dias: e.target.valueAsNumber })}
+                      />
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    {esGaf ? (
+                      <span className="text-[13px] text-muted-foreground">—</span>
+                    ) : (
+                      <input
+                        type="checkbox"
+                        aria-label={`Hábiles ${nombre}`}
+                        checked={f.habiles}
+                        onChange={(e) => cambiar(f.tipo, { habiles: e.target.checked })}
+                      />
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <input

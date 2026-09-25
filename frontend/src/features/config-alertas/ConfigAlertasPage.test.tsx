@@ -15,6 +15,7 @@ const BASE = import.meta.env.VITE_API_BASE_URL;
 const CONFIG = [
   { tipo: "vencimiento_licencia", dias: 3, habiles: true, activo: true, actualizado_por: "migracion" },
   { tipo: "oda_por_vencer", dias: 7, habiles: false, activo: true, actualizado_por: "migracion" },
+  { tipo: "gaf_licencia", dias: 30, habiles: false, activo: false, actualizado_por: "migracion" },
 ];
 const FESTIVOS = [{ id: 1, fecha: "2026-09-18", descripcion: "Independencia Nacional" }];
 
@@ -80,6 +81,24 @@ describe("ConfigAlertasPage (COMP-2609-07)", () => {
       expect.arrayContaining([
         { tipo: "vencimiento_licencia", dias: 5, habiles: true, activo: false },
       ]),
+    );
+  });
+
+  it("GAF en licencia (COMP-2609-20): el umbral se elige como tramo del catálogo", async () => {
+    const user = userEvent.setup();
+    renderComo("Coordinacion");
+    const fila = await screen.findByTestId("fila-gaf_licencia");
+    expect(within(fila).getByText(/GAF de licencia/i)).toBeInTheDocument();
+    expect(within(fila).queryByLabelText(/Hábiles/i)).not.toBeInTheDocument();
+    const umbral = within(fila).getByLabelText(/Tramo umbral/i) as HTMLSelectElement;
+    await waitFor(() => expect(umbral.value).toBe("30"));
+    expect(within(umbral).getByRole("option", { name: "21-30" })).toBeInTheDocument();
+    await user.selectOptions(umbral, "50");
+    await user.click(within(fila).getByLabelText(/Activo/i));
+    await user.click(screen.getByRole("button", { name: /Guardar umbrales/i }));
+    await waitFor(() => expect(putBody).not.toBeNull());
+    expect(putBody).toEqual(
+      expect.arrayContaining([{ tipo: "gaf_licencia", dias: 50, habiles: false, activo: true }]),
     );
   });
 

@@ -6,7 +6,7 @@
  */
 import { describe, it, expect, vi } from "vitest";
 import { http, HttpResponse } from "msw";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
@@ -162,7 +162,7 @@ describe("IslLicenciaDialog", () => {
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
   });
 
-  it("sends PATCH /api/v1/licencias/:id/isl with envio_isl and eeag_gaf", async () => {
+  it("sends PATCH /api/v1/licencias/:id/isl with envio_isl and eeag_gaf_tramo", async () => {
     const patchSpy = vi.fn();
 
     server.use(
@@ -214,10 +214,12 @@ describe("IslLicenciaDialog", () => {
     const envioSelect = screen.getByLabelText(/estado de envío isl/i);
     await user.selectOptions(envioSelect, "enviado");
 
-    // Fill eeag_gaf
-    const eeagInput = screen.getByRole("spinbutton", { name: /gaf\/eeag/i });
-    await user.clear(eeagInput);
-    await user.type(eeagInput, "75");
+    // Elegir el tramo de GAF del catálogo
+    const tramoSelect = screen.getByLabelText(/tramo de gaf/i);
+    await waitFor(() =>
+      expect(within(tramoSelect).getByRole("option", { name: "71-80" })).toBeInTheDocument(),
+    );
+    await user.selectOptions(tramoSelect, "71-80");
 
     // Submit
     const submitBtn = screen.getByRole("button", { name: /guardar/i });
@@ -228,11 +230,19 @@ describe("IslLicenciaDialog", () => {
     });
 
     const call = patchSpy.mock.calls[0][0];
-    expect(call.body).toMatchObject({ envio_isl: "enviado", eeag_gaf: 75 });
+    expect(call.body).toMatchObject({ envio_isl: "enviado", eeag_gaf_tramo: "71-80" });
+    expect(call.body).not.toHaveProperty("eeag_gaf");
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 
-  it("shows a validation error when eeag_gaf is out of range", async () => {
+  it("sin tramo elegido no envía eeag_gaf_tramo (conserva el guardado)", async () => {
+    const patchSpy = vi.fn();
+    server.use(
+      http.patch(`${BASE}/api/v1/licencias/:id/isl`, async ({ request }) => {
+        patchSpy(await request.json());
+        return HttpResponse.json({});
+      }),
+    );
     const Wrapper = makeWrapper();
     render(
       <IslLicenciaDialog
@@ -246,20 +256,10 @@ describe("IslLicenciaDialog", () => {
 
     await screen.findByRole("dialog");
     const user = userEvent.setup();
+    await user.selectOptions(screen.getByLabelText(/estado de envío isl/i), "pendiente");
+    await user.click(screen.getByRole("button", { name: /guardar/i }));
 
-    // Use label-based query since native <select> doesn't get role="combobox"
-    const envioSelect = screen.getByLabelText(/estado de envío isl/i);
-    await user.selectOptions(envioSelect, "enviado");
-
-    const eeagInput = screen.getByRole("spinbutton", { name: /gaf\/eeag/i });
-    await user.clear(eeagInput);
-    await user.type(eeagInput, "150"); // Out of range
-
-    const submitBtn = screen.getByRole("button", { name: /guardar/i });
-    await user.click(submitBtn);
-
-    await waitFor(() => {
-      expect(screen.getByText(/entre 1 y 100/i)).toBeInTheDocument();
-    });
+    await waitFor(() => expect(patchSpy).toHaveBeenCalledOnce());
+    expect(patchSpy.mock.calls[0][0]).not.toHaveProperty("eeag_gaf_tramo");
   });
 });

@@ -3,7 +3,7 @@
  *
  * Covers:
  *  1. Validation: tiene_licencia checked but required fields missing ⇒ submit BLOCKED.
- *  2. Validation: gaf = 150 ⇒ BLOCKED (range error), PATCH NOT called.
+ *  2. GAF por tramo: select alimentado por el catálogo /gaf-tramos (v5 D18).
  *  3. Valid case: tiene_licencia true + all required fields ⇒ PATCH fires with correct body;
  *     refetched row reflects the reposo badge.
  *  4. tiene_licencia false ⇒ licencia fields sent as null.
@@ -202,50 +202,24 @@ describe("LicenciaControlDialog — validación: tiene_licencia true sin campos 
   });
 });
 
-describe("LicenciaControlDialog — validación: GAF fuera de rango", () => {
-  it("gaf=150 BLOQUEADO: error de rango visible y PATCH NO se llama", async () => {
-    const patchSpy = vi.fn();
-
+describe("LicenciaControlDialog — GAF por tramo (v5 D18)", () => {
+  it("el GAF se elige de un select con los tramos del catálogo, no se digita", async () => {
     const user = await setupPageWithPaciente(WRITER_TOKEN, [
       http.get(
         `${BASE}/api/v1/controles-medicos/por-ingreso/:ingresoId`,
-        () => HttpResponse.json([MOCK_CONTROL]),
-      ),
-      http.patch(
-        `${BASE}/api/v1/controles-medicos/:controlId/licencia`,
-        () => {
-          patchSpy();
-          return HttpResponse.json(MOCK_CONTROL);
-        },
+        () => HttpResponse.json([{ ...MOCK_CONTROL, gaf: 55, gaf_tramo: "51-60" }]),
       ),
     ]);
 
     await openLicenciaDialog(user);
+    const d = within(screen.getByRole("dialog"));
 
-    // Scope to dialog to avoid ambiguity
-    const dialog = screen.getByRole("dialog");
-    const d = within(dialog);
-
-    // Fill gaf with an out-of-range value (150)
-    const gafInput = d.getByLabelText(/GAF/i);
-    await user.clear(gafInput);
-    await user.type(gafInput, "150");
-
-    // Submit
-    const submitBtn = dialog.querySelector(
-      'button[type="submit"]',
-    ) as HTMLElement;
-    await user.click(submitBtn);
-
-    // Range error must appear
-    await waitFor(() => {
-      expect(
-        screen.getByText(/GAF debe estar entre 0 y 100/i),
-      ).toBeInTheDocument();
-    });
-
-    // PATCH must NOT have been called
-    expect(patchSpy).not.toHaveBeenCalled();
+    const select = (await d.findByLabelText(/Tramo de GAF/i)) as HTMLSelectElement;
+    expect(select.tagName).toBe("SELECT");
+    await waitFor(() => expect(within(select).getAllByRole("option")).toHaveLength(11));
+    expect(within(select).getByRole("option", { name: "91-100" })).toBeInTheDocument();
+    // Precarga el tramo guardado
+    expect(select.value).toBe("51-60");
   });
 });
 
@@ -311,10 +285,12 @@ describe("LicenciaControlDialog — alta válida: tiene_licencia true con todos 
     const tipoReposoSelect = d.getByLabelText(/Tipo de reposo/i);
     await user.selectOptions(tipoReposoSelect, "total");
 
-    // Fill gaf
-    const gafInput = d.getByLabelText(/GAF/i);
-    await user.clear(gafInput);
-    await user.type(gafInput, "65");
+    // Elegir el tramo de GAF
+    const gafSelect = d.getByLabelText(/Tramo de GAF/i);
+    await waitFor(() =>
+      expect(within(gafSelect).getByRole("option", { name: "61-70" })).toBeInTheDocument(),
+    );
+    await user.selectOptions(gafSelect, "61-70");
 
     // Select estado_reca
     const estadoRecaSelect = d.getByLabelText(/Estado RECA/i);
@@ -339,7 +315,9 @@ describe("LicenciaControlDialog — alta válida: tiene_licencia true con todos 
     expect(sentBody.total_dias_lm).toBe(15);
     expect(sentBody.tipo_licencia).toBe("1");
     expect(sentBody.tipo_reposo).toBe("total");
-    expect(sentBody.gaf).toBe(65);
+    expect(sentBody.gaf_tramo).toBe("61-70");
+    // El entero anterior a D18 no se envía: el backend lo conserva.
+    expect(sentBody).not.toHaveProperty("gaf");
     expect(sentBody.estado_reca).toBe("EC");
 
     // After success, toast confirms the update

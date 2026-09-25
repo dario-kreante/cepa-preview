@@ -4,10 +4,11 @@
  * Fields:
  *   envio_isl     — required Select (EstadoEnvioISL: pendiente | enviado | rechazado)
  *   fecha_envio_isl — optional date Input
- *   eeag_gaf       — optional number Input, validated in range 1–100
+ *   eeag_gaf_tramo — optional select del catálogo de tramos de GAF (v5 D18)
  *   observaciones  — optional textarea
  *
- * On submit: PATCH /api/v1/licencias/{id}/isl { envio_isl, fecha_envio_isl?, eeag_gaf?, observaciones? }
+ * On submit: PATCH /api/v1/licencias/{id}/isl { envio_isl, fecha_envio_isl?, eeag_gaf_tramo?, observaciones? }
+ * Sin tramo elegido no se envía eeag_gaf_tramo: el backend conserva el guardado.
  */
 import { useState } from "react";
 import { toast } from "sonner";
@@ -20,6 +21,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { GafTramoSelect } from "@/features/gaf-tramos/GafTramoSelect";
 import { Label } from "@/components/ui/label";
 import { useActualizarISL } from "./hooks";
 import type { LicenciaISLUpdate } from "./api";
@@ -43,48 +45,34 @@ interface Props {
 interface FormState {
   envio_isl: EstadoEnvioISL | "";
   fecha_envio_isl: string;
-  eeag_gaf: string;
+  eeag_gaf_tramo: string;
   observaciones: string;
 }
 
 const INITIAL_FORM: FormState = {
   envio_isl: "",
   fecha_envio_isl: "",
-  eeag_gaf: "",
+  eeag_gaf_tramo: "",
   observaciones: "",
 };
 
 export function IslLicenciaDialog({ licenciaId, folio, open, onOpenChange }: Props) {
   const [form, setForm] = useState<FormState>(INITIAL_FORM);
-  const [eeagError, setEeagError] = useState<string | null>(null);
 
   const islMutation = useActualizarISL(folio);
 
   function handleChange<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
-    if (key === "eeag_gaf") setEeagError(null);
-  }
-
-  function validate(): boolean {
-    if (form.eeag_gaf !== "") {
-      const n = Number(form.eeag_gaf);
-      if (!Number.isInteger(n) || n < 1 || n > 100) {
-        setEeagError("Debe estar entre 1 y 100");
-        return false;
-      }
-    }
-    return true;
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!validate()) return;
 
     const body: LicenciaISLUpdate = {
       envio_isl: form.envio_isl as EstadoEnvioISL,
       fecha_envio_isl: form.fecha_envio_isl || null,
-      eeag_gaf: form.eeag_gaf !== "" ? Number(form.eeag_gaf) : null,
       observaciones: form.observaciones || null,
+      ...(form.eeag_gaf_tramo ? { eeag_gaf_tramo: form.eeag_gaf_tramo } : {}),
     };
 
     try {
@@ -144,24 +132,18 @@ export function IslLicenciaDialog({ licenciaId, folio, open, onOpenChange }: Pro
             />
           </div>
 
-          {/* eeag_gaf */}
+          {/* eeag_gaf_tramo — select alimentado por el catálogo (v5 D18) */}
           <div>
-            <Label htmlFor="eeag-gaf">
-              GAF/EEAG{" "}
-              <span className="text-[11px] text-muted-foreground font-normal">(opcional, 1–100)</span>
+            <Label htmlFor="eeag-gaf-tramo">
+              Tramo de GAF/EEAG{" "}
+              <span className="text-[11px] text-muted-foreground font-normal">(opcional)</span>
             </Label>
-            <Input
-              id="eeag-gaf"
-              aria-label="GAF/EEAG"
-              type="number"
-              value={form.eeag_gaf}
-              onChange={(e) => handleChange("eeag_gaf", e.target.value)}
-              placeholder="Ej. 75"
-              className="mt-1"
+            <GafTramoSelect
+              id="eeag-gaf-tramo"
+              value={form.eeag_gaf_tramo}
+              onChange={(e) => handleChange("eeag_gaf_tramo", e.target.value)}
+              placeholder="Sin cambios"
             />
-            {eeagError && (
-              <p className="text-[11.5px] text-destructive mt-1">{eeagError}</p>
-            )}
           </div>
 
           {/* observaciones */}

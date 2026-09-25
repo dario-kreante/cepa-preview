@@ -113,7 +113,8 @@ function LicenciaRow({
   // El listado trae todas las columnas (COMP-2609-04); "—" solo cuando el dato no existe.
   const folioLm = slim.folio_lm ?? "—";
   const tipoReposo = TIPO_REPOSO_LABELS[slim.tipo_reposo] ?? slim.tipo_reposo;
-  const eeagGaf = slim.eeag_gaf != null ? String(slim.eeag_gaf) : "—";
+  // v5 D18: el tramo; el entero solo si la licencia no tiene tramo.
+  const eeagGaf = slim.eeag_gaf_tramo ?? (slim.eeag_gaf != null ? String(slim.eeag_gaf) : "—");
   const envioIsl = ISL_LABELS[slim.envio_isl] ?? slim.envio_isl;
 
   return (
