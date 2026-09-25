@@ -130,7 +130,7 @@ describe("EptPage", () => {
   it("tiene el placeholder exacto requerido", () => {
     renderPage();
     expect(
-      screen.getByPlaceholderText("Buscar por RUT, folio o nombre")
+      screen.getByPlaceholderText("Buscar por RUT, folio, nombre o ID SALUTEM")
     ).toBeInTheDocument();
   });
 
@@ -170,7 +170,7 @@ describe("EptPage", () => {
     renderPage(ADMIN_TOKEN);
 
     // Search for paciente
-    const searchInput = screen.getByPlaceholderText("Buscar por RUT, folio o nombre");
+    const searchInput = screen.getByPlaceholderText("Buscar por RUT, folio, nombre o ID SALUTEM");
     await userEvent.type(searchInput, "Juan");
 
     await waitFor(
@@ -284,7 +284,7 @@ describe("EptPage", () => {
 
     renderPage(ADMIN_TOKEN);
 
-    const searchInput = screen.getByPlaceholderText("Buscar por RUT, folio o nombre");
+    const searchInput = screen.getByPlaceholderText("Buscar por RUT, folio, nombre o ID SALUTEM");
     await userEvent.type(searchInput, "Juan");
 
     await waitFor(

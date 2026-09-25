@@ -100,12 +100,22 @@ class Settings(BaseSettings):
     salutem_backfill_dias_vacios: int = 365
     # Vacío = log a stderr. En la VM: ~/sige-cepa/logs/salutem-sync.log
     salutem_sync_log: str = ""
+    # IDs de persona SALUTEM separados por coma. Vacío = todas. Con valor, el sync solo
+    # copia a esas personas: SALUTEM QA trae identidades reales y mientras se valida
+    # hay que limitarse a los pacientes de prueba.
+    salutem_sync_personas_permitidas: str = ""
 
     # --- IMED feature flag (CEPA-122, P2, PA5) ---
     imed_enabled: bool = False
 
     # --- CORS (integración frontend) ---
     cors_origins: str = "http://localhost:5173,http://localhost:4173,https://cepa-preview.vercel.app"
+
+    @property
+    def salutem_sync_personas_permitidas_ids(self) -> frozenset[int]:
+        return frozenset(
+            int(x) for x in self.salutem_sync_personas_permitidas.split(",") if x.strip()
+        )
 
     @property
     def cors_origins_list(self) -> list[str]:

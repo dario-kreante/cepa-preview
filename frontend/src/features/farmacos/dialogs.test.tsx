@@ -110,7 +110,7 @@ async function setupPageWithPaciente(token = WRITER_TOKEN) {
   renderPage(token);
   const user = userEvent.setup();
 
-  const input = screen.getByPlaceholderText("Buscar por RUT, folio o nombre");
+  const input = screen.getByPlaceholderText("Buscar por RUT, folio, nombre o ID SALUTEM");
   await user.type(input, "Juan");
 
   await waitFor(

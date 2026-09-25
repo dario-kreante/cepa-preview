@@ -1,14 +1,21 @@
 """Búsqueda 360° de pacientes (CEPA-012).
 
-Criterios: RUT (normalizado), nombre (parcial, case-insensitive) y folio. La
-búsqueda nunca lanza error por término inexistente: devuelve lista vacía (RN-5).
+Criterios: RUT (normalizado), nombre (parcial, case-insensitive), folio y la
+identidad en SALUTEM de los pacientes sin RUT (el `sin_id_…` que muestra SALUTEM o
+el id interno de persona). La búsqueda nunca lanza error por término inexistente:
+devuelve lista vacía (RN-5).
 """
+
+import re
 
 from sqlalchemy import func, select
 
 from app.models.ingreso import Ingreso
 from app.models.paciente import Paciente
+from app.models.salutem_copia import SalutemPersona
 from app.util.rut import RutInvalidoError, normalizar_rut
+
+_SIN_ID = re.compile(r"^sin_id_\d+$", re.IGNORECASE)
 
 
 def buscar_pacientes(db, q: str) -> list[Paciente]:
@@ -37,12 +44,37 @@ def buscar_pacientes(db, q: str) -> list[Paciente]:
     ).scalars():
         ids.add(p.id)
 
+    # 4) por identidad SALUTEM (pacientes sin RUT asociados por salutem_persona_id)
+    ids |= _por_identidad_salutem(db, q)
+
     if not ids:
         return []
     return list(
         db.execute(
             select(Paciente).where(Paciente.id.in_(ids)).order_by(Paciente.nombre)
         ).scalars()
+    )
+
+
+def _por_identidad_salutem(db, q: str) -> set[int]:
+    if q.isdigit():
+        personas = {int(q)}
+    elif _SIN_ID.match(q):
+        # El sin_id es la "identificacion" que SALUTEM muestra y vive en el contenido
+        # JSON (CLOB en Oracle): se compara en Python. Solo se revisan las personas
+        # sin RUT, que son pocas.
+        buscado = q.lower()
+        personas = {
+            p.salutem_id
+            for p in db.scalars(select(SalutemPersona).where(SalutemPersona.rut.is_(None)))
+            if str(p.contenido.get("identificacion") or "").lower() == buscado
+        }
+    else:
+        return set()
+    if not personas:
+        return set()
+    return set(
+        db.scalars(select(Paciente.id).where(Paciente.salutem_persona_id.in_(personas)))
     )
 
 

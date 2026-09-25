@@ -102,7 +102,7 @@ describe("ControlesPage", () => {
   it("tiene el placeholder exacto requerido", () => {
     renderPage();
     expect(
-      screen.getByPlaceholderText("Buscar por RUT, folio o nombre")
+      screen.getByPlaceholderText("Buscar por RUT, folio, nombre o ID SALUTEM")
     ).toBeInTheDocument();
   });
 
@@ -142,7 +142,7 @@ describe("ControlesPage", () => {
     renderPage();
 
     // Type in search
-    const input = screen.getByPlaceholderText("Buscar por RUT, folio o nombre");
+    const input = screen.getByPlaceholderText("Buscar por RUT, folio, nombre o ID SALUTEM");
     await userEvent.type(input, "Juan");
 
     // Paciente list appears
@@ -193,7 +193,7 @@ describe("ControlesPage", () => {
 
     renderPage();
 
-    const input = screen.getByPlaceholderText("Buscar por RUT, folio o nombre");
+    const input = screen.getByPlaceholderText("Buscar por RUT, folio, nombre o ID SALUTEM");
     await userEvent.type(input, "Juan");
 
     await waitFor(
@@ -227,7 +227,7 @@ describe("ControlesPage", () => {
 
     renderPage();
 
-    const input = screen.getByPlaceholderText("Buscar por RUT, folio o nombre");
+    const input = screen.getByPlaceholderText("Buscar por RUT, folio, nombre o ID SALUTEM");
     await userEvent.type(input, "Juan");
 
     await waitFor(

@@ -19,7 +19,7 @@ const FAKE_TOKEN =
   "eyJzdWIiOiIxIiwidXNlcm5hbWUiOiJ0ZXN0Iiwicm9sZSI6IkNvb3JkaW5hY2lvbiIsInR5cGUiOiJhY2Nlc3MiLCJleHAiOjk5OTk5OTk5OTl9." +
   "SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c";
 
-function renderPage() {
+function renderPage(ruta = "/ingresos") {
   // Seed a token so AuthProvider sees role without any API call
   tokenStore.setAccess(FAKE_TOKEN);
   const qc = new QueryClient({
@@ -27,7 +27,7 @@ function renderPage() {
   });
   return render(
     <QueryClientProvider client={qc}>
-      <MemoryRouter>
+      <MemoryRouter initialEntries={[ruta]}>
         <AuthProvider>
           <IngresosListaPage />
         </AuthProvider>
@@ -59,7 +59,7 @@ describe("IngresosListaPage", () => {
   it("tiene el placeholder exacto requerido", () => {
     renderPage();
     expect(
-      screen.getByPlaceholderText("Buscar por RUT, folio o nombre")
+      screen.getByPlaceholderText("Buscar por RUT, folio, nombre o ID SALUTEM")
     ).toBeInTheDocument();
   });
 
@@ -80,7 +80,7 @@ describe("IngresosListaPage", () => {
     );
 
     renderPage();
-    const input = screen.getByPlaceholderText("Buscar por RUT, folio o nombre");
+    const input = screen.getByPlaceholderText("Buscar por RUT, folio, nombre o ID SALUTEM");
     await userEvent.type(input, "María");
 
     await waitFor(() => {
@@ -99,11 +99,30 @@ describe("IngresosListaPage", () => {
     );
 
     renderPage();
-    const input = screen.getByPlaceholderText("Buscar por RUT, folio o nombre");
+    const input = screen.getByPlaceholderText("Buscar por RUT, folio, nombre o ID SALUTEM");
     await userEvent.type(input, "XYZ no existe");
 
     await waitFor(() => {
       expect(screen.getByText(/Sin resultados/i)).toBeInTheDocument();
     });
+  });
+
+  it("toma el término de ?q= (buscador lateral) y busca de inmediato", async () => {
+    const pedidos: string[] = [];
+    server.use(
+      http.get(`${BASE}/api/v1/pacientes/buscar`, ({ request }) => {
+        const q = new URL(request.url).searchParams.get("q") ?? "";
+        pedidos.push(q);
+        return HttpResponse.json(q ? [MOCK_PACIENTE] : []);
+      })
+    );
+
+    renderPage("/ingresos?q=sin_id_1216018");
+
+    expect(screen.getByPlaceholderText("Buscar por RUT, folio, nombre o ID SALUTEM")).toHaveValue(
+      "sin_id_1216018"
+    );
+    await waitFor(() => expect(screen.getByText("María González")).toBeInTheDocument());
+    expect(pedidos).toContain("sin_id_1216018");
   });
 });

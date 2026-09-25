@@ -27,6 +27,9 @@ class Paciente(Base):
     comuna: Mapped[str | None] = mapped_column(String(80), nullable=True)
     telefono: Mapped[str | None] = mapped_column(String(30), nullable=True)
     correo: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    # Persona de SALUTEM con la que se cruza este paciente cuando SALUTEM no tiene su
+    # RUT (p.ej. sus pacientes de prueba, "SIN IDENTIFICACION"). Si es nulo, se cruza por RUT.
+    salutem_persona_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True, unique=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, nullable=False
     )

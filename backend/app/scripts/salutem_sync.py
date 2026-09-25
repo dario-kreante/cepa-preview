@@ -16,6 +16,7 @@ from datetime import date, datetime, timezone
 from logging.handlers import RotatingFileHandler
 
 from app.config import get_settings
+from app.services.salutem_sync.filtro import envolver_si_corresponde
 from app.db.session import SessionLocal
 from app.integrations.salutem.client import get_salutem_client
 from app.services.salutem_sync.backfill import DIAS_FUTURO
@@ -87,7 +88,9 @@ def main(argv: list[str] | None = None) -> int:
             return correr(
                 args.modo,
                 db,
-                get_salutem_client(),
+                envolver_si_corresponde(
+                    get_salutem_client(), settings.salutem_sync_personas_permitidas_ids
+                ),
                 Ritmo(settings.salutem_sync_llamadas_por_seg),
                 ahora=lambda: datetime.now(timezone.utc),
                 habilitado=True,

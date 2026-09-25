@@ -1,4 +1,5 @@
-import { NavLink } from "react-router-dom";
+import { useState } from "react";
+import { NavLink, useNavigate } from "react-router-dom";
 import {
   ChevronsLeft,
   Search,
@@ -20,6 +21,16 @@ interface SidebarProps {
 
 export function Sidebar({ collapsed, onToggleCollapse, badges = {} }: SidebarProps) {
   const { username, rol, logout } = useAuth();
+  const navigate = useNavigate();
+  const [busqueda, setBusqueda] = useState("");
+
+  // Enter busca pacientes en Ingresos (mismos criterios: RUT, folio, nombre o ID SALUTEM).
+  function buscar() {
+    const termino = busqueda.trim();
+    if (!termino) return;
+    navigate(`/ingresos?q=${encodeURIComponent(termino)}`);
+    setBusqueda("");
+  }
 
   // Derive initials from username for avatar
   const initials = username
@@ -61,15 +72,21 @@ export function Sidebar({ collapsed, onToggleCollapse, badges = {} }: SidebarPro
         )}
       </div>
 
-      {/* Search (visual only — global search not wired yet) */}
+      {/* Buscador de pacientes: Enter lleva a Ingresos con el término */}
       {!collapsed && (
         <div className="px-4 pb-3">
           <div className="relative">
             <Search className="absolute left-2.5 top-2 size-3.5 text-muted-foreground pointer-events-none" />
             <input
-              placeholder="Buscar…"
-              readOnly
-              className="w-full h-8 pl-8 pr-2 text-[12.5px] bg-background border border-border rounded-md shadow-xs placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-ring cursor-not-allowed"
+              type="search"
+              aria-label="Buscar pacientes"
+              placeholder="Buscar paciente…"
+              value={busqueda}
+              onChange={(e) => setBusqueda(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") buscar();
+              }}
+              className="w-full h-8 pl-8 pr-2 text-[12.5px] bg-background border border-border rounded-md shadow-xs placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
         </div>
