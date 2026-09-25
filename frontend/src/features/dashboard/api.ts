@@ -23,3 +23,10 @@ export async function obtenerDashboard(
   if (error || !data) throw new Error("No se pudo cargar el dashboard");
   return data;
 }
+
+/** GET /api/v1/dashboard/activos — conteo de ingresos con estado activo (píldora del Topbar). */
+export async function obtenerIngresosActivos(): Promise<number> {
+  const { data, error } = await api.GET("/api/v1/dashboard/activos");
+  if (error || !data) throw new Error("No se pudo cargar el conteo de ingresos activos");
+  return data.total;
+}

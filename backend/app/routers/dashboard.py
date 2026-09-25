@@ -16,7 +16,8 @@ from app.auth.deps import require_role
 from app.db.session import get_db
 from app.models.cita import Cita
 from app.models.ingreso import Ingreso
-from app.schemas.reportes import ResumenDashboard
+from app.domain.enums import EstadoCaso
+from app.schemas.reportes import IngresosActivos, ResumenDashboard
 from app.services.reportes_filtros import FiltrosDashboard, aplicar_filtros_ingreso
 
 router = APIRouter(prefix="/api/v1/dashboard", tags=["dashboard"])
@@ -58,6 +59,19 @@ def _construir_filtros(
         especialidad=especialidad,
         tipo_atencion=tipo_atencion,
     )
+
+
+@router.get("/activos", response_model=IngresosActivos)
+def get_ingresos_activos(
+    db: Session = Depends(get_db),
+    _current_user=Depends(_lector),
+) -> IngresosActivos:
+    """COMP-2609-03: conteo liviano de ingresos con estado activo, sin filtros,
+    para la píldora del Topbar (se consulta en todas las pantallas)."""
+    stmt = select(func.count()).select_from(Ingreso).where(
+        Ingreso.estado == EstadoCaso.ACTIVO.value
+    )
+    return IngresosActivos(total=db.execute(stmt).scalar_one())
 
 
 @router.get("", response_model=ResumenDashboard)

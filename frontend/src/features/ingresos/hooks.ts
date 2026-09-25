@@ -90,7 +90,11 @@ export function useCrearIngreso() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (body: IngresoCreate) => crearIngreso(body),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["pacientes"] }); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["pacientes"] });
+      // La píldora "N activos" del Topbar cambia con cada ingreso nuevo.
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+    },
   });
 }
 
@@ -102,6 +106,8 @@ export function useActualizarIngreso(pacienteId: number) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["pacientes", pacienteId, "vista360"] });
       qc.invalidateQueries({ queryKey: ["pacientes", "buscar"] });
+      // Un cierre o derivación cambia el conteo de activos del Topbar.
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
     },
   });
 }

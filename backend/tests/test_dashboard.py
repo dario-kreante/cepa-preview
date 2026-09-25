@@ -101,3 +101,36 @@ def test_dashboard_auditor_accede_solo_lectura(as_auditor, datos_dashboard):
 def test_dashboard_sin_auth_rechaza(client):
     resp = client.get("/api/v1/dashboard")
     assert resp.status_code == 401
+
+
+# ── COMP-2609-03: conteo de ingresos activos para la píldora del Topbar ──────
+
+@pytest.fixture
+def ingresos_por_estado(db_session):
+    """Dos ingresos activos, uno cerrado y uno derivado."""
+    from app.models.paciente import Paciente
+    pac = Paciente(rut="22222222-2", nombre="Pac Activos", sexo="M", edad=40, region="Maule")
+    db_session.add(pac)
+    db_session.flush()
+    for i, estado in enumerate(["activo", "activo", "cerrado", "derivado"]):
+        db_session.add(Ingreso(
+            **_ING_DEFAULTS,
+            paciente_id=pac.id,
+            folio=f"F-ACT-{i:03d}",
+            programa="DIAT",
+            fecha_ingreso=date(2026, 3, 1),
+            estado=estado,
+        ))
+    db_session.commit()
+
+
+@pytest.mark.parametrize("fixture", ["as_coordinacion", "as_admin", "as_auditor"])
+def test_activos_cuenta_solo_ingresos_activos(request, fixture, ingresos_por_estado):
+    cliente = request.getfixturevalue(fixture)
+    resp = cliente.get("/api/v1/dashboard/activos")
+    assert resp.status_code == 200
+    assert resp.json() == {"total": 2}
+
+
+def test_activos_sin_token_401(client):
+    assert client.get("/api/v1/dashboard/activos").status_code == 401
