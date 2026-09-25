@@ -6,7 +6,7 @@
  * The backend `LicenciaCreate` requires `ingreso_id` (integer), not folio.
  * The page works folio-first; `ingreso_id` is resolved as follows:
  *   • `ingresoId` prop is set by the parent (LicenciasPage) when it already
- *     knows the id from the first full LicenciaRead row in the historial.
+ *     knows the id from the ingreso_id returned by the folio listing.
  *   • When no licencias exist yet for the folio (new case), `ingresoId` is
  *     undefined and the user must enter it in a visible text field.
  *

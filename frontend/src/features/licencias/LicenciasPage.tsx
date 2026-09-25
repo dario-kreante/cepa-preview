@@ -12,11 +12,10 @@ import { useAuth } from "@/lib/auth/AuthContext";
 import { puedeEscribir, type Rol } from "@/lib/rbac";
 import {
   useLicenciasPorFolio,
-  useLicenciasDetalle,
   useActualizarISL,
   useGenerarAlertas,
 } from "./hooks";
-import type { LicenciaReadSlim, LicenciaRead } from "./api";
+import type { LicenciaReadSlim } from "./api";
 import { AltaLicenciaDialog } from "./AltaLicenciaDialog";
 import { AnularLicenciaDialog } from "./AnularLicenciaDialog";
 import { IslLicenciaDialog } from "./IslLicenciaDialog";
@@ -93,7 +92,6 @@ function Th({ children }: { children: React.ReactNode }) {
 
 interface RowProps {
   slim: LicenciaReadSlim;
-  full: LicenciaRead | undefined;
   canWrite: boolean;
   selected: boolean;
   onToggleSelect: (id: number) => void;
@@ -103,7 +101,6 @@ interface RowProps {
 
 function LicenciaRow({
   slim,
-  full,
   canWrite,
   selected,
   onToggleSelect,
@@ -113,11 +110,11 @@ function LicenciaRow({
   const vence = venceEnInfo(slim.fecha_termino, slim.anulada);
   const estado = estadoInfo(slim.fecha_termino, slim.anulada);
 
-  // Full fields — "—" when not yet loaded (backend contract gap: slim has no tipo_reposo/eeag_gaf/envio_isl)
-  const folioLm = full?.folio_lm ?? "—";
-  const tipoReposo = full ? (TIPO_REPOSO_LABELS[full.tipo_reposo] ?? full.tipo_reposo) : "—";
-  const eeagGaf = full ? (full.eeag_gaf != null ? String(full.eeag_gaf) : "—") : "—";
-  const envioIsl = full ? (ISL_LABELS[full.envio_isl] ?? full.envio_isl) : "—";
+  // El listado trae todas las columnas (COMP-2609-04); "—" solo cuando el dato no existe.
+  const folioLm = slim.folio_lm ?? "—";
+  const tipoReposo = TIPO_REPOSO_LABELS[slim.tipo_reposo] ?? slim.tipo_reposo;
+  const eeagGaf = slim.eeag_gaf != null ? String(slim.eeag_gaf) : "—";
+  const envioIsl = ISL_LABELS[slim.envio_isl] ?? slim.envio_isl;
 
   return (
     <tr className="border-b hover:bg-muted/40 transition-colors">
@@ -234,30 +231,18 @@ export function LicenciasPage() {
   const historial: LicenciaReadSlim[] = licenciasResp?.historial ?? [];
   const diasAcumulados = licenciasResp?.dias_acumulados ?? 0;
 
-  // Fetch full details per row (para tipo_reposo, eeag_gaf, envio_isl, folio_lm)
-  const fullDetails = useLicenciasDetalle(historial.map((h) => h.id));
+  // El ingreso del folio viene en la respuesta del listado (null si el folio no existe).
+  const ingresoId: number | undefined = licenciasResp?.ingreso_id ?? undefined;
 
-  // Derive ingreso_id from the first resolved full detail row.
-  // LicenciaRead contains ingreso_id; LicenciasResponse does not expose it.
-  const ingresoId: number | undefined = fullDetails.find((d) => d?.ingreso_id != null)?.ingreso_id;
-
-  // Build merged rows for filtering
-  const mergedRows = historial.map((slim, i) => ({
-    slim,
-    full: fullDetails[i],
-  }));
-
-  // Client-side filters
-  const filtered = mergedRows.filter(({ slim, full }) => {
-    if (tipoFilter !== "Todos" && slim.tipo_lm !== tipoFilter) return false;
-    if (reposoFilter !== "Todos") {
-      if (full && full.tipo_reposo !== reposoFilter) return false;
-    }
-    if (islFilter !== "Todos") {
-      if (full && full.envio_isl !== islFilter) return false;
-    }
-    return true;
-  });
+  // Client-side filters: el listado trae los campos completos, sin esperar detalles.
+  const filtered = historial
+    .filter((slim) => {
+      if (tipoFilter !== "Todos" && slim.tipo_lm !== tipoFilter) return false;
+      if (reposoFilter !== "Todos" && slim.tipo_reposo !== reposoFilter) return false;
+      if (islFilter !== "Todos" && slim.envio_isl !== islFilter) return false;
+      return true;
+    })
+    .map((slim) => ({ slim }));
 
   // Non-anulled filtered rows eligible for selection
   const selectableRows = filtered.filter(({ slim }) => !slim.anulada);
@@ -560,11 +545,10 @@ export function LicenciasPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map(({ slim, full }) => (
+                  {filtered.map(({ slim }) => (
                     <LicenciaRow
                       key={slim.id}
                       slim={slim}
-                      full={full}
                       canWrite={puedeCrear}
                       selected={selectedIds.has(slim.id)}
                       onToggleSelect={handleToggleRow}

@@ -10,7 +10,11 @@ export type LicenciaReadSlim =
   components["schemas"]["app__schemas__licencia_api__LicenciaRead"];
 
 export type LicenciaCreate = components["schemas"]["LicenciaCreate"];
-export type LicenciasResponse = components["schemas"]["LicenciasResponse"];
+type LicenciasResponseApi = components["schemas"]["LicenciasResponse"];
+// ingreso_id es null cuando el folio no existe (404): no hay ingreso al que asociar.
+export type LicenciasResponse = Omit<LicenciasResponseApi, "ingreso_id"> & {
+  ingreso_id: number | null;
+};
 export type LicenciaISLUpdate = components["schemas"]["LicenciaISLUpdate"];
 export type LicenciaAnularUpdate = components["schemas"]["LicenciaAnularUpdate"];
 export type AcumuladoRead = components["schemas"]["AcumuladoRead"];
@@ -28,6 +32,7 @@ export async function buscarLicenciasPorFolio(
       // Folio sin licencias registradas — devolver estructura vacía tipada
       const empty: LicenciasResponse = {
         folio,
+        ingreso_id: null,
         historial: [],
         dias_acumulados: 0,
       };
@@ -81,16 +86,6 @@ export async function actualizarISL(
     },
   );
   if (error || !data) throw new Error("No se pudo actualizar el envío ISL");
-  return data;
-}
-
-export async function getLicenciaDetalle(
-  licenciaId: number,
-): Promise<LicenciaRead> {
-  const { data, error } = await api.GET("/api/v1/licencias/{licencia_id}", {
-    params: { path: { licencia_id: licenciaId } },
-  });
-  if (error || !data) throw new Error("No se pudo obtener el detalle de la licencia");
   return data;
 }
 

@@ -52,6 +52,7 @@ def obtener_licencias(folio: str, db: Session = Depends(get_db)) -> LicenciasRes
     resultado = calcular_acumulado(db, ingreso.id)
     return LicenciasResponse(
         folio=folio,
+        ingreso_id=ingreso.id,
         historial=[LicenciaRead.model_validate(lic) for lic in licencias],
         dias_acumulados=resultado.dias_acumulados_vigentes,
     )

@@ -4,8 +4,8 @@
  * Contract: `LicenciaCreate` (backend) requires `ingreso_id` (integer), NOT folio.
  * The form therefore includes an ingreso_id field that is:
  *   - pre-populated (hidden / read-only) when the page already knows it from the
- *     fetched historial (first row's full detail ingreso_id); or
- *   - visible and user-entered when no prior licencias exist for the folio.
+ *     folio listing response (`ingreso_id`); or
+ *   - visible and user-entered when the folio does not exist.
  *
  * Enum values (backend exact literals):
  *   tipo_lm:  "1" | "5" | "6"            (app__domain__enums_licencia__TipoLicencia)

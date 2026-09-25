@@ -57,6 +57,11 @@ const FOLIO = "FOLIO-BULK";
 
 // Two non-anulled licencias for bulk selection tests
 const SLIM_1 = {
+  ingreso_id: 5,
+  folio_lm: "LM-11",
+  tipo_reposo: "total",
+  eeag_gaf: null,
+  envio_isl: "pendiente",
   id: 11,
   tipo_lm: "1",
   cantidad_dias: 7,
@@ -66,6 +71,11 @@ const SLIM_1 = {
   anulada: false,
 };
 const SLIM_2 = {
+  ingreso_id: 5,
+  folio_lm: "LM-12",
+  tipo_reposo: "total",
+  eeag_gaf: null,
+  envio_isl: "pendiente",
   id: 12,
   tipo_lm: "5",
   cantidad_dias: 14,
@@ -98,6 +108,7 @@ function registerTwoRowHandlers() {
     http.get(`${BASE}/api/v1/licencias/folio/:folio`, () =>
       HttpResponse.json({
         folio: FOLIO,
+        ingreso_id: 5,
         historial: [SLIM_1, SLIM_2],
         dias_acumulados: 21,
       })

@@ -85,6 +85,25 @@ def test_licencias_historial_y_acumulado(as_admin, folio_con_licencias):
     assert len(cuerpo["historial"]) == 2
 
 
+# COMP-2609-04: el listado trae todo lo que muestra la pantalla, sin pedir detalle por fila
+def test_licencias_listado_trae_campos_de_la_tabla(as_admin, folio_con_licencias, db_session):
+    from app.models.ingreso import Ingreso
+
+    folio = folio_con_licencias["folio"]
+    ingreso_id = db_session.query(Ingreso).filter(Ingreso.folio == folio).one().id
+
+    r = as_admin.get(f"/api/v1/licencias/folio/{folio}")
+    assert r.status_code == 200, r.text
+    cuerpo = r.json()
+    assert cuerpo["ingreso_id"] == ingreso_id
+    fila = cuerpo["historial"][0]
+    for campo in ("folio_lm", "tipo_reposo", "eeag_gaf", "envio_isl", "ingreso_id"):
+        assert campo in fila, f"falta {campo} en el historial"
+    assert fila["tipo_reposo"] == "total"
+    assert fila["envio_isl"] == "pendiente"
+    assert fila["ingreso_id"] == ingreso_id
+
+
 def test_licencias_folio_inexistente_devuelve_404(as_admin):
     """TC-121-04: folio sin licencias → 404."""
     r = as_admin.get("/api/v1/licencias/folio/F-9999-0000")

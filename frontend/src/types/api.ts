@@ -2735,6 +2735,48 @@ export interface components {
             receta_registrada: boolean;
         };
         /**
+         * FarmacosIngresoRead
+         * @description Registro farmacológico de un ingreso con su esquema de indicaciones y recetas.
+         *
+         *     `indicaciones` incluye el historial completo del esquema (las vigentes llevan
+         *     `vigente=True`, CEPA-021 RN-2).
+         */
+        FarmacosIngresoRead: {
+            /** Id */
+            id: number;
+            /** Ingreso Id */
+            ingreso_id: number;
+            /** Medico Tratante */
+            medico_tratante: string;
+            estado_farmacologico: components["schemas"]["EstadoFarmacologico"];
+            /** Antecedentes Previos */
+            antecedentes_previos: string | null;
+            /** Tratamiento Previo */
+            tratamiento_previo: string | null;
+            /** Activo */
+            activo: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /**
+             * Indicaciones
+             * @default []
+             */
+            indicaciones: components["schemas"]["EsquemaIndicacionRead"][];
+            /**
+             * Recetas
+             * @default []
+             */
+            recetas: components["schemas"]["RecetaRead"][];
+        };
+        /**
          * FichaClinicaCreate
          * @description Payload de push de datos clínicos (sistema externo → CEPA).
          */
@@ -3344,6 +3386,8 @@ export interface components {
         LicenciasResponse: {
             /** Folio */
             folio: string;
+            /** Ingreso Id */
+            ingreso_id: number;
             /** Historial */
             historial: components["schemas"]["app__schemas__licencia_api__LicenciaRead"][];
             /** Dias Acumulados */
@@ -4439,9 +4483,8 @@ export interface components {
          * Vista360
          * @description Estado consolidado del paciente (CEPA-012).
          *
-         *     `ingresos` ya se llena en EPIC-01. Las demás dimensiones son ranuras que las
-         *     épicas de Oleada 3 (Fármacos, Licencias, Controles, Reintegro) poblarán por
-         *     folio/RUT; hoy se devuelven como listas vacías.
+         *     Cada dimensión trae los registros de todos los ingresos del paciente; el
+         *     `ingreso_id` de cada elemento indica a qué ingreso pertenece.
          */
         Vista360: {
             paciente: components["schemas"]["PacienteRead"];
@@ -4451,22 +4494,22 @@ export interface components {
              * Farmacos
              * @default []
              */
-            farmacos: unknown[];
+            farmacos: components["schemas"]["FarmacosIngresoRead"][];
             /**
              * Licencias
              * @default []
              */
-            licencias: unknown[];
+            licencias: components["schemas"]["app__schemas__licencia__LicenciaRead"][];
             /**
              * Controles
              * @default []
              */
-            controles: unknown[];
+            controles: components["schemas"]["ControlMedicoRead"][];
             /**
              * Reintegro
              * @default []
              */
-            reintegro: unknown[];
+            reintegro: components["schemas"]["CasoReintegroRead"][];
         };
         /**
          * TipoLicencia
@@ -4602,12 +4645,20 @@ export interface components {
         /**
          * LicenciaRead
          * @description Lectura de una licencia médica (campos reales de LicenciaMedica).
+         *
+         *     Trae todas las columnas que muestra el listado de Licencias, para que la
+         *     pantalla no pida el detalle fila por fila (COMP-2609-04).
          */
         app__schemas__licencia_api__LicenciaRead: {
             /** Id */
             id: number;
+            /** Ingreso Id */
+            ingreso_id: number;
+            /** Folio Lm */
+            folio_lm: string | null;
             /** Tipo Lm */
             tipo_lm: string;
+            tipo_reposo: components["schemas"]["app__domain__enums_licencia__TipoReposo"];
             /** Cantidad Dias */
             cantidad_dias: number;
             /**
@@ -4622,6 +4673,9 @@ export interface components {
             fecha_termino: string;
             /** Diagnostico */
             diagnostico: string;
+            /** Eeag Gaf */
+            eeag_gaf: number | null;
+            envio_isl: components["schemas"]["EstadoEnvioISL"];
             /** Anulada */
             anulada: boolean;
         };
