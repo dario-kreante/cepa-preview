@@ -20,6 +20,8 @@ import { UsuariosPage } from "@/features/usuarios/UsuariosPage";
 import { ConfigFormulariosPage } from "@/features/config-formularios/ConfigFormulariosPage";
 import { VentanasProcesoPage } from "@/features/ventanas-proceso/VentanasProcesoPage";
 import { PdfExtractPage } from "@/features/pdf-extract/PdfExtractPage";
+import { AyudaPage } from "@/features/ayuda/AyudaPage";
+import { ConfiguracionPage } from "@/features/configuracion/ConfiguracionPage";
 
 export function ProtectedRoute({ rolesEscritura }: { rolesEscritura?: boolean }) {
   const { rol, cargando } = useAuth();
@@ -54,6 +56,8 @@ export function AppRoutes() {
           <Route path="/config-formularios" element={<ConfigFormulariosPage />} />
           <Route path="/ventanas-proceso" element={<VentanasProcesoPage />} />
           <Route path="/lectura-pdf" element={<PdfExtractPage />} />
+          <Route path="/configuracion" element={<ConfiguracionPage />} />
+          <Route path="/ayuda" element={<AyudaPage />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

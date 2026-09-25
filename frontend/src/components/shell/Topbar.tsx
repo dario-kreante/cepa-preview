@@ -1,12 +1,14 @@
-import { useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { Bell, HelpCircle } from "lucide-react";
 import { TITLE_MAP, CRUMBS_MAP } from "@/app/shell/nav";
+import { useIngresosActivos } from "@/features/dashboard/hooks";
 
 interface TopbarProps {
   alertsVisible: boolean;
   onToggleAlerts: () => void;
-  /** Count of pending/critical alertas to show the "críticas" pill */
-  alertasCriticas: number;
+  /** Alertas en estado pendiente. El modelo de alertas no tiene severidad, así que la
+   *  píldora roja se rotula "pendientes" (no "críticas"). */
+  alertasPendientes: number;
 }
 
 /**
@@ -26,9 +28,10 @@ function resolvePathKey(
 export function Topbar({
   alertsVisible,
   onToggleAlerts,
-  alertasCriticas,
+  alertasPendientes,
 }: TopbarProps) {
   const { pathname } = useLocation();
+  const activos = useIngresosActivos();
 
   const titleKey = resolvePathKey(TITLE_MAP, pathname);
   const title = (titleKey && TITLE_MAP[titleKey]) ?? "SIGE";
@@ -47,23 +50,41 @@ export function Topbar({
 
       <div className="flex-1" />
 
-      {/* Active cases pill — placeholder count until Dashboard module provides it */}
-      <div className="flex items-center gap-2 bg-[oklch(0.96_0.05_155)] text-[oklch(0.38_0.12_155)] border border-[oklch(0.88_0.05_155)] px-2.5 py-1 rounded-full text-[11px] font-semibold">
-        <span className="size-1.5 rounded-full bg-[oklch(0.64_0.14_155)]" />
-        — activos
-      </div>
+      {/* Ingresos activos: si la consulta falla, la píldora se oculta (no muestra un valor falso).
+          El listado de Ingresos aún no filtra por estado, así que el clic lleva al listado. */}
+      {activos.isPending && (
+        <div className="flex items-center gap-2 bg-muted text-muted-foreground border px-2.5 py-1 rounded-full text-[11px] font-semibold">
+          <span className="size-1.5 rounded-full bg-muted-foreground/50 animate-pulse" />
+          Cargando activos…
+        </div>
+      )}
+      {activos.isSuccess && (
+        <Link
+          to="/ingresos"
+          title="Ver ingresos y pacientes"
+          className="flex items-center gap-2 bg-[oklch(0.96_0.05_155)] text-[oklch(0.38_0.12_155)] border border-[oklch(0.88_0.05_155)] px-2.5 py-1 rounded-full text-[11px] font-semibold hover:bg-[oklch(0.93_0.06_155)] transition-colors"
+        >
+          <span className="size-1.5 rounded-full bg-[oklch(0.64_0.14_155)]" />
+          {activos.data} activos
+        </Link>
+      )}
 
-      {/* Critical alerts pill */}
+      {/* Alertas pendientes */}
       <div className="flex items-center gap-2 bg-destructive/10 text-destructive border border-destructive/20 px-2.5 py-1 rounded-full text-[11px] font-semibold">
         <span className="size-1.5 rounded-full bg-destructive animate-pulse" />
-        {alertasCriticas > 0 ? `${alertasCriticas} críticas` : "sin críticas"}
+        {alertasPendientes > 0 ? `${alertasPendientes} pendientes` : "sin pendientes"}
       </div>
 
       <div className="w-px h-6 bg-border mx-1" />
 
-      <button className="size-9 rounded-md grid place-items-center hover:bg-muted transition-colors cursor-pointer text-muted-foreground hover:text-foreground">
+      <Link
+        to="/ayuda"
+        title="Ayuda"
+        aria-label="Ayuda"
+        className="size-9 rounded-md grid place-items-center hover:bg-muted transition-colors cursor-pointer text-muted-foreground hover:text-foreground"
+      >
         <HelpCircle className="size-[18px]" />
-      </button>
+      </Link>
 
       <button
         onClick={onToggleAlerts}
@@ -71,7 +92,7 @@ export function Topbar({
         className="size-9 rounded-md grid place-items-center hover:bg-muted transition-colors relative cursor-pointer text-muted-foreground hover:text-foreground"
       >
         <Bell className="size-[18px]" />
-        {alertasCriticas > 0 && (
+        {alertasPendientes > 0 && (
           <span className="absolute top-2 right-2 size-1.5 bg-destructive rounded-full ring-2 ring-card" />
         )}
       </button>

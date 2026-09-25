@@ -31,6 +31,11 @@ class ResumenDashboard(BaseModel):
     filtros_aplicados: dict[str, Any]
 
 
+class IngresosActivos(BaseModel):
+    """Respuesta de GET /dashboard/activos (píldora "N activos" del Topbar)."""
+    total: int
+
+
 # ── Reportes operativos (CEPA-091) ────────────────────────────────────────────
 
 class ReporteOperativoItem(BaseModel):

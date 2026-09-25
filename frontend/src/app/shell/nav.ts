@@ -95,6 +95,16 @@ export const NAV: NavSection[] = [
   },
 ];
 
+/** Items de `items` visibles para `rol` (RBAC de menú). Sin rol, solo los no restringidos. */
+export function itemsVisibles(items: NavItem[], rol: Rol | null | undefined): NavItem[] {
+  return items.filter((item) => !item.roles || (rol != null && item.roles.includes(rol)));
+}
+
+/** Sección "Administración": la reusa el índice de /configuracion. */
+export const SECCION_ADMINISTRACION: NavSection = NAV.find(
+  (s) => s.label === "Administración",
+)!;
+
 /** Pathname → title mapping for Topbar */
 export const TITLE_MAP: Record<string, string> = {
   "/": "Dashboard",
@@ -112,6 +122,8 @@ export const TITLE_MAP: Record<string, string> = {
   "/usuarios": "Usuarios y roles",
   "/config-formularios": "Formularios dinámicos",
   "/ventanas-proceso": "Ventanas de proceso",
+  "/configuracion": "Configuración",
+  "/ayuda": "Ayuda y soporte",
 };
 
 /** Pathname → breadcrumb string mapping */
@@ -131,4 +143,6 @@ export const CRUMBS_MAP: Record<string, string> = {
   "/usuarios": "Inicio · Administración · Usuarios y roles",
   "/config-formularios": "Inicio · Administración · Formularios dinámicos",
   "/ventanas-proceso": "Inicio · Administración · Ventanas de proceso",
+  "/configuracion": "Inicio · Configuración",
+  "/ayuda": "Inicio · Ayuda y soporte",
 };

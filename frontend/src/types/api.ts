@@ -1213,6 +1213,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/dashboard/activos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Ingresos Activos
+         * @description COMP-2609-03: conteo liviano de ingresos con estado activo, sin filtros,
+         *     para la píldora del Topbar (se consulta en todas las pantallas).
+         */
+        get: operations["get_ingresos_activos_api_v1_dashboard_activos_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/dashboard": {
         parameters: {
             query?: never;
@@ -3155,6 +3176,14 @@ export interface components {
             razon_social?: string | null;
             /** Numero Siniestro */
             numero_siniestro?: string | null;
+        };
+        /**
+         * IngresosActivos
+         * @description Respuesta de GET /dashboard/activos (píldora "N activos" del Topbar).
+         */
+        IngresosActivos: {
+            /** Total */
+            total: number;
         };
         /** JobResultado */
         JobResultado: {
@@ -7303,6 +7332,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_ingresos_activos_api_v1_dashboard_activos_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IngresosActivos"];
                 };
             };
         };

@@ -14,7 +14,8 @@ import { useAlertas } from "@/features/alertas/hooks";
  * Badge computation:
  *   - "licencias" badge = alertas pendientes cuyo tipo contiene "licencia"
  *   - "ept"       badge = alertas pendientes cuyo caso_tipo == "ept"
- *   - críticas count    = alertas with estado == "pendiente"
+ *   - pendientes (Topbar) = alertas con estado == "pendiente". El modelo de alertas
+ *     no tiene severidad/prioridad, así que no hay criterio de "crítica".
  */
 /** Anchos de chrome fijos. Por debajo de `xl` el panel de alertas pasa a overlay
  *  y el sidebar arranca colapsado, para no aplastar el contenido. */
@@ -43,8 +44,7 @@ export function AppShell() {
     ).length,
   };
 
-  // Critical count for Topbar pill
-  const alertasCriticas = pendientes.length;
+
 
   return (
     <div className="h-screen w-screen flex overflow-hidden bg-background">
@@ -58,7 +58,7 @@ export function AppShell() {
         <Topbar
           alertsVisible={alertsVisible}
           onToggleAlerts={() => setAlertsVisible((v) => !v)}
-          alertasCriticas={alertasCriticas}
+          alertasPendientes={pendientes.length}
         />
 
         <main className="flex-1 overflow-y-auto bg-[oklch(0.985_0.003_195)]">

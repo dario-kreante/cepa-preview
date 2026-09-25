@@ -17,12 +17,12 @@ function Ubicacion() {
   return <p data-testid="ubicacion">{pathname + search}</p>;
 }
 
-function renderSidebar() {
+function renderSidebar(collapsed = false) {
   tokenStore.setAccess(FAKE_TOKEN);
   return render(
     <MemoryRouter initialEntries={["/"]}>
       <AuthProvider>
-        <Sidebar collapsed={false} onToggleCollapse={() => {}} />
+        <Sidebar collapsed={collapsed} onToggleCollapse={() => {}} />
         <Routes>
           <Route path="*" element={<Ubicacion />} />
         </Routes>
@@ -49,5 +49,37 @@ describe("Sidebar · buscador", () => {
     await userEvent.type(input, "   {Enter}");
 
     expect(screen.getByTestId("ubicacion")).toHaveTextContent(/^\/$/);
+  });
+});
+
+describe("Sidebar · ayuda y configuración", () => {
+  it.each([false, true])(
+    "'Ayuda y soporte' lleva a /ayuda (colapsado: %s)",
+    async (collapsed) => {
+      renderSidebar(collapsed);
+      await userEvent.click(screen.getByRole("link", { name: /Ayuda y soporte/i }));
+      expect(screen.getByTestId("ubicacion")).toHaveTextContent(/^\/ayuda$/);
+    },
+  );
+
+  it.each([false, true])(
+    "'Configuración' lleva a /configuracion (colapsado: %s)",
+    async (collapsed) => {
+      renderSidebar(collapsed);
+      await userEvent.click(screen.getByRole("link", { name: /Configuración/i }));
+      expect(screen.getByTestId("ubicacion")).toHaveTextContent(/^\/configuracion$/);
+    },
+  );
+
+  it("con el menú colapsado los botones tienen tooltip", () => {
+    renderSidebar(true);
+    expect(screen.getByRole("link", { name: /Ayuda y soporte/i })).toHaveAttribute(
+      "title",
+      "Ayuda y soporte",
+    );
+    expect(screen.getByRole("link", { name: /Configuración/i })).toHaveAttribute(
+      "title",
+      "Configuración",
+    );
   });
 });

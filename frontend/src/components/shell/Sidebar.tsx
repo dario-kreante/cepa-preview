@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { type Rol } from "@/lib/rbac";
 import { APP_INITIAL, APP_NAME, APP_SUBTITLE } from "@/lib/brand";
-import { NAV } from "@/app/shell/nav";
+import { NAV, itemsVisibles } from "@/app/shell/nav";
 
 interface SidebarProps {
   collapsed: boolean;
@@ -96,9 +96,7 @@ export function Sidebar({ collapsed, onToggleCollapse, badges = {} }: SidebarPro
       <nav className="flex-1 overflow-y-auto px-3">
         {NAV.map((section) => {
           // Filtra items restringidos por rol; oculta la sección si queda vacía.
-          const items = section.items.filter(
-            (item) => !item.roles || (rol != null && item.roles.includes(rol as Rol)),
-          );
+          const items = itemsVisibles(section.items, rol as Rol | null);
           if (items.length === 0) return null;
           return (
           <div key={section.label} className="mb-3">
@@ -160,26 +158,31 @@ export function Sidebar({ collapsed, onToggleCollapse, badges = {} }: SidebarPro
         })}
       </nav>
 
-      {/* Bottom: Support + Settings */}
+      {/* Bottom: Ayuda y Configuración (con tooltip cuando el menú está colapsado) */}
       <div className="px-3 pb-2 space-y-0.5">
-        <button
-          className={cn(
-            "w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[13px] font-medium text-sidebar-foreground hover:bg-sidebar-accent/60 transition-colors cursor-pointer",
-            collapsed && "justify-center px-0",
-          )}
-        >
-          <LifeBuoy className="size-[17px] text-muted-foreground shrink-0" />
-          {!collapsed && <span>Ayuda y soporte</span>}
-        </button>
-        <button
-          className={cn(
-            "w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[13px] font-medium text-sidebar-foreground hover:bg-sidebar-accent/60 transition-colors cursor-pointer",
-            collapsed && "justify-center px-0",
-          )}
-        >
-          <Settings className="size-[17px] text-muted-foreground shrink-0" />
-          {!collapsed && <span>Configuración</span>}
-        </button>
+        {[
+          { to: "/ayuda", label: "Ayuda y soporte", icon: LifeBuoy },
+          { to: "/configuracion", label: "Configuración", icon: Settings },
+        ].map(({ to, label, icon: Icon }) => (
+          <NavLink
+            key={to}
+            to={to}
+            title={collapsed ? label : undefined}
+            aria-label={collapsed ? label : undefined}
+            className={({ isActive }) =>
+              cn(
+                "w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[13px] font-medium transition-colors",
+                collapsed && "justify-center px-0",
+                isActive
+                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                  : "text-sidebar-foreground hover:bg-sidebar-accent/60",
+              )
+            }
+          >
+            <Icon className="size-[17px] text-muted-foreground shrink-0" />
+            {!collapsed && <span>{label}</span>}
+          </NavLink>
+        ))}
       </div>
 
       {/* User profile */}
