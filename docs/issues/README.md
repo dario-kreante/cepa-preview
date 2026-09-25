@@ -47,6 +47,7 @@ agosto 2026** (ver [`01-decisiones-v5.md`](./01-decisiones-v5.md)). Cada histori
 | [00-decisiones-v4.md](./00-decisiones-v4.md) | Decisiones D1–D15 de la revisión del PRD (abril 2026) |
 | [01-decisiones-v5.md](./01-decisiones-v5.md) | Decisiones D16–D22, cambios CHG-01…08 y preguntas abiertas PA-v5-01…06 de la revisión del ambiente de pruebas (agosto 2026) |
 | [BUGS-revision-2026-08.md](./BUGS-revision-2026-08.md) | Defectos BUG-2608-01…07 detectados al operar el ambiente de pruebas |
+| [PENDIENTES-completitud-2026-09.md](./PENDIENTES-completitud-2026-09.md) | Tickets COMP-2609-01…31 para completar el sistema (revisión de la VM UTalca, 25-09-2026): defectos visibles, historias bloqueadas por la contraparte, dependencias externas y operación de datos |
 
 ## Índice de Historias
 
