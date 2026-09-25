@@ -188,6 +188,10 @@ píldora roja cuenta solo lo que su rótulo dice, o cambia el rótulo a "pendien
 
 **Tipo:** Defecto · **Módulo:** Licencias médicas (`frontend/src/features/licencias`) ·
 **Prioridad:** Alta
+**Estado:** resuelta en código el 25-09-2026 (rama `claude/lote2-licencias-vista360`, pendiente de
+despliegue). El historial por folio trae `folio_lm`, `tipo_reposo`, `eeag_gaf`, `envio_isl` e
+`ingreso_id` en cada fila, y la respuesta trae el `ingreso_id` del folio; la pantalla ya no pide
+el detalle por fila.
 **Justificación:** es el listado de trabajo diario de Licencias; cuatro columnas en guion hacen
 parecer que los datos no se guardaron (el mismo síntoma que motivó `BUG-2608-03`).
 **Historias relacionadas:** `CEPA-070`, `CEPA-073`, `CEPA-074`.
@@ -337,6 +341,11 @@ interfaz; el job los lee en cada ejecución.
 ## [COMP-2609-08] Vista 360 de la API devuelve fármacos, licencias, controles y reintegro vacíos
 
 **Tipo:** Defecto · **Módulo:** API / Ingresos · **Prioridad:** Media
+**Estado:** decisión **opción 1 (completar)**, resuelta en código el 25-09-2026 (rama
+`claude/lote2-licencias-vista360`, pendiente de despliegue). `licencias` usa `LicenciaRead`,
+`controles` `ControlMedicoRead`, `reintegro` `CasoReintegroRead` y `farmacos` el registro
+farmacológico de cada ingreso con su esquema de indicaciones (historial completo, con `vigente`) y
+sus recetas. Una consulta por dimensión filtrada por los ingresos del paciente.
 **Justificación:** no se ve en pantalla (la ficha carga cada módulo por separado), pero la API
 promete un dato que no entrega, y es la API que consumirán terceros (EPIC-12).
 **Historias relacionadas:** `CEPA-012` CA-1 y RN-3, `CEPA-120`.

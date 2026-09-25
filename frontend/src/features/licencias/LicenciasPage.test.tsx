@@ -44,7 +44,12 @@ const FOLIO = "FOLIO-001";
 
 const MOCK_SLIM_LICENCIA = {
   id: 10,
+  ingreso_id: 5,
+  folio_lm: "LM-00001",
   tipo_lm: "1",
+  tipo_reposo: "total",
+  eeag_gaf: 42,
+  envio_isl: "pendiente",
   cantidad_dias: 14,
   fecha_inicio: "2026-06-01",
   fecha_termino: "2026-06-14",
@@ -75,6 +80,61 @@ const MOCK_FULL_LICENCIA = {
 };
 
 describe("LicenciasPage", () => {
+  // COMP-2609-04: el listado trae todo; no se pide el detalle por fila.
+  it("muestra Folio LM, Reposo, GAF e ISL desde el listado sin pedir detalle", async () => {
+    let llamadasDetalle = 0;
+    server.use(
+      http.get(`${BASE}/api/v1/licencias/folio/:folio`, () =>
+        HttpResponse.json({
+          folio: FOLIO,
+          ingreso_id: 5,
+          historial: [
+            MOCK_SLIM_LICENCIA,
+            {
+              ...MOCK_SLIM_LICENCIA,
+              id: 11,
+              folio_lm: "LM-00002",
+              tipo_reposo: "parcial",
+              eeag_gaf: null,
+              envio_isl: "enviado",
+            },
+          ],
+          dias_acumulados: 28,
+        })
+      ),
+      http.get(`${BASE}/api/v1/licencias/:id`, () => {
+        llamadasDetalle += 1;
+        return HttpResponse.json(MOCK_FULL_LICENCIA);
+      })
+    );
+
+    renderPage();
+    fireEvent.change(screen.getByPlaceholderText("Buscar por folio"), {
+      target: { value: FOLIO },
+    });
+
+    expect(await screen.findByText("LM-00001", {}, { timeout: 8000 })).toBeInTheDocument();
+    expect(screen.getByText("LM-00002")).toBeInTheDocument();
+    expect(screen.getByText("42")).toBeInTheDocument();
+    expect(screen.getAllByText("Enviado").length).toBeGreaterThanOrEqual(2); // opción + badge
+
+    // Filtro Reposo exacto desde el primer render: solo queda la parcial.
+    const filtroReposo = screen.getByDisplayValue("Reposo: Todos");
+    fireEvent.change(filtroReposo, { target: { value: "parcial" } });
+    expect(screen.queryByText("LM-00001")).not.toBeInTheDocument();
+    expect(screen.getByText("LM-00002")).toBeInTheDocument();
+
+    // Filtro ISL: pendiente excluye la enviada.
+    fireEvent.change(filtroReposo, { target: { value: "Todos" } });
+    fireEvent.change(screen.getByDisplayValue("ISL: Todos"), {
+      target: { value: "pendiente" },
+    });
+    expect(screen.getByText("LM-00001")).toBeInTheDocument();
+    expect(screen.queryByText("LM-00002")).not.toBeInTheDocument();
+
+    expect(llamadasDetalle).toBe(0);
+  });
+
   it("muestra el prompt inicial cuando no hay folio ingresado", async () => {
     renderPage();
     expect(
@@ -105,6 +165,7 @@ describe("LicenciasPage", () => {
       http.get(`${BASE}/api/v1/licencias/folio/:folio`, () =>
         HttpResponse.json({
           folio: FOLIO,
+          ingreso_id: 5,
           historial: [MOCK_SLIM_LICENCIA],
           dias_acumulados: 14,
         })
@@ -142,6 +203,7 @@ describe("LicenciasPage", () => {
       http.get(`${BASE}/api/v1/licencias/folio/:folio`, () =>
         HttpResponse.json({
           folio: FOLIO,
+          ingreso_id: 5,
           historial: [{ ...MOCK_SLIM_LICENCIA, fecha_termino: futureDate }],
           dias_acumulados: 14,
         })
@@ -175,6 +237,7 @@ describe("LicenciasPage", () => {
       http.get(`${BASE}/api/v1/licencias/folio/:folio`, () =>
         HttpResponse.json({
           folio: FOLIO,
+          ingreso_id: 5,
           historial: [{ ...MOCK_SLIM_LICENCIA, fecha_termino: soonDate }],
           dias_acumulados: 14,
         })
@@ -221,6 +284,7 @@ describe("LicenciasPage", () => {
       http.get(`${BASE}/api/v1/licencias/folio/:folio`, () =>
         HttpResponse.json({
           folio: FOLIO,
+          ingreso_id: 5,
           historial: [MOCK_SLIM_LICENCIA],
           dias_acumulados: 28,
         })

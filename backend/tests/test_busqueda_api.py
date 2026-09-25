@@ -56,9 +56,96 @@ def test_vista_360_consolida(as_admin):
     cuerpo = r.json()
     assert cuerpo["paciente"]["rut"] == "111111111"
     assert len(cuerpo["ingresos"]) == 1
-    # ranuras de otras épicas presentes (aún vacías)
+    # Sin datos en los módulos, cada dimensión viene vacía.
     for dim in ("farmacos", "licencias", "controles", "reintegro"):
         assert cuerpo[dim] == []
+
+
+# COMP-2609-08: la vista 360 trae licencias, controles, fármacos y reintegro del paciente
+def test_vista_360_llena_todas_las_dimensiones(as_admin, db_session):
+    from datetime import date
+
+    from app.models.control_medico import ControlMedico
+    from app.models.farmacos import EsquemaIndicacion, Receta, RegistroFarmacologico
+    from app.models.licencia import LicenciaMedica
+    from app.models.reintegro import CasoReintegro
+
+    creado = as_admin.post("/api/v1/ingresos", json=_payload()).json()
+    ingreso_id = creado["id"]
+    # Otro paciente con datos: no debe colarse en la vista.
+    otro = as_admin.post(
+        "/api/v1/ingresos", json=_payload(rut="5.126.663-3", nombre="Pedro Pérez")
+    ).json()
+
+    for ing_id in (ingreso_id, otro["id"]):
+        db_session.add(
+            LicenciaMedica(
+                ingreso_id=ing_id, folio_lm="LM-1", tipo_lm="1", tipo_reposo="total",
+                fecha_inicio=date(2026, 6, 11), fecha_termino=date(2026, 6, 20),
+                fecha_emision=date(2026, 6, 10), inicio_reposo=date(2026, 6, 11),
+                fin_reposo=date(2026, 6, 20), cantidad_dias=10, diagnostico="F41.1",
+            )
+        )
+    db_session.add(
+        ControlMedico(
+            ingreso_id=ingreso_id, fecha_control=date(2026, 6, 15), semana_control=1,
+            medico_tratante="Dra. Soto", region_derivacion="Maule",
+        )
+    )
+    registro = RegistroFarmacologico(
+        ingreso_id=ingreso_id, medico_tratante="Dra. Soto", estado_farmacologico="activo"
+    )
+    db_session.add(registro)
+    db_session.flush()
+    db_session.add(
+        EsquemaIndicacion(
+            registro_id=registro.id, medicamento="Sertralina", dosis="50 mg", frecuencia="c/24h"
+        )
+    )
+    db_session.add(
+        Receta(
+            registro_id=registro.id, fecha_emision=date(2026, 6, 15),
+            fecha_revision=date(2026, 7, 15), marca_medicamento="Altruline",
+        )
+    )
+    db_session.add(
+        CasoReintegro(
+            ingreso_id=ingreso_id, rut="111111111", nombre="Ana González",
+            tipo_derivacion="DIAT", fecha_caso=date(2026, 6, 20), sexo="F", edad=33,
+            region="Maule",
+        )
+    )
+    db_session.flush()
+
+    r = as_admin.get(f"/api/v1/pacientes/{creado['paciente_id']}/vista-360")
+    assert r.status_code == 200, r.text
+    cuerpo = r.json()
+
+    assert len(cuerpo["licencias"]) == 1
+    lic = cuerpo["licencias"][0]
+    assert lic["ingreso_id"] == ingreso_id
+    assert lic["folio_lm"] == "LM-1"
+    assert lic["tipo_reposo"] == "total"
+
+    assert len(cuerpo["controles"]) == 1
+    assert cuerpo["controles"][0]["medico_tratante"] == "Dra. Soto"
+
+    assert len(cuerpo["farmacos"]) == 1
+    farm = cuerpo["farmacos"][0]
+    assert farm["ingreso_id"] == ingreso_id
+    assert [i["medicamento"] for i in farm["indicaciones"]] == ["Sertralina"]
+    assert [rc["marca_medicamento"] for rc in farm["recetas"]] == ["Altruline"]
+
+    assert len(cuerpo["reintegro"]) == 1
+    assert cuerpo["reintegro"][0]["ingreso_id"] == ingreso_id
+
+
+# COMP-2609-08: las dimensiones están tipadas en el contrato (no `Any`)
+def test_vista_360_esquema_tipado(client):
+    esquema = client.get("/openapi.json").json()["components"]["schemas"]["Vista360"]
+    for dim in ("farmacos", "licencias", "controles", "reintegro"):
+        items = esquema["properties"][dim]["items"]
+        assert "$ref" in items, f"{dim} sin esquema tipado: {items}"
 
 
 # CA-3: vista 360 de paciente inexistente -> 404
