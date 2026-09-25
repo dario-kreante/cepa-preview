@@ -1,5 +1,7 @@
 """Tests de CEPA-021: historial clínico farmacológico y esquema."""
 
+import pytest
+
 
 def _setup(client) -> tuple[int, int]:
     """Crea un ingreso y un registro farmacológico; devuelve (ingreso_id, registro_id)."""
@@ -128,7 +130,8 @@ def test_auditor_puede_leer_esquema(as_auditor, as_admin):
     assert r.status_code == 200
 
 
-def test_ingreso_sin_registro_farmacologico_lista_recetas_vacia(as_admin):
+@pytest.mark.parametrize("recurso", ["recetas", "esquema", "seguimiento"])
+def test_ingreso_sin_registro_farmacologico_lista_vacia(as_admin, recurso):
     """Un ingreso recién creado aún no tiene registro farmacológico: no es un error."""
     r = as_admin.post(
         "/api/v1/ingresos",
@@ -147,11 +150,12 @@ def test_ingreso_sin_registro_farmacologico_lista_recetas_vacia(as_admin):
     )
     assert r.status_code == 201, r.text
 
-    recetas = as_admin.get(f"/api/v1/registro-farmacologico/{r.json()['id']}/recetas")
+    lista = as_admin.get(f"/api/v1/registro-farmacologico/{r.json()['id']}/{recurso}")
 
-    assert recetas.status_code == 200
-    assert recetas.json() == []
+    assert lista.status_code == 200
+    assert lista.json() == []
 
 
-def test_recetas_de_un_ingreso_inexistente_sigue_siendo_404(as_admin):
-    assert as_admin.get("/api/v1/registro-farmacologico/999999/recetas").status_code == 404
+@pytest.mark.parametrize("recurso", ["recetas", "esquema", "seguimiento"])
+def test_un_ingreso_inexistente_sigue_siendo_404(as_admin, recurso):
+    assert as_admin.get(f"/api/v1/registro-farmacologico/999999/{recurso}").status_code == 404

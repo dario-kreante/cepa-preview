@@ -49,6 +49,20 @@ _writer = require_role("Administrativo", "Coordinacion")
 _reader = require_role("Administrativo", "Coordinacion", "Auditor")
 
 
+def _registro_para_listar(db: Session, ingreso_id: int) -> RegistroFarmacologico | None:
+    """El registro del ingreso, o None si aún no se crea.
+
+    Un ingreso recién creado no tiene registro farmacológico: sus listas (recetas,
+    esquema, seguimiento) están vacías y eso no es un error. Solo un ingreso
+    inexistente responde 404.
+    """
+    if db.get(Ingreso, ingreso_id) is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, f"No existe el ingreso {ingreso_id}.")
+    return db.scalar(
+        select(RegistroFarmacologico).where(RegistroFarmacologico.ingreso_id == ingreso_id)
+    )
+
+
 # ── RegistroFarmacologico (CEPA-020) ──────────────────────────────────────────
 
 @router.post(
@@ -191,8 +205,8 @@ def agregar_indicacion_endpoint(
     dependencies=[Depends(_reader)],
 )
 def listar_indicaciones_endpoint(ingreso_id: int, db: Session = Depends(get_db)):
-    registro = obtener_registro_por_ingreso(db, ingreso_id)
-    return listar_indicaciones(db, registro.id)
+    registro = _registro_para_listar(db, ingreso_id)
+    return [] if registro is None else listar_indicaciones(db, registro.id)
 
 
 # ── Receta (CEPA-022) ─────────────────────────────────────────────────────────
@@ -248,16 +262,8 @@ def farmacos_sugeridos_endpoint(ingreso_id: int, db: Session = Depends(get_db)):
     dependencies=[Depends(_reader)],
 )
 def listar_recetas_endpoint(ingreso_id: int, db: Session = Depends(get_db)):
-    # Un ingreso recién creado aún no tiene registro farmacológico: sin registro no hay
-    # recetas, y eso no es un error. Solo un ingreso inexistente responde 404.
-    if db.get(Ingreso, ingreso_id) is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, f"No existe el ingreso {ingreso_id}.")
-    registro = db.scalar(
-        select(RegistroFarmacologico).where(RegistroFarmacologico.ingreso_id == ingreso_id)
-    )
-    if registro is None:
-        return []
-    return listar_recetas(db, registro.id)
+    registro = _registro_para_listar(db, ingreso_id)
+    return [] if registro is None else listar_recetas(db, registro.id)
 
 
 # ── SeguimTratamiento (CEPA-023) ──────────────────────────────────────────────
@@ -304,5 +310,5 @@ def crear_seguimiento_endpoint(
     dependencies=[Depends(_reader)],
 )
 def listar_seguimientos_endpoint(ingreso_id: int, db: Session = Depends(get_db)):
-    registro = obtener_registro_por_ingreso(db, ingreso_id)
-    return listar_seguimientos(db, registro.id)
+    registro = _registro_para_listar(db, ingreso_id)
+    return [] if registro is None else listar_seguimientos(db, registro.id)
