@@ -5,7 +5,7 @@
  * Business rules (RN CEPA-062):
  *   - Cuando tiene_licencia es TRUE, cuatro campos son REQUERIDOS.
  *   - Cuando tiene_licencia es FALSE, licencia fields se envían como null.
- *   - gaf: opcional 0..100.
+ *   - gaf_tramo: opcional, tramo del catálogo de GAF (v5 D18).
  *   - estado_reca y observaciones: siempre opcionales.
  *
  * Gate (must be enforced by the caller):
@@ -32,6 +32,7 @@ import {
 import { useActualizarLicencia } from "./hooks";
 import type { ControlMedicoRead, TipoLicencia, TipoReposo, EstadoReca } from "./api";
 import { TIPO_RECA_LABELS } from "@/features/reintegro/recaSchema";
+import { GafTramoSelect } from "@/features/gaf-tramos/GafTramoSelect";
 
 // ── Friendly label maps (exhaustive) ─────────────────────────────────────────
 
@@ -83,13 +84,14 @@ export function LicenciaControlDialog({
       total_dias_lm: control.total_dias_lm ?? null,
       tipo_licencia: control.tipo_licencia ?? null,
       tipo_reposo: control.tipo_reposo ?? null,
-      gaf: control.gaf ?? null,
+      gaf_tramo: control.gaf_tramo ?? null,
       estado_reca: control.estado_reca ?? null,
       observaciones: control.observaciones ?? "",
     },
   });
 
   const tieneLicencia = watch("tiene_licencia");
+  const gafTramo = watch("gaf_tramo");
 
   // Reset with the current control's values when dialog opens (reset-on-open)
   useEffect(() => {
@@ -100,7 +102,7 @@ export function LicenciaControlDialog({
         total_dias_lm: control.total_dias_lm ?? null,
         tipo_licencia: control.tipo_licencia ?? null,
         tipo_reposo: control.tipo_reposo ?? null,
-        gaf: control.gaf ?? null,
+        gaf_tramo: control.gaf_tramo ?? null,
         estado_reca: control.estado_reca ?? null,
         observaciones: control.observaciones ?? "",
       });
@@ -111,7 +113,7 @@ export function LicenciaControlDialog({
         total_dias_lm: null,
         tipo_licencia: null,
         tipo_reposo: null,
-        gaf: null,
+        gaf_tramo: null,
         estado_reca: null,
         observaciones: "",
       });
@@ -140,8 +142,8 @@ export function LicenciaControlDialog({
         body: {
           tiene_licencia: values.tiene_licencia,
           ...licenciaFields,
-          // Always optional — coerce empty/NaN to null
-          gaf: values.gaf != null && !isNaN(values.gaf) ? values.gaf : null,
+          // v5 D18: se envía el tramo; el entero anterior no se toca.
+          gaf_tramo: values.gaf_tramo || null,
           estado_reca: values.estado_reca ?? null,
           observaciones: values.observaciones?.trim() || null,
         },
@@ -300,32 +302,19 @@ export function LicenciaControlDialog({
             )}
           </div>
 
-          {/* gaf — validate range in zod only; no blocking HTML max */}
+          {/* gaf_tramo — select alimentado por el catálogo (v5 D18) */}
           <div>
-            <Label htmlFor="gaf">
-              GAF{" "}
-              <span className="text-muted-foreground font-normal">(opcional, 0–100)</span>
+            <Label htmlFor="gaf_tramo">
+              Tramo de GAF{" "}
+              <span className="text-muted-foreground font-normal">(opcional)</span>
             </Label>
-            <input
-              id="gaf"
-              type="number"
-              min={0}
-              step={1}
-              placeholder="Ej: 65"
-              {...register("gaf", {
-                setValueAs: (v) => {
-                  if (v === "" || v === null || v === undefined) return null;
-                  const n = Number(v);
-                  return isNaN(n) ? null : n;
-                },
-              })}
-              className="mt-1 flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-[13px] shadow-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            <GafTramoSelect
+              id="gaf_tramo"
+              value={gafTramo ?? ""}
+              onChange={(e) =>
+                setValue("gaf_tramo", e.target.value || null, { shouldDirty: true })
+              }
             />
-            {errors.gaf && (
-              <p className="text-[11.5px] text-destructive mt-1">
-                {errors.gaf.message}
-              </p>
-            )}
           </div>
 
           {/* estado_reca */}

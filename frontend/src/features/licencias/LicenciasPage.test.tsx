@@ -98,6 +98,8 @@ describe("LicenciasPage", () => {
               eeag_gaf: null,
               envio_isl: "enviado",
             },
+            // v5 D18: con tramo se muestra el tramo, no el entero.
+            { ...MOCK_SLIM_LICENCIA, id: 12, folio_lm: "LM-00003", eeag_gaf: 57, eeag_gaf_tramo: "51-60" },
           ],
           dias_acumulados: 28,
         })
@@ -115,7 +117,9 @@ describe("LicenciasPage", () => {
 
     expect(await screen.findByText("LM-00001", {}, { timeout: 8000 })).toBeInTheDocument();
     expect(screen.getByText("LM-00002")).toBeInTheDocument();
-    expect(screen.getByText("42")).toBeInTheDocument();
+    expect(screen.getByText("42")).toBeInTheDocument(); // sin tramo: el entero
+    expect(screen.getByText("51-60")).toBeInTheDocument();
+    expect(screen.queryByText("57")).not.toBeInTheDocument();
     expect(screen.getAllByText("Enviado").length).toBeGreaterThanOrEqual(2); // opción + badge
 
     // Filtro Reposo exacto desde el primer render: solo queda la parcial.

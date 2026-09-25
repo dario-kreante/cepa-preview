@@ -7,6 +7,7 @@ from sqlalchemy import select
 from app.models.ingreso import Ingreso
 from app.models.licencia import LicenciaMedica
 from app.schemas.licencia import LicenciaAnularUpdate, LicenciaCreate, LicenciaISLUpdate
+from app.services.gaf_tramos import resolver_tramo
 
 
 def _verificar_ingreso(db, ingreso_id: int) -> Ingreso:
@@ -100,6 +101,11 @@ def actualizar_isl(db, licencia_id: int, data: LicenciaISLUpdate) -> LicenciaMed
     lm.fecha_envio_isl = data.fecha_envio_isl
     if data.eeag_gaf is not None:
         lm.eeag_gaf = data.eeag_gaf
+    # Tramo de GAF (v5 D18): el elegido del catálogo, o el que contiene al entero enviado.
+    if "eeag_gaf_tramo" in data.model_fields_set:
+        lm.eeag_gaf_tramo = resolver_tramo(db, data.eeag_gaf_tramo, None)
+    elif data.eeag_gaf is not None:
+        lm.eeag_gaf_tramo = resolver_tramo(db, None, data.eeag_gaf)
     if data.observaciones is not None:
         lm.observaciones = data.observaciones
     db.flush()

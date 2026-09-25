@@ -4,7 +4,8 @@
  * Business rules (RN CEPA-062):
  *   - Cuando tiene_licencia es TRUE, los cuatro campos son REQUERIDOS:
  *       resumen_termino_lm, total_dias_lm, tipo_licencia, tipo_reposo.
- *   - gaf: opcional; si se informa, debe estar en rango 0..100.
+ *   - gaf_tramo: opcional; tramo del catálogo /gaf-tramos (v5 D18). El entero ``gaf``
+ *     anterior a D18 ya no se edita aquí; el backend lo conserva.
  *   - total_dias_lm: si se informa, entero ≥ 1.
  *   - estado_reca y observaciones: siempre opcionales.
  */
@@ -50,10 +51,7 @@ export const licenciaControlSchema = z
       .optional()
       .nullable(),
 
-    gaf: z
-      .number({ invalid_type_error: "Debe ser un número" })
-      .optional()
-      .nullable(),
+    gaf_tramo: z.string().optional().nullable(),
 
     estado_reca: z
       .enum(TIPO_RECA_VALUES, {
@@ -94,13 +92,6 @@ export const licenciaControlSchema = z
           path: ["tipo_reposo"],
         });
       }
-    }
-    if (d.gaf != null && (d.gaf < 0 || d.gaf > 100)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "GAF debe estar entre 0 y 100",
-        path: ["gaf"],
-      });
     }
   });
 

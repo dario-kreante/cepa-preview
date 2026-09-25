@@ -44,7 +44,7 @@ def _leer_config(db: Session) -> list[ConfigAlertaRead]:
 def listar_config(
     db: Session = Depends(get_db), _usuario=Depends(_lector)
 ) -> list[ConfigAlertaRead]:
-    """Los 7 tipos de alerta con su ventana vigente (o el valor por defecto)."""
+    """Los tipos de alerta con su ventana vigente (o el valor por defecto)."""
     return _leer_config(db)
 
 

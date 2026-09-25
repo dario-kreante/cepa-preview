@@ -14,7 +14,11 @@ export const TIPO_LABELS: Record<string, string> = {
   oda_por_vencer: "ODA por vencer",
   control_medico: "Control médico",
   consentimiento_pendiente: "Consentimiento pendiente",
+  gaf_licencia: "GAF de licencia",
 };
+
+/** Tipo cuyo "dias" es el límite superior del tramo de GAF umbral (CEPA-075). */
+export const TIPO_GAF = "gaf_licencia";
 
 /** GET /api/v1/config-alertas */
 export async function listarConfig(): Promise<ConfigAlertaRead[]> {

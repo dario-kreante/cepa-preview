@@ -1541,7 +1541,7 @@ export interface paths {
         };
         /**
          * Listar Config
-         * @description Los 7 tipos de alerta con su ventana vigente (o el valor por defecto).
+         * @description Los tipos de alerta con su ventana vigente (o el valor por defecto).
          */
         get: operations["listar_config_api_v1_config_alertas_get"];
         /**
@@ -1586,6 +1586,26 @@ export interface paths {
         post?: never;
         /** Eliminar Festivo */
         delete: operations["eliminar_festivo_api_v1_config_alertas_festivos__festivo_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/gaf-tramos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Listar
+         * @description Tramos de GAF activos, en orden.
+         */
+        get: operations["listar_api_v1_gaf_tramos_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -3093,6 +3113,21 @@ export interface components {
          * @enum {string}
          */
         FrecuenciaFarmaco: "c/24h" | "c/12h" | "c/8h" | "c/6h" | "semanal" | "bisemanal" | "mensual" | "otro";
+        /** GafTramoRead */
+        GafTramoRead: {
+            /** Id */
+            id: number;
+            /** Desde */
+            desde: number;
+            /** Hasta */
+            hasta: number;
+            /** Etiqueta */
+            etiqueta: string;
+            /** Orden */
+            orden: number;
+            /** Provisorio */
+            provisorio: boolean;
+        };
         /**
          * GenerarPropuestaRequest
          * @description Parámetros de generación de una propuesta de agenda.
@@ -3421,6 +3456,8 @@ export interface components {
             fecha_envio_isl?: string | null;
             /** Eeag Gaf */
             eeag_gaf?: number | null;
+            /** Eeag Gaf Tramo */
+            eeag_gaf_tramo?: string | null;
             /** Observaciones */
             observaciones?: string | null;
         };
@@ -3478,6 +3515,8 @@ export interface components {
             tipo_reposo?: components["schemas"]["app__domain__enums_controles__TipoReposo"] | null;
             /** Gaf */
             gaf?: number | null;
+            /** Gaf Tramo */
+            gaf_tramo?: string | null;
             estado_reca?: components["schemas"]["TipoReca"] | null;
             /** Observaciones */
             observaciones?: string | null;
@@ -4446,10 +4485,10 @@ export interface components {
         };
         /**
          * TipoAlerta
-         * @description Los 7 tipos de alerta soportados (RN-1 de CEPA-100).
+         * @description Tipos de alerta del motor: los 7 de CEPA-100 más el GAF de licencia (CEPA-075).
          * @enum {string}
          */
-        TipoAlerta: "control_medico" | "vencimiento_licencia" | "plazo_ept" | "plazo_isl" | "consentimiento_pendiente" | "receta_por_renovar" | "oda_por_vencer";
+        TipoAlerta: "control_medico" | "vencimiento_licencia" | "plazo_ept" | "plazo_isl" | "consentimiento_pendiente" | "receta_por_renovar" | "oda_por_vencer" | "gaf_licencia";
         /**
          * TipoAlta
          * @description Tipos de alta válidos (§7.1.3, v4 D6).
@@ -4746,6 +4785,8 @@ export interface components {
             fecha_envio_isl: string | null;
             /** Eeag Gaf */
             eeag_gaf: number | null;
+            /** Eeag Gaf Tramo */
+            eeag_gaf_tramo?: string | null;
             /** Observaciones */
             observaciones: string | null;
             /** Anulada */
@@ -4784,6 +4825,8 @@ export interface components {
             diagnostico: string;
             /** Eeag Gaf */
             eeag_gaf: number | null;
+            /** Eeag Gaf Tramo */
+            eeag_gaf_tramo?: string | null;
             envio_isl: components["schemas"]["EstadoEnvioISL"];
             /** Anulada */
             anulada: boolean;
@@ -8105,6 +8148,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    listar_api_v1_gaf_tramos_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GafTramoRead"][];
                 };
             };
         };

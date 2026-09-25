@@ -87,6 +87,26 @@ const MOCK_CONTROLES = [
     estado_reca: "EC",
     observaciones: null,
   },
+  {
+    id: 201,
+    ingreso_id: 10,
+    fecha_control: "2026-04-07",
+    semana_control: 12,
+    medico_tratante: "Dra. Paula Rojas",
+    region_derivacion: "Metropolitana",
+    proximo_control: null,
+    proximo_agendado: false,
+    tiene_licencia: false,
+    resumen_termino_lm: null,
+    total_dias_lm: null,
+    tipo_licencia: null,
+    tipo_reposo: null,
+    // v5 D18: con tramo se muestra el tramo, aunque exista el entero.
+    gaf: 73,
+    gaf_tramo: "71-80",
+    estado_reca: null,
+    observaciones: null,
+  },
 ];
 
 // ── Tests ────────────────────────────────────────────────────────────────────
@@ -167,8 +187,10 @@ describe("ControlesPage", () => {
     const totalEls = screen.getAllByText("Total");
     expect(totalEls.length).toBeGreaterThanOrEqual(1);
 
-    // GAF numeric value
+    // GAF: el entero cuando no hay tramo; el tramo cuando lo hay (v5 D18)
     expect(screen.getByText("65")).toBeInTheDocument();
+    expect(screen.getByText("71-80")).toBeInTheDocument();
+    expect(screen.queryByText("73")).not.toBeInTheDocument();
 
     // RECA badge — calificación D20 "EC" → "Enfermedad común (EC)" (also a filter <option>)
     const recaEls = screen.getAllByText("Enfermedad común (EC)");
