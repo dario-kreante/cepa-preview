@@ -66,10 +66,10 @@ export function useCrearRegistro() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (body: RegistroFarmacologicoCreate) => crearRegistro(body),
+    // Todo el ingreso: con el registro recién creado, el esquema, las recetas, los
+    // seguimientos y los sugeridos de SALUTEM cambian (y pueden haber quedado en error).
     onSuccess: (_data, vars) =>
-      qc.invalidateQueries({
-        queryKey: ["farmacos", vars.ingreso_id, "registro"],
-      }),
+      qc.invalidateQueries({ queryKey: ["farmacos", vars.ingreso_id] }),
   });
 }
 
