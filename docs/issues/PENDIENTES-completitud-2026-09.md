@@ -43,7 +43,7 @@ documento **no las reemplaza**: registra el hueco entre lo que exigen y lo que h
 | COMP-2609-06 | El job de alertas no está programado | Defecto | Alertas | Alta | — |
 | COMP-2609-07 | Umbrales de alerta fijos en el código | Defecto | Alertas / Licencias | Media | PA-v5-04 (solo el valor) |
 | COMP-2609-08 | Vista 360 de la API devuelve fármacos, licencias, controles y reintegro vacíos | Defecto | API / Ingresos | Media | — |
-| COMP-2609-09 | Mostrar las atenciones de SALUTEM dentro de Controles médicos | Historia (en curso) | Controles | Alta | PA-v5-06 (parcial) |
+| COMP-2609-09 | Mostrar las atenciones de SALUTEM dentro de Controles médicos | Historia (**resuelta 25-09**) | Controles | Alta | PA-v5-06 (parcial) |
 | COMP-2609-10 | Reglas del folio por programa | Decisión pendiente | Ingresos | Media | PA-v5-01 |
 | COMP-2609-11 | Catálogos de tipo de ingreso y tipo de derivación | Decisión pendiente | Ingresos | Alta | PA-v5-02 |
 | COMP-2609-12 | Tramos de GAF | Decisión pendiente | Controles / Licencias | Alta | PA-v5-03 |
@@ -376,8 +376,12 @@ el paciente tenga licencias.
 ## [COMP-2609-09] Mostrar las atenciones de SALUTEM dentro de Controles médicos
 
 **Tipo:** Historia · **Módulo:** Controles médicos · **Prioridad:** Alta
-**Estado:** **en curso** por el equipo en la rama `claude/controles-atenciones-salutem` (sin
-commits propios al 25-09-2026).
+**Estado:** **resuelta el 25-09-2026** (PRs #33, #35, #36 y #37, desplegados en la VM). Cada
+atención **Médico/a** atendida de SALUTEM se crea sola como control médico con la etiqueta
+SALUTEM: fecha, médico, semana, próximo control (la siguiente cita vigente), licencia, tipo de
+reposo, GAF (número o tramo) y evolución. La RECA la completa el CEPA y el sync no la toca. Las
+demás especialidades quedan en la pestaña SALUTEM de la ficha. Los criterios de abajo quedan
+como referencia de lo pedido.
 **Historias relacionadas:** `CEPA-060`, `CEPA-062`, `CEPA-121`; responde en parte PA-v5-06
 (`COMP-2609-15`).
 
@@ -470,6 +474,12 @@ pidiendo un número; lo notará en cuanto registre un control o una licencia.
   10 en 10, marcado como provisorio. **Recomendación:** hacerlo ya, junto con la migración de los
   enteros cargados al tramo que los contiene.
 
+**Novedad (25-09-2026):** los formularios de SALUTEM ya registran el GAF por tramo, con opciones
+de 10 en 10 (en el ambiente de pruebas aparecen `41-50`, `51-60` y `61-70`). Desde el PR #37 los
+controles creados desde SALUTEM guardan ese tramo en `control_medico.gaf_tramo` y la tabla de
+Controles lo muestra. Es un buen indicio de que la escala es la estándar de 10 en 10, pero hay que
+confirmarlo con Pilar. Los controles y licencias cargados en SIGE siguen pidiendo un número.
+
 **Al recibir la respuesta:** ajustar el catálogo sembrado; si cambia la segmentación, remapear los
 datos migrados.
 
@@ -519,8 +529,9 @@ lector de planillas.
 > SALUTEM (lo traeríamos automáticamente) o prefieren que el administrativo escriba un comentario
 > propio? Pueden ser ambas cosas.
 
-**Implementado hoy:** el resumen se arma con los controles registrados en SIGE. `COMP-2609-09` (en
-curso) agrega las atenciones de SALUTEM en solo lectura, lo que cubre la primera alternativa.
+**Implementado hoy:** el resumen se arma con los controles registrados en SIGE. `COMP-2609-09`
+(resuelta el 25-09) crea los controles desde las atenciones Médico/a de SALUTEM, con la evolución
+como observación, lo que cubre la primera alternativa.
 La segunda parte de PA-v5-06 ("¿qué es ingreso ID?") se trató como defecto (`BUG-2608-07`).
 
 ---
