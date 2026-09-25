@@ -150,3 +150,13 @@ def test_si_falla_al_abrir_la_bitacora_suelta_el_lease(db_session, salutem, ritm
 
     assert _correr(db_session, salutem, ritmo) == 1
     assert db_session.get(SalutemSyncLease, "salutem").dueno is None
+
+
+def test_un_modo_manual_omitido_por_lease_lo_informa_en_el_codigo_de_salida(db_session, ritmo):
+    """`vincular` y `backfill` se corren a mano: si otro proceso tiene el lease no hicieron
+    nada, y eso tiene que notarse (código OMITIDO) en vez de parecer un éxito."""
+    assert tomar_lease(db_session, "otro-proceso", AHORA)
+
+    codigo = correr("vincular", db_session, SalutemStubClient(), ritmo, ahora=lambda: AHORA, habilitado=True)
+
+    assert codigo == orquestador.OMITIDO

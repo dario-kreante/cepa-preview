@@ -4,6 +4,7 @@ Códigos de salida (los usa el cron):
     0 = terminó (ok, con errores de días puntuales, apagado u omitido por lease)
     1 = error (la ejecución quedó registrada con estado `error`)
     2 = SALUTEM sin credenciales configuradas
+    3 = un modo manual (`vincular`, `backfill`) omitido por lease: no hizo nada
 """
 
 import logging
@@ -35,6 +36,10 @@ from app.services.salutem_sync.vinculacion import vincular
 log = logging.getLogger("salutem_sync")
 
 _VINCULAN_TODO = ("backfill", "fria")
+# Modos que no están en el cron: los corre una persona, que tiene que enterarse si no
+# hicieron nada porque otro proceso tenía el lease. Para el cron, omitir es normal (0).
+MANUALES = ("vincular", "backfill")
+OMITIDO = 3
 
 
 class LeasePerdidoError(RuntimeError):
@@ -76,7 +81,7 @@ def correr(
     if not tomar_lease(db, dueno, inicio):
         log.info("Modo %s omitido: otro proceso tiene el lease", modo)
         registrar_omitida(db, modo, inicio)
-        return 0
+        return OMITIDO if modo in MANUALES else 0
 
     def renovar() -> None:
         if not tomar_lease(db, dueno, ahora()):

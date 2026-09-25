@@ -69,3 +69,35 @@ def test_parser_backfill_dias_futuro():
     parser = cli.construir_parser()
     assert parser.parse_args(["backfill"]).dias_futuro == 180
     assert parser.parse_args(["backfill", "--dias-futuro", "30"]).dias_futuro == 30
+
+
+@pytest.fixture
+def cli_habilitado(monkeypatch, db_session):
+    monkeypatch.setattr(cli, "SessionLocal", lambda: contextlib.nullcontext(db_session))
+    monkeypatch.setattr(
+        cli, "get_settings", lambda: Settings(_env_file=None, salutem_sync_habilitado=True)
+    )
+    monkeypatch.setattr(cli.time, "sleep", lambda s: None)
+    # alembic (fileConfig) desactiva los loggers existentes al migrar la BD de pruebas.
+    monkeypatch.setattr(logging.getLogger("salutem_sync"), "disabled", False)
+    return cli
+
+
+def test_vincular_a_mano_imprime_el_resultado(cli_habilitado, capsys):
+    assert cli_habilitado.main(["vincular", "--todo"]) == 0
+    assert "Modo vincular terminado" in capsys.readouterr().out
+
+
+def test_vincular_espera_a_que_se_libere_el_lease(cli_habilitado, monkeypatch, capsys):
+    codigos = iter([cli.OMITIDO, cli.OMITIDO, 0])
+    monkeypatch.setattr(cli, "correr", lambda *a, **k: next(codigos))
+
+    assert cli_habilitado.main(["vincular", "--todo"]) == 0
+    assert capsys.readouterr().out.count("otro proceso del sync está corriendo") == 2
+
+
+def test_vincular_se_rinde_si_el_lease_no_se_libera(cli_habilitado, monkeypatch, capsys):
+    monkeypatch.setattr(cli, "correr", lambda *a, **k: cli.OMITIDO)
+
+    assert cli_habilitado.main(["vincular", "--todo", "--esperar", "1"]) == cli.OMITIDO
+    assert "no se vinculó nada" in capsys.readouterr().out
