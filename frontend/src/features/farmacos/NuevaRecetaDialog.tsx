@@ -26,9 +26,23 @@ interface Props {
   ingresoId: number;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Precarga el formulario (p. ej. con una receta leída de SALUTEM). */
+  valoresIniciales?: Partial<RecetaForm>;
 }
 
-export function NuevaRecetaDialog({ ingresoId, open, onOpenChange }: Props) {
+const VACIO: RecetaForm = {
+  fecha_emision: "",
+  fecha_revision: "",
+  fecha_envio: "",
+  marca_medicamento: "",
+};
+
+export function NuevaRecetaDialog({
+  ingresoId,
+  open,
+  onOpenChange,
+  valoresIniciales,
+}: Props) {
   const crearMutation = useCrearReceta(ingresoId);
 
   const {
@@ -46,17 +60,10 @@ export function NuevaRecetaDialog({ ingresoId, open, onOpenChange }: Props) {
     },
   });
 
-  // Reset form when dialog closes
+  // Al abrir parte de los valores iniciales (si los hay); al cerrar queda vacío.
   useEffect(() => {
-    if (!open) {
-      reset({
-        fecha_emision: "",
-        fecha_revision: "",
-        fecha_envio: "",
-        marca_medicamento: "",
-      });
-    }
-  }, [open, reset]);
+    reset(open ? { ...VACIO, ...valoresIniciales } : VACIO);
+  }, [open, reset, valoresIniciales]);
 
   async function onSubmit(values: RecetaForm) {
     try {

@@ -26,6 +26,9 @@ export type SeguimTratamientoBody =
 export type AlertaFarmacosRead =
   components["schemas"]["app__schemas__farmacos__AlertaRead"];
 
+export type FarmacoSugeridoRead =
+  components["schemas"]["FarmacoSugeridoRead"];
+
 export type EstadoFarmacologico =
   components["schemas"]["EstadoFarmacologico"];
 export type FrecuenciaFarmaco =
@@ -177,5 +180,19 @@ export async function generarAlertasRevision(): Promise<AlertaFarmacosRead[]> {
     {},
   );
   if (error) throw new Error("No se pudieron generar las alertas de revisión");
+  return data ?? [];
+}
+
+/** GET /api/v1/registro-farmacologico/{ingreso_id}/sugeridos
+ *  Medicamentos leídos de las recetas de SALUTEM, para revisión humana.
+ */
+export async function listarFarmacosSugeridos(
+  ingresoId: number,
+): Promise<FarmacoSugeridoRead[]> {
+  const { data, error } = await api.GET(
+    "/api/v1/registro-farmacologico/{ingreso_id}/sugeridos",
+    { params: { path: { ingreso_id: ingresoId } } },
+  );
+  if (error) throw new Error("No se pudieron cargar los fármacos de SALUTEM");
   return data ?? [];
 }

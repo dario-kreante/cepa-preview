@@ -110,6 +110,45 @@ def test_la_indicacion_de_reposo_llena_la_licencia_y_el_gaf(db_session):
     assert "LM tipo 6" in c.resumen_termino_lm
 
 
+def test_el_gaf_por_tramo_y_el_tipo_de_reposo_vienen_de_los_campos_de_salutem(db_session):
+    _paciente_e_ingreso(db_session)
+    _persona(db_session)
+    _atencion(
+        db_session, 5020, "2024-05-07",
+        antecedentes=[
+            {"agrupacion": "", "nombre": "Indicación de reposo", "registro": "Se extiende LM tipo 6 por 30 días"},
+            {"agrupacion": "", "nombre": "GAF", "registro": {"1": "51-60"}},
+            {"agrupacion": "", "nombre": "Tipo de reposo", "registro": "{'2': 'Parcial'}"},
+        ],
+    )
+
+    vincular(db_session, AHORA)
+
+    [c] = _controles(db_session)
+    assert (c.gaf_tramo, c.gaf) == ("51-60", None)
+    assert c.tiene_licencia is True
+    assert (c.tipo_licencia, c.total_dias_lm, c.tipo_reposo) == ("6", 30, "parcial")
+
+
+def test_sin_licencia_el_tipo_de_reposo_no_se_guarda(db_session):
+    """El control solo guarda tipo de reposo cuando hay licencia (RN-1 de CEPA-062)."""
+    _paciente_e_ingreso(db_session)
+    _persona(db_session)
+    _atencion(
+        db_session, 5021, "2024-05-07",
+        antecedentes=[
+            {"nombre": "Indicación de reposo", "registro": "antecedente de prueba para ambiente de capacitación"},
+            {"nombre": "GAF", "registro": {"1": "41-50"}},
+            {"nombre": "Tipo de reposo", "registro": {"2": "Total"}},
+        ],
+    )
+
+    vincular(db_session, AHORA)
+
+    [c] = _controles(db_session)
+    assert (c.tiene_licencia, c.tipo_reposo, c.gaf_tramo) == (False, None, "41-50")
+
+
 def test_el_proximo_control_es_la_siguiente_cita_vigente_en_salutem(db_session):
     _paciente_e_ingreso(db_session)
     _persona(db_session)

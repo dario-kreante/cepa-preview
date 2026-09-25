@@ -33,9 +33,23 @@ interface Props {
   ingresoId: number;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Precarga el formulario (p. ej. con un fármaco leído de SALUTEM). */
+  valoresIniciales?: Partial<IndicacionForm>;
 }
 
-export function AgregarIndicacionDialog({ ingresoId, open, onOpenChange }: Props) {
+const VACIO: IndicacionForm = {
+  medicamento: "",
+  dosis: "",
+  frecuencia: undefined as unknown as IndicacionForm["frecuencia"],
+  extra_sistema: false,
+};
+
+export function AgregarIndicacionDialog({
+  ingresoId,
+  open,
+  onOpenChange,
+  valoresIniciales,
+}: Props) {
   const agregarMutation = useAgregarIndicacion(ingresoId);
 
   const {
@@ -55,17 +69,10 @@ export function AgregarIndicacionDialog({ ingresoId, open, onOpenChange }: Props
     },
   });
 
-  // Reset form when dialog closes
+  // Al abrir parte de los valores iniciales (si los hay); al cerrar queda vacío.
   useEffect(() => {
-    if (!open) {
-      reset({
-        medicamento: "",
-        dosis: "",
-        frecuencia: undefined,
-        extra_sistema: false,
-      });
-    }
-  }, [open, reset]);
+    reset(open ? { ...VACIO, ...valoresIniciales } : VACIO);
+  }, [open, reset, valoresIniciales]);
 
   const extraSistemaValue = watch("extra_sistema");
 

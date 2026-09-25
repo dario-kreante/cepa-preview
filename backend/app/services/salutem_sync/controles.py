@@ -9,8 +9,12 @@ evaluaciones de ingreso, gestión administrativa...) quedan solo en la pestaña 
 - medico_tratante    ← profesionalNombre
 - region_derivacion  ← región del paciente en SIGE (SALUTEM no la informa)
 - proximo_control    ← la siguiente cita vigente de la persona en la copia de SALUTEM
-- licencia y reposo  ← la indicación que menciona la licencia (extractor de licencias)
-- gaf                ← "GAF NN" escrito en las indicaciones
+- licencia           ← la indicación o el campo "Indicación de reposo" que menciona la
+                       licencia (extractor de licencias)
+- tipo_reposo        ← el campo "Tipo de reposo" (Total/Parcial); si falta, lo que diga
+                       el texto de la licencia. Solo se guarda si hay licencia (RN-1)
+- gaf_tramo          ← el campo "GAF", que SALUTEM registra por tramo ("51-60")
+- gaf                ← "GAF NN" escrito en el texto, cuando el médico anota el número
 - observaciones      ← la evolución del tratamiento
 - estado_reca        ← no viene en SALUTEM: lo completa el CEPA y el sync no lo toca
 """
@@ -25,6 +29,7 @@ from sqlalchemy.orm import Session
 
 from app.audit.service import record_audit
 from app.domain.enums_controles import TipoLicencia, TipoReposo
+from app.integrations.salutem.campos import antecedente, tramo_gaf
 from app.integrations.salutem.licencias import ClaseMencion, MencionLicencia, extraer_licencia
 from app.integrations.salutem.models import EstadoCitaSalutem
 from app.models.control_medico import ControlMedico
@@ -88,6 +93,9 @@ def _campos(db: Session, atencion: SalutemAtencion, ingreso: Ingreso) -> dict[st
     fecha = atencion.fecha_cita
     proximo = _proxima_cita(db, atencion.persona_id, fecha)
     licencia = _licencia(c, fecha)
+    reposo = (antecedente(c, "Tipo de reposo") or "").casefold()
+    if reposo not in {e.value for e in TipoReposo}:
+        reposo = licencia.tipo_reposo if licencia else None
     return {
         "fecha_control": fecha,
         "semana_control": max(1, (fecha - ingreso.fecha_ingreso).days // 7 + 1),
@@ -99,8 +107,9 @@ def _campos(db: Session, atencion: SalutemAtencion, ingreso: Ingreso) -> dict[st
         "resumen_termino_lm": licencia.texto[:500] if licencia else None,
         "total_dias_lm": licencia.dias if licencia else None,
         "tipo_licencia": _si_valido(licencia.tipo_licencia, TipoLicencia) if licencia else None,
-        "tipo_reposo": _si_valido(licencia.tipo_reposo, TipoReposo) if licencia else None,
+        "tipo_reposo": _si_valido(reposo, TipoReposo) if licencia else None,
         "gaf": _gaf(c),
+        "gaf_tramo": tramo_gaf(antecedente(c, "GAF")),
         "observaciones": _evolucion(c),
     }
 
@@ -127,7 +136,8 @@ def _registros(contenido: dict[str, Any], campo: str) -> list[Any]:
 
 
 def _licencia(contenido: dict[str, Any], fecha: date) -> MencionLicencia | None:
-    for registro in _registros(contenido, "indicaciones"):
+    textos = [*_registros(contenido, "indicaciones"), antecedente(contenido, "Indicación de reposo")]
+    for registro in textos:
         mencion = extraer_licencia(registro, fecha_atencion=fecha)
         if mencion is not None and mencion.clase == ClaseMencion.LICENCIA:
             return mencion

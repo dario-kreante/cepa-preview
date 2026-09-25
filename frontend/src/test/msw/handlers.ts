@@ -15,6 +15,12 @@ export const handlers = [
     `${BASE}/api/v1/registro-farmacologico/:ingreso_id/seguimiento`,
     () => HttpResponse.json([]),
   ),
+  // Default handler for the fármacos sugeridos (SALUTEM) endpoint — returns empty list.
+  // Individual tests can override via server.use().
+  http.get(
+    `${BASE}/api/v1/registro-farmacologico/:ingreso_id/sugeridos`,
+    () => HttpResponse.json([]),
+  ),
   // Default handler for proceso EPT — returns 404 (no proceso yet).
   // Individual tests can override via server.use().
   http.get(

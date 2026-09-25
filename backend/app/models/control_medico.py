@@ -64,6 +64,8 @@ class ControlMedico(Base):
     tipo_licencia: Mapped[str | None] = mapped_column(String(20), nullable=True)
     tipo_reposo: Mapped[str | None] = mapped_column(String(10), nullable=True)
     gaf: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # SALUTEM registra el GAF como tramo ("51-60"), no como número (migración 1280).
+    gaf_tramo: Mapped[str | None] = mapped_column(String(10), nullable=True)
 
     # ── RECA y observaciones (CEPA-062, siempre editables) ───────────────────
     estado_reca: Mapped[str | None] = mapped_column(String(20), nullable=True)

@@ -6,6 +6,7 @@ import {
   crearRegistro,
   crearSeguimiento,
   generarAlertasRevision,
+  listarFarmacosSugeridos,
   listarIndicaciones,
   listarRecetas,
   listarSeguimientos,
@@ -39,6 +40,14 @@ export function useRecetas(ingresoId: number) {
   return useQuery({
     queryKey: ["farmacos", ingresoId, "recetas"],
     queryFn: () => listarRecetas(ingresoId),
+    enabled: !!ingresoId,
+  });
+}
+
+export function useFarmacosSugeridos(ingresoId: number) {
+  return useQuery({
+    queryKey: ["farmacos", ingresoId, "sugeridos"],
+    queryFn: () => listarFarmacosSugeridos(ingresoId),
     enabled: !!ingresoId,
   });
 }
@@ -80,7 +89,11 @@ export function useAgregarIndicacion(ingresoId: number) {
     mutationFn: (body: EsquemaIndicacionBody) =>
       agregarIndicacion(ingresoId, body),
     onSuccess: () =>
-      qc.invalidateQueries({ queryKey: ["farmacos", ingresoId, "esquema"] }),
+      Promise.all([
+        qc.invalidateQueries({ queryKey: ["farmacos", ingresoId, "esquema"] }),
+        // Lo agregado deja de aparecer como pendiente en los sugeridos de SALUTEM.
+        qc.invalidateQueries({ queryKey: ["farmacos", ingresoId, "sugeridos"] }),
+      ]),
   });
 }
 
@@ -89,7 +102,10 @@ export function useCrearReceta(ingresoId: number) {
   return useMutation({
     mutationFn: (body: RecetaBody) => crearReceta(ingresoId, body),
     onSuccess: () =>
-      qc.invalidateQueries({ queryKey: ["farmacos", ingresoId, "recetas"] }),
+      Promise.all([
+        qc.invalidateQueries({ queryKey: ["farmacos", ingresoId, "recetas"] }),
+        qc.invalidateQueries({ queryKey: ["farmacos", ingresoId, "sugeridos"] }),
+      ]),
   });
 }
 
