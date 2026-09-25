@@ -146,6 +146,46 @@ def test_una_atencion_no_atendida_no_crea_control(db_session):
     assert _controles(db_session) == []
 
 
+def test_solo_las_atenciones_de_medico_crean_control(db_session):
+    _paciente_e_ingreso(db_session)
+    _persona(db_session)
+    _atencion(db_session, 5011, "2023-03-01", especialidadNombre="Psicología")
+    _atencion(db_session, 5012, "2023-03-02", especialidadNombre="Evaluación médica")
+    _atencion(db_session, 5013, "2023-03-03")
+
+    vincular(db_session, AHORA)
+
+    assert [c.salutem_cita_id for c in _controles(db_session)] == [5013]
+
+
+def test_el_control_se_elimina_si_la_atencion_deja_de_ser_control(db_session):
+    _paciente_e_ingreso(db_session)
+    _persona(db_session)
+    _atencion(db_session, 5014, "2023-03-01")
+    vincular(db_session, AHORA)
+    assert len(_controles(db_session)) == 1
+
+    _atencion(db_session, 5014, "2023-03-01", estado=int(EstadoCitaSalutem.ANULADO), estado_nombre="Anulado")
+    vincular(db_session, AHORA)
+
+    assert _controles(db_session) == []
+
+
+def test_no_se_elimina_un_control_con_reca_registrada_por_el_cepa(db_session):
+    _paciente_e_ingreso(db_session)
+    _persona(db_session)
+    _atencion(db_session, 5015, "2023-03-01")
+    vincular(db_session, AHORA)
+    [c] = _controles(db_session)
+    c.estado_reca = "EP"
+    db_session.flush()
+
+    _atencion(db_session, 5015, "2023-03-01", especialidadNombre="Psicología")
+    vincular(db_session, AHORA)
+
+    assert [c.salutem_cita_id for c in _controles(db_session)] == [5015]
+
+
 def test_volver_a_vincular_no_duplica_y_actualiza_sin_pisar_la_reca(db_session):
     _paciente_e_ingreso(db_session)
     _persona(db_session)

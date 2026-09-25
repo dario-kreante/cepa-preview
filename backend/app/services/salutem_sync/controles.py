@@ -1,7 +1,8 @@
 """Controles médicos creados automáticamente desde las atenciones de SALUTEM.
 
-Cada atención con estado "Atendido" que cae en la ventana de un ingreso es un control
-del CEPA con origen SALUTEM. Correspondencia con el control:
+Cada atención de Médico/a con estado "Atendido" que cae en la ventana de un ingreso es
+un control del CEPA con origen SALUTEM. Las demás especialidades (psicología, EPT,
+evaluaciones de ingreso, gestión administrativa...) quedan solo en la pestaña SALUTEM. Correspondencia con el control:
 
 - fecha_control      ← citaFecha
 - semana_control     ← semanas desde fecha_ingreso (la semana 1 parte el día del ingreso)
@@ -33,6 +34,7 @@ from app.models.salutem_copia import SalutemAtencion, SalutemCita
 ACTOR = "sistema:salutem-sync"
 ORIGEN = "SALUTEM"
 ATENDIDO = int(EstadoCitaSalutem.ATENDIDO)
+ESPECIALIDAD_CONTROL = "Médico/a"
 # Una cita anulada o a la que no asistió no es un próximo control.
 _NO_VIGENTES = (int(EstadoCitaSalutem.ANULADO), int(EstadoCitaSalutem.NO_ASISTE))
 _RE_GAF = re.compile(r"\bGAF\s*:?\s*(\d{1,3})\b", re.IGNORECASE)
@@ -41,18 +43,32 @@ _RE_TAG = re.compile(r"<[^>]+>")
 
 
 def es_control(atencion: SalutemAtencion) -> bool:
-    return atencion.desaparecida_en is None and atencion.contenido.get("estadoCitaId") == ATENDIDO
+    c = atencion.contenido
+    return (
+        atencion.desaparecida_en is None
+        and atencion.fecha_cita is not None
+        and c.get("estadoCitaId") == ATENDIDO
+        and c.get("especialidadNombre") == ESPECIALIDAD_CONTROL
+    )
 
 
 def sincronizar_control(db: Session, atencion: SalutemAtencion, ingreso: Ingreso) -> None:
-    """Crea o actualiza el control del ingreso que corresponde a esta atención."""
-    if atencion.fecha_cita is None:
-        return
+    """Crea, actualiza o elimina el control del ingreso que corresponde a esta atención.
+
+    Si la atención deja de ser control (se anuló, desapareció o no es de Médico/a) su
+    control se elimina, salvo que el CEPA ya le haya registrado la RECA.
+    """
     control = db.scalars(
         select(ControlMedico)
         .where(ControlMedico.ingreso_id == ingreso.id, ControlMedico.salutem_cita_id == atencion.cita_id)
         .order_by(ControlMedico.id)
     ).first()
+    if not es_control(atencion):
+        if control is not None and control.origen == ORIGEN and control.estado_reca is None:
+            record_audit(db, actor=ACTOR, action="DELETE", entity="control_medico", entity_id=str(control.id))
+            db.delete(control)
+            db.flush()
+        return
     campos = _campos(db, atencion, ingreso)
     if control is None:
         control = ControlMedico(ingreso_id=ingreso.id, origen=ORIGEN, salutem_cita_id=atencion.cita_id, **campos)
