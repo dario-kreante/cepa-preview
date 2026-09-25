@@ -1,13 +1,12 @@
 """Servicio de alertas de vencimiento de licencias médicas — CEPA-072.
 
-contar_dias_habiles(desde, hasta): cuenta días hábiles (lun–vie) entre dos fechas,
-  excluyendo fines de semana. Los festivos chilenos se gestionan como lista
-  configurable (ver Notas de cierre del plan); por defecto esta función solo
-  excluye sáb/dom para mantener el servicio portable y sin dependencia externa.
+contar_dias_habiles(desde, hasta, festivos): cuenta días hábiles (lun–vie) entre dos
+  fechas, excluyendo fines de semana y los festivos recibidos.
 
-generar_alertas_vencimiento(db, hoy, umbral_habiles=3): idempotente — por cada LM
+generar_alertas_vencimiento(db, hoy, umbral_habiles=None): idempotente — por cada LM
   vigente que vence en ≤umbral_habiles días hábiles, crea una AlertaLicencia solo
-  si no existe ya una activa para esa LM (RN-4 CEPA-072).
+  si no existe ya una activa para esa LM (RN-4 CEPA-072). Sin umbral explícito, lee
+  el umbral y los festivos de la BD en cada ejecución (COMP-2609-07, TC-072-07).
 """
 
 import datetime
@@ -44,7 +43,7 @@ def contar_dias_habiles(
 def generar_alertas_vencimiento(
     db,
     hoy: datetime.date | None = None,
-    umbral_habiles: int = 3,
+    umbral_habiles: int | None = None,
     festivos: frozenset[datetime.date] | None = None,
 ) -> list[AlertaLicencia]:
     """Genera alertas in-app para LM que vencen en ≤umbral_habiles días hábiles.
@@ -53,8 +52,16 @@ def generar_alertas_vencimiento(
     Excluye LM anuladas y LM cuya fecha_termino < hoy (ya vencidas).
     Devuelve la lista de alertas NUEVAS creadas en esta ejecución.
     """
+    from app.services.config_alertas import cargar_festivos, cargar_ventanas
+
     hoy = hoy or datetime.date.today()
-    festivos = festivos or frozenset()
+    if umbral_habiles is None:
+        ventana = cargar_ventanas(db)["vencimiento_licencia"]
+        if not ventana["activo"]:
+            return []
+        umbral_habiles = ventana["dias"]
+    if festivos is None:
+        festivos = cargar_festivos(db)
 
     # LM vigentes cuyo término es >= hoy (no vencidas aún)
     lm_candidatas = list(

@@ -89,16 +89,17 @@ class ResultadoAlerta:
 # ---------------------------------------------------------------------------
 
 
-def dias_habiles_hasta(hoy: date, plazo: date) -> int:
-    """Devuelve el número de días hábiles (lun–vie) entre hoy (exclusivo) y plazo (inclusivo).
+def dias_habiles_hasta(hoy: date, plazo: date, festivos: frozenset[date] = frozenset()) -> int:
+    """Devuelve el número de días hábiles (lun–vie, sin festivos) entre hoy (exclusivo) y
+    plazo (inclusivo).
 
-    Negativo si el plazo ya pasó. No considera festivos.
+    Negativo si el plazo ya pasó. ``festivos`` viene de la tabla ``festivo`` (COMP-2609-07).
     """
     if plazo <= hoy:
         delta = 0
         cursor = plazo
         while cursor < hoy:
-            if cursor.weekday() < 5:  # 0=lunes … 4=viernes
+            if cursor.weekday() < 5 and cursor not in festivos:  # 0=lunes … 4=viernes
                 delta -= 1
             cursor = cursor + timedelta(days=1)
         return delta
@@ -106,7 +107,7 @@ def dias_habiles_hasta(hoy: date, plazo: date) -> int:
     habiles = 0
     cursor = hoy + timedelta(days=1)
     while cursor <= plazo:
-        if cursor.weekday() < 5:
+        if cursor.weekday() < 5 and cursor not in festivos:
             habiles += 1
         cursor += timedelta(days=1)
     return habiles
@@ -122,6 +123,7 @@ def evaluar_plazos(
     *,
     hoy: date | None = None,
     alertas_activas: set[tuple] | None = None,
+    festivos: frozenset[date] = frozenset(),
 ) -> list[ResultadoAlerta]:
     """Evalúa una lista de hitos y devuelve los que deben generar una nueva alerta.
 
@@ -148,7 +150,7 @@ def evaluar_plazos(
             continue  # idempotencia: ya existe alerta activa para este (caso, tipo, plazo)
 
         if hito.usar_dias_habiles:
-            dias_restantes = dias_habiles_hasta(hoy, hito.plazo_objetivo)
+            dias_restantes = dias_habiles_hasta(hoy, hito.plazo_objetivo, festivos)
         else:
             dias_restantes = (hito.plazo_objetivo - hoy).days
 
@@ -173,7 +175,8 @@ def evaluar_plazos(
 from app.domain.enums_alertas import EstadoAlerta, TipoAlerta  # noqa: E402
 from app.models.alertas import AlertaNotif  # noqa: E402
 
-# Ventanas de aviso por defecto (días). Ajustar según confirmación de Coordinación (RN-3).
+# Ventanas de aviso por defecto (días). La fuente vigente es la tabla config_alerta
+# (COMP-2609-07); estos valores son el respaldo si la tabla está vacía o le falta un tipo.
 VENTANAS_DEFAULT: dict[str, dict] = {
     TipoAlerta.VENCIMIENTO_LICENCIA.value: {"dias": 3, "habiles": True},
     TipoAlerta.PLAZO_EPT.value:            {"dias": 5, "habiles": True},
@@ -220,7 +223,7 @@ def _resolver_usuario(ingreso_id: int | None, db: Session) -> int | None:
     return ingreso.profesional_id  # puede ser None
 
 
-def _construir_hitos_oda(db: Session) -> list[HitoPlazos]:
+def _construir_hitos_oda(db: Session, ventanas: dict[str, dict] | None = None) -> list[HitoPlazos]:
     """Construye HitoPlazos desde la tabla oda (EPIC-01) via ORM.
 
     Filtra por vigente=True y fecha_vencimiento IS NOT NULL.
@@ -228,7 +231,9 @@ def _construir_hitos_oda(db: Session) -> list[HitoPlazos]:
     """
     from app.models.oda import Oda  # local import para evitar ciclos
 
-    ventana = VENTANAS_DEFAULT[TipoAlerta.ODA_POR_VENCER.value]
+    ventana = (ventanas or VENTANAS_DEFAULT)[TipoAlerta.ODA_POR_VENCER.value]
+    if not ventana.get("activo", True):
+        return []
     filas = db.scalars(
         select(Oda).where(
             Oda.vigente == True,  # noqa: E712
@@ -252,7 +257,7 @@ def _construir_hitos_oda(db: Session) -> list[HitoPlazos]:
     return hitos
 
 
-def _construir_hitos_licencias(db: Session) -> list[HitoPlazos]:
+def _construir_hitos_licencias(db: Session, ventanas: dict[str, dict] | None = None) -> list[HitoPlazos]:
     """Construye HitoPlazos desde la tabla licencia_medica (EPIC-07) via ORM.
 
     Filtra anulada=False y fin_reposo IS NOT NULL.
@@ -260,7 +265,9 @@ def _construir_hitos_licencias(db: Session) -> list[HitoPlazos]:
     """
     from app.models.licencia import LicenciaMedica  # local import
 
-    ventana = VENTANAS_DEFAULT[TipoAlerta.VENCIMIENTO_LICENCIA.value]
+    ventana = (ventanas or VENTANAS_DEFAULT)[TipoAlerta.VENCIMIENTO_LICENCIA.value]
+    if not ventana.get("activo", True):
+        return []
     filas = db.scalars(
         select(LicenciaMedica).where(
             LicenciaMedica.anulada == False,  # noqa: E712
@@ -284,7 +291,7 @@ def _construir_hitos_licencias(db: Session) -> list[HitoPlazos]:
     return hitos
 
 
-def _construir_hitos_ept(db: Session) -> list[HitoPlazos]:
+def _construir_hitos_ept(db: Session, ventanas: dict[str, dict] | None = None) -> list[HitoPlazos]:
     """Construye HitoPlazos desde plazo_ept JOIN caso_ept (EPIC-03) via ORM.
 
     Genera un hito por cada plazo no nulo:
@@ -294,8 +301,8 @@ def _construir_hitos_ept(db: Session) -> list[HitoPlazos]:
     """
     from app.models.ept import CasoEpt, PlazoEpt  # local import
 
-    v_ept = VENTANAS_DEFAULT[TipoAlerta.PLAZO_EPT.value]
-    v_isl = VENTANAS_DEFAULT[TipoAlerta.PLAZO_ISL.value]
+    v_ept = (ventanas or VENTANAS_DEFAULT)[TipoAlerta.PLAZO_EPT.value]
+    v_isl = (ventanas or VENTANAS_DEFAULT)[TipoAlerta.PLAZO_ISL.value]
 
     filas = db.scalars(
         select(PlazoEpt)
@@ -310,7 +317,7 @@ def _construir_hitos_ept(db: Session) -> list[HitoPlazos]:
             (plazo_ept.plazo_informe_ept, TipoAlerta.PLAZO_EPT.value, v_ept),
             (plazo_ept.plazo_portal_isl, TipoAlerta.PLAZO_ISL.value, v_isl),
         ]:
-            if campo_date is None:
+            if campo_date is None or not ventana.get("activo", True):
                 continue
             hitos.append(
                 HitoPlazos(
@@ -326,7 +333,7 @@ def _construir_hitos_ept(db: Session) -> list[HitoPlazos]:
     return hitos
 
 
-def _construir_hitos_consentimiento(db: Session) -> list[HitoPlazos]:
+def _construir_hitos_consentimiento(db: Session, ventanas: dict[str, dict] | None = None) -> list[HitoPlazos]:
     """Construye HitoPlazos para consentimientos no firmados (EPIC-01) via ORM.
 
     Un consentimiento con estado != FIRMADO genera alerta permanente hasta
@@ -337,7 +344,9 @@ def _construir_hitos_consentimiento(db: Session) -> list[HitoPlazos]:
     from app.domain.enums import EstadoConsentimiento
     from app.models.consentimiento import Consentimiento  # local import
 
-    ventana = VENTANAS_DEFAULT[TipoAlerta.CONSENTIMIENTO_PENDIENTE.value]
+    ventana = (ventanas or VENTANAS_DEFAULT)[TipoAlerta.CONSENTIMIENTO_PENDIENTE.value]
+    if not ventana.get("activo", True):
+        return []
     filas = db.scalars(
         select(Consentimiento).where(
             Consentimiento.estado != EstadoConsentimiento.FIRMADO.value
@@ -363,7 +372,7 @@ def _construir_hitos_consentimiento(db: Session) -> list[HitoPlazos]:
     return hitos
 
 
-def _construir_hitos_control_medico(db: Session) -> list[HitoPlazos]:
+def _construir_hitos_control_medico(db: Session, ventanas: dict[str, dict] | None = None) -> list[HitoPlazos]:
     """Construye HitoPlazos para controles médicos próximos sin agendar (EPIC-06) via ORM.
 
     Filtra: proximo_control IS NOT NULL AND proximo_agendado = False.
@@ -373,7 +382,9 @@ def _construir_hitos_control_medico(db: Session) -> list[HitoPlazos]:
     """
     from app.models.control_medico import ControlMedico  # local import
 
-    ventana = VENTANAS_DEFAULT[TipoAlerta.CONTROL_MEDICO.value]
+    ventana = (ventanas or VENTANAS_DEFAULT)[TipoAlerta.CONTROL_MEDICO.value]
+    if not ventana.get("activo", True):
+        return []
     filas = db.scalars(
         select(ControlMedico).where(
             ControlMedico.proximo_control.isnot(None),
@@ -406,7 +417,7 @@ def _construir_hitos_control_medico(db: Session) -> list[HitoPlazos]:
     return hitos
 
 
-def _construir_hitos_receta(db: Session) -> list[HitoPlazos]:
+def _construir_hitos_receta(db: Session, ventanas: dict[str, dict] | None = None) -> list[HitoPlazos]:
     """Construye HitoPlazos para recetas por renovar (EPIC-02) via ORM.
 
     Filtra: fecha_revision IS NOT NULL AND fecha_envio IS NULL.
@@ -415,7 +426,9 @@ def _construir_hitos_receta(db: Session) -> list[HitoPlazos]:
     """
     from app.models.farmacos import Receta, RegistroFarmacologico  # local import
 
-    ventana = VENTANAS_DEFAULT[TipoAlerta.RECETA_POR_RENOVAR.value]
+    ventana = (ventanas or VENTANAS_DEFAULT)[TipoAlerta.RECETA_POR_RENOVAR.value]
+    if not ventana.get("activo", True):
+        return []
     filas = db.scalars(
         select(Receta).where(
             Receta.fecha_revision.isnot(None),
@@ -442,27 +455,35 @@ def _construir_hitos_receta(db: Session) -> list[HitoPlazos]:
     return hitos
 
 
-def ejecutar_job_alertas(db: Session, *, actor: str = "sistema") -> int:
+def ejecutar_job_alertas(
+    db: Session, *, actor: str = "sistema", hoy: date | None = None
+) -> int:
     """Job principal de revisión de plazos.
 
     Construye todos los hitos de dominio, evalúa plazos y persiste las alertas nuevas.
     Devuelve el número de alertas generadas en esta ejecución.
     Registra auditoría ANTES del commit (DD-B / RN-8 / CA-8).
+    Lee ventanas y festivos de la BD en cada ejecución (COMP-2609-07).
     """
     from app.audit.service import record_audit
+    from app.services.config_alertas import cargar_festivos, cargar_ventanas
 
-    hoy = date.today()
+    hoy = hoy or date.today()
+    ventanas = cargar_ventanas(db)
+    festivos = cargar_festivos(db)
 
     hitos: list[HitoPlazos] = []
-    hitos.extend(_construir_hitos_oda(db))
-    hitos.extend(_construir_hitos_licencias(db))
-    hitos.extend(_construir_hitos_ept(db))
-    hitos.extend(_construir_hitos_consentimiento(db))
-    hitos.extend(_construir_hitos_control_medico(db))
-    hitos.extend(_construir_hitos_receta(db))
+    hitos.extend(_construir_hitos_oda(db, ventanas))
+    hitos.extend(_construir_hitos_licencias(db, ventanas))
+    hitos.extend(_construir_hitos_ept(db, ventanas))
+    hitos.extend(_construir_hitos_consentimiento(db, ventanas))
+    hitos.extend(_construir_hitos_control_medico(db, ventanas))
+    hitos.extend(_construir_hitos_receta(db, ventanas))
 
     alertas_activas = _cargar_alertas_activas(db)
-    resultados = evaluar_plazos(hitos, hoy=hoy, alertas_activas=alertas_activas)
+    resultados = evaluar_plazos(
+        hitos, hoy=hoy, alertas_activas=alertas_activas, festivos=festivos
+    )
 
     for r in resultados:
         alerta = AlertaNotif(
