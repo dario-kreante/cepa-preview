@@ -100,6 +100,9 @@ class Settings(BaseSettings):
     salutem_backfill_dias_vacios: int = 365
     # Vacío = log a stderr. En la VM: ~/sige-cepa/logs/salutem-sync.log
     salutem_sync_log: str = ""
+    # Log del job de alertas (COMP-2609-06). Vacío = solo consola.
+    # En la VM: ~/sige-cepa/logs/alertas-job.log
+    alertas_job_log: str = ""
     # IDs de persona SALUTEM separados por coma. Vacío = todas. Con valor, el sync solo
     # copia a esas personas: SALUTEM QA trae identidades reales y mientras se valida
     # hay que limitarse a los pacientes de prueba.

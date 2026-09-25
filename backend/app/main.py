@@ -19,6 +19,7 @@ from app.agendamiento import router as agendamiento_router
 from app.routers import dashboard, reporte_operativo, reporte_convenio, reporte_carga, reporte_licencias, reporte_odas, reporte_adherencia, ventana_proceso
 from app.routers import citas as citas_router
 from app.routers import alertas as alertas_router
+from app.routers import config_alertas as config_alertas_router
 from app.routers import tareas as tareas_router
 from app.routers import form_config as form_config_router
 from app.routers import pdf_extract as pdf_extract_router
@@ -69,6 +70,7 @@ app.include_router(reporte_adherencia.router)
 app.include_router(ventana_proceso.router)
 app.include_router(citas_router.router)
 app.include_router(alertas_router.router)
+app.include_router(config_alertas_router.router)
 app.include_router(tareas_router.router)
 app.include_router(form_config_router.router)
 app.include_router(pdf_extract_router.router)

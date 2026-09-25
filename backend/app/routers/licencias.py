@@ -63,7 +63,7 @@ def disparar_alertas(
     current_user=Depends(get_current_user),
 ) -> list[AlertaLicenciaRead]:
     """Endpoint de disparo manual del job de alertas (idempotente).
-    El job automático diario lo invocará desde EPIC-10.
+    El job diario (cron, app.scripts.alertas_job) hace lo mismo; se conserva para probar.
     """
     nuevas = generar_alertas_vencimiento(db)
     record_audit(

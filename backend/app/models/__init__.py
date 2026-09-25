@@ -34,3 +34,4 @@ from app.models.salutem_sync import (  # noqa: F401
     SalutemSyncEjecucion,
     SalutemSyncLease,
 )
+from app.models.config_alerta import ConfigAlerta, Festivo  # noqa: F401

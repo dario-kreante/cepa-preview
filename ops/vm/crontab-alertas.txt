@@ -1,0 +1,5 @@
+# run-alertas: Job diario de alertas (COMP-2609-06). Agregar al crontab de segicepa SIN
+# run-alertas: borrar las otras entradas (@reboot, watchdog, sync SALUTEM).
+# run-alertas: 07:00 de lunes a viernes, hora de la VM (debe estar en America/Santiago).
+# run-alertas: En un festivo corre igual: es idempotente y los plazos ya descuentan festivos.
+0 7 * * 1-5 $HOME/sige-cepa/run-alertas.sh

@@ -25,9 +25,6 @@ from app.schemas.farmacos import (
     SeguimTratamientoCreate,
 )
 
-_VENTANA_ALERTA_DIAS = 5
-
-
 # ── RegistroFarmacologico ─────────────────────────────────────────────────────
 
 def _exigir_ingreso(db, ingreso_id: int) -> Ingreso:
@@ -177,13 +174,27 @@ def listar_recetas(db, registro_id: int) -> list[Receta]:
 
 
 def generar_alertas_revision(db, hoy: date | None = None) -> list[Alerta]:
-    """Genera alertas para recetas cuya fecha_revision cae dentro de los próximos
-    _VENTANA_ALERTA_DIAS días (límite inclusivo). Omite recetas que ya tienen alerta
+    """Genera alertas para recetas cuya fecha_revision cae dentro de la ventana de
+    ``receta_por_renovar`` (config_alerta; 5 días por defecto, límite inclusivo). Omite recetas que ya tienen alerta
     del mismo tipo generada el mismo día (idempotente). CEPA-022 RN-3/CA-2/CA-3.
     """
 
+    from app.services.config_alertas import cargar_festivos, cargar_ventanas
+
     hoy = hoy or date.today()
-    limite = hoy + timedelta(days=_VENTANA_ALERTA_DIAS)
+    # COMP-2609-07: la ventana es la de "receta_por_renovar" en config_alerta.
+    ventana = cargar_ventanas(db)["receta_por_renovar"]
+    if not ventana["activo"]:
+        return []
+    if ventana["habiles"]:
+        festivos = cargar_festivos(db)
+        limite, contados = hoy, 0
+        while contados < ventana["dias"]:
+            limite += timedelta(days=1)
+            if limite.weekday() < 5 and limite not in festivos:
+                contados += 1
+    else:
+        limite = hoy + timedelta(days=ventana["dias"])
 
     recetas_proximas = db.scalars(
         select(Receta).where(

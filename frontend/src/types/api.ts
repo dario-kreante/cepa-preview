@@ -926,7 +926,7 @@ export interface paths {
         /**
          * Disparar Alertas
          * @description Endpoint de disparo manual del job de alertas (idempotente).
-         *     El job automático diario lo invocará desde EPIC-10.
+         *     El job diario (cron, app.scripts.alertas_job) hace lo mismo; se conserva para probar.
          */
         post: operations["disparar_alertas_api_v1_licencias_alertas_generar_post"];
         delete?: never;
@@ -1527,6 +1527,65 @@ export interface paths {
          */
         post: operations["enviar_correos_api_v1_alertas_enviar_correos_post"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/config-alertas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Listar Config
+         * @description Los 7 tipos de alerta con su ventana vigente (o el valor por defecto).
+         */
+        get: operations["listar_config_api_v1_config_alertas_get"];
+        /**
+         * Actualizar Config
+         * @description Actualiza (o crea) la configuración de los tipos enviados; el resto no cambia.
+         */
+        put: operations["actualizar_config_api_v1_config_alertas_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/config-alertas/festivos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Listar Festivos */
+        get: operations["listar_festivos_api_v1_config_alertas_festivos_get"];
+        put?: never;
+        /** Crear Festivo */
+        post: operations["crear_festivo_api_v1_config_alertas_festivos_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/config-alertas/festivos/{festivo_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Eliminar Festivo */
+        delete: operations["eliminar_festivo_api_v1_config_alertas_festivos__festivo_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -2342,6 +2401,28 @@ export interface components {
              */
             fecha: string;
         };
+        /** ConfigAlertaItem */
+        ConfigAlertaItem: {
+            tipo: components["schemas"]["TipoAlerta"];
+            /** Dias */
+            dias: number;
+            /** Habiles */
+            habiles: boolean;
+            /** Activo */
+            activo: boolean;
+        };
+        /** ConfigAlertaRead */
+        ConfigAlertaRead: {
+            tipo: components["schemas"]["TipoAlerta"];
+            /** Dias */
+            dias: number;
+            /** Habiles */
+            habiles: boolean;
+            /** Activo */
+            activo: boolean;
+            /** Actualizado Por */
+            actualizado_por?: string | null;
+        };
         /**
          * ConfirmarCitasRequest
          * @description IDs de CitaPropuesta a confirmar (deben pertenecer a la misma propuesta).
@@ -2775,6 +2856,28 @@ export interface components {
              * @default []
              */
             recetas: components["schemas"]["RecetaRead"][];
+        };
+        /** FestivoCreate */
+        FestivoCreate: {
+            /**
+             * Fecha
+             * Format: date
+             */
+            fecha: string;
+            /** Descripcion */
+            descripcion: string;
+        };
+        /** FestivoRead */
+        FestivoRead: {
+            /** Id */
+            id: number;
+            /**
+             * Fecha
+             * Format: date
+             */
+            fecha: string;
+            /** Descripcion */
+            descripcion: string;
         };
         /**
          * FichaClinicaCreate
@@ -4341,6 +4444,12 @@ export interface components {
         TareaItemUpdate: {
             estado: components["schemas"]["EstadoTarea"];
         };
+        /**
+         * TipoAlerta
+         * @description Los 7 tipos de alerta soportados (RN-1 de CEPA-100).
+         * @enum {string}
+         */
+        TipoAlerta: "control_medico" | "vencimiento_licencia" | "plazo_ept" | "plazo_isl" | "consentimiento_pendiente" | "receta_por_renovar" | "oda_por_vencer";
         /**
          * TipoAlta
          * @description Tipos de alta válidos (§7.1.3, v4 D6).
@@ -7861,6 +7970,141 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["JobResultado"];
+                };
+            };
+        };
+    };
+    listar_config_api_v1_config_alertas_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfigAlertaRead"][];
+                };
+            };
+        };
+    };
+    actualizar_config_api_v1_config_alertas_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfigAlertaItem"][];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfigAlertaRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    listar_festivos_api_v1_config_alertas_festivos_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FestivoRead"][];
+                };
+            };
+        };
+    };
+    crear_festivo_api_v1_config_alertas_festivos_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FestivoCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FestivoRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    eliminar_festivo_api_v1_config_alertas_festivos__festivo_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                festivo_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
