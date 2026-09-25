@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Search,
   Plus,
@@ -59,11 +59,26 @@ export function IngresosListaPage() {
   const { rol } = useAuth();
   const puedeCrear = puedeEscribir(rol as Rol);
 
-  const [inputQ, setInputQ] = useState("");
-  const [q, setQ] = useState("");
+  // ?q= viene del buscador lateral: se busca de inmediato, sin esperar el debounce.
+  const [searchParams] = useSearchParams();
+  const qUrl = searchParams.get("q")?.trim() ?? "";
+  const [inputQ, setInputQ] = useState(qUrl);
+  const [q, setQ] = useState(qUrl);
   const [regionFilter, setRegionFilter] = useState("Todas");
   const [page, setPage] = useState(0);
   const [sheetId, setSheetId] = useState<number | null>(null);
+
+  // Una búsqueda nueva desde el lateral estando ya en Ingresos: se ajusta el estado
+  // durante el render (sin efecto) cuando cambia el ?q=.
+  const [qUrlPrevio, setQUrlPrevio] = useState(qUrl);
+  if (qUrl !== qUrlPrevio) {
+    setQUrlPrevio(qUrl);
+    if (qUrl) {
+      setInputQ(qUrl);
+      setQ(qUrl);
+      setPage(0);
+    }
+  }
 
   // 300ms debounce
   useEffect(() => {
@@ -133,7 +148,7 @@ export function IngresosListaPage() {
           <Input
             value={inputQ}
             onChange={(e) => setInputQ(e.target.value)}
-            placeholder="Buscar por RUT, folio o nombre"
+            placeholder="Buscar por RUT, folio, nombre o ID SALUTEM"
             className="h-9 pl-8 text-[13px]"
             aria-label="Buscar pacientes"
           />

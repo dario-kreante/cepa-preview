@@ -427,7 +427,7 @@ export function ReintegroPage() {
           <Input
             value={inputQ}
             onChange={(e) => setInputQ(e.target.value)}
-            placeholder="Buscar por RUT, folio o nombre"
+            placeholder="Buscar por RUT, folio, nombre o ID SALUTEM"
             className="h-9 pl-8 text-[13px]"
             aria-label="Buscar pacientes"
           />

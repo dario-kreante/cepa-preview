@@ -123,7 +123,7 @@ async function setupPageWithPaciente(
   renderPage(token);
   const user = userEvent.setup();
 
-  const input = screen.getByPlaceholderText("Buscar por RUT, folio o nombre");
+  const input = screen.getByPlaceholderText("Buscar por RUT, folio, nombre o ID SALUTEM");
   await user.type(input, "María");
 
   await waitFor(
@@ -273,7 +273,7 @@ describe("ProximoControlDialog — RBAC", () => {
     renderPage(AUDITOR_TOKEN);
 
     const user = userEvent.setup();
-    const input = screen.getByPlaceholderText("Buscar por RUT, folio o nombre");
+    const input = screen.getByPlaceholderText("Buscar por RUT, folio, nombre o ID SALUTEM");
     await user.type(input, "María");
 
     await waitFor(
