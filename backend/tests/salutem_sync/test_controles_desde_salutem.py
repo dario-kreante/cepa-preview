@@ -309,6 +309,12 @@ def test_la_ficha_de_prueba_del_cepa_llena_el_control(db_session):
              "registro": "Licencia tipo 6 por 15 días, fecha de inicio 30-09-2026"},
             {"agrupacion": "Indicaciones", "nombre": "GAF", "registro": ["51-60"]},
             {"agrupacion": "Indicaciones", "nombre": "Tipo de reposo", "registro": ["Total"]},
+            {"agrupacion": "Indicaciones", "nombre": "Proyección de reintegro laboral", "registro": ["Más de 1 mes"]},
+        ],
+        antecedentes=[
+            {"agrupacion": "Evaluación", "nombre": "Tiempo estimado de tratamiento", "registro": "3 meses"},
+            {"agrupacion": "Evaluación", "nombre": "Factores de riesgo acogidos",
+             "registro": "sobrecarga y hostilidad de jefatura"},
         ],
     )
 
@@ -318,6 +324,9 @@ def test_la_ficha_de_prueba_del_cepa_llena_el_control(db_session):
     assert (c.tiene_licencia, c.tipo_licencia, c.total_dias_lm, c.tipo_reposo) == (True, "6", 15, "total")
     assert c.gaf_tramo == "51-60"
     assert (c.proximo_control, c.proximo_agendado) == (date(2026, 10, 15), False)
+    assert c.tiempo_estimado_tratamiento == "3 meses"
+    assert c.proyeccion_reintegro == "Más de 1 mes"
+    assert c.factores_riesgo == "sobrecarga y hostilidad de jefatura"
 
 
 @pytest.mark.parametrize(

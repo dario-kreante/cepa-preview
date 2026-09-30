@@ -4,6 +4,7 @@ Tres schemas de escritura independientes para alinear con las tres historias:
 - ControlMedicoCreate  → CEPA-060 (registro base + cálculo de semana)
 - ProximoControlUpdate → CEPA-061 (próximo control y estado de agenda)
 - LicenciaUpdate       → CEPA-062 (licencia, GAF y RECA)
+- EvaluacionUpdate     → evaluación clínica de la ficha del CEPA
 """
 
 from datetime import date
@@ -93,6 +94,27 @@ class LicenciaUpdate(BaseModel):
         return self
 
 
+def _vacio_a_none(v: str | None) -> str | None:
+    if v is None:
+        return None
+    return v.strip() or None
+
+
+class EvaluacionUpdate(BaseModel):
+    """Evaluación clínica del control: los campos de la ficha del CEPA en SALUTEM.
+
+    Todos opcionales y libres; un texto en blanco deja el campo vacío.
+    """
+
+    tiempo_estimado_tratamiento: str | None = Field(default=None, max_length=80)
+    proyeccion_reintegro: str | None = Field(default=None, max_length=80)
+    factores_riesgo: str | None = Field(default=None, max_length=500)
+
+    _limpiar = field_validator(
+        "tiempo_estimado_tratamiento", "proyeccion_reintegro", "factores_riesgo"
+    )(_vacio_a_none)
+
+
 class ControlMedicoRead(BaseModel):
     """Respuesta unificada del control médico (todos los campos de las tres historias)."""
 
@@ -118,6 +140,10 @@ class ControlMedicoRead(BaseModel):
     gaf_tramo: str | None = None
     estado_reca: EstadoReca | None
     observaciones: str | None
+    # Evaluación clínica (ficha del CEPA)
+    tiempo_estimado_tratamiento: str | None = None
+    proyeccion_reintegro: str | None = None
+    factores_riesgo: str | None = None
     # "CEPA" = cargado en SIGE; "SALUTEM" = creado por el sync desde una atención.
     origen: str = "CEPA"
     salutem_cita_id: int | None = None

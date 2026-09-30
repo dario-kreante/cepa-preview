@@ -11,6 +11,8 @@ import { useBuscarPacientes, useVista360 } from "@/features/ingresos/hooks";
 import { useControlesPorIngreso } from "./hooks";
 import { NuevoControlDialog } from "./NuevoControlDialog";
 import { ProximoControlDialog } from "./ProximoControlDialog";
+import { EvaluacionControlDialog } from "./EvaluacionControlDialog";
+import { EVALUACION_LABELS } from "./evaluacionControlSchema";
 import {
   LicenciaControlDialog,
   ESTADO_RECA_LABELS,
@@ -38,22 +40,49 @@ function Th({ children }: { children: React.ReactNode }) {
   );
 }
 
+/** Un dato del detalle del control; sin valor se muestra "—". */
+function Dato({ label, valor }: { label: string; valor: string | null | undefined }) {
+  return (
+    <div>
+      <dt className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+        {label}
+      </dt>
+      <dd className="mt-0.5 text-[13px] whitespace-pre-line">{valor || "—"}</dd>
+    </div>
+  );
+}
+
 interface ControlRowProps {
   control: ControlMedicoRead;
   ingresoId: number;
   canWrite: boolean;
+  columnas: number;
 }
 
-function ControlRow({ control, ingresoId, canWrite }: ControlRowProps) {
+function ControlRow({ control, ingresoId, canWrite, columnas }: ControlRowProps) {
   const [proximoOpen, setProximoOpen] = useState(false);
   const [licenciaOpen, setLicenciaOpen] = useState(false);
+  const [evaluacionOpen, setEvaluacionOpen] = useState(false);
+  const [detalleAbierto, setDetalleAbierto] = useState(false);
 
   return (
     <>
-      <tr className="border-b hover:bg-muted/40 transition-colors">
-        {/* Fecha control */}
+      <tr className={cn("hover:bg-muted/40 transition-colors", !detalleAbierto && "border-b")}>
+        {/* Fecha control — con el botón que despliega el detalle clínico */}
         <td className="px-4 py-3 font-mono text-[12px] text-muted-foreground">
           <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              aria-expanded={detalleAbierto}
+              aria-label={detalleAbierto ? "Ocultar detalle" : "Ver detalle"}
+              data-testid={`btn-detalle-control-${control.id}`}
+              onClick={() => setDetalleAbierto((v) => !v)}
+              className="rounded p-0.5 hover:bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <ChevronRight
+                className={cn("size-3.5 transition-transform", detalleAbierto && "rotate-90")}
+              />
+            </button>
             {fmtDate(control.fecha_control)}
             {control.origen === "SALUTEM" && (
               <Badge variant="info" title="Creado automáticamente desde una atención de SALUTEM">
@@ -162,10 +191,42 @@ function ControlRow({ control, ingresoId, canWrite }: ControlRowProps) {
               >
                 Licencia/RECA
               </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-[11.5px] px-2"
+                aria-label="Evaluación"
+                data-testid={`btn-evaluacion-${control.id}`}
+                onClick={() => setEvaluacionOpen(true)}
+              >
+                Evaluación
+              </Button>
             </div>
           </td>
         )}
       </tr>
+
+      {/* Detalle clínico: la evaluación de la ficha y las observaciones */}
+      {detalleAbierto && (
+        <tr className="border-b bg-muted/20" data-testid={`detalle-control-${control.id}`}>
+          <td colSpan={columnas} className="px-4 pb-4 pt-1">
+            <dl className="grid gap-x-6 gap-y-3 pl-6 sm:grid-cols-3">
+              <Dato
+                label={EVALUACION_LABELS.tiempo_estimado_tratamiento}
+                valor={control.tiempo_estimado_tratamiento}
+              />
+              <Dato
+                label={EVALUACION_LABELS.proyeccion_reintegro}
+                valor={control.proyeccion_reintegro}
+              />
+              <Dato label={EVALUACION_LABELS.factores_riesgo} valor={control.factores_riesgo} />
+              <div className="sm:col-span-3">
+                <Dato label="Observaciones" valor={control.observaciones} />
+              </div>
+            </dl>
+          </td>
+        </tr>
+      )}
 
       {canWrite && (
         <>
@@ -180,6 +241,12 @@ function ControlRow({ control, ingresoId, canWrite }: ControlRowProps) {
             ingresoId={ingresoId}
             open={licenciaOpen}
             onOpenChange={setLicenciaOpen}
+          />
+          <EvaluacionControlDialog
+            control={control}
+            ingresoId={ingresoId}
+            open={evaluacionOpen}
+            onOpenChange={setEvaluacionOpen}
           />
         </>
       )}
@@ -205,6 +272,8 @@ function ControlesPanel({ ingresoId, canWrite }: ControlesPanelProps) {
   const [recaFilter, setRecaFilter] = useState<EstadoReca | "Todos">("Todos");
   const [reposoFilter, setReposoFilter] = useState<TipoReposo | "Todos">("Todos");
   const [licenciaFilter, setLicenciaFilter] = useState<"todos" | "con" | "sin">("todos");
+
+  const columnas = canWrite ? 9 : 8;
 
   const filtered = controles.filter((c) => {
     if (recaFilter !== "Todos" && c.estado_reca !== recaFilter) return false;
@@ -324,7 +393,7 @@ function ControlesPanel({ ingresoId, canWrite }: ControlesPanelProps) {
                 {filtered.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={canWrite ? 9 : 8}
+                      colSpan={columnas}
                       className="px-4 py-8 text-center text-[13px] text-muted-foreground"
                     >
                       Sin controles para los filtros seleccionados.
@@ -337,6 +406,7 @@ function ControlesPanel({ ingresoId, canWrite }: ControlesPanelProps) {
                       control={c}
                       ingresoId={ingresoId}
                       canWrite={canWrite}
+                      columnas={columnas}
                     />
                   ))
                 )}

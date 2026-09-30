@@ -21,6 +21,9 @@ cualquier sección de la atención. Correspondencia con el control:
 - gaf_tramo          ← el campo "GAF", que SALUTEM registra por tramo ("51-60")
 - gaf                ← "GAF NN" escrito en el texto, cuando el médico anota el número
 - observaciones      ← la evolución del tratamiento
+- tiempo_estimado_tratamiento, proyeccion_reintegro, factores_riesgo
+                     ← los campos "Tiempo estimado de tratamiento", "Proyección de
+                       reintegro laboral" y "Factores de riesgo acogidos"
 - estado_reca        ← no viene en SALUTEM: lo completa el CEPA y el sync no lo toca
 """
 
@@ -122,7 +125,14 @@ def _campos(db: Session, atencion: SalutemAtencion, ingreso: Ingreso) -> dict[st
         "gaf": _gaf(c),
         "gaf_tramo": tramo_gaf(campo(c, "GAF")),
         "observaciones": _evolucion(c),
+        "tiempo_estimado_tratamiento": _recortar(campo(c, "Tiempo estimado de tratamiento"), 80),
+        "proyeccion_reintegro": _recortar(campo(c, "Proyección de reintegro laboral"), 80),
+        "factores_riesgo": _recortar(campo(c, "Factores de riesgo acogidos"), 500),
     }
+
+
+def _recortar(valor: str | None, largo: int) -> str | None:
+    return valor[:largo] if valor else None
 
 
 def _proxima_cita(db: Session, persona_id: int, fecha: date) -> date | None:
