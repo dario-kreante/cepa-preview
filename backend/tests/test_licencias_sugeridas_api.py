@@ -166,3 +166,37 @@ def test_auditor_puede_ver_las_sugerencias(as_admin, as_auditor, folio):
 def test_folio_inexistente_da_404(as_admin):
     r = as_admin.get("/api/v1/fichas-clinicas/F-NO-EXISTE/licencias-sugeridas")
     assert r.status_code == 404
+
+
+def test_sugiere_la_licencia_del_campo_indicacion_de_reposo_con_su_tipo_de_reposo(as_admin, folio):
+    """Ficha del CEPA: la licencia va en "Indicación de reposo" y el reposo en su propio campo."""
+    r = as_admin.post(
+        "/api/v1/fichas-clinicas",
+        json={
+            "folio": folio,
+            "origen": "SALUTEM",
+            "contenido": {
+                "citaId": 77,
+                "citaFecha": "2024-09-30",
+                "especialidadNombre": "Primera consulta médica EP",
+                "antecedentes": [
+                    {
+                        "agrupacion": "Indicaciones",
+                        "nombre": "Indicación de reposo",
+                        "registro": "Licencia tipo 6 por 15 días, fecha de inicio 30-09-2024",
+                    },
+                    {
+                        "agrupacion": "Indicaciones",
+                        "nombre": "Tipo de reposo",
+                        "registro": ["Total"],
+                    },
+                ],
+            },
+        },
+    )
+    assert r.status_code == 201, r.text
+
+    [s] = as_admin.get(f"/api/v1/fichas-clinicas/{folio}/licencias-sugeridas").json()
+
+    assert (s["tipo_lm"], s["cantidad_dias"], s["fecha_inicio"]) == ("6", 15, "2024-09-30")
+    assert (s["fecha_termino"], s["tipo_reposo"]) == ("2024-10-14", "total")

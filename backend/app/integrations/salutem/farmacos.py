@@ -6,9 +6,13 @@ SALUTEM guarda la receta como texto libre en una indicación de tipo
     "Clotiazepam 5 mg SOS\\r\\n\\r\\nSertralina 100 mg 1 al día"
     "Sertralina 100 mg 1 comp cada 24 horas"
 
+La ficha del CEPA, en cambio, los anota en el campo "Indicaciones" con la notación
+mañana-tarde-noche ("Sertralina 50mg 0-1-0").
+
 Cada línea con una dosis reconocible (número + unidad) se estructura como
 medicamento, dosis y frecuencia del esquema del CEPA. Las líneas sin dosis se
-descartan: en el ambiente de pruebas hay recetas como "fsdfsdff" o "561651".
+descartan, salvo "Clotiazepam SOS": en el ambiente de pruebas hay recetas como
+"fsdfsdff" o "561651".
 
 Es una sugerencia: el resultado lo revisa una persona antes de registrarlo.
 """
@@ -32,6 +36,12 @@ _RE_VECES_DIA = re.compile(
     r"\b(\d|un[oa]?|dos|tres|cuatro)\s*(?:comp\w*\s*|tab\w*\s*|caps\w*\s*)?"
     r"(?:vez|veces)?\s*(?:al|por|x|el)\s*dia\b"
 )
+# Mañana-tarde-noche: "0-1-0", "1/2-0-1". Cada toma es un número de 1 o 2 cifras o
+# una fracción; los límites evitan leer una fecha ("30-09-2026") como posología.
+_TOMA = r"(\d{1,2}(?:[.,/]\d{1,2})?|½)"
+_RE_MTN = re.compile(rf"(?<![\d/.,]){_TOMA}\s*-\s*{_TOMA}\s*-\s*{_TOMA}(?![\d/.,])")
+# "Clotiazepam SOS": un nombre sin dosis seguido de SOS.
+_RE_SOLO_SOS = re.compile(r"^(?P<nombre>[a-záéíóúñü][a-záéíóúñü ]{2,40}?)\s+sos$", re.IGNORECASE)
 _RE_SOS = re.compile(r"\bsos\b|segun necesidad|en caso de|si es necesario")
 _RE_DIARIO = re.compile(r"\bdiari[oa]\b|\bnoche\b|\bmanana\b|\bal acostarse\b")
 
@@ -51,6 +61,7 @@ _POR_VECES = {
 
 AVISO_SOS = "Uso SOS (según necesidad): el esquema no tiene esa frecuencia, queda como «Otro»."
 AVISO_SIN_FRECUENCIA = "No se reconoció la frecuencia: revísala antes de registrar."
+AVISO_SIN_DOSIS = "La indicación no trae dosis: complétala antes de registrar."
 
 
 @dataclass(frozen=True)
@@ -83,6 +94,10 @@ def _frecuencia(posologia: str) -> tuple[FrecuenciaFarmaco, list[str], bool]:
     p = _sin_tildes(posologia.lower())
     if _RE_SOS.search(p):
         return FrecuenciaFarmaco.OTRO, [AVISO_SOS], True
+    if m := _RE_MTN.search(p):
+        tomas = sum(1 for t in m.groups() if t.strip("0.,/") != "")
+        if tomas in _POR_VECES:
+            return _POR_VECES[tomas], [], False
     if m := _RE_CADA_HORAS.search(p):
         horas = int(m.group(1))
         if horas in _POR_HORAS:
@@ -102,10 +117,24 @@ def _frecuencia(posologia: str) -> tuple[FrecuenciaFarmaco, list[str], bool]:
     return FrecuenciaFarmaco.OTRO, [AVISO_SIN_FRECUENCIA], False
 
 
+def _solo_sos(linea: str) -> MencionFarmaco | None:
+    m = _RE_SOLO_SOS.match(linea)
+    if m is None:
+        return None
+    nombre = m.group("nombre").strip()
+    return MencionFarmaco(
+        medicamento=nombre[:1].upper() + nombre[1:],
+        dosis="SOS",
+        frecuencia=FrecuenciaFarmaco.OTRO,
+        texto=linea,
+        avisos=[AVISO_SIN_DOSIS, AVISO_SOS],
+    )
+
+
 def _linea(linea: str) -> MencionFarmaco | None:
     m = _RE_DOSIS.search(linea)
     if m is None:
-        return None
+        return _solo_sos(linea)
     # "1. Sertralina" o "- Sertralina": fuera la numeración de la lista.
     nombre = re.sub(r"^\d+[.)]\s*", "", linea[: m.start()].strip(" -•*·.,:"))
     if not _RE_LETRAS.search(nombre):

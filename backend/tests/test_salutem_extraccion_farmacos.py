@@ -3,8 +3,8 @@
 import pytest
 
 from app.domain.enums import FrecuenciaFarmaco as F
-from app.integrations.salutem.campos import antecedente, tramo_gaf, valor_campo
-from app.integrations.salutem.farmacos import AVISO_SIN_FRECUENCIA, AVISO_SOS, extraer_farmacos
+from app.integrations.salutem.campos import campo, tramo_gaf, valor_campo
+from app.integrations.salutem.farmacos import AVISO_SIN_DOSIS, AVISO_SIN_FRECUENCIA, AVISO_SOS, extraer_farmacos
 
 
 def _una(texto):
@@ -72,8 +72,8 @@ def test_valor_campo_normaliza_las_formas_de_salutem(registro, esperado):
 
 def test_antecedente_busca_por_nombre():
     contenido = {"antecedentes": [{"agrupacion": "", "nombre": "GAF", "registro": {"1": "41-50"}}]}
-    assert antecedente(contenido, "GAF") == "41-50"
-    assert antecedente(contenido, "Tipo de reposo") is None
+    assert campo(contenido, "GAF") == "41-50"
+    assert campo(contenido, "Tipo de reposo") is None
 
 
 @pytest.mark.parametrize(
@@ -89,3 +89,42 @@ def test_antecedente_busca_por_nombre():
 )
 def test_tramo_gaf(valor, esperado):
     assert tramo_gaf(valor) == esperado
+
+
+@pytest.mark.parametrize(
+    ("texto", "esperado"),
+    [
+        ("Sertralina 50mg 0-1-0", ("Sertralina", "50 mg", F.C24H)),
+        ("Quetiapina 25 mg 1-0-1", ("Quetiapina", "25 mg", F.C12H)),
+        ("Fluoxetina 20 mg 1 - 1 - 1", ("Fluoxetina", "20 mg", F.C8H)),
+        ("Clonazepam 0,5 mg 1/2-0-1", ("Clonazepam", "0.5 mg", F.C12H)),
+    ],
+)
+def test_la_notacion_manana_tarde_noche_da_la_frecuencia(texto, esperado):
+    """0-1-0 = una toma al día; se cuentan las tomas distintas de cero."""
+    assert _una(texto) == esperado
+
+
+def test_un_farmaco_sos_sin_dosis_se_sugiere_con_aviso():
+    [m] = extraer_farmacos("Clotiazepam SOS")
+    assert (m.medicamento, m.dosis, m.frecuencia) == ("Clotiazepam", "SOS", F.OTRO)
+    assert AVISO_SIN_DOSIS in m.avisos
+
+
+def test_la_indicacion_de_la_ficha_de_prueba_del_cepa():
+    """Texto real del campo "Indicaciones" (ficha de prueba, 30-09-2026)."""
+    menciones = extraer_farmacos("Fármacos:<br>Sertralina 50mg 0-1-0<br>Clotiazepam SOS")
+    assert [(m.medicamento, m.dosis, m.frecuencia) for m in menciones] == [
+        ("Sertralina", "50 mg", F.C24H),
+        ("Clotiazepam", "SOS", F.OTRO),
+    ]
+
+
+def test_campo_busca_en_cualquier_seccion_de_la_atencion():
+    """SALUTEM reparte los campos del formulario en secciones distintas según el ítem."""
+    contenido = {
+        "anamnesis": [{"nombre": "Antecedentes", "registro": "texto"}],
+        "indicaciones": [{"agrupacion": "Indicación de reposo", "nombre": "GAF", "registro": ["51-60"]}],
+    }
+    assert campo(contenido, "gaf") == "51-60"
+    assert campo(contenido, "Tipo de reposo") is None

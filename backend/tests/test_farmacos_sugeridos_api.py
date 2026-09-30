@@ -112,3 +112,28 @@ def test_ingreso_inexistente_responde_404(as_admin):
 def test_el_auditor_puede_leer_las_sugerencias(as_auditor):
     r = as_auditor.get("/api/v1/registro-farmacologico/999999/sugeridos")
     assert r.status_code == 404  # llega al endpoint (no 403)
+
+
+def test_lee_los_farmacos_del_campo_indicaciones_de_la_ficha(as_admin, ingreso):
+    """La ficha del CEPA no usa "Receta": anota los fármacos en el campo "Indicaciones"."""
+    r = as_admin.post(
+        "/api/v1/fichas-clinicas",
+        json={
+            "folio": ingreso["folio"],
+            "origen": "SALUTEM",
+            "contenido": {
+                "citaId": 9, "citaFecha": "2024-04-05", "especialidadNombre": "Primera consulta médica EP",
+                "indicaciones": [
+                    {"agrupacion": "Indicaciones", "nombre": "Indicaciones",
+                     "registro": "Fármacos:<br>Sertralina 50mg 0-1-0<br>Clotiazepam SOS"},
+                    {"agrupacion": "Indicaciones", "nombre": "Próximo control", "registro": "15 días"},
+                ],
+            },
+        },
+    )
+    assert r.status_code == 201, r.text
+
+    por_med = {s["medicamento"]: s for s in as_admin.get(_url(ingreso)).json()}
+
+    assert (por_med["Sertralina"]["dosis"], por_med["Sertralina"]["frecuencia"]) == ("50 mg", "c/24h")
+    assert por_med["Clotiazepam"]["dosis"] == "SOS"

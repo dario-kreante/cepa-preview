@@ -1,8 +1,8 @@
 """Campos estructurados de las atenciones de SALUTEM.
 
-Además del texto libre, los formularios de SALUTEM traen campos de selección en el
-bloque `antecedentes` ("GAF", "Tipo de reposo", "Tipo de alta"...). Su `registro`
-llega con la opción elegida en formas distintas según el formulario:
+Además del texto libre, los formularios de SALUTEM traen campos de selección
+("GAF", "Tipo de reposo", "Tipo de alta"...) en la sección que corresponda al
+ítem. Su `registro` llega con la opción elegida en formas distintas según el formulario:
 `{"2": "Total"}`, `["Alta médica"]`, o esas mismas estructuras como texto
 (`"{'1': '51-60'}"`). Este módulo las lleva a un string plano.
 """
@@ -38,14 +38,26 @@ def valor_campo(registro: Any) -> str | None:
     return texto or None
 
 
-def antecedente(contenido: dict[str, Any], nombre: str) -> str | None:
-    """El primer campo de `antecedentes` con ese nombre, normalizado."""
-    items = contenido.get("antecedentes") or []
-    if isinstance(items, dict):
-        items = [items]
+def items(contenido: dict[str, Any]) -> list[dict[str, Any]]:
+    """Los campos de todas las secciones de la atención (antecedentes, indicaciones...)."""
+    todos: list[dict[str, Any]] = []
+    for seccion in contenido.values():
+        if isinstance(seccion, dict):
+            seccion = [seccion]
+        if isinstance(seccion, list):
+            todos.extend(i for i in seccion if isinstance(i, dict) and "registro" in i)
+    return todos
+
+
+def campo(contenido: dict[str, Any], nombre: str) -> str | None:
+    """El primer campo con ese nombre en cualquier sección, normalizado.
+
+    SALUTEM ubica los campos del formulario en la sección que corresponda al ítem
+    ("antecedentes", "indicaciones"...), así que se buscan en todas.
+    """
     buscado = nombre.casefold()
-    for item in items:
-        if isinstance(item, dict) and str(item.get("nombre", "")).strip().casefold() == buscado:
+    for item in items(contenido):
+        if str(item.get("nombre", "")).strip().casefold() == buscado:
             valor = valor_campo(item.get("registro"))
             if valor is not None:
                 return valor
