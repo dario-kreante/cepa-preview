@@ -1,6 +1,7 @@
 """Fármacos sugeridos desde las atenciones de SALUTEM ya importadas.
 
-El médico escribe la receta como texto en una indicación "Receta Medicamentos".
+El médico escribe la receta como texto en una indicación "Receta Medicamentos"; en
+la ficha del CEPA, en el campo "Indicaciones" del formulario.
 Este servicio la estructura (medicamento, dosis, frecuencia) y la propone para que
 un administrativo la revise y la agregue al esquema o registre la receta. No
 escribe nada: ni en el CEPA ni en SALUTEM (D12).
@@ -13,6 +14,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.integrations.salutem.campos import items
 from app.integrations.salutem.farmacos import extraer_farmacos
 from app.models.farmacos import EsquemaIndicacion, Receta, RegistroFarmacologico
 from app.models.ficha_clinica import FichaClinica
@@ -37,11 +39,15 @@ def _es_receta(indicacion: Any) -> bool:
     return "receta" in str(indicacion.get("tipo") or "").casefold()
 
 
+def _es_campo_indicaciones(item: dict[str, Any]) -> bool:
+    # El campo "Indicaciones" del formulario del CEPA, en la sección que sea.
+    return str(item.get("nombre") or "").strip().casefold() == "indicaciones"
+
+
 def _recetas(contenido: dict[str, Any]) -> list[Any]:
-    indicaciones = contenido.get("indicaciones") or []
-    if isinstance(indicaciones, dict):
-        indicaciones = [indicaciones]
-    return [i.get("registro") for i in indicaciones if _es_receta(i)]
+    return [
+        i.get("registro") for i in items(contenido) if _es_receta(i) or _es_campo_indicaciones(i)
+    ]
 
 
 def _clave(texto: str) -> str:

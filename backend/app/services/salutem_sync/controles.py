@@ -1,14 +1,19 @@
 """Controles médicos creados automáticamente desde las atenciones de SALUTEM.
 
-Cada atención de Médico/a con estado "Atendido" que cae en la ventana de un ingreso es
-un control del CEPA con origen SALUTEM. Las demás especialidades (psicología, EPT,
-evaluaciones de ingreso, gestión administrativa...) quedan solo en la pestaña SALUTEM. Correspondencia con el control:
+Cada atención con estado "Atendido" de una especialidad de control (`Médico/a` y
+`Primera consulta médica EP` por defecto; se configura en SALUTEM_ESPECIALIDADES_CONTROL)
+que cae en la ventana de un ingreso es un control del CEPA con origen SALUTEM. Las demás
+especialidades (psicología, EPT, evaluaciones de ingreso, gestión administrativa...)
+quedan solo en la pestaña SALUTEM. Los campos del formulario se buscan por nombre en
+cualquier sección de la atención. Correspondencia con el control:
 
 - fecha_control      ← citaFecha
 - semana_control     ← semanas desde fecha_ingreso (la semana 1 parte el día del ingreso)
 - medico_tratante    ← profesionalNombre
 - region_derivacion  ← región del paciente en SIGE (SALUTEM no la informa)
-- proximo_control    ← la siguiente cita vigente de la persona en la copia de SALUTEM
+- proximo_control    ← la siguiente cita vigente de la persona en la copia de SALUTEM; sin
+                       cita, el campo "Próximo control" ("15 días", "1 mes") contado
+                       desde la atención, con proximo_agendado en False
 - licencia           ← la indicación o el campo "Indicación de reposo" que menciona la
                        licencia (extractor de licencias)
 - tipo_reposo        ← el campo "Tipo de reposo" (Total/Parcial); si falta, lo que diga
@@ -16,20 +21,25 @@ evaluaciones de ingreso, gestión administrativa...) quedan solo en la pestaña 
 - gaf_tramo          ← el campo "GAF", que SALUTEM registra por tramo ("51-60")
 - gaf                ← "GAF NN" escrito en el texto, cuando el médico anota el número
 - observaciones      ← la evolución del tratamiento
+- tiempo_estimado_tratamiento, proyeccion_reintegro, factores_riesgo
+                     ← los campos "Tiempo estimado de tratamiento", "Proyección de
+                       reintegro laboral" y "Factores de riesgo acogidos"
 - estado_reca        ← no viene en SALUTEM: lo completa el CEPA y el sync no lo toca
 """
 
+import calendar
 import html
 import re
-from datetime import date
+from datetime import date, timedelta
 from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.audit.service import record_audit
+from app.config import get_settings
 from app.domain.enums_controles import TipoLicencia, TipoReposo
-from app.integrations.salutem.campos import antecedente, tramo_gaf
+from app.integrations.salutem.campos import campo, tramo_gaf
 from app.integrations.salutem.licencias import ClaseMencion, MencionLicencia, extraer_licencia
 from app.integrations.salutem.models import EstadoCitaSalutem
 from app.models.control_medico import ControlMedico
@@ -39,12 +49,12 @@ from app.models.salutem_copia import SalutemAtencion, SalutemCita
 ACTOR = "sistema:salutem-sync"
 ORIGEN = "SALUTEM"
 ATENDIDO = int(EstadoCitaSalutem.ATENDIDO)
-ESPECIALIDAD_CONTROL = "Médico/a"
 # Una cita anulada o a la que no asistió no es un próximo control.
 _NO_VIGENTES = (int(EstadoCitaSalutem.ANULADO), int(EstadoCitaSalutem.NO_ASISTE))
 _RE_GAF = re.compile(r"\bGAF\s*:?\s*(\d{1,3})\b", re.IGNORECASE)
 _RE_BR = re.compile(r"<br\s*/?>", re.IGNORECASE)
 _RE_TAG = re.compile(r"<[^>]+>")
+_RE_PLAZO = re.compile(r"(\d{1,3})\s*(d[ií]as?|semanas?|mes(?:es)?)\b", re.IGNORECASE)
 
 
 def es_control(atencion: SalutemAtencion) -> bool:
@@ -53,7 +63,8 @@ def es_control(atencion: SalutemAtencion) -> bool:
         atencion.desaparecida_en is None
         and atencion.fecha_cita is not None
         and c.get("estadoCitaId") == ATENDIDO
-        and c.get("especialidadNombre") == ESPECIALIDAD_CONTROL
+        and str(c.get("especialidadNombre") or "").strip().casefold()
+        in get_settings().salutem_especialidades_control_set
     )
 
 
@@ -92,8 +103,11 @@ def _campos(db: Session, atencion: SalutemAtencion, ingreso: Ingreso) -> dict[st
     c = atencion.contenido
     fecha = atencion.fecha_cita
     proximo = _proxima_cita(db, atencion.persona_id, fecha)
+    agendado = proximo is not None
+    if proximo is None:
+        proximo = _plazo(campo(c, "Próximo control"), fecha)
     licencia = _licencia(c, fecha)
-    reposo = (antecedente(c, "Tipo de reposo") or "").casefold()
+    reposo = (campo(c, "Tipo de reposo") or "").casefold()
     if reposo not in {e.value for e in TipoReposo}:
         reposo = licencia.tipo_reposo if licencia else None
     return {
@@ -102,16 +116,23 @@ def _campos(db: Session, atencion: SalutemAtencion, ingreso: Ingreso) -> dict[st
         "medico_tratante": (_texto(c.get("profesionalNombre")) or "Sin profesional informado")[:160],
         "region_derivacion": ingreso.paciente.region[:80],
         "proximo_control": proximo,
-        "proximo_agendado": proximo is not None,
+        "proximo_agendado": agendado,
         "tiene_licencia": licencia is not None,
         "resumen_termino_lm": licencia.texto[:500] if licencia else None,
         "total_dias_lm": licencia.dias if licencia else None,
         "tipo_licencia": _si_valido(licencia.tipo_licencia, TipoLicencia) if licencia else None,
         "tipo_reposo": _si_valido(reposo, TipoReposo) if licencia else None,
         "gaf": _gaf(c),
-        "gaf_tramo": tramo_gaf(antecedente(c, "GAF")),
+        "gaf_tramo": tramo_gaf(campo(c, "GAF")),
         "observaciones": _evolucion(c),
+        "tiempo_estimado_tratamiento": _recortar(campo(c, "Tiempo estimado de tratamiento"), 80),
+        "proyeccion_reintegro": _recortar(campo(c, "Proyección de reintegro laboral"), 80),
+        "factores_riesgo": _recortar(campo(c, "Factores de riesgo acogidos"), 500),
     }
+
+
+def _recortar(valor: str | None, largo: int) -> str | None:
+    return valor[:largo] if valor else None
 
 
 def _proxima_cita(db: Session, persona_id: int, fecha: date) -> date | None:
@@ -128,15 +149,30 @@ def _proxima_cita(db: Session, persona_id: int, fecha: date) -> date | None:
     )
 
 
-def _registros(contenido: dict[str, Any], campo: str) -> list[Any]:
-    valor = contenido.get(campo) or []
+def _plazo(texto: str | None, desde: date) -> date | None:
+    """"15 días", "2 semanas", "1 mes" → la fecha contada desde la atención."""
+    m = _RE_PLAZO.search(texto or "")
+    if m is None:
+        return None
+    n, unidad = int(m.group(1)), m.group(2).casefold()
+    if unidad.startswith("d"):
+        return desde + timedelta(days=n)
+    if unidad.startswith("s"):
+        return desde + timedelta(weeks=n)
+    meses = desde.month - 1 + n
+    anio, mes = desde.year + meses // 12, meses % 12 + 1
+    return date(anio, mes, min(desde.day, calendar.monthrange(anio, mes)[1]))
+
+
+def _registros(contenido: dict[str, Any], seccion: str) -> list[Any]:
+    valor = contenido.get(seccion) or []
     if isinstance(valor, dict):
         valor = [valor]
     return [v.get("registro") if isinstance(v, dict) else v for v in valor]
 
 
 def _licencia(contenido: dict[str, Any], fecha: date) -> MencionLicencia | None:
-    textos = [*_registros(contenido, "indicaciones"), antecedente(contenido, "Indicación de reposo")]
+    textos = [*_registros(contenido, "indicaciones"), campo(contenido, "Indicación de reposo")]
     for registro in textos:
         mencion = extraer_licencia(registro, fecha_atencion=fecha)
         if mencion is not None and mencion.clase == ClaseMencion.LICENCIA:
@@ -145,8 +181,8 @@ def _licencia(contenido: dict[str, Any], fecha: date) -> MencionLicencia | None:
 
 
 def _gaf(contenido: dict[str, Any]) -> int | None:
-    for campo in ("indicaciones", "diagnostico", "evolucionTratamiento", "anamnesis"):
-        for registro in _registros(contenido, campo):
+    for seccion in ("indicaciones", "diagnostico", "evolucionTratamiento", "anamnesis"):
+        for registro in _registros(contenido, seccion):
             m = _RE_GAF.search(_plano(registro) or "")
             if m and 1 <= int(m.group(1)) <= 100:
                 return int(m.group(1))

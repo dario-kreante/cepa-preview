@@ -107,6 +107,9 @@ class Settings(BaseSettings):
     # copia a esas personas: SALUTEM QA trae identidades reales y mientras se valida
     # hay que limitarse a los pacientes de prueba.
     salutem_sync_personas_permitidas: str = ""
+    # Especialidades de SALUTEM cuya atención "Atendido" es un control médico del CEPA,
+    # separadas por coma (sin distinguir mayúsculas).
+    salutem_especialidades_control: str = "Médico/a,Primera consulta médica EP"
 
     # --- IMED feature flag (CEPA-122, P2, PA5) ---
     imed_enabled: bool = False
@@ -118,6 +121,12 @@ class Settings(BaseSettings):
     def salutem_sync_personas_permitidas_ids(self) -> frozenset[int]:
         return frozenset(
             int(x) for x in self.salutem_sync_personas_permitidas.split(",") if x.strip()
+        )
+
+    @property
+    def salutem_especialidades_control_set(self) -> frozenset[str]:
+        return frozenset(
+            x.strip().casefold() for x in self.salutem_especialidades_control.split(",") if x.strip()
         )
 
     @property

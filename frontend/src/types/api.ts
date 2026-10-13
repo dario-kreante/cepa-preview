@@ -897,6 +897,23 @@ export interface paths {
         patch: operations["actualizar_licencia_endpoint_api_v1_controles_medicos__control_id__licencia_patch"];
         trace?: never;
     };
+    "/api/v1/controles-medicos/{control_id}/evaluacion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Actualizar Evaluacion Endpoint */
+        patch: operations["actualizar_evaluacion_endpoint_api_v1_controles_medicos__control_id__evaluacion_patch"];
+        trace?: never;
+    };
     "/api/v1/ingresos/{ingreso_id}/licencias/acumulado": {
         parameters: {
             query?: never;
@@ -2566,6 +2583,12 @@ export interface components {
             estado_reca: components["schemas"]["TipoReca"] | null;
             /** Observaciones */
             observaciones: string | null;
+            /** Tiempo Estimado Tratamiento */
+            tiempo_estimado_tratamiento?: string | null;
+            /** Proyeccion Reintegro */
+            proyeccion_reintegro?: string | null;
+            /** Factores Riesgo */
+            factores_riesgo?: string | null;
             /**
              * Origen
              * @default CEPA
@@ -2783,6 +2806,20 @@ export interface components {
             tipo_alta?: components["schemas"]["TipoAlta"] | null;
             /** Observaciones */
             observaciones?: string | null;
+        };
+        /**
+         * EvaluacionUpdate
+         * @description Evaluación clínica del control: los campos de la ficha del CEPA en SALUTEM.
+         *
+         *     Todos opcionales y libres; un texto en blanco deja el campo vacío.
+         */
+        EvaluacionUpdate: {
+            /** Tiempo Estimado Tratamiento */
+            tiempo_estimado_tratamiento?: string | null;
+            /** Proyeccion Reintegro */
+            proyeccion_reintegro?: string | null;
+            /** Factores Riesgo */
+            factores_riesgo?: string | null;
         };
         /**
          * ExtractedFieldOut
@@ -6943,6 +6980,41 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["LicenciaUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ControlMedicoRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    actualizar_evaluacion_endpoint_api_v1_controles_medicos__control_id__evaluacion_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                control_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EvaluacionUpdate"];
             };
         };
         responses: {

@@ -6,6 +6,7 @@ Endpoints:
     GET    /api/v1/controles-medicos/{control_id}               → detalle
     PATCH  /api/v1/controles-medicos/{control_id}/proximo-control  → CEPA-061
     PATCH  /api/v1/controles-medicos/{control_id}/licencia         → CEPA-062
+    PATCH  /api/v1/controles-medicos/{control_id}/evaluacion       → evaluación clínica
 """
 
 from fastapi import APIRouter, Depends, status
@@ -17,11 +18,13 @@ from app.db.session import get_db
 from app.schemas.control_medico import (
     ControlMedicoCreate,
     ControlMedicoRead,
+    EvaluacionUpdate,
     LicenciaUpdate,
     ProximoControlUpdate,
 )
 from app.services.control_medico import (
     _get_control_o_404,
+    actualizar_evaluacion,
     actualizar_licencia,
     crear_control,
     obtener_controles_por_ingreso,
@@ -126,6 +129,32 @@ def actualizar_licencia_endpoint(
     current_user=Depends(get_current_user),
 ) -> ControlMedicoRead:
     control = actualizar_licencia(db, control_id, payload)
+    record_audit(
+        db,
+        actor=current_user.username,
+        action="UPDATE",
+        entity="control_medico",
+        entity_id=str(control_id),
+    )
+    db.commit()
+    db.refresh(control)
+    return control
+
+
+# ── Evaluación clínica (ficha del CEPA) ───────────────────────────────────────
+
+@router.patch(
+    "/{control_id}/evaluacion",
+    response_model=ControlMedicoRead,
+    dependencies=[Depends(_writer)],
+)
+def actualizar_evaluacion_endpoint(
+    control_id: int,
+    payload: EvaluacionUpdate,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+) -> ControlMedicoRead:
+    control = actualizar_evaluacion(db, control_id, payload)
     record_audit(
         db,
         actor=current_user.username,

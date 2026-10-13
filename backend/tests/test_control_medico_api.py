@@ -380,3 +380,58 @@ def test_auditor_puede_listar_controles(as_auditor, as_admin, db_session):
     as_admin.post("/api/v1/controles-medicos", json=_payload_control(ing.id, "2026-02-02"))
     r = as_auditor.get(f"/api/v1/controles-medicos/por-ingreso/{ing.id}")
     assert r.status_code == 200
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Evaluación clínica: campos de la ficha del CEPA (tiempo estimado, proyección de
+# reintegro, factores de riesgo). Los llena el sync o se editan en SIGE.
+# ─────────────────────────────────────────────────────────────────────────────
+
+def test_evaluacion_se_guarda_y_se_lee(as_admin, as_auditor, db_session):
+    ctrl = _crear_control(as_admin, db_session, "F-EVAL-01", date(2026, 1, 5), "2026-02-02")
+    assert (ctrl["tiempo_estimado_tratamiento"], ctrl["proyeccion_reintegro"], ctrl["factores_riesgo"]) == (
+        None, None, None,
+    )
+
+    r = as_admin.patch(
+        f"/api/v1/controles-medicos/{ctrl['id']}/evaluacion",
+        json={
+            "tiempo_estimado_tratamiento": "3 meses",
+            "proyeccion_reintegro": "Más de 1 mes",
+            "factores_riesgo": "Sobrecarga y hostilidad de jefatura",
+        },
+    )
+
+    assert r.status_code == 200, r.text
+    body = as_auditor.get(f"/api/v1/controles-medicos/{ctrl['id']}").json()
+    assert body["tiempo_estimado_tratamiento"] == "3 meses"
+    assert body["proyeccion_reintegro"] == "Más de 1 mes"
+    assert body["factores_riesgo"] == "Sobrecarga y hostilidad de jefatura"
+
+
+def test_evaluacion_en_blanco_queda_vacia(as_admin, db_session):
+    ctrl = _crear_control(as_admin, db_session, "F-EVAL-02", date(2026, 1, 5), "2026-02-02")
+    url = f"/api/v1/controles-medicos/{ctrl['id']}/evaluacion"
+    as_admin.patch(url, json={"tiempo_estimado_tratamiento": "3 meses"}).raise_for_status()
+
+    body = as_admin.patch(url, json={"tiempo_estimado_tratamiento": "   ", "factores_riesgo": ""}).json()
+
+    assert (body["tiempo_estimado_tratamiento"], body["factores_riesgo"]) == (None, None)
+
+
+def test_evaluacion_rechaza_textos_demasiado_largos(as_admin, db_session):
+    ctrl = _crear_control(as_admin, db_session, "F-EVAL-03", date(2026, 1, 5), "2026-02-02")
+    r = as_admin.patch(
+        f"/api/v1/controles-medicos/{ctrl['id']}/evaluacion",
+        json={"proyeccion_reintegro": "x" * 81},
+    )
+    assert r.status_code == 422
+
+
+def test_auditor_no_puede_editar_la_evaluacion(as_auditor, as_admin, db_session):
+    ctrl = _crear_control(as_admin, db_session, "F-EVAL-04", date(2026, 1, 5), "2026-02-02")
+    r = as_auditor.patch(
+        f"/api/v1/controles-medicos/{ctrl['id']}/evaluacion",
+        json={"tiempo_estimado_tratamiento": "3 meses"},
+    )
+    assert r.status_code == 403

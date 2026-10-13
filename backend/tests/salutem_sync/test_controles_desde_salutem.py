@@ -6,7 +6,10 @@ un control del CEPA (origen SALUTEM), sin duplicarse al volver a vincular.
 
 from datetime import date
 
+import pytest
 from sqlalchemy import select
+
+from app.config import get_settings
 
 from app.integrations.salutem.models import AtencionSalutem, CitaSalutem, EstadoCitaSalutem, PersonaSalutem
 from app.models.control_medico import ControlMedico
@@ -267,3 +270,90 @@ def test_los_controles_cargados_a_mano_siguen_siendo_del_cepa(db_session):
     db_session.flush()
 
     assert (manual.origen, manual.salutem_cita_id) == ("CEPA", None)
+
+
+def test_la_primera_consulta_medica_ep_tambien_es_control(db_session):
+    """Especialidad con que el CEPA registra la primera consulta (ficha de prueba, 30-09-2026)."""
+    _paciente_e_ingreso(db_session)
+    _persona(db_session)
+    _atencion(db_session, 5030, "2023-03-01", especialidadNombre="Primera consulta médica EP")
+
+    vincular(db_session, AHORA)
+
+    assert [c.salutem_cita_id for c in _controles(db_session)] == [5030]
+
+
+def test_las_especialidades_de_control_se_configuran(db_session, monkeypatch):
+    monkeypatch.setattr(get_settings(), "salutem_especialidades_control", "Médico/a, Control psiquiátrico")
+    _paciente_e_ingreso(db_session)
+    _persona(db_session)
+    _atencion(db_session, 5031, "2023-03-01", especialidadNombre="control PSIQUIÁTRICO")
+    _atencion(db_session, 5032, "2023-03-02", especialidadNombre="Primera consulta médica EP")
+
+    vincular(db_session, AHORA)
+
+    assert [c.salutem_cita_id for c in _controles(db_session)] == [5031]
+
+
+def test_la_ficha_de_prueba_del_cepa_llena_el_control(db_session):
+    """Campos tal como los llenó el CEPA en la ficha de prueba del 30-09-2026."""
+    _paciente_e_ingreso(db_session)
+    _persona(db_session)
+    _atencion(
+        db_session, 5033, "2026-09-30", especialidadNombre="Primera consulta médica EP",
+        indicaciones=[
+            {"agrupacion": "Indicaciones", "nombre": "Indicaciones",
+             "registro": "Fármacos:<br>Sertralina 50mg 0-1-0<br>Clotiazepam SOS"},
+            {"agrupacion": "Indicaciones", "nombre": "Próximo control", "registro": "15 días"},
+            {"agrupacion": "Indicaciones", "nombre": "Indicación de reposo",
+             "registro": "Licencia tipo 6 por 15 días, fecha de inicio 30-09-2026"},
+            {"agrupacion": "Indicaciones", "nombre": "GAF", "registro": ["51-60"]},
+            {"agrupacion": "Indicaciones", "nombre": "Tipo de reposo", "registro": ["Total"]},
+            {"agrupacion": "Indicaciones", "nombre": "Proyección de reintegro laboral", "registro": ["Más de 1 mes"]},
+        ],
+        antecedentes=[
+            {"agrupacion": "Evaluación", "nombre": "Tiempo estimado de tratamiento", "registro": "3 meses"},
+            {"agrupacion": "Evaluación", "nombre": "Factores de riesgo acogidos",
+             "registro": "sobrecarga y hostilidad de jefatura"},
+        ],
+    )
+
+    vincular(db_session, AHORA)
+
+    [c] = _controles(db_session)
+    assert (c.tiene_licencia, c.tipo_licencia, c.total_dias_lm, c.tipo_reposo) == (True, "6", 15, "total")
+    assert c.gaf_tramo == "51-60"
+    assert (c.proximo_control, c.proximo_agendado) == (date(2026, 10, 15), False)
+    assert c.tiempo_estimado_tratamiento == "3 meses"
+    assert c.proyeccion_reintegro == "Más de 1 mes"
+    assert c.factores_riesgo == "sobrecarga y hostilidad de jefatura"
+
+
+@pytest.mark.parametrize(
+    ("texto", "esperado"),
+    [("15 días", date(2023, 3, 16)), ("2 semanas", date(2023, 3, 15)), ("1 mes", date(2023, 4, 1)),
+     ("en 3 meses", date(2023, 6, 1)), ("a evaluar", None)],
+)
+def test_sin_cita_agendada_el_proximo_control_sale_del_campo(db_session, texto, esperado):
+    _paciente_e_ingreso(db_session)
+    _persona(db_session)
+    _atencion(db_session, 5034, "2023-03-01",
+              antecedentes=[{"nombre": "Próximo control", "registro": texto}])
+
+    vincular(db_session, AHORA)
+
+    [c] = _controles(db_session)
+    assert (c.proximo_control, c.proximo_agendado) == (esperado, False)
+
+
+def test_una_cita_agendada_manda_sobre_el_campo_proximo_control(db_session):
+    _paciente_e_ingreso(db_session)
+    _persona(db_session)
+    _atencion(db_session, 5035, "2023-03-01",
+              antecedentes=[{"nombre": "Próximo control", "registro": "15 días"}])
+    _cita(db_session, 5036, "2023-03-20", EstadoCitaSalutem.AGENDADO)
+
+    vincular(db_session, AHORA)
+
+    [c] = _controles(db_session)
+    assert (c.proximo_control, c.proximo_agendado) == (date(2023, 3, 20), True)

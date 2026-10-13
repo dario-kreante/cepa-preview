@@ -1,9 +1,9 @@
 """Licencias sugeridas desde las atenciones de SALUTEM ya importadas.
 
 SALUTEM no tiene licencias estructuradas: el médico las escribe en las
-indicaciones. Este servicio las lee con el extractor y las propone para que un
-administrativo las revise y registre. No escribe nada: ni en el CEPA ni en
-SALUTEM (D12).
+indicaciones o en el campo "Indicación de reposo" del formulario. Este servicio
+las lee con el extractor y las propone para que un administrativo las revise y
+registre. No escribe nada: ni en el CEPA ni en SALUTEM (D12).
 """
 
 from datetime import date
@@ -13,6 +13,7 @@ from sqlalchemy import false, select
 from sqlalchemy.orm import Session
 
 from app.domain.enums_licencia import OrigenLicencia, TipoLicencia, TipoReposo
+from app.integrations.salutem.campos import campo
 from app.integrations.salutem.licencias import ClaseMencion, MencionLicencia, extraer_licencia
 from app.models.ficha_clinica import FichaClinica
 from app.models.licencia import LicenciaMedica
@@ -35,7 +36,18 @@ def _registros(contenido: dict[str, Any]) -> list[Any]:
     indicaciones = contenido.get("indicaciones") or []
     if isinstance(indicaciones, dict):
         indicaciones = [indicaciones]
-    return [i.get("registro") if isinstance(i, dict) else i for i in indicaciones]
+    return [
+        *(i.get("registro") if isinstance(i, dict) else i for i in indicaciones),
+        campo(contenido, "Indicación de reposo"),
+    ]
+
+
+def _tipo_reposo(mencion: MencionLicencia, contenido: dict[str, Any]) -> TipoReposo | None:
+    """El campo "Tipo de reposo" manda; si falta, lo que diga el texto de la licencia."""
+    valores = {t.value: t for t in TipoReposo}
+    return valores.get((campo(contenido, "Tipo de reposo") or "").casefold()) or valores.get(
+        mencion.tipo_reposo or ""
+    )
 
 
 def _ya_registrada(mencion: MencionLicencia, registradas: list[LicenciaMedica]) -> bool:
@@ -107,7 +119,7 @@ def sugerir_licencias(db: Session, folio: str) -> list[LicenciaSugeridaRead]:
                     cita_fecha=fecha,
                     texto=mencion.texto,
                     tipo_lm=TipoLicencia(tipo) if tipo else None,
-                    tipo_reposo=TipoReposo(mencion.tipo_reposo) if mencion.tipo_reposo else None,
+                    tipo_reposo=_tipo_reposo(mencion, contenido),
                     origen=(
                         OrigenLicencia.EXTRA_SISTEMA
                         if mencion.extra_sistema

@@ -67,6 +67,12 @@ class ControlMedico(Base):
     # SALUTEM registra el GAF como tramo ("51-60"), no como número (migración 1280).
     gaf_tramo: Mapped[str | None] = mapped_column(String(10), nullable=True)
 
+    # ── Evaluación clínica (migración 1310) ─────────────────────────────────
+    # Campos de la ficha del CEPA en SALUTEM; también se editan en SIGE.
+    tiempo_estimado_tratamiento: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    proyeccion_reintegro: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    factores_riesgo: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
     # ── RECA y observaciones (CEPA-062, siempre editables) ───────────────────
     estado_reca: Mapped[str | None] = mapped_column(String(20), nullable=True)
     observaciones: Mapped[str | None] = mapped_column(Text, nullable=True)

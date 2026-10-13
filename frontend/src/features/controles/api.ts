@@ -7,6 +7,7 @@ export type ControlMedicoRead = components["schemas"]["ControlMedicoRead"];
 export type ControlMedicoCreate = components["schemas"]["ControlMedicoCreate"];
 export type ProximoControlUpdate = components["schemas"]["ProximoControlUpdate"];
 export type LicenciaUpdate = components["schemas"]["LicenciaUpdate"];
+export type EvaluacionUpdate = components["schemas"]["EvaluacionUpdate"];
 
 // Calificación RECA: mismo catálogo que la RECA del reintegro (D20).
 export type EstadoReca = components["schemas"]["TipoReca"];
@@ -91,5 +92,22 @@ export async function actualizarLicencia(
   );
   if (error || !data)
     throw new Error("No se pudo actualizar la licencia del control");
+  return data;
+}
+
+/** PATCH /api/v1/controles-medicos/{control_id}/evaluacion */
+export async function actualizarEvaluacion(
+  controlId: number,
+  body: EvaluacionUpdate,
+): Promise<ControlMedicoRead> {
+  const { data, error } = await api.PATCH(
+    "/api/v1/controles-medicos/{control_id}/evaluacion",
+    {
+      params: { path: { control_id: controlId } },
+      body,
+    },
+  );
+  if (error || !data)
+    throw new Error("No se pudo actualizar la evaluación del control");
   return data;
 }

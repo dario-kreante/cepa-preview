@@ -1,11 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  actualizarEvaluacion,
   actualizarLicencia,
   actualizarProximoControl,
   controlesPorIngreso,
   crearControl,
   obtenerControl,
   type ControlMedicoCreate,
+  type EvaluacionUpdate,
   type LicenciaUpdate,
   type ProximoControlUpdate,
 } from "./api";
@@ -80,6 +82,27 @@ export function useActualizarLicencia(ingresoId?: number) {
       controlId: number;
       body: LicenciaUpdate;
     }) => actualizarLicencia(controlId, body),
+    onSuccess: () =>
+      ingresoId
+        ? qc.invalidateQueries({ queryKey: ["controles", ingresoId] })
+        : qc.invalidateQueries({ queryKey: ["controles"] }),
+  });
+}
+
+/**
+ * Actualiza la evaluación clínica de un control (tiempo estimado, reintegro, riesgos).
+ * Mismo criterio de invalidación que `useActualizarLicencia`.
+ */
+export function useActualizarEvaluacion(ingresoId?: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      controlId,
+      body,
+    }: {
+      controlId: number;
+      body: EvaluacionUpdate;
+    }) => actualizarEvaluacion(controlId, body),
     onSuccess: () =>
       ingresoId
         ? qc.invalidateQueries({ queryKey: ["controles", ingresoId] })

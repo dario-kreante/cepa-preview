@@ -4,6 +4,7 @@ Historias cubiertas:
 - CEPA-060: crear control con cálculo automático de semana.
 - CEPA-061: programar próximo control (reemplaza el vigente anterior).
 - CEPA-062: actualizar licencia/GAF y RECA del control.
+- Evaluación clínica de la ficha del CEPA (tiempo estimado, reintegro, riesgos).
 """
 
 from fastapi import HTTPException, status
@@ -14,6 +15,7 @@ from app.models.control_medico import ControlMedico
 from app.models.ingreso import Ingreso
 from app.schemas.control_medico import (
     ControlMedicoCreate,
+    EvaluacionUpdate,
     LicenciaUpdate,
     ProximoControlUpdate,
 )
@@ -165,6 +167,25 @@ def actualizar_licencia(
         control.gaf_tramo = resolver_tramo(db, None, data.gaf)
     control.estado_reca = data.estado_reca.value if data.estado_reca else None
     control.observaciones = data.observaciones
+    db.flush()
+    return control
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Evaluación clínica
+# ─────────────────────────────────────────────────────────────────────────────
+
+def actualizar_evaluacion(
+    db: Session, control_id: int, data: EvaluacionUpdate
+) -> ControlMedico:
+    """Actualiza solo los campos de evaluación enviados.
+
+    Raises:
+        HTTPException 404: si control_id no existe.
+    """
+    control = _get_control_o_404(db, control_id)
+    for campo, valor in data.model_dump(exclude_unset=True).items():
+        setattr(control, campo, valor)
     db.flush()
     return control
 
