@@ -15,6 +15,7 @@ import { useAuth } from "@/lib/auth/AuthContext";
 import { puedeEscribir, type Rol } from "@/lib/rbac";
 import { useAlertas, useTareas } from "@/features/alertas/hooks";
 import type { AlertaRead, TareaItemRead } from "@/features/alertas/api";
+import { DocumentosAlertaDialog } from "./DocumentosAlertaDialog";
 
 // ── visual helpers ────────────────────────────────────────────────────────────
 
@@ -75,6 +76,15 @@ function todayLabel(): string {
 // Capitalize first letter
 function cap(s: string) {
   return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+export const TITULOS_ALERTA: Record<string, string> = {
+  licencia_en_control: "Licencia emitida en control",
+  receta_en_control: "Receta emitida en control",
+};
+
+export function tituloAlerta(tipo: string): string {
+  return TITULOS_ALERTA[tipo] ?? cap(tipo.replace(/_/g, " "));
 }
 
 /**
@@ -197,6 +207,7 @@ export function AlertsPanel() {
   const { data: tareas = [] } = useTareas();
 
   const [tab, setTab] = useState<TabKey>("todas");
+  const [alertaControl, setAlertaControl] = useState<AlertaRead | null>(null);
 
   // Filter alertas to only pending/leidas (resolved are not shown)
   const activeAlertas = alertas.filter((a) => a.estado !== "resuelta");
@@ -222,6 +233,10 @@ export function AlertsPanel() {
   const displayTareas = tab === "todas" || tab === "proximas" ? activeTareas : [];
 
   const handleAlertaClick = (a: AlertaRead) => {
+    if (a.tipo in TITULOS_ALERTA) {
+      setAlertaControl(a);
+      return;
+    }
     navigate(routeForCaso(a.caso_tipo, a.caso_id));
   };
 
@@ -289,7 +304,7 @@ export function AlertsPanel() {
 
         {displayAlertas.map((a) => {
           const bucket = alertaTipoBucket(a);
-          const title = cap(a.tipo.replace(/_/g, " "));
+          const title = tituloAlerta(a.tipo);
           const subtitle =
             a.caso_tipo && a.caso_id
               ? `${a.caso_tipo} #${a.caso_id}`
@@ -353,6 +368,12 @@ export function AlertsPanel() {
           </Button>
         </div>
       </div>
+
+      <DocumentosAlertaDialog
+        titulo={alertaControl ? tituloAlerta(alertaControl.tipo) : ""}
+        controlId={alertaControl?.caso_id ?? null}
+        onOpenChange={(open) => !open && setAlertaControl(null)}
+      />
     </aside>
   );
 }

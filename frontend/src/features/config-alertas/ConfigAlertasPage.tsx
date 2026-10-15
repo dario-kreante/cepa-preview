@@ -23,7 +23,7 @@ import {
   useFestivos,
   useGuardarConfig,
 } from "./hooks";
-import { TIPO_GAF, TIPO_LABELS, type ConfigAlertaItem, type ConfigAlertaRead } from "./api";
+import { TIPO_GAF, TIPO_LABELS, TIPOS_SIN_DIAS, type ConfigAlertaItem, type ConfigAlertaRead } from "./api";
 import { useGafTramos } from "@/features/gaf-tramos/hooks";
 
 function Th({ children }: { children: React.ReactNode }) {
@@ -116,6 +116,7 @@ function UmbralesForm({ inicial }: { inicial: ConfigAlertaRead[] }) {
             {filas.map((f) => {
               const nombre = TIPO_LABELS[f.tipo] ?? f.tipo;
               const esGaf = f.tipo === TIPO_GAF;
+              const sinDias = TIPOS_SIN_DIAS.has(f.tipo);
               return (
                 <tr key={f.tipo} className="border-b" data-testid={`fila-${f.tipo}`}>
                   <td className="px-4 py-3 font-medium">
@@ -125,9 +126,16 @@ function UmbralesForm({ inicial }: { inicial: ConfigAlertaRead[] }) {
                         Alerta si el tramo de GAF de la licencia está en o bajo el umbral
                       </p>
                     )}
+                    {sinDias && (
+                      <p className="text-[11.5px] font-normal text-muted-foreground">
+                        Llega cuando el sync de SALUTEM trae un control con esta indicación
+                      </p>
+                    )}
                   </td>
                   <td className="px-4 py-3">
-                    {esGaf ? (
+                    {sinDias ? (
+                      <span className="text-[13px] text-muted-foreground">—</span>
+                    ) : esGaf ? (
                       <select
                         aria-label={`Tramo umbral ${nombre}`}
                         className="h-8 rounded-md border border-input bg-background px-2 text-[13px]"
@@ -153,7 +161,7 @@ function UmbralesForm({ inicial }: { inicial: ConfigAlertaRead[] }) {
                     )}
                   </td>
                   <td className="px-4 py-3">
-                    {esGaf ? (
+                    {esGaf || sinDias ? (
                       <span className="text-[13px] text-muted-foreground">—</span>
                     ) : (
                       <input
