@@ -398,3 +398,17 @@ def test_una_foto_jpeg_se_reconoce():
 
 def test_el_cliente_sigue_cumpliendo_el_protocolo_con_la_biblioteca():
     assert isinstance(_cliente(lambda r: _ok([])), SalutemClientProtocol)
+
+
+def test_un_base64_ilegible_es_un_error_de_salutem():
+    handler = lambda request: _ok({"id": 9, "nombre": "x.pdf", "archivo_base64": "no es base64!!"})  # noqa: E731
+    with pytest.raises(SalutemError) as exc:
+        _cliente(handler).obtener_archivo(1, 9)
+    assert exc.value.codigo == "ARCHIVO_ILEGIBLE"
+
+
+def test_un_base64_que_no_es_texto_es_un_error_de_salutem():
+    handler = lambda request: _ok({"id": 9, "nombre": "x.pdf", "archivo_base64": 123})  # noqa: E731
+    with pytest.raises(SalutemError) as exc:
+        _cliente(handler).obtener_archivo(1, 9)
+    assert exc.value.codigo == "ARCHIVO_ILEGIBLE"

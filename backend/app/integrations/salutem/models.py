@@ -12,11 +12,14 @@ termina en `FichaClinica.contenido`.
 """
 
 import base64
+import binascii
 from datetime import date, datetime
 from enum import IntEnum
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict
+
+from app.integrations.salutem.errors import SalutemError
 
 
 class EstadoCitaSalutem(IntEnum):
@@ -194,10 +197,20 @@ class ContenidoArchivo(BaseModel):
     @classmethod
     def desde_api(cls, d: dict[str, Any]) -> "ContenidoArchivo | None":
         # La copia de QA no conserva los binarios antiguos: llega el registro con base64 vacío.
-        crudo = d.get("archivo_base64") or ""
-        if not crudo.strip():
+        crudo = d.get("archivo_base64")
+        if crudo is None or (isinstance(crudo, str) and not crudo.strip()):
             return None
-        datos = base64.b64decode(crudo)
+        if not isinstance(crudo, str):
+            raise SalutemError(
+                "SALUTEM entregó un archivo con contenido ilegible", codigo="ARCHIVO_ILEGIBLE"
+            )
+        try:
+            # Los espacios se descartan antes: el base64 de SALUTEM puede venir partido en líneas.
+            datos = base64.b64decode("".join(crudo.split()), validate=True)
+        except (binascii.Error, ValueError) as e:
+            raise SalutemError(
+                "SALUTEM entregó un archivo con contenido ilegible", codigo="ARCHIVO_ILEGIBLE"
+            ) from e
         return cls(
             nombre=str(d.get("nombreOriginal") or d.get("nombre") or "archivo"),
             media_type=_media_type(datos),
