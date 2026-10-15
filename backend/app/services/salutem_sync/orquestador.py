@@ -102,7 +102,7 @@ def correr(
         )
         errores = errores + vinculacion.errores
         if modo == "caliente":
-            archivos = refrescar_archivos(db, cliente, ritmo, ahora())
+            archivos = refrescar_archivos(db, cliente, ritmo, ahora(), al_avanzar=renovar)
             errores = errores + archivos.errores
             log.info("Biblioteca SALUTEM: %d personas revisadas", archivos.personas)
         log.info("Modo %s terminado: %s, vinculación %s", modo, contadores, vinculacion)

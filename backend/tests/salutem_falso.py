@@ -16,6 +16,7 @@ from app.integrations.salutem.errors import (
 )
 from app.integrations.salutem.models import (
     ArchivoSalutem,
+    archivos_desde_api,
     AtencionSalutem,
     CitaSalutem,
     ContenidoArchivo,
@@ -58,6 +59,8 @@ class SalutemFalso:
         self.dias_caidos: set[date] = set()
         self.personas_caidas: set[int] = set()
         self.personas_archivos_caidas: set[int] = set()
+        # Personas cuya biblioteca SALUTEM rechaza con SalutemRequestError (falla puntual).
+        self.personas_archivos_con_error: set[int] = set()
         self.credencial_rechazada = False
         # Hook de prueba: se invoca al empezar `listar_citas`, después de `_registrar`.
         self.antes_de_listar: Callable[[date, int], None] | None = None
@@ -182,11 +185,11 @@ class SalutemFalso:
         self._registrar("listar_archivos", salutem_id)
         if salutem_id in self.personas_archivos_caidas:
             raise SalutemUnavailableError("SALUTEM devolvió un cuerpo ilegible (HTTP 504)")
-        return [
-            ArchivoSalutem.desde_api(a, salutem_id)
-            for a in self.archivos.values()
-            if a["personaId"] == salutem_id
-        ]
+        if salutem_id in self.personas_archivos_con_error:
+            raise SalutemRequestError("petición rechazada", codigo="PARAMETRO_INVALIDO")
+        return archivos_desde_api(
+            [a for a in self.archivos.values() if a.get("personaId") == salutem_id], salutem_id
+        )
 
     def obtener_archivo(self, salutem_id: int, archivo_id: int) -> ContenidoArchivo | None:
         self._registrar("obtener_archivo", salutem_id, archivo_id)

@@ -78,10 +78,10 @@ def test_un_archivo_que_ya_no_esta_queda_desaparecido_y_puede_volver(db_session,
     assert _archivos(db_session)[0].desaparecido_en is None
 
 
-def test_salutem_caido_en_una_persona_no_detiene_a_las_demas(db_session, salutem, ritmo):
+def test_un_error_de_salutem_en_una_persona_no_detiene_a_las_demas(db_session, salutem, ritmo):
     _control(db_session, cita_id=1, persona=PERSONA)
     _control(db_session, cita_id=2, persona=PERSONA + 1)
-    salutem.personas_archivos_caidas.add(PERSONA)
+    salutem.personas_archivos_con_error.add(PERSONA)
     salutem.agregar_archivo(9, PERSONA + 1)
 
     r = refrescar_archivos(db_session, salutem, ritmo, AHORA)
@@ -89,6 +89,73 @@ def test_salutem_caido_en_una_persona_no_detiene_a_las_demas(db_session, salutem
     assert [a.archivo_id for a in _archivos(db_session)] == [9]
     assert r.personas == 1
     assert len(r.errores) == 1 and str(PERSONA) in r.errores[0]
+
+
+def test_un_error_inesperado_en_una_persona_no_impide_guardar_la_siguiente(db_session, salutem, ritmo, monkeypatch):
+    from app.services.salutem_sync import archivos as modulo  # noqa: PLC0415
+
+    _control(db_session, cita_id=1, persona=PERSONA)
+    _control(db_session, cita_id=2, persona=PERSONA + 1)
+    salutem.agregar_archivo(8, PERSONA)
+    salutem.agregar_archivo(9, PERSONA + 1)
+    original = modulo.guardar_archivos
+
+    def con_bug(db, persona_id, archivos, ahora):
+        if persona_id == PERSONA:
+            raise ValueError("registro inesperado")
+        return original(db, persona_id, archivos, ahora)
+
+    monkeypatch.setattr(modulo, "guardar_archivos", con_bug)
+
+    r = modulo.refrescar_archivos(db_session, salutem, ritmo, AHORA)
+
+    assert [a.archivo_id for a in _archivos(db_session)] == [9]
+    assert r.personas == 1
+    assert len(r.errores) == 1 and str(PERSONA) in r.errores[0] and "ValueError" in r.errores[0]
+
+
+def test_un_registro_sin_id_no_impide_guardar_el_valido(db_session, salutem, ritmo):
+    _control(db_session)
+    salutem.archivos[1] = {"personaId": PERSONA, "nombre": "sin id.pdf"}
+    salutem.agregar_archivo(2, PERSONA)
+
+    refrescar_archivos(db_session, salutem, ritmo, AHORA)
+
+    assert [a.archivo_id for a in _archivos(db_session)] == [2]
+
+
+def test_un_tipo_de_40_caracteres_se_trunca_y_se_guarda(db_session, salutem, ritmo):
+    _control(db_session)
+    salutem.agregar_archivo(3, PERSONA, tipo="t" * 40)
+
+    r = refrescar_archivos(db_session, salutem, ritmo, AHORA)
+
+    assert _archivos(db_session)[0].tipo == "t" * 30
+    assert r.errores == []
+
+
+def test_renueva_el_lease_despues_de_cada_persona(db_session, salutem, ritmo):
+    _control(db_session, cita_id=1, persona=PERSONA)
+    _control(db_session, cita_id=2, persona=PERSONA + 1)
+    _control(db_session, cita_id=3, persona=PERSONA + 2)
+    salutem.personas_archivos_con_error.add(PERSONA + 1)
+    avances = []
+
+    refrescar_archivos(db_session, salutem, ritmo, AHORA, al_avanzar=lambda: avances.append(1))
+
+    assert len(avances) == 3
+
+
+def test_si_salutem_no_responde_se_corta_con_un_solo_error(db_session, salutem, ritmo):
+    for i in range(3):
+        _control(db_session, cita_id=i + 1, persona=PERSONA + i)
+        salutem.personas_archivos_caidas.add(PERSONA + i)
+
+    r = refrescar_archivos(db_session, salutem, ritmo, AHORA)
+
+    assert {ll[1] for ll in salutem.llamadas_a("listar_archivos")} == {PERSONA}
+    assert r.personas == 0
+    assert r.errores == ["SALUTEM no responde; biblioteca pospuesta al próximo ciclo"]
 
 
 def test_una_credencial_rechazada_aborta(db_session, salutem, ritmo):

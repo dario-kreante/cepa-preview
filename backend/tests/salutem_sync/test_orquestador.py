@@ -165,10 +165,13 @@ def test_un_modo_manual_omitido_por_lease_lo_informa_en_el_codigo_de_salida(db_s
 
 def test_caliente_copia_la_biblioteca_despues_de_vincular(db_session, salutem, ritmo, monkeypatch):
     llamadas = []
-    monkeypatch.setattr(
-        "app.services.salutem_sync.orquestador.refrescar_archivos",
-        lambda db, cliente, ritmo, ahora: llamadas.append(ahora) or ResultadoArchivos(),
-    )
+
+    def falso(db, cliente, ritmo, ahora, al_avanzar):
+        al_avanzar()  # renueva el lease: no debe levantar mientras el lease sea nuestro
+        llamadas.append(ahora)
+        return ResultadoArchivos()
+
+    monkeypatch.setattr("app.services.salutem_sync.orquestador.refrescar_archivos", falso)
     assert _correr(db_session, salutem, ritmo, modo="caliente") == 0
     assert llamadas == [AHORA]
 

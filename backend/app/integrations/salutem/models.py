@@ -179,10 +179,22 @@ class ArchivoSalutem(BaseModel):
             archivo_id=int(d["id"]),
             persona_id=persona_id,
             nombre=nombre[:255],
-            tipo=d.get("tipo"),
+            tipo=str(d["tipo"])[:30] if d.get("tipo") else None,
             fecha_creacion=_fecha_archivo(d.get("fechaCreacion")),
             crudo=d,
         )
+
+
+def archivos_desde_api(registros: list[Any], persona_id: int) -> list[ArchivoSalutem]:
+    """Convierte el listado de la biblioteca saltando los registros ilegibles (sin id, id no
+    numérico, no objeto): uno malformado no debe tumbar la lista entera."""
+    archivos = []
+    for registro in registros:
+        try:
+            archivos.append(ArchivoSalutem.desde_api(registro, persona_id))
+        except (KeyError, TypeError, ValueError, AttributeError):
+            continue
+    return archivos
 
 
 class ContenidoArchivo(BaseModel):

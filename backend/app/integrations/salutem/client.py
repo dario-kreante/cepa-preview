@@ -19,6 +19,7 @@ from app.integrations.salutem.errors import (
 )
 from app.integrations.salutem.models import (
     ArchivoSalutem,
+    archivos_desde_api,
     AtencionSalutem,
     CitaSalutem,
     ContenidoArchivo,
@@ -187,7 +188,7 @@ class SalutemHttpClient:
 
     def listar_archivos(self, salutem_id: int) -> list[ArchivoSalutem]:
         r = self._get("personas-archivos", {"persona_id": str(salutem_id)})
-        return [ArchivoSalutem.desde_api(x, salutem_id) for x in (r or [])]
+        return archivos_desde_api(r or [], salutem_id)
 
     def obtener_archivo(
         self, salutem_id: int, archivo_id: int

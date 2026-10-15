@@ -365,6 +365,22 @@ def test_listar_archivos_pide_la_biblioteca_de_la_persona():
     assert archivo.fecha_creacion == datetime(2026, 10, 15, 16, 29)
 
 
+def test_un_registro_ilegible_de_la_biblioteca_se_salta_sin_perder_los_demas():
+    handler = lambda request: _ok([  # noqa: E731
+        {"nombre": "sin id.pdf", "tipo": "documento"},
+        {"id": "no-numerico", "nombre": "raro.pdf"},
+        "basura",
+        {"id": 5, "nombre": "ok.pdf", "tipo": "documento"},
+    ])
+    assert [a.archivo_id for a in _cliente(handler).listar_archivos(1)] == [5]
+
+
+def test_el_tipo_de_un_archivo_se_trunca_a_30_caracteres():
+    handler = lambda request: _ok([{"id": 1, "nombre": "x.pdf", "tipo": "t" * 40}])  # noqa: E731
+    [archivo] = _cliente(handler).listar_archivos(1)
+    assert archivo.tipo == "t" * 30
+
+
 def test_una_fecha_de_creacion_ilegible_queda_nula():
     handler = lambda request: _ok([{"id": 1, "nombre": "x.pdf", "fechaCreacion": "ayer", "tipo": "documento"}])  # noqa: E731
     [archivo] = _cliente(handler).listar_archivos(1)
