@@ -914,6 +914,43 @@ export interface paths {
         patch: operations["actualizar_evaluacion_endpoint_api_v1_controles_medicos__control_id__evaluacion_patch"];
         trace?: never;
     };
+    "/api/v1/controles-medicos/{control_id}/archivos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Listar Archivos */
+        get: operations["listar_archivos_api_v1_controles_medicos__control_id__archivos_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/controles-medicos/{control_id}/archivos/{archivo_id}/contenido": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Contenido Archivo
+         * @description Pide el archivo a SALUTEM y lo entrega sin guardarlo (ni en BD ni en disco).
+         */
+        get: operations["contenido_archivo_api_v1_controles_medicos__control_id__archivos__archivo_id__contenido_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/ingresos/{ingreso_id}/licencias/acumulado": {
         parameters: {
             query?: never;
@@ -2091,6 +2128,20 @@ export interface components {
         /** AlertaUpdate */
         AlertaUpdate: {
             estado: components["schemas"]["EstadoAlerta"];
+        };
+        /**
+         * ArchivoControlRead
+         * @description Un documento de la biblioteca de SALUTEM unido al control por fecha.
+         */
+        ArchivoControlRead: {
+            /** Archivo Id */
+            archivo_id: number;
+            /** Nombre */
+            nombre: string;
+            /** Tipo */
+            tipo: string | null;
+            /** Fecha Creacion */
+            fecha_creacion: string | null;
         };
         /** AuditLogRead */
         AuditLogRead: {
@@ -4525,7 +4576,7 @@ export interface components {
          * @description Tipos de alerta del motor: los 7 de CEPA-100 más el GAF de licencia (CEPA-075).
          * @enum {string}
          */
-        TipoAlerta: "control_medico" | "vencimiento_licencia" | "plazo_ept" | "plazo_isl" | "consentimiento_pendiente" | "receta_por_renovar" | "oda_por_vencer" | "gaf_licencia";
+        TipoAlerta: "control_medico" | "vencimiento_licencia" | "plazo_ept" | "plazo_isl" | "consentimiento_pendiente" | "receta_por_renovar" | "oda_por_vencer" | "gaf_licencia" | "licencia_en_control" | "receta_en_control";
         /**
          * TipoAlta
          * @description Tipos de alta válidos (§7.1.3, v4 D6).
@@ -7026,6 +7077,67 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ControlMedicoRead"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    listar_archivos_api_v1_controles_medicos__control_id__archivos_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                control_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArchivoControlRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    contenido_archivo_api_v1_controles_medicos__control_id__archivos__archivo_id__contenido_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                control_id: number;
+                archivo_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

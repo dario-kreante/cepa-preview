@@ -12,6 +12,7 @@ import { useControlesPorIngreso } from "./hooks";
 import { NuevoControlDialog } from "./NuevoControlDialog";
 import { ProximoControlDialog } from "./ProximoControlDialog";
 import { EvaluacionControlDialog } from "./EvaluacionControlDialog";
+import { DocumentosSalutem } from "./DocumentosSalutem";
 import { EVALUACION_LABELS } from "./evaluacionControlSchema";
 import {
   LicenciaControlDialog,
@@ -223,6 +224,11 @@ function ControlRow({ control, ingresoId, canWrite, columnas }: ControlRowProps)
               <div className="sm:col-span-3">
                 <Dato label="Observaciones" valor={control.observaciones} />
               </div>
+              {control.origen === "SALUTEM" && (
+                <div className="sm:col-span-3">
+                  <DocumentosSalutem controlId={control.id} tieneLicencia={control.tiene_licencia} />
+                </div>
+              )}
             </dl>
           </td>
         </tr>

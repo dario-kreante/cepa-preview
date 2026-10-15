@@ -8,6 +8,7 @@ export type ControlMedicoCreate = components["schemas"]["ControlMedicoCreate"];
 export type ProximoControlUpdate = components["schemas"]["ProximoControlUpdate"];
 export type LicenciaUpdate = components["schemas"]["LicenciaUpdate"];
 export type EvaluacionUpdate = components["schemas"]["EvaluacionUpdate"];
+export type ArchivoControlRead = components["schemas"]["ArchivoControlRead"];
 
 // Calificación RECA: mismo catálogo que la RECA del reintegro (D20).
 export type EstadoReca = components["schemas"]["TipoReca"];
@@ -110,4 +111,28 @@ export async function actualizarEvaluacion(
   if (error || !data)
     throw new Error("No se pudo actualizar la evaluación del control");
   return data;
+}
+
+/** GET /api/v1/controles-medicos/{control_id}/archivos */
+export async function archivosDeControl(controlId: number): Promise<ArchivoControlRead[]> {
+  const { data, error } = await api.GET("/api/v1/controles-medicos/{control_id}/archivos", {
+    params: { path: { control_id: controlId } },
+  });
+  if (error || !data) throw new Error("No se pudieron cargar los documentos de SALUTEM");
+  return data;
+}
+
+/**
+ * Abre un documento de SALUTEM en una pestaña nueva. Se pide con la sesión (Bearer)
+ * y se abre como blob: una URL directa del backend no llevaría el token.
+ */
+export async function abrirArchivoDeControl(controlId: number, archivoId: number): Promise<void> {
+  const { data, error } = await api.GET(
+    "/api/v1/controles-medicos/{control_id}/archivos/{archivo_id}/contenido",
+    { params: { path: { control_id: controlId, archivo_id: archivoId } }, parseAs: "blob" },
+  );
+  if (error || !data) throw new Error("No se pudo abrir el documento");
+  const url = URL.createObjectURL(data as Blob);
+  window.open(url, "_blank", "noopener");
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }

@@ -3,6 +3,7 @@ import {
   actualizarEvaluacion,
   actualizarLicencia,
   actualizarProximoControl,
+  archivosDeControl,
   controlesPorIngreso,
   crearControl,
   obtenerControl,
@@ -27,6 +28,14 @@ export function useControl(controlId: number) {
     queryKey: ["controles", "detail", controlId],
     queryFn: () => obtenerControl(controlId),
     enabled: !!controlId,
+  });
+}
+
+export function useArchivosDeControl(controlId: number, habilitado = true) {
+  return useQuery({
+    queryKey: ["controles", "archivos", controlId],
+    queryFn: () => archivosDeControl(controlId),
+    enabled: habilitado && controlId > 0,
   });
 }
 
