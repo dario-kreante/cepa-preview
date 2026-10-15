@@ -81,6 +81,67 @@ describe("AlertsPanel: alertas de licencia del control", () => {
   });
 });
 
+function alertaLicencia() {
+  return {
+    id: 1,
+    tipo: "licencia_en_control",
+    estado: "pendiente",
+    caso_id: 5,
+    caso_tipo: "control_medico",
+    usuario_id: null,
+    plazo_objetivo: "2026-10-15T00:00:00Z",
+    ventana_dias: 0,
+    generada_en: "2026-10-15T19:35:00Z",
+    resuelta_en: null,
+    email_enviado: false,
+  };
+}
+
+function renderPanel() {
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(
+    <QueryClientProvider client={qc}>
+      <MemoryRouter>
+        <AuthProvider>
+          <AlertsPanel />
+        </AuthProvider>
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+}
+
+describe("AlertsPanel: detalle de la alerta de control", () => {
+  it("la meta dice Control con la fecha UTC del plazo (sin correrla al día anterior)", async () => {
+    tokenStore.setAccess(TOKENS.Coordinacion);
+    server.use(
+      http.get(`${BASE}/api/v1/alertas`, () => HttpResponse.json([alertaLicencia()])),
+      http.get(`${BASE}/api/v1/tareas`, () => HttpResponse.json([])),
+    );
+    renderPanel();
+    await screen.findByText("Licencia emitida en control");
+    expect(screen.getByText(/^Control: 15 oct/i)).toBeInTheDocument();
+    expect(screen.queryByText(/^Plazo:/)).not.toBeInTheDocument();
+  });
+
+  it("si el control no existe el diálogo lo dice en vez de quedarse cargando", async () => {
+    tokenStore.setAccess(TOKENS.Coordinacion);
+    server.use(
+      http.get(`${BASE}/api/v1/alertas`, () => HttpResponse.json([alertaLicencia()])),
+      http.get(`${BASE}/api/v1/tareas`, () => HttpResponse.json([])),
+      http.get(`${BASE}/api/v1/controles-medicos/5`, () =>
+        HttpResponse.json({ detail: "Control no encontrado" }, { status: 404 }),
+      ),
+    );
+    renderPanel();
+    await userEvent.click(await screen.findByText("Licencia emitida en control"));
+    const dialogo = await screen.findByRole("dialog");
+    expect(
+      await within(dialogo).findByText("No se encontró el control (pudo ser anulado en SALUTEM)."),
+    ).toBeInTheDocument();
+    expect(within(dialogo).queryByText(/cargando control/i)).not.toBeInTheDocument();
+  });
+});
+
 describe("routeForCaso", () => {
   it("enruta EPT con deep-link por caso_id", () => {
     expect(routeForCaso("ept", 42)).toBe("/ept?caso=42");

@@ -51,13 +51,14 @@ const STYLE_MAP: Record<string, string> = {
 
 // ── date formatting ───────────────────────────────────────────────────────────
 
-function formatDate(iso: string | null | undefined): string {
+function formatDate(iso: string | null | undefined, timeZone?: string): string {
   if (!iso) return "—";
   try {
     return new Date(iso).toLocaleDateString("es-CL", {
       day: "2-digit",
       month: "short",
       year: "numeric",
+      timeZone,
     });
   } catch {
     return "—";
@@ -309,8 +310,13 @@ export function AlertsPanel() {
             a.caso_tipo && a.caso_id
               ? `${a.caso_tipo} #${a.caso_id}`
               : "—";
+          // En licencia/receta de un control, plazo_objetivo es la fecha del control a medianoche
+          // UTC: en hora local de Chile caería el día anterior.
+          const esDeControl = a.tipo === "licencia_en_control" || a.tipo === "receta_en_control";
           const meta = a.plazo_objetivo
-            ? `Plazo: ${formatDate(a.plazo_objetivo)}`
+            ? esDeControl
+              ? `Control: ${formatDate(a.plazo_objetivo, "UTC")}`
+              : `Plazo: ${formatDate(a.plazo_objetivo)}`
             : formatDate(a.generada_en);
 
           return (

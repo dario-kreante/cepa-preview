@@ -20,7 +20,7 @@ interface Props {
 /** El control de una alerta de licencia o receta, con sus documentos de SALUTEM. */
 export function DocumentosAlertaDialog({ titulo, controlId, onOpenChange }: Props) {
   const navigate = useNavigate();
-  const { data: control, isLoading } = useControl(controlId ?? 0);
+  const { data: control, isLoading, isError } = useControl(controlId ?? 0);
 
   return (
     <Dialog open={controlId !== null} onOpenChange={onOpenChange}>
@@ -31,7 +31,11 @@ export function DocumentosAlertaDialog({ titulo, controlId, onOpenChange }: Prop
             Revisa la indicación del médico y los documentos que subió a SALUTEM.
           </DialogDescription>
         </DialogHeader>
-        {isLoading || !control ? (
+        {isError ? (
+          <p className="text-[13px] text-destructive">
+            No se encontró el control (pudo ser anulado en SALUTEM).
+          </p>
+        ) : isLoading || !control ? (
           <p className="text-[13px] text-muted-foreground">Cargando control…</p>
         ) : (
           <div className="space-y-3 text-[13px]">
