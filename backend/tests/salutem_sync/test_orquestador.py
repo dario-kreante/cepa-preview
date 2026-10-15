@@ -9,6 +9,7 @@ from app.models.ingreso import Ingreso
 from app.models.paciente import Paciente
 from app.models.salutem_sync import SalutemSyncEjecucion, SalutemSyncLease
 from app.services.salutem_sync import orquestador
+from app.services.salutem_sync.archivos import ResultadoArchivos
 from app.services.salutem_sync.lease import tomar_lease
 from app.services.salutem_sync.orquestador import Opciones, correr
 from app.services.salutem_sync.vinculacion import ResultadoVinculacion
@@ -160,3 +161,23 @@ def test_un_modo_manual_omitido_por_lease_lo_informa_en_el_codigo_de_salida(db_s
     codigo = correr("vincular", db_session, SalutemStubClient(), ritmo, ahora=lambda: AHORA, habilitado=True)
 
     assert codigo == orquestador.OMITIDO
+
+
+def test_caliente_copia_la_biblioteca_despues_de_vincular(db_session, salutem, ritmo, monkeypatch):
+    llamadas = []
+    monkeypatch.setattr(
+        "app.services.salutem_sync.orquestador.refrescar_archivos",
+        lambda db, cliente, ritmo, ahora: llamadas.append(ahora) or ResultadoArchivos(),
+    )
+    assert _correr(db_session, salutem, ritmo, modo="caliente") == 0
+    assert llamadas == [AHORA]
+
+
+def test_tibia_no_copia_la_biblioteca(db_session, salutem, ritmo, monkeypatch):
+    llamadas = []
+    monkeypatch.setattr(
+        "app.services.salutem_sync.orquestador.refrescar_archivos",
+        lambda *a: llamadas.append(a) or ResultadoArchivos(),
+    )
+    assert _correr(db_session, salutem, ritmo, modo="tibia") == 0
+    assert llamadas == []

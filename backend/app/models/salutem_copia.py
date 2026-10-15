@@ -55,3 +55,19 @@ class SalutemAtencion(_RegistroCopia, Base):
     # Hash que la vinculación ya aplicó a ficha_clinica. Distinto de hash_contenido = pendiente.
     hash_vinculado: Mapped[str | None] = mapped_column(String(64), nullable=True)
     desaparecida_en: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class SalutemArchivo(Base):
+    """Metadata de un archivo de la biblioteca de SALUTEM. El contenido no se copia."""
+
+    __tablename__ = "salutem_archivo"
+
+    archivo_id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=False)
+    # Sin FK: como salutem_cita, puede llegar antes que su persona.
+    persona_id: Mapped[int] = mapped_column(BigInteger, nullable=False, index=True)
+    nombre: Mapped[str] = mapped_column(String(255), nullable=False)
+    tipo: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    # Hora de Chile, sin zona (como salutem_cita.fecha_creacion).
+    fecha_creacion: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
+    visto_ultima_vez: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    desaparecido_en: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
