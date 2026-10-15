@@ -18,8 +18,10 @@ from app.integrations.salutem.errors import (
     error_desde_codigo,
 )
 from app.integrations.salutem.models import (
+    ArchivoSalutem,
     AtencionSalutem,
     CitaSalutem,
+    ContenidoArchivo,
     EstadoCitaSalutem,
     PersonaSalutem,
     TipoFechaCita,
@@ -72,6 +74,14 @@ class SalutemStubClient:
         por: TipoFechaCita = TipoFechaCita.FECHA_CITA,
     ) -> list[CitaSalutem]:
         return []
+
+    def listar_archivos(self, salutem_id: int) -> list[ArchivoSalutem]:  # noqa: ARG002
+        return []
+
+    def obtener_archivo(  # noqa: ARG002
+        self, salutem_id: int, archivo_id: int
+    ) -> ContenidoArchivo | None:
+        return None
 
 
 class SalutemHttpClient:
@@ -174,6 +184,19 @@ class SalutemHttpClient:
             },
         )
         return [CitaSalutem.desde_api(x) for x in (r or [])]
+
+    def listar_archivos(self, salutem_id: int) -> list[ArchivoSalutem]:
+        r = self._get("personas-archivos", {"persona_id": str(salutem_id)})
+        return [ArchivoSalutem.desde_api(x, salutem_id) for x in (r or [])]
+
+    def obtener_archivo(
+        self, salutem_id: int, archivo_id: int
+    ) -> ContenidoArchivo | None:
+        r = self._get(
+            "personas-archivos",
+            {"persona_id": str(salutem_id), "archivo_id": str(archivo_id)},
+        )
+        return ContenidoArchivo.desde_api(r) if r else None
 
 
 _STUB_CLIENT: SalutemClientProtocol = SalutemStubClient()

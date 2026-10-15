@@ -4,6 +4,7 @@ Implementa `SalutemClientProtocol` con los mismos formatos crudos que la API
 real (claves camelCase, fechas como string) y registra cada llamada.
 """
 
+import base64
 from collections.abc import Callable
 from datetime import date
 
@@ -14,8 +15,10 @@ from app.integrations.salutem.errors import (
     SalutemUnavailableError,
 )
 from app.integrations.salutem.models import (
+    ArchivoSalutem,
     AtencionSalutem,
     CitaSalutem,
+    ContenidoArchivo,
     EstadoCitaSalutem,
     PersonaSalutem,
     TipoFechaCita,
@@ -40,6 +43,7 @@ class SalutemFalso:
         self.personas: dict[int, dict] = {}
         self.citas: dict[int, dict] = {}
         self.atenciones: dict[int, dict] = {}
+        self.archivos: dict[int, dict] = {}
         self.llamadas: list[tuple] = []
         # (dia, estado) que SALUTEM rechaza con SalutemRequestError.
         self.dias_con_error: set[tuple[date, int]] = set()
@@ -53,6 +57,7 @@ class SalutemFalso:
         # Días en los que SALUTEM está caído: cada llamada de ese día falla (p.ej. HTTP 504).
         self.dias_caidos: set[date] = set()
         self.personas_caidas: set[int] = set()
+        self.personas_archivos_caidas: set[int] = set()
         self.credencial_rechazada = False
         # Hook de prueba: se invoca al empezar `listar_citas`, después de `_registrar`.
         self.antes_de_listar: Callable[[date, int], None] | None = None
@@ -86,6 +91,26 @@ class SalutemFalso:
 
     def agregar_atencion(self, cita_id: int, **contenido) -> None:
         self.atenciones[cita_id] = {"anamnesis": "", **contenido}
+
+    def agregar_archivo(
+        self,
+        archivo_id: int,
+        persona_id: int,
+        nombre: str = "doc.pdf",
+        creado: str = "15-10-2026 16:29",
+        datos: bytes = b"%PDF-1.4 prueba",
+        tipo: str = "documento",
+    ) -> None:
+        self.archivos[archivo_id] = {
+            "id": archivo_id,
+            "personaId": persona_id,
+            "nombre": nombre,
+            "nombreOriginal": nombre,
+            "fechaCreacion": creado,
+            "tipo": tipo,
+            "descripcion": "",
+            "archivo_base64": base64.b64encode(datos).decode(),
+        }
 
     # ── Protocolo ──────────────────────────────────────────────────────────
     def _registrar(self, *llamada) -> None:
@@ -152,6 +177,23 @@ class SalutemFalso:
             for c in self.citas.values()
             if c[campo][:10] == dia.isoformat() and c["estadoCitaId"] == int(estado)
         ]
+
+    def listar_archivos(self, salutem_id: int) -> list[ArchivoSalutem]:
+        self._registrar("listar_archivos", salutem_id)
+        if salutem_id in self.personas_archivos_caidas:
+            raise SalutemUnavailableError("SALUTEM devolvió un cuerpo ilegible (HTTP 504)")
+        return [
+            ArchivoSalutem.desde_api(a, salutem_id)
+            for a in self.archivos.values()
+            if a["personaId"] == salutem_id
+        ]
+
+    def obtener_archivo(self, salutem_id: int, archivo_id: int) -> ContenidoArchivo | None:
+        self._registrar("obtener_archivo", salutem_id, archivo_id)
+        a = self.archivos.get(archivo_id)
+        if a is None or a["personaId"] != salutem_id:
+            return None
+        return ContenidoArchivo.desde_api(a)
 
     def llamadas_a(self, metodo: str) -> list[tuple]:
         return [ll for ll in self.llamadas if ll[0] == metodo]
