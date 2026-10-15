@@ -212,5 +212,10 @@ def contenido_archivo(
     return Response(
         content=contenido.datos,
         media_type=contenido.media_type,
-        headers={"Content-Disposition": f"inline; filename*=UTF-8''{quote(contenido.nombre)}"},
+        headers={
+            "Content-Disposition": f"inline; filename*=UTF-8''{quote(contenido.nombre)}",
+            # Contenido clínico: que no quede en cachés y que el navegador no adivine el tipo.
+            "Cache-Control": "no-store",
+            "X-Content-Type-Options": "nosniff",
+        },
     )

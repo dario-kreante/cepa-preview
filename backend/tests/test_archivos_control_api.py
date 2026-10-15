@@ -104,6 +104,9 @@ def test_el_contenido_se_pide_a_salutem_y_se_audita(as_admin, db_session, escena
     assert r.content == b"%PDF-1.6"
     assert r.headers["content-type"] == "application/pdf"
     assert r.headers["content-disposition"].startswith("inline;")
+    # Defensa en profundidad: contenido clínico, sin caché y sin que el navegador adivine el tipo.
+    assert r.headers["cache-control"] == "no-store"
+    assert r.headers["x-content-type-options"] == "nosniff"
     assert pedidos == [(PERSONA, 1)]
     auditoria = db_session.scalars(select(AuditLog).where(AuditLog.entity == "salutem_archivo")).all()
     assert [(a.action, a.entity_id) for a in auditoria] == [("READ", "1")]
