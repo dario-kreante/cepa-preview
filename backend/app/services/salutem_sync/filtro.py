@@ -5,8 +5,10 @@ from datetime import date
 from sqlalchemy import ColumnElement, and_, or_
 
 from app.integrations.salutem.models import (
+    ArchivoSalutem,
     AtencionSalutem,
     CitaSalutem,
+    ContenidoArchivo,
     EstadoCitaSalutem,
     PersonaSalutem,
     TipoFechaCita,
@@ -67,6 +69,16 @@ class ClientePersonasPermitidas:
         return [
             c for c in self._cliente.listar_citas(dia, estado, por) if c.persona_id in self._permitidas
         ]
+
+    def listar_archivos(self, salutem_id: int) -> list[ArchivoSalutem]:
+        if salutem_id not in self._permitidas:
+            return []
+        return self._cliente.listar_archivos(salutem_id)
+
+    def obtener_archivo(self, salutem_id: int, archivo_id: int) -> ContenidoArchivo | None:
+        if salutem_id not in self._permitidas:
+            return None
+        return self._cliente.obtener_archivo(salutem_id, archivo_id)
 
 
 def envolver_si_corresponde(
