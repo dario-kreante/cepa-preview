@@ -21,7 +21,7 @@ from app.models.control_medico import ControlMedico
 from app.services.alertas import _resolver_usuario
 from app.services.config_alertas import cargar_ventanas
 
-ACTOR = "salutem-sync"
+ACTOR = "sistema:salutem-sync"  # el mismo de controles.py y vinculacion.py
 CASO_TIPO = "control_medico"
 DIAS_NOVEDAD = 14
 TIPOS = (TipoAlerta.LICENCIA_EN_CONTROL.value, TipoAlerta.RECETA_EN_CONTROL.value)

@@ -143,3 +143,43 @@ def test_al_anularse_la_atencion_sus_alertas_quedan_resueltas(db_session):
     [a] = _alertas(db_session)
     assert a.estado == "resuelta"
     assert a.resuelta_en is not None
+
+
+def test_revincular_todo_sin_cambios_no_genera_alertas(db_session):
+    """Desplegar y correr `fria` no debe alertar controles recientes que ya existían."""
+    _ingreso(db_session)
+    _atencion(db_session, 7007, **LICENCIA, **RECETA)
+    vincular(db_session, AHORA)
+    for a in _alertas(db_session):  # simula el estado previo al despliegue de la función
+        db_session.delete(a)
+    db_session.flush()
+
+    vincular(db_session, AHORA, todo=True)
+
+    assert _alertas(db_session) == []
+
+
+def test_si_la_atencion_cambia_un_control_existente_sin_alerta_si_alerta(db_session):
+    _ingreso(db_session)
+    _atencion(db_session, 7008, **LICENCIA)
+    vincular(db_session, AHORA)
+    for a in _alertas(db_session):
+        db_session.delete(a)
+    db_session.flush()
+    _atencion(db_session, 7008, **LICENCIA, evolucionTratamiento=[{"nombre": "E", "registro": "cambio"}])
+
+    vincular(db_session, AHORA, todo=True)
+
+    assert [a.tipo for a in _alertas(db_session)] == ["licencia_en_control"]
+
+
+def test_el_actor_de_la_alerta_es_el_mismo_del_resto_del_sync(db_session):
+    from app.models.audit_log import AuditLog  # noqa: PLC0415
+
+    _ingreso(db_session)
+    _atencion(db_session, 7009, **LICENCIA)
+
+    vincular(db_session, AHORA)
+
+    actores = set(db_session.scalars(select(AuditLog.actor).where(AuditLog.entity == "alerta_notif")))
+    assert actores == {"sistema:salutem-sync"}

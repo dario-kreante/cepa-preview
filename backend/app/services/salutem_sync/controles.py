@@ -45,9 +45,8 @@ from app.integrations.salutem.models import EstadoCitaSalutem
 from app.models.control_medico import ControlMedico
 from app.models.ingreso import Ingreso
 from app.models.salutem_copia import SalutemAtencion, SalutemCita
-from app.services.salutem_sync.alertas_control import alertar_control, resolver_alertas_control
+from app.services.salutem_sync.alertas_control import ACTOR, alertar_control, resolver_alertas_control
 
-ACTOR = "sistema:salutem-sync"
 ORIGEN = "SALUTEM"
 ATENDIDO = int(EstadoCitaSalutem.ATENDIDO)
 # Una cita anulada o a la que no asistió no es un próximo control.
@@ -69,7 +68,9 @@ def es_control(atencion: SalutemAtencion) -> bool:
     )
 
 
-def sincronizar_control(db: Session, atencion: SalutemAtencion, ingreso: Ingreso, *, hoy: date) -> None:
+def sincronizar_control(
+    db: Session, atencion: SalutemAtencion, ingreso: Ingreso, *, hoy: date, cambio: bool = True
+) -> None:
     """Crea, actualiza o elimina el control del ingreso que corresponde a esta atención.
 
     Si la atención deja de ser control (se anuló, desapareció o no es de Médico/a) su
@@ -89,6 +90,7 @@ def sincronizar_control(db: Session, atencion: SalutemAtencion, ingreso: Ingreso
             db.flush()
         return
     campos = _campos(db, atencion, ingreso)
+    creado = control is None
     if control is None:
         control = ControlMedico(ingreso_id=ingreso.id, origen=ORIGEN, salutem_cita_id=atencion.cita_id, **campos)
         db.add(control)
@@ -99,7 +101,8 @@ def sincronizar_control(db: Session, atencion: SalutemAtencion, ingreso: Ingreso
             setattr(control, k, v)
         db.flush()
         record_audit(db, actor=ACTOR, action="UPDATE", entity="control_medico", entity_id=str(control.id))
-    alertar_control(db, control, atencion.contenido, hoy)
+    if creado or cambio:
+        alertar_control(db, control, atencion.contenido, hoy)
 
 
 def _campos(db: Session, atencion: SalutemAtencion, ingreso: Ingreso) -> dict[str, Any]:

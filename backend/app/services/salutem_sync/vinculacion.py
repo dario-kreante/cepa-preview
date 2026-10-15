@@ -94,10 +94,13 @@ def vincular(
                 # Consulta explícita y no `paciente.ingresos`: con expire_on_commit=False la
                 # colección cargada en una vinculación anterior no vería un ingreso nuevo.
                 ingresos = db.scalars(select(Ingreso).where(Ingreso.paciente_id == paciente_id)).all()
+                # Se evalúa antes de actualizar hash_vinculado (abajo): solo una atención nueva o
+                # modificada puede alertar; re-vincular todo (fría, backfill) no debe.
+                cambio = atencion.hash_vinculado != atencion.hash_contenido
                 for ingreso in ingresos:
                     if _en_ventana_del_ingreso(atencion.fecha_cita, ingreso):
                         _aplicar(db, atencion, ingreso, ahora, parcial)
-                        sincronizar_control(db, atencion, ingreso, hoy=hoy_en_santiago(ahora))
+                        sincronizar_control(db, atencion, ingreso, hoy=hoy_en_santiago(ahora), cambio=cambio)
                 atencion.hash_vinculado = atencion.hash_contenido
             resultado.sumar(parcial)
         except Exception as e:  # noqa: BLE001 — una atención mala no debe frenar al resto
