@@ -28,10 +28,10 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("archivo_id"),
     )
     op.create_index("ix_salutem_archivo_persona_id", "salutem_archivo", ["persona_id"])
-    op.create_index("ix_salutem_archivo_fecha_creacion", "salutem_archivo", ["fecha_creacion"])
+    op.create_index("ix_salutem_archivo_fecha", "salutem_archivo", ["fecha_creacion"])
 
 
 def downgrade() -> None:
-    op.drop_index("ix_salutem_archivo_fecha_creacion", table_name="salutem_archivo")
+    op.drop_index("ix_salutem_archivo_fecha", table_name="salutem_archivo")
     op.drop_index("ix_salutem_archivo_persona_id", table_name="salutem_archivo")
     op.drop_table("salutem_archivo")

@@ -93,3 +93,18 @@ def test_no_rompe_con_cita_id_no_convertible_a_entero(db_session, ingreso_fixtur
     db_session.expire_all()
 
     assert db_session.get(FichaClinica, cita_id_invalido.id).salutem_cita_id is None
+
+
+def test_los_indices_de_la_copia_respetan_el_limite_de_30_caracteres_de_oracle():
+    """Oracle 19c rechaza identificadores de más de 30 bytes (D15), y Postgres no avisa."""
+    from app.db.base import Base  # noqa: PLC0415
+
+    nombres = [ix.name for t in Base.metadata.tables.values() if t.name.startswith("salutem_")
+               for ix in t.indexes if ix.name]
+    assert [n for n in nombres if len(n) > 30] == []
+
+
+def test_la_migracion_1320_crea_el_indice_de_fecha_con_nombre_corto():
+    fuente = (Path(__file__).parents[2] / "migrations" / "versions" / "1320_salutem_archivo.py").read_text()
+    assert "ix_salutem_archivo_fecha_creacion" not in fuente
+    assert fuente.count('"ix_salutem_archivo_fecha"') == 2  # create_index y drop_index

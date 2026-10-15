@@ -8,7 +8,7 @@ vinculación (services/salutem_sync/vinculacion.py) las pasa a ficha_clinica.
 
 from datetime import date, datetime
 
-from sqlalchemy import BigInteger, Date, DateTime, Integer, String
+from sqlalchemy import BigInteger, Date, DateTime, Index, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -61,6 +61,8 @@ class SalutemArchivo(Base):
     """Metadata de un archivo de la biblioteca de SALUTEM. El contenido no se copia."""
 
     __tablename__ = "salutem_archivo"
+    # Nombre explícito: el automático (`ix_salutem_archivo_fecha_creacion`) pasa de 30 en Oracle.
+    __table_args__ = (Index("ix_salutem_archivo_fecha", "fecha_creacion"),)
 
     archivo_id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=False)
     # Sin FK: como salutem_cita, puede llegar antes que su persona.
@@ -68,6 +70,6 @@ class SalutemArchivo(Base):
     nombre: Mapped[str] = mapped_column(String(255), nullable=False)
     tipo: Mapped[str | None] = mapped_column(String(30), nullable=True)
     # Hora de Chile, sin zona (como salutem_cita.fecha_creacion).
-    fecha_creacion: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
+    fecha_creacion: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     visto_ultima_vez: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     desaparecido_en: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
