@@ -135,3 +135,15 @@ Hecha el 2026-09-16 contra `qa.salutem.cl`, empresa 96, con una BD Postgres loca
 Hallazgo corregido: el aviso de "atenciones anteriores" comparaba contra el primer día con citas y no se emitía si el rango barrido no tenía ninguna (caso de este backfill). Ahora compara contra el primer día barrido.
 
 Estimaciones para producción: la API responde ~0,5–0,6 s por llamada, así que el ritmo real ronda 1,8 llamadas/s aunque el límite configurado sea 2. En QA los datos llegan hasta 2026-01-21, más de 7 meses sin citas: en producción conviene revisar el log del backfill por si se detiene antes de la historia real, y apoyarse en la verificación por persona.
+
+## Biblioteca de archivos y alertas de licencia/receta (2026-10)
+
+- El ciclo `caliente`, después de vincular, lista `/personas-archivos` de las personas con un
+  control de los últimos 7 días y guarda solo la metadata en `salutem_archivo` (migración 1320).
+  El contenido nunca se copia: el botón "Ver" lo pide a SALUTEM al abrirlo.
+- La vinculación crea las alertas `licencia_en_control` y `receta_en_control` (una por control y
+  tipo; solo controles de los últimos 14 días). Se apagan en `/config-alertas`.
+- La API de SALUTEM no informa carpeta ni cita del archivo: se unen al control por fecha.
+- En QA los archivos antiguos llegan con `archivo_base64` vacío; los subidos recientemente sí traen
+  contenido.
+- Despliegue: aplicar la migración (`alembic upgrade head`) antes de reiniciar la API y el cron.
