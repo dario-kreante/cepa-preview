@@ -1,7 +1,7 @@
 import { FileText } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { abrirArchivoDeControl } from "./api";
+import { PestanaBloqueadaError, abrirArchivoDeControl } from "./api";
 import { useArchivosDeControl } from "./hooks";
 
 function fmtFechaHora(iso: string | null | undefined): string {
@@ -13,17 +13,20 @@ function fmtFechaHora(iso: string | null | undefined): string {
 
 interface Props {
   controlId: number;
-  tieneLicencia: boolean;
 }
 
 /** Documentos que el médico subió a la biblioteca de SALUTEM para este control. */
-export function DocumentosSalutem({ controlId, tieneLicencia }: Props) {
+export function DocumentosSalutem({ controlId }: Props) {
   const { data: archivos = [], isLoading, isError } = useArchivosDeControl(controlId);
 
-  const ver = async (archivoId: number) => {
+  const ver = async (archivoId: number, nombre: string) => {
     try {
-      await abrirArchivoDeControl(controlId, archivoId);
-    } catch {
+      await abrirArchivoDeControl(controlId, archivoId, nombre);
+    } catch (e) {
+      if (e instanceof PestanaBloqueadaError) {
+        toast.error("El navegador bloqueó la pestaña nueva. Permite ventanas emergentes para este sitio.");
+        return;
+      }
       toast.error("No se pudo abrir el documento. SALUTEM no lo entregó; ábrelo directamente en SALUTEM.");
     }
   };
@@ -39,9 +42,7 @@ export function DocumentosSalutem({ controlId, tieneLicencia }: Props) {
         <p className="text-[13px] text-destructive">No se pudieron cargar los documentos de SALUTEM.</p>
       ) : archivos.length === 0 ? (
         <p className="text-[13px] text-muted-foreground">
-          {tieneLicencia
-            ? "Sin documentos en la biblioteca de SALUTEM para este control."
-            : "Sin documentos para este control."}
+          Sin documentos en la biblioteca de SALUTEM para este control.
         </p>
       ) : (
         <ul className="space-y-1">
@@ -58,7 +59,7 @@ export function DocumentosSalutem({ controlId, tieneLicencia }: Props) {
                 size="sm"
                 className="ml-auto h-7"
                 aria-label={`Ver ${a.nombre}`}
-                onClick={() => ver(a.archivo_id)}
+                onClick={() => ver(a.archivo_id, a.nombre)}
               >
                 Ver
               </Button>

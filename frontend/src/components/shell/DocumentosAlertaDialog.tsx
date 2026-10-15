@@ -42,7 +42,7 @@ export function DocumentosAlertaDialog({ titulo, controlId, onOpenChange }: Prop
             {control.resumen_termino_lm && (
               <p className="rounded-md bg-muted/40 p-2">{control.resumen_termino_lm}</p>
             )}
-            <DocumentosSalutem controlId={control.id} tieneLicencia={control.tiene_licencia} />
+            <DocumentosSalutem controlId={control.id} />
           </div>
         )}
         <DialogFooter>

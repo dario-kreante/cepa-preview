@@ -226,7 +226,7 @@ function ControlRow({ control, ingresoId, canWrite, columnas }: ControlRowProps)
               </div>
               {control.origen === "SALUTEM" && (
                 <div className="sm:col-span-3">
-                  <DocumentosSalutem controlId={control.id} tieneLicencia={control.tiene_licencia} />
+                  <DocumentosSalutem controlId={control.id} />
                 </div>
               )}
             </dl>
