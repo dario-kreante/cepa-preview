@@ -147,3 +147,9 @@ Estimaciones para producción: la API responde ~0,5–0,6 s por llamada, así qu
 - En QA los archivos antiguos llegan con `archivo_base64` vacío; los subidos recientemente sí traen
   contenido.
 - Despliegue: aplicar la migración (`alembic upgrade head`) antes de reiniciar la API y el cron.
+- La migración 1320 crea `salutem_archivo` con los índices `ix_salutem_archivo_persona_id` y
+  `ix_salutem_archivo_fecha` (Oracle limita los identificadores a 30 caracteres).
+- Las alertas solo salen cuando el control se crea o su atención cambia: la primera `fria` tras el
+  despliegue no genera alertas de controles que ya existían y no cambiaron.
+- Orden recomendado: correr `alembic upgrade head` primero en la Oracle de QA (segicepa-qa, BD
+  CEPAQA) y recién después en dev y prod.
