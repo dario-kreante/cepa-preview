@@ -1,0 +1,145 @@
+"""Alertas de licencia y receta emitidas en un control creado desde SALUTEM.
+
+El fixture AHORA es 2026-09-16 (Santiago): las atenciones recientes van el 2026-09-10.
+"""
+
+from datetime import date, timezone
+
+from sqlalchemy import select
+
+from app.integrations.salutem.models import AtencionSalutem, EstadoCitaSalutem, PersonaSalutem
+from app.models.alertas import AlertaNotif
+from app.models.config_alerta import ConfigAlerta
+from app.models.control_medico import ControlMedico
+from app.models.ingreso import Ingreso
+from app.models.paciente import Paciente
+from app.services.salutem_sync import copia
+from app.services.salutem_sync.vinculacion import vincular
+from tests.salutem_sync.conftest import AHORA
+
+PERSONA = 1216099
+ATENDIDO = int(EstadoCitaSalutem.ATENDIDO)
+LICENCIA = {"antecedentes": [{"agrupacion": "", "nombre": "Indicación de reposo",
+                              "registro": "Se extiende LM tipo 6 por 30 días"}]}
+RECETA = {"indicaciones": [{"tipo": "Receta Medicamentos", "nombre": "Receta",
+                            "registro": "Sertralina 50 mg (comprimido)\r\n 1 comprimido al día"}]}
+CERTIFICADO = {"indicaciones": [{"tipo": "Documento", "nombre": "Documentos",
+                                 "registro": "quien debe permanecer en reposo desde el 10-09-2026"}]}
+
+
+def _ingreso(db) -> Ingreso:
+    paciente = Paciente(rut="390000099", nombre="Paciente Alerta", sexo="F", edad=40,
+                        region="Maule", salutem_persona_id=PERSONA)
+    db.add(paciente)
+    db.flush()
+    ingreso = Ingreso(paciente_id=paciente.id, folio="F-2026-0099", folio_manual=True,
+                      fecha_ingreso=date(2026, 8, 1), tipo_derivacion="DIEP", tipo_ingreso="convenio",
+                      modelo_tratamiento="ambulatorio", diagnostico="prueba", estado="activo")
+    db.add(ingreso)
+    db.flush()
+    copia.guardar_persona(db, PersonaSalutem.desde_api({"SALUTEM_ID": PERSONA, "identificacion": "390000099"}), AHORA)
+    return ingreso
+
+
+def _atencion(db, cita_id, fecha="2026-09-10", estado=ATENDIDO, **contenido):
+    copia.guardar_atencion(db, AtencionSalutem.desde_api({
+        "personaId": PERSONA, "citaId": cita_id, "citaFecha": fecha, "estadoCitaId": estado,
+        "estadoCitaNombre": "Atendido", "especialidadNombre": "Médico/a",
+        "profesionalNombre": "DRA. PAULA ROJAS", **contenido,
+    }), AHORA)
+
+
+def _alertas(db) -> list[AlertaNotif]:
+    return list(db.scalars(select(AlertaNotif).order_by(AlertaNotif.tipo)))
+
+
+def test_control_nuevo_con_licencia_y_receta_crea_una_alerta_de_cada_tipo(db_session):
+    _ingreso(db_session)
+    _atencion(db_session, 7001, **LICENCIA, **RECETA)
+
+    vincular(db_session, AHORA)
+
+    [control] = db_session.scalars(select(ControlMedico)).all()
+    alertas = _alertas(db_session)
+    assert [a.tipo for a in alertas] == ["licencia_en_control", "receta_en_control"]
+    for a in alertas:
+        assert (a.caso_tipo, a.caso_id, a.estado, a.ventana_dias) == ("control_medico", control.id, "pendiente", 0)
+        assert a.plazo_objetivo.astimezone(timezone.utc).date() == date(2026, 9, 10)
+
+
+def test_el_certificado_de_reposo_alerta_licencia(db_session):
+    _ingreso(db_session)
+    _atencion(db_session, 7002, **CERTIFICADO)
+
+    vincular(db_session, AHORA)
+
+    assert [a.tipo for a in _alertas(db_session)] == ["licencia_en_control"]
+
+
+def test_control_sin_licencia_ni_receta_no_alerta(db_session):
+    _ingreso(db_session)
+    _atencion(db_session, 7003)
+
+    vincular(db_session, AHORA)
+
+    assert _alertas(db_session) == []
+
+
+def test_al_cambiar_la_atencion_no_se_duplica_la_alerta(db_session):
+    _ingreso(db_session)
+    _atencion(db_session, 7004, **LICENCIA)
+    vincular(db_session, AHORA)
+    _atencion(db_session, 7004, **LICENCIA, evolucionTratamiento=[{"nombre": "E", "registro": "cambio"}])
+
+    vincular(db_session, AHORA)
+
+    assert len(_alertas(db_session)) == 1
+
+
+def test_una_alerta_resuelta_no_reaparece(db_session):
+    _ingreso(db_session)
+    _atencion(db_session, 7005, **LICENCIA)
+    vincular(db_session, AHORA)
+    [a] = _alertas(db_session)
+    a.estado = "resuelta"
+    db_session.flush()
+    _atencion(db_session, 7005, **LICENCIA, evolucionTratamiento=[{"nombre": "E", "registro": "cambio"}])
+
+    vincular(db_session, AHORA)
+
+    assert [x.estado for x in _alertas(db_session)] == ["resuelta"]
+
+
+def test_un_control_antiguo_no_alerta(db_session):
+    """Una re-vinculación completa no debe inundar de alertas por controles viejos."""
+    _ingreso(db_session)
+    _atencion(db_session, 7006, fecha="2026-08-20", **LICENCIA)  # 27 días antes de AHORA
+
+    vincular(db_session, AHORA, todo=True)
+
+    assert db_session.scalars(select(ControlMedico)).first() is not None
+    assert _alertas(db_session) == []
+
+
+def test_tipo_apagado_en_la_configuracion_no_alerta(db_session):
+    _ingreso(db_session)
+    db_session.add(ConfigAlerta(tipo="receta_en_control", dias=0, habiles=False, activo=False))
+    db_session.flush()
+    _atencion(db_session, 7007, **LICENCIA, **RECETA)
+
+    vincular(db_session, AHORA)
+
+    assert [a.tipo for a in _alertas(db_session)] == ["licencia_en_control"]
+
+
+def test_al_anularse_la_atencion_sus_alertas_quedan_resueltas(db_session):
+    _ingreso(db_session)
+    _atencion(db_session, 7008, **LICENCIA)
+    vincular(db_session, AHORA)
+    _atencion(db_session, 7008, estado=int(EstadoCitaSalutem.ANULADO), **LICENCIA)
+
+    vincular(db_session, AHORA)
+
+    [a] = _alertas(db_session)
+    assert a.estado == "resuelta"
+    assert a.resuelta_en is not None

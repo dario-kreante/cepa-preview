@@ -45,6 +45,7 @@ from app.integrations.salutem.models import EstadoCitaSalutem
 from app.models.control_medico import ControlMedico
 from app.models.ingreso import Ingreso
 from app.models.salutem_copia import SalutemAtencion, SalutemCita
+from app.services.salutem_sync.alertas_control import alertar_control, resolver_alertas_control
 
 ACTOR = "sistema:salutem-sync"
 ORIGEN = "SALUTEM"
@@ -68,11 +69,12 @@ def es_control(atencion: SalutemAtencion) -> bool:
     )
 
 
-def sincronizar_control(db: Session, atencion: SalutemAtencion, ingreso: Ingreso) -> None:
+def sincronizar_control(db: Session, atencion: SalutemAtencion, ingreso: Ingreso, *, hoy: date) -> None:
     """Crea, actualiza o elimina el control del ingreso que corresponde a esta atención.
 
     Si la atención deja de ser control (se anuló, desapareció o no es de Médico/a) su
-    control se elimina, salvo que el CEPA ya le haya registrado la RECA.
+    control se elimina, salvo que el CEPA ya le haya registrado la RECA. Al crear o
+    actualizar, alerta si el médico emitió una licencia o una receta.
     """
     control = db.scalars(
         select(ControlMedico)
@@ -81,6 +83,7 @@ def sincronizar_control(db: Session, atencion: SalutemAtencion, ingreso: Ingreso
     ).first()
     if not es_control(atencion):
         if control is not None and control.origen == ORIGEN and control.estado_reca is None:
+            resolver_alertas_control(db, control.id)
             record_audit(db, actor=ACTOR, action="DELETE", entity="control_medico", entity_id=str(control.id))
             db.delete(control)
             db.flush()
@@ -91,12 +94,12 @@ def sincronizar_control(db: Session, atencion: SalutemAtencion, ingreso: Ingreso
         db.add(control)
         db.flush()
         record_audit(db, actor=ACTOR, action="CREATE", entity="control_medico", entity_id=str(control.id))
-        return
-    if any(getattr(control, k) != v for k, v in campos.items()):
+    elif any(getattr(control, k) != v for k, v in campos.items()):
         for k, v in campos.items():
             setattr(control, k, v)
         db.flush()
         record_audit(db, actor=ACTOR, action="UPDATE", entity="control_medico", entity_id=str(control.id))
+    alertar_control(db, control, atencion.contenido, hoy)
 
 
 def _campos(db: Session, atencion: SalutemAtencion, ingreso: Ingreso) -> dict[str, Any]:

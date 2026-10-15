@@ -20,6 +20,7 @@ from app.models.ingreso import Ingreso
 from app.models.paciente import Paciente
 from app.services.salutem_sync.controles import sincronizar_control
 from app.services.salutem_sync.filtro import cruce_con_paciente
+from app.services.salutem_sync.incremental import hoy_en_santiago
 from app.models.salutem_copia import SalutemAtencion, SalutemPersona
 from app.services.ficha_clinica import _en_ventana_del_ingreso
 from app.services.salutem_sync.tipos import a_utc
@@ -96,7 +97,7 @@ def vincular(
                 for ingreso in ingresos:
                     if _en_ventana_del_ingreso(atencion.fecha_cita, ingreso):
                         _aplicar(db, atencion, ingreso, ahora, parcial)
-                        sincronizar_control(db, atencion, ingreso)
+                        sincronizar_control(db, atencion, ingreso, hoy=hoy_en_santiago(ahora))
                 atencion.hash_vinculado = atencion.hash_contenido
             resultado.sumar(parcial)
         except Exception as e:  # noqa: BLE001 — una atención mala no debe frenar al resto
