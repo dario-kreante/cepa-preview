@@ -75,7 +75,7 @@ describe("DocumentosSalutem", () => {
       ),
       http.get(`${BASE}/api/v1/controles-medicos/5/archivos/1/contenido`, () => {
         pidio = true;
-        return new HttpResponse(new Blob(["%PDF-1.6"], { type: "application/pdf" }), {
+        return new HttpResponse("%PDF-1.6", {
           headers: { "Content-Type": "application/pdf" },
         });
       }),
@@ -98,7 +98,7 @@ describe("DocumentosSalutem", () => {
       ),
       http.get(`${BASE}/api/v1/controles-medicos/5/archivos/1/contenido`, () => {
         pidio = true;
-        return new HttpResponse(new Blob(["x"], { type: "application/pdf" }));
+        return new HttpResponse("x", { headers: { "Content-Type": "application/pdf" } });
       }),
     );
     renderizar({ controlId: 5 });
@@ -117,7 +117,7 @@ describe("DocumentosSalutem", () => {
         HttpResponse.json([{ archivo_id: 1, nombre: "pagina.html", tipo: "documento", fecha_creacion: "2026-10-15T16:29:00" }]),
       ),
       http.get(`${BASE}/api/v1/controles-medicos/5/archivos/1/contenido`, () =>
-        new HttpResponse(new Blob(["<script>1</script>"], { type: "text/html" }), {
+        new HttpResponse("<script>1</script>", {
           headers: { "Content-Type": "text/html" },
         }),
       ),
