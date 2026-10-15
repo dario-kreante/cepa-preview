@@ -7,21 +7,29 @@ Endpoints:
     PATCH  /api/v1/controles-medicos/{control_id}/proximo-control  → CEPA-061
     PATCH  /api/v1/controles-medicos/{control_id}/licencia         → CEPA-062
     PATCH  /api/v1/controles-medicos/{control_id}/evaluacion       → evaluación clínica
+    GET    /api/v1/controles-medicos/{control_id}/archivos         → documentos de SALUTEM del control
+    GET    /api/v1/controles-medicos/{control_id}/archivos/{archivo_id}/contenido → el archivo, bajo demanda
 """
 
-from fastapi import APIRouter, Depends, status
+from urllib.parse import quote
+
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
 from app.audit.service import record_audit
 from app.auth.deps import get_current_user, require_role
 from app.db.session import get_db
+from app.integrations.salutem.client import get_salutem_client
+from app.integrations.salutem.errors import SalutemError
 from app.schemas.control_medico import (
+    ArchivoControlRead,
     ControlMedicoCreate,
     ControlMedicoRead,
     EvaluacionUpdate,
     LicenciaUpdate,
     ProximoControlUpdate,
 )
+from app.services.archivos_control import archivos_de_control, persona_de_control
 from app.services.control_medico import (
     _get_control_o_404,
     actualizar_evaluacion,
@@ -165,3 +173,44 @@ def actualizar_evaluacion_endpoint(
     db.commit()
     db.refresh(control)
     return control
+
+
+# ── Documentos de la biblioteca de SALUTEM ───────────────────────────────────
+
+@router.get(
+    "/{control_id}/archivos",
+    response_model=list[ArchivoControlRead],
+    dependencies=[Depends(_reader)],
+)
+def listar_archivos(control_id: int, db: Session = Depends(get_db)) -> list[ArchivoControlRead]:
+    return archivos_de_control(db, _get_control_o_404(db, control_id))
+
+
+@router.get(
+    "/{control_id}/archivos/{archivo_id}/contenido",
+    response_class=Response,
+    dependencies=[Depends(_reader)],
+)
+def contenido_archivo(
+    control_id: int,
+    archivo_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+) -> Response:
+    """Pide el archivo a SALUTEM y lo entrega sin guardarlo (ni en BD ni en disco)."""
+    control = _get_control_o_404(db, control_id)
+    if archivo_id not in {a.archivo_id for a in archivos_de_control(db, control)}:
+        raise HTTPException(status_code=404, detail="El archivo no pertenece a este control")
+    try:
+        contenido = get_salutem_client().obtener_archivo(persona_de_control(db, control), archivo_id)
+    except SalutemError as e:
+        raise HTTPException(status_code=502, detail="SALUTEM no respondió") from e
+    if contenido is None:
+        raise HTTPException(status_code=404, detail="SALUTEM no entregó el contenido del archivo")
+    record_audit(db, actor=current_user.username, action="READ", entity="salutem_archivo", entity_id=str(archivo_id))
+    db.commit()
+    return Response(
+        content=contenido.datos,
+        media_type=contenido.media_type,
+        headers={"Content-Disposition": f"inline; filename*=UTF-8''{quote(contenido.nombre)}"},
+    )

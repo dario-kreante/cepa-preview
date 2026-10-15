@@ -7,7 +7,7 @@ Tres schemas de escritura independientes para alinear con las tres historias:
 - EvaluacionUpdate     → evaluación clínica de la ficha del CEPA
 """
 
-from datetime import date
+from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -147,3 +147,14 @@ class ControlMedicoRead(BaseModel):
     # "CEPA" = cargado en SIGE; "SALUTEM" = creado por el sync desde una atención.
     origen: str = "CEPA"
     salutem_cita_id: int | None = None
+
+
+class ArchivoControlRead(BaseModel):
+    """Un documento de la biblioteca de SALUTEM unido al control por fecha."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    archivo_id: int
+    nombre: str
+    tipo: str | None
+    fecha_creacion: datetime | None
