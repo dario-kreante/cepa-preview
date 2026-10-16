@@ -36,3 +36,4 @@ from app.models.salutem_sync import (  # noqa: F401
 )
 from app.models.config_alerta import ConfigAlerta, Festivo  # noqa: F401
 from app.models.gaf_tramo import GafTramo  # noqa: F401
+from app.models.profesional import Profesional  # noqa: F401

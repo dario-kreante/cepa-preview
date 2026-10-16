@@ -20,6 +20,7 @@ import { ReportesPage } from "@/features/reportes/ReportesPage";
 import { UsuariosPage } from "@/features/usuarios/UsuariosPage";
 import { ConfigFormulariosPage } from "@/features/config-formularios/ConfigFormulariosPage";
 import { VentanasProcesoPage } from "@/features/ventanas-proceso/VentanasProcesoPage";
+import { ProfesionalesPage } from "@/features/profesionales/ProfesionalesPage";
 import { ConfigAlertasPage } from "@/features/config-alertas/ConfigAlertasPage";
 import { PdfExtractPage } from "@/features/pdf-extract/PdfExtractPage";
 import { AyudaPage } from "@/features/ayuda/AyudaPage";
@@ -58,6 +59,7 @@ export function AppRoutes() {
           <Route path="/usuarios" element={<UsuariosPage />} />
           <Route path="/config-formularios" element={<ConfigFormulariosPage />} />
           <Route path="/ventanas-proceso" element={<VentanasProcesoPage />} />
+          <Route path="/profesionales" element={<ProfesionalesPage />} />
           <Route path="/config-alertas" element={<ConfigAlertasPage />} />
           <Route path="/lectura-pdf" element={<PdfExtractPage />} />
           <Route path="/configuracion" element={<ConfiguracionPage />} />
