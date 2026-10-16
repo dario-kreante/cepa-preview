@@ -150,6 +150,37 @@ describe("AlertsPanel: detalle de la alerta de control", () => {
   });
 });
 
+describe("AlertsPanel: alerta de inasistencia", () => {
+  it("muestra \"Inasistencia a cita\" con la fecha de la cita y abre la ficha del paciente", async () => {
+    tokenStore.setAccess(TOKENS.Coordinacion);
+    server.use(
+      http.get(`${BASE}/api/v1/alertas`, () =>
+        HttpResponse.json([
+          {
+            ...alertaLicencia(),
+            id: 7,
+            tipo: "inasistencia",
+            caso_tipo: "salutem_cita",
+            caso_id: 777001,
+            paciente_id: 42,
+          },
+        ]),
+      ),
+      http.get(`${BASE}/api/v1/tareas`, () => HttpResponse.json([])),
+    );
+    renderPanel();
+    expect(await screen.findByText("Inasistencia a cita")).toBeInTheDocument();
+    expect(screen.getByText("Cita SALUTEM #777001")).toBeInTheDocument();
+    expect(screen.getByText(/^Cita: 15 oct/i)).toBeInTheDocument();
+  });
+
+  it("tituloAlerta y routeForCaso conocen la inasistencia", () => {
+    expect(tituloAlerta("inasistencia")).toBe("Inasistencia a cita");
+    expect(routeForCaso("salutem_cita", 777001, 42)).toBe("/ingresos?paciente=42");
+    expect(routeForCaso("salutem_cita", 777001)).toBe("/ingresos");
+  });
+});
+
 describe("routeForCaso", () => {
   it("enruta EPT con deep-link por caso_id", () => {
     expect(routeForCaso("ept", 42)).toBe("/ept?caso=42");

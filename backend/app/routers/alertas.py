@@ -11,6 +11,8 @@ from app.auth.deps import get_current_user, require_role
 from app.db.session import get_db
 from app.domain.enums_alertas import EstadoAlerta
 from app.models.alertas import AlertaNotif
+from app.agendamiento.salutem import lotes
+from app.models.cita import Cita
 from app.models.ingreso import Ingreso
 from app.models.oda import Oda
 from app.schemas.alertas import AlertaRead, AlertaUpdate, JobResultado
@@ -82,7 +84,7 @@ def listar_alertas(
 
 
 def _pacientes_de_casos(db: Session, alertas: list[AlertaNotif]) -> dict[tuple[str, int], int]:
-    """Paciente de cada caso que cuelga de un ingreso (ODA, ingreso): una consulta por tipo."""
+    """Paciente de cada caso que cuelga de un ingreso (ODA, ingreso, cita de SALUTEM): una consulta por tipo."""
     odas = {a.caso_id for a in alertas if a.caso_tipo == "oda"}
     ingresos = {a.caso_id for a in alertas if a.caso_tipo == "ingreso"}
     pacientes: dict[tuple[str, int], int] = {}
@@ -96,6 +98,14 @@ def _pacientes_de_casos(db: Session, alertas: list[AlertaNotif]) -> dict[tuple[s
     if ingresos:
         filas = db.execute(select(Ingreso.id, Ingreso.paciente_id).where(Ingreso.id.in_(ingresos)))
         pacientes.update({("ingreso", ing_id): pid for ing_id, pid in filas})
+    citas_salutem = {a.caso_id for a in alertas if a.caso_tipo == "salutem_cita"}
+    for lote in lotes(citas_salutem):
+        filas = db.execute(
+            select(Cita.salutem_cita_id, Ingreso.paciente_id)
+            .join(Ingreso, Ingreso.id == Cita.ingreso_id)
+            .where(Cita.salutem_cita_id.in_(lote))
+        )
+        pacientes.update({("salutem_cita", cita_id): pid for cita_id, pid in filas})
     return pacientes
 
 

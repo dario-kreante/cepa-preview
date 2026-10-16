@@ -85,6 +85,7 @@ export const TITULOS_ALERTA: Record<string, string> = {
   licencia_en_control: "Licencia emitida en control",
   receta_en_control: "Receta emitida en control",
   paciente_pendiente_folio: "Paciente nuevo pendiente de folio",
+  inasistencia: "Inasistencia a cita",
 };
 
 /** Alertas de un control médico: al hacer clic abren sus documentos en un diálogo. */
@@ -106,6 +107,7 @@ export function tituloAlerta(tipo: string, casoTipo?: string | null): string {
 const ETIQUETAS_CASO: Record<string, string> = {
   control_medico: "Control",
   [CASO_ATENCION]: "Atención SALUTEM",
+  salutem_cita: "Cita SALUTEM",
   paciente: "Paciente",
 };
 
@@ -140,12 +142,15 @@ export function routeForCaso(
   pacienteId?: number | null,
 ): string {
   if (pacienteId && casoTipo === "oda") return `/ingresos?paciente=${pacienteId}&tab=odas`;
-  if (pacienteId && casoTipo === "ingreso") return `/ingresos?paciente=${pacienteId}`;
+  if (pacienteId && (casoTipo === "ingreso" || casoTipo === "salutem_cita"))
+    return `/ingresos?paciente=${pacienteId}`;
   switch (casoTipo) {
     case "ept":
       return casoId ? `/ept?caso=${casoId}` : "/ept";
     case "control_medico":
       return "/controles";
+    case "salutem_cita":
+      return "/ingresos";
     case "receta":
       return "/farmacos";
     case "licencia":
@@ -475,7 +480,9 @@ export function AlertsPanel({ onClose }: AlertsPanelProps = {}) {
           // UTC: en hora local de Chile caería el día anterior.
           const esDeControl = a.tipo === "licencia_en_control" || a.tipo === "receta_en_control";
           const meta = a.plazo_objetivo
-            ? esDeControl
+            ? a.tipo === "inasistencia"
+              ? `Cita: ${formatDate(a.plazo_objetivo, "UTC")}`
+            : esDeControl
               ? `${a.caso_tipo === CASO_ATENCION ? "Atención" : "Control"}: ${formatDate(a.plazo_objetivo, "UTC")}`
               : `Plazo: ${formatDate(a.plazo_objetivo)}`
             : formatDate(a.generada_en);
