@@ -740,6 +740,9 @@ def crear_caso_reintegro(db, ingreso: Ingreso, paciente: Paciente):
 # Plan de tratamiento + citas
 # ─────────────────────────────────────────────────────────────────────────────
 
+_SEED_CITA_ID = [0]
+
+
 def crear_plan_y_citas(db, ingreso: Ingreso):
     if random.random() < 0.7:
         db.add(PlanTratamiento(
@@ -757,7 +760,12 @@ def crear_plan_y_citas(db, ingreso: Ingreso):
         estado = "agendada" if fecha_cursor > HOY else pick_weighted(
             [("realizada", 70), ("inasistencia", 20), ("anulada", 10)]
         )
-        db.add(Cita(ingreso_id=ingreso.id, estado=estado, fecha=fecha_cursor))
+        # Ids ficticios y negativos: no chocan con los de SALUTEM, que son positivos.
+        _SEED_CITA_ID[0] -= 1
+        db.add(Cita(
+            ingreso_id=ingreso.id, estado=estado, fecha=fecha_cursor,
+            origen="SALUTEM", salutem_cita_id=_SEED_CITA_ID[0],
+        ))
 
 
 # ─────────────────────────────────────────────────────────────────────────────

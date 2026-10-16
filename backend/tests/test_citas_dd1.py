@@ -45,7 +45,7 @@ def paciente_con_ingreso(db_session):
 def cita_agendada(db_session, paciente_con_ingreso):
     """Cita en estado 'agendada' directamente en tabla de hechos."""
     ing = paciente_con_ingreso["ingreso"]
-    c = Cita(origen="SALUTEM", ingreso_id=ing.id, estado="agendada", fecha=date(2026, 3, 10))
+    c = Cita(origen="SIGE", ingreso_id=ing.id, estado="agendada", fecha=date(2026, 3, 10))
     db_session.add(c)
     db_session.commit()
     return c
@@ -81,9 +81,30 @@ def test_patch_estado_transicion_invalida_409(as_coordinacion, cita_agendada):
     assert resp.status_code == 409
 
 
+def test_patch_estado_cita_salutem_409(as_coordinacion, cita_agendada, db_session):
+    cita_agendada.origen = "SALUTEM"
+    db_session.commit()
+    resp = as_coordinacion.patch(
+        f"/api/v1/citas/{cita_agendada.id}/estado", json={"estado": "realizada"}
+    )
+    assert resp.status_code == 409
+    assert resp.json()["detail"] == "El estado de esta cita lo informa SALUTEM"
+    db_session.refresh(cita_agendada)
+    assert cita_agendada.estado == "agendada"
+
+
+def test_patch_estado_cita_sige_200(as_coordinacion, cita_agendada):
+    assert cita_agendada.origen == "SIGE"
+    resp = as_coordinacion.patch(
+        f"/api/v1/citas/{cita_agendada.id}/estado", json={"estado": "anulada"}
+    )
+    assert resp.status_code == 200
+    assert resp.json()["estado"] == "anulada"
+
+
 # ── TC-DD1-04: integración Cita agendada→PATCH→reporte ───────────────────────
 
-def test_integracion_cita_realizada_reporte(as_coordinacion, cita_agendada):
+def test_integracion_cita_realizada_reporte(as_coordinacion, cita_agendada, db_session):
     """Transiciona una Cita agendada a 'realizada' vía PATCH y verifica que el reporte operativo
     la contabiliza."""
     resp = as_coordinacion.patch(
@@ -91,6 +112,10 @@ def test_integracion_cita_realizada_reporte(as_coordinacion, cita_agendada):
         json={"estado": "realizada"},
     )
     assert resp.status_code == 200
+
+    # Los reportes solo cuentan citas SALUTEM: la cita pasa a ser de ese origen.
+    db_session.get(Cita, cita_agendada.id).origen = "SALUTEM"
+    db_session.commit()
 
     # Reporte operativo: debe contar esa cita (fecha 2026-03-10)
     resp_rep = as_coordinacion.get("/api/v1/reportes/operativo", params={

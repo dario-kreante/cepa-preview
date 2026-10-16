@@ -6,6 +6,7 @@ from app.integrations.salutem.client import SalutemStubClient
 from app.integrations.salutem.models import EstadoCitaSalutem
 from app.models.ficha_clinica import FichaClinica
 from app.models.ingreso import Ingreso
+from app.models.cita import Cita
 from app.models.paciente import Paciente
 from app.models.salutem_sync import SalutemSyncEjecucion, SalutemSyncLease
 from app.services.salutem_sync import orquestador
@@ -198,3 +199,66 @@ def test_cada_modo_crea_borradores_despues_de_vincular(db_session, salutem, ritm
         assert _correr(db_session, salutem, ritmo, modo=modo) == 0
 
     assert llamadas == [AHORA, AHORA]
+
+
+def _paciente_con_ingreso(db, folio="F-ORQ-CIT"):
+    p = Paciente(rut="123456785", nombre="Orquestador citas", sexo="F", edad=33, region="Maule")
+    db.add(p)
+    db.flush()
+    db.add(
+        Ingreso(
+            paciente_id=p.id, folio=folio, folio_manual=True, fecha_ingreso=HOY - timedelta(days=60),
+            tipo_derivacion="DIAT", tipo_ingreso="convenio", modelo_tratamiento="ambulatorio",
+            diagnostico="orquestador", estado="activo",
+        )
+    )
+    db.flush()
+
+
+def _citas_salutem(db):
+    return db.scalars(select(Cita).where(Cita.salutem_cita_id.is_not(None))).all()
+
+
+def test_orquestador_corre_paso_de_citas(db_session, salutem, ritmo):
+    _paciente_con_ingreso(db_session)
+    salutem.agregar_persona(501, "12345678-5")
+    salutem.agregar_cita(9001, 501, HOY)
+
+    assert _correr(db_session, salutem, ritmo) == 0
+
+    (cita,) = _citas_salutem(db_session)
+    assert cita.salutem_cita_id == 9001
+    assert cita.origen == "SALUTEM"
+
+
+def test_orquestador_backfill_revisa_todo(db_session, salutem, ritmo, monkeypatch):
+    recibidos = []
+    real = orquestador.sincronizar_citas
+
+    def espiar(db, *, desde, ahora):
+        recibidos.append(desde)
+        return real(db, desde=desde, ahora=ahora)
+
+    monkeypatch.setattr(orquestador, "sincronizar_citas", espiar)
+    opciones = Opciones(desde=HOY - timedelta(days=1), verificar=False, dias_futuro=0)
+
+    assert _correr(db_session, salutem, ritmo, modo="backfill", opciones=opciones) == 0
+    assert recibidos == [None]
+
+    # Un modo incremental, con una ejecución previa exitosa, sí acota con `desde`.
+    assert _correr(db_session, salutem, ritmo) == 0
+    assert recibidos[0] is None and recibidos[1] is not None
+
+
+def test_fallo_en_citas_no_pierde_el_ciclo(db_session, salutem, ritmo, monkeypatch):
+    def explotar(*args, **kwargs):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(orquestador, "sincronizar_citas", explotar)
+
+    assert _correr(db_session, salutem, ritmo) == 0
+
+    (ejecucion,) = _ejecuciones(db_session, "caliente")
+    assert ejecucion.estado == "con_errores"
+    assert "citas: RuntimeError: boom" in ejecucion.error
+    assert db_session.get(SalutemSyncLease, "salutem").dueno is None
