@@ -24,10 +24,18 @@ def listar_pendientes(db: Session) -> list[PacientePendienteRead]:
             .order_by(Paciente.created_at, Paciente.id)
         )
     )
-    persona_ids = [p.salutem_persona_id for p in pacientes if p.salutem_persona_id is not None]
+    # Subconsulta en vez de lista literal: Oracle admite máximo 1000 elementos en un IN.
+    persona_ids = (
+        select(Paciente.salutem_persona_id)
+        .where(
+            Paciente.estado_registro == EstadoRegistroPaciente.PENDIENTE_FOLIO.value,
+            Paciente.salutem_persona_id.is_not(None),
+        )
+        .scalar_subquery()
+    )
     identificaciones: dict[int, str | None] = {}
     atenciones: dict[int, list[SalutemAtencion]] = {}
-    if persona_ids:
+    if any(p.salutem_persona_id is not None for p in pacientes):
         for persona in db.scalars(select(SalutemPersona).where(SalutemPersona.salutem_id.in_(persona_ids))):
             valor = persona.contenido.get("identificacion")
             identificaciones[persona.salutem_id] = str(valor) if valor else None

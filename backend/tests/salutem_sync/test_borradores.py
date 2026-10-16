@@ -214,3 +214,35 @@ def test_resolver_alerta_borrador_resuelve_las_abiertas(db_session):
 
     [a] = _alertas(db_session)
     assert a.estado == "resuelta"
+
+
+def _sql_ejecutado(db, fn):
+    """Ejecuta fn y devuelve los SELECT enviados a la BD."""
+    sentencias: list[str] = []
+
+    def capturar(conn, cursor, statement, parameters, context, executemany):
+        sentencias.append(statement)
+
+    from sqlalchemy import event
+
+    engine = db.get_bind()
+    event.listen(engine, "before_cursor_execute", capturar)
+    try:
+        fn()
+    finally:
+        event.remove(engine, "before_cursor_execute", capturar)
+    return sentencias
+
+
+def test_candidatas_no_usa_listas_in_literales(db_session):
+    """Oracle admite máximo 1000 elementos en un IN (ORA-01795): debe ser subconsulta/join."""
+    import re
+
+    for i in range(3):
+        _atendida(db_session, salutem_id=7200 + i)
+
+    sentencias = _sql_ejecutado(db_session, lambda: borradores._candidatas(db_session, CORTE))
+
+    assert sentencias
+    for s in sentencias:
+        assert not re.search(r"\bIN\s*\(\s*(%\(|\$\d|\?|:)", s, re.IGNORECASE), s

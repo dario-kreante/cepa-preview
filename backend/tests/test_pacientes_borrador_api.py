@@ -129,3 +129,32 @@ def test_buscador_incluye_borrador_y_excluye_descartado(as_auditor, db_session):
 
     assert r.status_code == 200
     assert [(x["nombre"], x["estado_registro"]) for x in r.json()] == [("Zoe Buscable", "pendiente_folio")]
+
+
+def test_lista_no_usa_listas_in_literales(as_admin, db_session):
+    """Oracle admite máximo 1000 elementos en un IN (ORA-01795): debe ser subconsulta/join."""
+    import re
+
+    from sqlalchemy import event
+
+    for i in range(3):
+        _persona(db_session, 9100 + i, f"id{i}")
+        _borrador(db_session, nombre=f"B{i}", persona_id=9100 + i)
+        _atencion(db_session, 900 + i, 9100 + i, date(2026, 9, 10), "Médico/a")
+
+    sentencias: list[str] = []
+
+    def capturar(conn, cursor, statement, parameters, context, executemany):
+        sentencias.append(statement)
+
+    engine = db_session.get_bind()
+    event.listen(engine, "before_cursor_execute", capturar)
+    try:
+        r = as_admin.get("/api/v1/pacientes/pendientes-folio")
+    finally:
+        event.remove(engine, "before_cursor_execute", capturar)
+
+    assert r.status_code == 200 and len(r.json()) == 3
+    assert sentencias
+    for s in sentencias:
+        assert not re.search(r"\bIN\s*\(\s*(%\(|\$\d|\?|:)", s, re.IGNORECASE), s

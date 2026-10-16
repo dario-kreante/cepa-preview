@@ -91,30 +91,24 @@ def _es_atendida(contenido: dict[str, Any]) -> bool:
 def _candidatas(db: Session, desde: date) -> list[SalutemPersona]:
     """Personas con atenciones desde el corte y sin paciente; atendidas, filtradas en Python."""
     sin_paciente = ~exists().where(cruce_con_paciente())
-    con_atencion = exists().where(
-        SalutemAtencion.persona_id == SalutemPersona.salutem_id,
-        SalutemAtencion.desaparecida_en.is_(None),
-        SalutemAtencion.fecha_cita >= desde,
-    )
-    personas = list(
-        db.scalars(
-            select(SalutemPersona).where(con_atencion, sin_paciente).order_by(SalutemPersona.salutem_id)
+    # Una sola consulta con join (sin listas IN literales: Oracle admite máximo 1000 elementos).
+    personas: dict[int, SalutemPersona] = {}
+    atendidas: set[int] = set()
+    filas = db.execute(
+        select(SalutemPersona, SalutemAtencion.contenido)
+        .join(SalutemAtencion, SalutemAtencion.persona_id == SalutemPersona.salutem_id)
+        .where(
+            sin_paciente,
+            SalutemAtencion.desaparecida_en.is_(None),
+            SalutemAtencion.fecha_cita >= desde,
         )
+        .order_by(SalutemPersona.salutem_id)
     )
-    if not personas:
-        return []
-    atendidas = {
-        persona_id
-        for persona_id, contenido in db.execute(
-            select(SalutemAtencion.persona_id, SalutemAtencion.contenido).where(
-                SalutemAtencion.persona_id.in_([p.salutem_id for p in personas]),
-                SalutemAtencion.desaparecida_en.is_(None),
-                SalutemAtencion.fecha_cita >= desde,
-            )
-        )
-        if _es_atendida(contenido)
-    }
-    return [p for p in personas if p.salutem_id in atendidas]
+    for persona, contenido in filas:
+        personas.setdefault(persona.salutem_id, persona)
+        if _es_atendida(contenido):
+            atendidas.add(persona.salutem_id)
+    return [p for sid, p in sorted(personas.items()) if sid in atendidas]
 
 
 def crear_borradores(db: Session, ahora: datetime, desde: date | None) -> ResultadoBorradores:
