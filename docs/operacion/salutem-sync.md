@@ -151,5 +151,10 @@ Estimaciones para producción: la API responde ~0,5–0,6 s por llamada, así qu
   `ix_salutem_archivo_fecha` (Oracle limita los identificadores a 30 caracteres).
 - Las alertas solo salen cuando el control se crea o su atención cambia: la primera `fria` tras el
   despliegue no genera alertas de controles que ya existían y no cambiaron.
+- Cuánto tarda una alerta: SALUTEM no avisa cambios, así que una edición se detecta al volver a
+  leer la atención. La `caliente` (cada 5 min) relee los controles médicos (especialidades de
+  `SALUTEM_ESPECIALIDADES_CONTROL`) de hoy y ayer; la `tibia` (cada hora, a los :07) relee todas
+  las atenciones de los últimos 7 días. Una licencia o receta agregada hoy o ayer alerta en ~5 min;
+  una editada en un control más antiguo, en hasta una hora.
 - Orden recomendado: correr `alembic upgrade head` primero en la Oracle de QA (segicepa-qa, BD
   CEPAQA) y recién después en dev y prod.

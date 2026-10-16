@@ -1,6 +1,8 @@
 """Ventanas del sync incremental (solo lectura, D12).
 
-- caliente (cada 5 min): citas creadas hoy + citas de hoy y mañana.
+- caliente (cada 5 min): citas creadas hoy + citas de hoy y mañana, y re-lectura de los
+  controles médicos de hoy y ayer (el médico suele completar la licencia o la receta al día
+  siguiente, y la alerta no debe esperar a la tibia).
 - tibia (cada hora): citas de -7..+30 días y re-lectura de atenciones de la última semana.
 - fría (cada noche): citas de -90..+180 días y re-lectura de atenciones del último mes.
 
@@ -14,6 +16,7 @@ from zoneinfo import ZoneInfo
 
 from sqlalchemy.orm import Session
 
+from app.config import get_settings
 from app.integrations.salutem.models import TipoFechaCita
 from app.integrations.salutem.protocol import SalutemClientProtocol
 from app.services.salutem_sync.barrido import barrer_dia, refrescar_atenciones
@@ -23,6 +26,7 @@ from app.services.salutem_sync.tipos import Contadores
 ZONA = ZoneInfo("America/Santiago")
 _UN_DIA = timedelta(days=1)
 
+CALIENTE_CONTROLES_DIAS = 1
 TIBIA_DIAS_ATRAS, TIBIA_DIAS_ADELANTE, TIBIA_ATENCIONES_DIAS = 7, 30, 7
 FRIA_DIAS_ATRAS, FRIA_DIAS_ADELANTE, FRIA_ATENCIONES_DIAS = 90, 180, 30
 
@@ -75,6 +79,15 @@ def ventana_caliente(
     creacion = sorted({hoy_en_santiago(ahora - timedelta(hours=1)), hoy})
     _barrer(db, cliente, ritmo, creacion, TipoFechaCita.FECHA_CREACION, ahora, resultado, al_terminar_dia)
     _barrer(db, cliente, ritmo, [hoy, hoy + _UN_DIA], TipoFechaCita.FECHA_CITA, ahora, resultado, al_terminar_dia)
+    # Solo controles médicos: son pocos por día y son los que disparan las alertas de
+    # licencia y receta. Releer todas las atenciones queda para la tibia (cada hora).
+    resultado.contadores.sumar(
+        refrescar_atenciones(
+            db, cliente, ritmo, hoy - CALIENTE_CONTROLES_DIAS * _UN_DIA, hoy, ahora,
+            al_avanzar=al_terminar_dia, errores=resultado.errores,
+            especialidades=get_settings().salutem_especialidades_control_set,
+        )
+    )
     return resultado
 
 

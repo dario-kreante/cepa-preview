@@ -73,3 +73,37 @@ def test_caliente_tras_el_salto_de_horario_incluye_la_creacion_de_ayer(db_sessio
     tras_el_salto = datetime(2026, 9, 6, 4, 30, tzinfo=timezone.utc)
     ventana_caliente(db_session, salutem, ritmo, tras_el_salto)
     assert (date(2026, 9, 5), CREACION) in _pares(salutem)
+
+
+def _atencion_copiada(db, salutem, ritmo, cita_id, dia, especialidad):
+    salutem.agregar_persona(501)
+    salutem.agregar_cita(cita_id, 501, dia)
+    salutem.agregar_atencion(cita_id, anamnesis="inicial", especialidadNombre=especialidad)
+    barrer_dia(db, salutem, ritmo, dia, TipoFechaCita.FECHA_CITA, AHORA)
+
+
+def _releidas(salutem) -> set[int]:
+    return {ll[2] for ll in salutem.llamadas_a("obtener_atencion")}
+
+
+def test_caliente_relee_el_control_medico_de_ayer_editado(db_session, salutem, ritmo):
+    """El médico suele completar la licencia o la receta al día siguiente: la alerta no
+    puede esperar a la tibia de la hora siguiente."""
+    _atencion_copiada(db_session, salutem, ritmo, 9101, HOY - DIA, "Médico/a")
+    salutem.atenciones[9101]["anamnesis"] = "editada"
+    salutem.llamadas.clear()
+
+    r = ventana_caliente(db_session, salutem, ritmo, AHORA)
+
+    assert r.contadores.cambiados == 1
+    assert db_session.get(SalutemAtencion, 9101).contenido["anamnesis"] == "editada"
+
+
+def test_caliente_no_relee_otras_especialidades_ni_controles_antiguos(db_session, salutem, ritmo):
+    _atencion_copiada(db_session, salutem, ritmo, 9102, HOY - DIA, "Contención Psicologíca")
+    _atencion_copiada(db_session, salutem, ritmo, 9103, HOY - 3 * DIA, "Médico/a")
+    salutem.llamadas.clear()
+
+    ventana_caliente(db_session, salutem, ritmo, AHORA)
+
+    assert _releidas(salutem).isdisjoint({9102, 9103})
