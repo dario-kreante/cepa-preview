@@ -1,6 +1,6 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { http, HttpResponse } from "msw";
-import { render, screen, within } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
@@ -165,46 +165,122 @@ describe("routeForCaso", () => {
   });
 });
 
-describe("AlertsPanel: marcar leída y resolver", () => {
+describe("AlertsPanel: leída al verla y resolver", () => {
+  // jsdom no implementa IntersectionObserver: un doble que el test controla.
+  type Callback = (entradas: Array<{ isIntersecting: boolean; target: Element }>) => void;
+  let observadores: Array<{ cb: Callback; elementos: Element[] }> = [];
+  class ObservadorFalso {
+    private registro: { cb: Callback; elementos: Element[] };
+    constructor(cb: Callback) {
+      this.registro = { cb, elementos: [] };
+      observadores.push(this.registro);
+    }
+    observe(el: Element) {
+      this.registro.elementos.push(el);
+    }
+    unobserve() {}
+    disconnect() {
+      this.registro.elementos = [];
+    }
+  }
+  function mostrarTodo(visible: boolean) {
+    act(() => {
+      for (const o of observadores) {
+        o.cb(o.elementos.map((target) => ({ isIntersecting: visible, target })));
+      }
+    });
+  }
+
+  beforeEach(() => {
+    observadores = [];
+    vi.stubGlobal("IntersectionObserver", ObservadorFalso);
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.useRealTimers();
+  });
+
   function conAlertas(alertas: unknown[]) {
-    const cambios: unknown[] = [];
+    const cambios: Array<{ id: string; estado: string }> = [];
     server.use(
       http.get(`${BASE}/api/v1/alertas`, () => HttpResponse.json(alertas)),
       http.get(`${BASE}/api/v1/tareas`, () => HttpResponse.json([])),
-      http.patch(`${BASE}/api/v1/alertas/1`, async ({ request }) => {
+      http.patch(`${BASE}/api/v1/alertas/:id`, async ({ request, params }) => {
         const body = (await request.json()) as { estado: string };
-        cambios.push(body);
-        return HttpResponse.json({ ...alertaLicencia(), estado: body.estado });
+        cambios.push({ id: String(params.id), estado: body.estado });
+        return HttpResponse.json({ ...alertaLicencia(), id: Number(params.id), estado: body.estado });
       }),
     );
     return cambios;
   }
 
-  it("una alerta pendiente se puede marcar como leída sin abrirla", async () => {
+  async function esperarVisible(ms: number) {
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, ms));
+    });
+  }
+
+  it("no hay botón para marcar como leída; sí para resolver", async () => {
+    tokenStore.setAccess(TOKENS.Administrativo);
+    conAlertas([alertaLicencia()]);
+    renderPanel();
+    await screen.findByText("Licencia emitida en control");
+    expect(screen.queryByRole("button", { name: /marcar como leída/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /resolver/i })).toBeInTheDocument();
+  });
+
+  it("una alerta pendiente queda leída tras verse 1,5 s en pantalla", async () => {
     tokenStore.setAccess(TOKENS.Administrativo);
     const cambios = conAlertas([alertaLicencia()]);
     renderPanel();
-    await userEvent.click(await screen.findByRole("button", { name: /marcar como leída/i }));
-    await vi.waitFor(() => expect(cambios).toEqual([{ estado: "leida" }]));
+    await screen.findByText("Licencia emitida en control");
+    mostrarTodo(true);
+    await esperarVisible(1600);
+    await vi.waitFor(() => expect(cambios).toEqual([{ id: "1", estado: "leida" }]));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("si sale de la pantalla antes de 1,5 s no se marca", async () => {
+    tokenStore.setAccess(TOKENS.Administrativo);
+    const cambios = conAlertas([alertaLicencia()]);
+    renderPanel();
+    await screen.findByText("Licencia emitida en control");
+    mostrarTodo(true);
+    await esperarVisible(500);
+    mostrarTodo(false);
+    await esperarVisible(1500);
+    expect(cambios).toEqual([]);
+  });
+
+  it("Coordinación no marca como leída la alerta asignada a otra persona", async () => {
+    tokenStore.setAccess(TOKENS.Coordinacion);
+    const cambios = conAlertas([
+      { ...alertaLicencia(), id: 1, usuario_id: 99 },
+      { ...alertaLicencia(), id: 2, usuario_id: null },
+    ]);
+    renderPanel();
+    await screen.findAllByText("Licencia emitida en control");
+    mostrarTodo(true);
+    await esperarVisible(1600);
+    await vi.waitFor(() => expect(cambios).toEqual([{ id: "2", estado: "leida" }]));
   });
 
   it("una alerta leída se puede resolver", async () => {
     tokenStore.setAccess(TOKENS.Administrativo);
     const cambios = conAlertas([{ ...alertaLicencia(), estado: "leida" }]);
     renderPanel();
-    expect(await screen.findByRole("button", { name: /resolver/i })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /marcar como leída/i })).not.toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: /resolver/i }));
-    await vi.waitFor(() => expect(cambios).toEqual([{ estado: "resuelta" }]));
+    await userEvent.click(await screen.findByRole("button", { name: /resolver/i }));
+    await vi.waitFor(() => expect(cambios).toEqual([{ id: "1", estado: "resuelta" }]));
   });
 
-  it("el Auditor ve las alertas pero no los botones", async () => {
+  it("el Auditor ve las alertas, sin botón y sin marcarlas como leídas", async () => {
     tokenStore.setAccess(TOKENS.Auditor);
-    conAlertas([alertaLicencia()]);
+    const cambios = conAlertas([alertaLicencia()]);
     renderPanel();
     await screen.findByText("Licencia emitida en control");
-    expect(screen.queryByRole("button", { name: /marcar como leída/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /resolver/i })).not.toBeInTheDocument();
+    mostrarTodo(true);
+    await esperarVisible(1600);
+    expect(cambios).toEqual([]);
   });
 });

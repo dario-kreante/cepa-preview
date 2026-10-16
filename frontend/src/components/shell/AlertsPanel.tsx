@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import {
@@ -123,10 +123,57 @@ interface AlertItemProps {
   subtitle: string;
   meta: string;
   onClick: () => void;
-  /** Solo para quien puede gestionar alertas; sin ellas la alerta es de solo lectura. */
-  onMarcarLeida?: () => void;
+  /** Se llama una vez cuando la alerta estuvo a la vista VISTA_MS seguidos (para marcarla leída). */
+  onVista?: () => void;
+  /** Solo para quien puede gestionar alertas; sin él la alerta es de solo lectura. */
   onResolver?: () => void;
   ocupado?: boolean;
+}
+
+/** Tiempo que una alerta tiene que estar en pantalla para darla por leída. */
+const VISTA_MS = 1500;
+
+/**
+ * Llama a `onVista` una sola vez cuando el elemento estuvo al menos 60% visible durante
+ * VISTA_MS seguidos: pasar de largo al hacer scroll no cuenta como haberla leído.
+ */
+function useVistaDurante(onVista: (() => void) | undefined) {
+  const ref = useRef<HTMLDivElement>(null);
+  const llamar = useRef(onVista);
+  useEffect(() => {
+    llamar.current = onVista;
+  });
+  const activo = onVista !== undefined;
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!activo || !el || typeof IntersectionObserver === "undefined") return;
+    let temporizador: ReturnType<typeof setTimeout> | undefined;
+    let hecho = false;
+    const observador = new IntersectionObserver(
+      (entradas) => {
+        const visible = entradas.some((e) => e.isIntersecting);
+        if (visible && !temporizador && !hecho) {
+          temporizador = setTimeout(() => {
+            hecho = true;
+            observador.disconnect();
+            llamar.current?.();
+          }, VISTA_MS);
+        } else if (!visible && temporizador) {
+          clearTimeout(temporizador);
+          temporizador = undefined;
+        }
+      },
+      { threshold: 0.6 },
+    );
+    observador.observe(el);
+    return () => {
+      clearTimeout(temporizador);
+      observador.disconnect();
+    };
+  }, [activo]);
+
+  return ref;
 }
 
 function AlertItem({
@@ -135,13 +182,14 @@ function AlertItem({
   subtitle,
   meta,
   onClick,
-  onMarcarLeida,
+  onVista,
   onResolver,
   ocupado = false,
 }: AlertItemProps) {
   const Icon = ICON_MAP[bucket];
+  const ref = useVistaDurante(onVista);
   return (
-    <div className="border-b hover:bg-muted/50 transition-colors">
+    <div ref={ref} className="border-b hover:bg-muted/50 transition-colors">
       <button
         onClick={onClick}
         className="w-full text-left px-5 pt-3 pb-2 flex gap-3 cursor-pointer"
@@ -166,30 +214,17 @@ function AlertItem({
           </div>
         </div>
       </button>
-      {(onMarcarLeida || onResolver) && (
+      {onResolver && (
         <div className="flex gap-3 pl-16 pr-5 pb-2.5 text-[11px]">
-          {onMarcarLeida && (
-            <button
-              type="button"
-              disabled={ocupado}
-              onClick={onMarcarLeida}
-              aria-label={`Marcar como leída: ${title}`}
-              className="text-muted-foreground hover:text-foreground underline-offset-2 hover:underline disabled:opacity-50"
-            >
-              Marcar como leída
-            </button>
-          )}
-          {onResolver && (
-            <button
-              type="button"
-              disabled={ocupado}
-              onClick={onResolver}
-              aria-label={`Resolver: ${title}`}
-              className="text-muted-foreground hover:text-foreground underline-offset-2 hover:underline disabled:opacity-50"
-            >
-              Resolver
-            </button>
-          )}
+          <button
+            type="button"
+            disabled={ocupado}
+            onClick={onResolver}
+            aria-label={`Resolver: ${title}`}
+            className="text-muted-foreground hover:text-foreground underline-offset-2 hover:underline disabled:opacity-50"
+          >
+            Resolver
+          </button>
         </div>
       )}
     </div>
@@ -243,7 +278,7 @@ function TareaItem({ tarea, onClick }: TareaItemProps) {
 
 export function AlertsPanel() {
   const navigate = useNavigate();
-  const { rol } = useAuth();
+  const { rol, usuarioId } = useAuth();
   const escritor = puedeEscribir(rol as Rol);
 
   const { data: alertas = [] } = useAlertas();
@@ -376,8 +411,14 @@ export function AlertsPanel() {
               subtitle={subtitle}
               meta={meta}
               onClick={() => handleAlertaClick(a)}
-              onMarcarLeida={
-                escritor && a.estado === "pendiente" ? () => cambiarEstado(a, "leida") : undefined
+              onVista={
+                // Se marca leída al verla, solo si es de quien la mira o no tiene dueño:
+                // Coordinación ve todas y no debe "leer" las de otra persona.
+                escritor &&
+                a.estado === "pendiente" &&
+                (a.usuario_id === null || a.usuario_id === usuarioId)
+                  ? () => actualizar.mutate({ id: a.id, estado: "leida" })
+                  : undefined
               }
               onResolver={
                 escritor && a.estado !== "resuelta" ? () => cambiarEstado(a, "resuelta") : undefined
