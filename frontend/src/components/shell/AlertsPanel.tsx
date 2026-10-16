@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import {
   AlertCircle,
   Clock,
@@ -13,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { puedeEscribir, type Rol } from "@/lib/rbac";
-import { useAlertas, useTareas } from "@/features/alertas/hooks";
+import { useActualizarAlerta, useAlertas, useTareas } from "@/features/alertas/hooks";
 import type { AlertaRead, TareaItemRead } from "@/features/alertas/api";
 import { DocumentosAlertaDialog } from "./DocumentosAlertaDialog";
 
@@ -122,35 +123,76 @@ interface AlertItemProps {
   subtitle: string;
   meta: string;
   onClick: () => void;
+  /** Solo para quien puede gestionar alertas; sin ellas la alerta es de solo lectura. */
+  onMarcarLeida?: () => void;
+  onResolver?: () => void;
+  ocupado?: boolean;
 }
 
-function AlertItem({ bucket, title, subtitle, meta, onClick }: AlertItemProps) {
+function AlertItem({
+  bucket,
+  title,
+  subtitle,
+  meta,
+  onClick,
+  onMarcarLeida,
+  onResolver,
+  ocupado = false,
+}: AlertItemProps) {
   const Icon = ICON_MAP[bucket];
   return (
-    <button
-      onClick={onClick}
-      className="w-full text-left px-5 py-3 border-b hover:bg-muted/50 transition-colors flex gap-3 cursor-pointer"
-    >
-      <div
-        className={cn(
-          "size-8 rounded-lg grid place-items-center shrink-0",
-          STYLE_MAP[bucket],
-        )}
+    <div className="border-b hover:bg-muted/50 transition-colors">
+      <button
+        onClick={onClick}
+        className="w-full text-left px-5 pt-3 pb-2 flex gap-3 cursor-pointer"
       >
-        <Icon className="size-4" />
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="text-[12.5px] font-semibold leading-tight mb-0.5">
-          {title}
+        <div
+          className={cn(
+            "size-8 rounded-lg grid place-items-center shrink-0",
+            STYLE_MAP[bucket],
+          )}
+        >
+          <Icon className="size-4" />
         </div>
-        <div className="text-[11px] text-muted-foreground truncate">
-          {subtitle}
+        <div className="flex-1 min-w-0">
+          <div className="text-[12.5px] font-semibold leading-tight mb-0.5">
+            {title}
+          </div>
+          <div className="text-[11px] text-muted-foreground truncate">
+            {subtitle}
+          </div>
+          <div className="flex items-center gap-1.5 mt-1 text-[10.5px] text-muted-foreground">
+            <span>{meta}</span>
+          </div>
         </div>
-        <div className="flex items-center gap-1.5 mt-1 text-[10.5px] text-muted-foreground">
-          <span>{meta}</span>
+      </button>
+      {(onMarcarLeida || onResolver) && (
+        <div className="flex gap-3 pl-16 pr-5 pb-2.5 text-[11px]">
+          {onMarcarLeida && (
+            <button
+              type="button"
+              disabled={ocupado}
+              onClick={onMarcarLeida}
+              aria-label={`Marcar como leída: ${title}`}
+              className="text-muted-foreground hover:text-foreground underline-offset-2 hover:underline disabled:opacity-50"
+            >
+              Marcar como leída
+            </button>
+          )}
+          {onResolver && (
+            <button
+              type="button"
+              disabled={ocupado}
+              onClick={onResolver}
+              aria-label={`Resolver: ${title}`}
+              className="text-muted-foreground hover:text-foreground underline-offset-2 hover:underline disabled:opacity-50"
+            >
+              Resolver
+            </button>
+          )}
         </div>
-      </div>
-    </button>
+      )}
+    </div>
   );
 }
 
@@ -206,6 +248,13 @@ export function AlertsPanel() {
 
   const { data: alertas = [] } = useAlertas();
   const { data: tareas = [] } = useTareas();
+  const actualizar = useActualizarAlerta();
+
+  const cambiarEstado = (a: AlertaRead, estado: "leida" | "resuelta") =>
+    actualizar.mutate(
+      { id: a.id, estado },
+      { onError: () => toast.error("No se pudo actualizar la alerta. Intenta de nuevo.") },
+    );
 
   const [tab, setTab] = useState<TabKey>("todas");
   const [alertaControl, setAlertaControl] = useState<AlertaRead | null>(null);
@@ -327,6 +376,13 @@ export function AlertsPanel() {
               subtitle={subtitle}
               meta={meta}
               onClick={() => handleAlertaClick(a)}
+              onMarcarLeida={
+                escritor && a.estado === "pendiente" ? () => cambiarEstado(a, "leida") : undefined
+              }
+              onResolver={
+                escritor && a.estado !== "resuelta" ? () => cambiarEstado(a, "resuelta") : undefined
+              }
+              ocupado={actualizar.isPending}
             />
           );
         })}

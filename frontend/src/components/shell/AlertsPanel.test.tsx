@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { http, HttpResponse } from "msw";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -162,5 +162,49 @@ describe("routeForCaso", () => {
   it("tipo desconocido o nulo cae a /ingresos", () => {
     expect(routeForCaso("otro", 1)).toBe("/ingresos");
     expect(routeForCaso(null, null)).toBe("/ingresos");
+  });
+});
+
+describe("AlertsPanel: marcar leída y resolver", () => {
+  function conAlertas(alertas: unknown[]) {
+    const cambios: unknown[] = [];
+    server.use(
+      http.get(`${BASE}/api/v1/alertas`, () => HttpResponse.json(alertas)),
+      http.get(`${BASE}/api/v1/tareas`, () => HttpResponse.json([])),
+      http.patch(`${BASE}/api/v1/alertas/1`, async ({ request }) => {
+        const body = (await request.json()) as { estado: string };
+        cambios.push(body);
+        return HttpResponse.json({ ...alertaLicencia(), estado: body.estado });
+      }),
+    );
+    return cambios;
+  }
+
+  it("una alerta pendiente se puede marcar como leída sin abrirla", async () => {
+    tokenStore.setAccess(TOKENS.Administrativo);
+    const cambios = conAlertas([alertaLicencia()]);
+    renderPanel();
+    await userEvent.click(await screen.findByRole("button", { name: /marcar como leída/i }));
+    await vi.waitFor(() => expect(cambios).toEqual([{ estado: "leida" }]));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("una alerta leída se puede resolver", async () => {
+    tokenStore.setAccess(TOKENS.Administrativo);
+    const cambios = conAlertas([{ ...alertaLicencia(), estado: "leida" }]);
+    renderPanel();
+    expect(await screen.findByRole("button", { name: /resolver/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /marcar como leída/i })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /resolver/i }));
+    await vi.waitFor(() => expect(cambios).toEqual([{ estado: "resuelta" }]));
+  });
+
+  it("el Auditor ve las alertas pero no los botones", async () => {
+    tokenStore.setAccess(TOKENS.Auditor);
+    conAlertas([alertaLicencia()]);
+    renderPanel();
+    await screen.findByText("Licencia emitida en control");
+    expect(screen.queryByRole("button", { name: /marcar como leída/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /resolver/i })).not.toBeInTheDocument();
   });
 });
