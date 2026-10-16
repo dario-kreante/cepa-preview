@@ -35,7 +35,7 @@ from sqlalchemy.orm import Session
 
 from app.agendamiento.enums import PrioridadCita
 from app.agendamiento.models import DisponibilidadProf, PropuestaAgenda
-from app.agendamiento.salutem import _lotes
+from app.agendamiento.salutem import lotes
 from app.agendamiento.scheduler import (
     Candidato,
     DisponibilidadDia,
@@ -165,7 +165,7 @@ def _cargar_reposos_batch(
     resultado: dict[int, list[ReposoPaciente]] = {pid: [] for pid in paciente_ids}
     # Core ORM — portable Oracle/Postgres (D15): false() renderiza 0/FALSE según dialecto.
     # IN por lotes: Oracle no admite más de 1000 elementos en una lista IN.
-    for lote in _lotes(paciente_ids):
+    for lote in lotes(paciente_ids):
         stmt = (
             select(Ingreso.paciente_id, LicenciaMedica.inicio_reposo, LicenciaMedica.fin_reposo)
             .join(Ingreso, Ingreso.id == LicenciaMedica.ingreso_id)
