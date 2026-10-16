@@ -10,6 +10,7 @@ from app.models.paciente import Paciente
 from app.models.salutem_sync import SalutemSyncEjecucion, SalutemSyncLease
 from app.services.salutem_sync import orquestador
 from app.services.salutem_sync.archivos import ResultadoArchivos
+from app.services.salutem_sync.borradores import ResultadoBorradores
 from app.services.salutem_sync.lease import tomar_lease
 from app.services.salutem_sync.orquestador import Opciones, correr
 from app.services.salutem_sync.vinculacion import ResultadoVinculacion
@@ -184,3 +185,16 @@ def test_tibia_no_copia_la_biblioteca(db_session, salutem, ritmo, monkeypatch):
     )
     assert _correr(db_session, salutem, ritmo, modo="tibia") == 0
     assert llamadas == []
+
+
+def test_cada_modo_crea_borradores_despues_de_vincular(db_session, salutem, ritmo, monkeypatch):
+    llamadas = []
+    monkeypatch.setattr(
+        orquestador, "crear_borradores",
+        lambda db, ahora, desde: llamadas.append(ahora) or ResultadoBorradores(),
+    )
+
+    for modo in ("caliente", "tibia"):
+        assert _correr(db_session, salutem, ritmo, modo=modo) == 0
+
+    assert llamadas == [AHORA, AHORA]

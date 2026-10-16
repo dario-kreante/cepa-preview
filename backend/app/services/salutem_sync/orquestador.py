@@ -17,12 +17,14 @@ from datetime import date, datetime
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.config import get_settings
 from app.integrations.salutem.client import SalutemStubClient
 from app.integrations.salutem.protocol import SalutemClientProtocol
 from app.models.salutem_sync import SalutemSyncEjecucion
 from app.services.salutem_sync.archivos import refrescar_archivos
 from app.services.salutem_sync.backfill import DIAS_FUTURO, ejecutar_backfill
 from app.services.salutem_sync.bitacora import abrir_ejecucion, cerrar_ejecucion, registrar_omitida
+from app.services.salutem_sync.borradores import crear_borradores
 from app.services.salutem_sync.incremental import (
     hoy_en_santiago,
     ventana_caliente,
@@ -101,6 +103,20 @@ def correr(
             al_avanzar=renovar,
         )
         errores = errores + vinculacion.errores
+        try:
+            desde = get_settings().salutem_borradores_desde_fecha
+        except ValueError as e:
+            desde = None
+            errores = errores + [str(e)]
+        try:
+            borradores = crear_borradores(db, ahora(), desde)
+            errores = errores + borradores.errores
+            if borradores.creados:
+                log.info("Borradores de pacientes creados desde SALUTEM: %d", borradores.creados)
+        except Exception as e:  # noqa: BLE001 — un fallo de este paso no debe perder el resto del ciclo
+            log.exception("Modo %s: falló la creación de borradores", modo)
+            db.rollback()
+            errores = errores + [f"borradores: {type(e).__name__}: {e}"]
         if modo == "caliente":
             archivos = refrescar_archivos(db, cliente, ritmo, ahora(), al_avanzar=renovar)
             errores = errores + archivos.errores

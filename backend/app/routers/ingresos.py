@@ -39,7 +39,7 @@ def crear(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ) -> IngresoRead:
-    ingreso = crear_ingreso(db, payload)
+    ingreso = crear_ingreso(db, payload, actor=current_user.username)
     record_audit(
         db, actor=current_user.username, action="CREATE", entity="ingreso", entity_id=str(ingreso.id)
     )

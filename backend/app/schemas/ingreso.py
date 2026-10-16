@@ -20,7 +20,9 @@ class IngresoCreate(BaseModel):
     almacene en la tabla `ingreso` y los reportes puedan filtrar por ellos.
     """
 
-    rut: str
+    # Solo con `paciente_id` (completar un borrador de SALUTEM) el RUT puede faltar.
+    paciente_id: int | None = None
+    rut: str | None = None
     nombre: str
     sexo: Sexo
     edad: int
@@ -49,7 +51,9 @@ class IngresoCreate(BaseModel):
 
     @field_validator("rut")
     @classmethod
-    def _rut_valido(cls, v: str) -> str:
+    def _rut_valido(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
         try:
             return normalizar_rut(v)
         except RutInvalidoError as exc:
@@ -61,6 +65,12 @@ class IngresoCreate(BaseModel):
         if v <= 0 or v > 130:
             raise ValueError("edad fuera de rango")
         return v
+
+    @model_validator(mode="after")
+    def _rut_obligatorio_sin_paciente(self) -> "IngresoCreate":
+        if self.rut is None and self.paciente_id is None:
+            raise ValueError("El RUT es obligatorio")
+        return self
 
 
 class IngresoUpdate(BaseModel):
@@ -113,14 +123,16 @@ class PacienteRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
-    rut: str
+    rut: str | None
     nombre: str
-    sexo: str
-    edad: int
-    region: str
+    sexo: str | None
+    edad: int | None
+    region: str | None
     comuna: str | None
     telefono: str | None
     correo: str | None
+    estado_registro: str
+    origen: str
 
 
 class IngresoRead(BaseModel):

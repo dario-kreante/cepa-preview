@@ -15,6 +15,7 @@ import {
   Edit3,
   Loader2,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { puedeEscribir, type Rol } from "@/lib/rbac";
@@ -247,6 +248,7 @@ export interface PatientSheetProps {
 export function PatientSheet({ pacienteId, open, onOpenChange }: PatientSheetProps) {
   const { rol } = useAuth();
   const canWrite = puedeEscribir(rol as Rol);
+  const navigate = useNavigate();
 
   const {
     data: vista,
@@ -268,6 +270,8 @@ export function PatientSheet({ pacienteId, open, onOpenChange }: PatientSheetPro
     useFichasClinicas(primaryIngreso?.folio);
   // La pestaña es de SALUTEM: las fichas enviadas por otros sistemas (push) no van acá.
   const fichasSalutem = fichas.filter((f) => f.origen === "SALUTEM");
+
+  const esBorrador = vista?.paciente.estado_registro === "pendiente_folio";
 
   const [editarOpen, setEditarOpen] = useState(false);
   const [licenciaOpen, setLicenciaOpen] = useState(false);
@@ -305,9 +309,16 @@ export function PatientSheet({ pacienteId, open, onOpenChange }: PatientSheetPro
                     {getInitials(vista.paciente.nombre)}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h2 className="text-xl font-bold leading-tight">{vista.paciente.nombre}</h2>
+                    <h2 className="text-xl font-bold leading-tight flex flex-wrap items-center gap-2">
+                      {vista.paciente.nombre}
+                      {esBorrador && (
+                        <Badge variant="warning" className="text-[10.5px]">
+                          Falta folio
+                        </Badge>
+                      )}
+                    </h2>
                     <div className="text-sm text-white/80 mt-0.5 font-mono">
-                      {vista.paciente.rut}
+                      {vista.paciente.rut ?? "—"}
                       {vista.paciente.region ? ` · ${vista.paciente.region}` : ""}
                     </div>
                     <div className="flex flex-wrap items-center gap-2 mt-3">
@@ -331,7 +342,8 @@ export function PatientSheet({ pacienteId, open, onOpenChange }: PatientSheetPro
                         variant="outline"
                         className="bg-white/15 text-white border-white/20"
                       >
-                        {vista.paciente.edad} años · {vista.paciente.sexo}
+                        {vista.paciente.edad != null ? `${vista.paciente.edad} años` : "—"} ·{" "}
+                        {vista.paciente.sexo ?? "—"}
                       </Badge>
                     </div>
                   </div>
@@ -339,6 +351,24 @@ export function PatientSheet({ pacienteId, open, onOpenChange }: PatientSheetPro
               )}
             </div>
           </SheetTitle>
+
+          {/* Borrador de SALUTEM: aviso para todos; completar el registro, solo escritores */}
+          {vista && esBorrador && (
+            <div className="mt-4 rounded-md border border-white/25 bg-white/10 px-3 py-2.5 text-[12.5px] flex flex-wrap items-center justify-between gap-2">
+              <span>
+                Este paciente viene de SALUTEM y le falta el folio para completar su registro
+              </span>
+              {canWrite && (
+                <Button
+                  size="sm"
+                  className="bg-white text-primary hover:bg-white/90"
+                  onClick={() => navigate(`/ingresos/nuevo?paciente=${vista.paciente.id}`)}
+                >
+                  Completar registro
+                </Button>
+              )}
+            </div>
+          )}
 
           {/* Action buttons — only for writers */}
           {canWrite && vista && primaryIngreso && (

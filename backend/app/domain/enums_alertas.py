@@ -22,6 +22,8 @@ class TipoAlerta(str, Enum):
     # Alertas del sync de SALUTEM: el médico emitió una licencia o una receta en un control.
     LICENCIA_EN_CONTROL = "licencia_en_control"
     RECETA_EN_CONTROL = "receta_en_control"
+    # Paciente borrador creado por el sync: una persona atendida en SALUTEM sin folio en el SIGE.
+    PACIENTE_PENDIENTE_FOLIO = "paciente_pendiente_folio"
 
 
 class EstadoAlerta(str, Enum):

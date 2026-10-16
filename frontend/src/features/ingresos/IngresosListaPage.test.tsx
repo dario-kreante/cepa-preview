@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { http, HttpResponse } from "msw";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
@@ -124,5 +124,62 @@ describe("IngresosListaPage", () => {
     );
     await waitFor(() => expect(screen.getByText("María González")).toBeInTheDocument());
     expect(pedidos).toContain("sin_id_1216018");
+  });
+  it("marca con 'Falta folio' al borrador y no al paciente completo", async () => {
+    server.use(
+      http.get(`${BASE}/api/v1/pacientes/buscar`, () =>
+        HttpResponse.json([
+          { ...MOCK_PACIENTE, estado_registro: "completo", origen: "SIGE" },
+          {
+            id: 7,
+            rut: null,
+            nombre: "JUAN PEREZ SOTO",
+            sexo: null,
+            edad: null,
+            region: null,
+            comuna: null,
+            telefono: null,
+            correo: null,
+            estado_registro: "pendiente_folio",
+            origen: "SALUTEM",
+          },
+        ])
+      )
+    );
+    renderPage("/ingresos?q=a");
+
+    expect(await screen.findByText("JUAN PEREZ SOTO")).toBeInTheDocument();
+    expect(screen.getAllByText("Falta folio")).toHaveLength(1);
+    const fila = screen.getByText("JUAN PEREZ SOTO").closest("tr")!;
+    expect(fila).toHaveTextContent("Falta folio");
+    expect(screen.getByText("María González").closest("tr")).not.toHaveTextContent("Falta folio");
+  });
+
+  it("un borrador con RUT, sexo, edad y región nulos se ve con guiones y sin 'null'", async () => {
+    server.use(
+      http.get(`${BASE}/api/v1/pacientes/buscar`, () =>
+        HttpResponse.json([
+          {
+            id: 7,
+            rut: null,
+            nombre: "JUAN PEREZ SOTO",
+            sexo: null,
+            edad: null,
+            region: null,
+            comuna: null,
+            telefono: null,
+            correo: null,
+            estado_registro: "pendiente_folio",
+            origen: "SALUTEM",
+          },
+        ])
+      )
+    );
+    renderPage("/ingresos?q=juan");
+
+    const fila = (await screen.findByText("JUAN PEREZ SOTO")).closest("tr")!;
+    expect(fila.textContent).not.toMatch(/null|undefined/i);
+    expect(fila.textContent).not.toMatch(/años/);
+    expect(within(fila).getAllByText("—").length).toBeGreaterThanOrEqual(3);
   });
 });

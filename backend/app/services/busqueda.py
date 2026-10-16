@@ -10,6 +10,7 @@ import re
 
 from sqlalchemy import func, select
 
+from app.domain.enums import EstadoRegistroPaciente
 from app.models.control_medico import ControlMedico
 from app.models.farmacos import EsquemaIndicacion, Receta, RegistroFarmacologico
 from app.models.ingreso import Ingreso
@@ -55,7 +56,12 @@ def buscar_pacientes(db, q: str) -> list[Paciente]:
         return []
     return list(
         db.execute(
-            select(Paciente).where(Paciente.id.in_(ids)).order_by(Paciente.nombre)
+            select(Paciente)
+            .where(
+                Paciente.id.in_(ids),
+                Paciente.estado_registro != EstadoRegistroPaciente.DESCARTADO.value,
+            )
+            .order_by(Paciente.nombre)
         ).scalars()
     )
 

@@ -44,6 +44,12 @@ function PatientAvatar({ p }: { p: PacienteRead }) {
   );
 }
 
+/** "35 años · F · correo"; lo que falta se muestra como "—", nunca "null". */
+function resumenPersona(p: PacienteRead): string {
+  const edad = p.edad != null ? `${p.edad} años` : "—";
+  return `${edad} · ${p.sexo ?? "—"}${p.correo ? ` · ${p.correo}` : ""}`;
+}
+
 function Th({ children }: { children: React.ReactNode }) {
   return (
     <th className="text-left px-4 py-3 font-semibold text-[11px] uppercase tracking-wider">
@@ -92,7 +98,7 @@ export function IngresosListaPage() {
   const { data: results = [], isFetching } = useBuscarPacientes(q);
 
   // Client-side región filter
-  const regions = Array.from(new Set(results.map((p) => p.region))).sort();
+  const regions = Array.from(new Set(results.map((p) => p.region).filter((r): r is string => !!r))).sort();
   const filtered =
     regionFilter === "Todas"
       ? results
@@ -220,20 +226,26 @@ export function IngresosListaPage() {
                       <div className="flex items-center gap-3">
                         <PatientAvatar p={p} />
                         <div className="min-w-0">
-                          <div className="font-semibold text-[13px] truncate">
-                            {p.nombre}
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className="font-semibold text-[13px] truncate">
+                              {p.nombre}
+                            </span>
+                            {p.estado_registro === "pendiente_folio" && (
+                              <Badge variant="warning" className="text-[10.5px] shrink-0">
+                                Falta folio
+                              </Badge>
+                            )}
                           </div>
                           <div className="text-[11.5px] text-muted-foreground truncate">
-                            {p.edad} años · {p.sexo}
-                            {p.correo ? ` · ${p.correo}` : ""}
+                            {resumenPersona(p)}
                           </div>
                         </div>
                       </div>
                     </td>
                     {/* RUT — monospace */}
-                    <td className="px-4 py-3 font-mono text-[12px]">{p.rut}</td>
+                    <td className="px-4 py-3 font-mono text-[12px]">{p.rut ?? "—"}</td>
                     {/* Región */}
-                    <td className="px-4 py-3 text-[12.5px]">{p.region}</td>
+                    <td className="px-4 py-3 text-[12.5px]">{p.region ?? "—"}</td>
                     {/* Comuna */}
                     <td className="px-4 py-3 text-[12.5px]">
                       {p.comuna ?? <span className="text-muted-foreground">—</span>}

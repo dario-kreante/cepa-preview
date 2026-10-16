@@ -143,7 +143,7 @@ function VistaCaso() {
                     {c.datos_caso.nombre_completo}
                   </td>
                   <td className="px-4 py-3 font-mono text-[12px]">
-                    {c.datos_caso.rut}
+                    {c.datos_caso.rut ?? "—"}
                   </td>
                   <td className="px-4 py-3 text-[12.5px]">
                     {c.datos_caso.numero_siniestro ?? "—"}

@@ -361,3 +361,49 @@ class TestReportesAuditoria:
             assert "ingreso_id" in fila
             # numero_siniestro puede ser None para casos sin siniestro registrado
             assert "numero_siniestro" in fila
+
+
+# ── Paciente completo sin RUT (borrador de SALUTEM completado con folio) ──
+
+class TestPacienteSinRut:
+
+    @pytest.fixture
+    def ingreso_sin_rut(self, db_session: Session) -> Ingreso:
+        p = Paciente(rut=None, nombre="Paciente Sin Rut", estado_registro="completo")
+        db_session.add(p)
+        db_session.flush()
+        ing = Ingreso(
+            paciente_id=p.id,
+            folio="2026-0777",
+            folio_manual=True,
+            fecha_ingreso=datetime.date(2026, 5, 10),
+            tipo_derivacion="DIAT",
+            tipo_ingreso="convenio",
+            modelo_tratamiento="ambulatorio",
+            diagnostico="F32.0",
+            estado="activo",
+        )
+        db_session.add(ing)
+        db_session.flush()
+        return ing
+
+    _FILTROS = {"fecha_desde": "2026-01-01", "fecha_hasta": "2026-12-31"}
+
+    def test_consolidado_y_casos_no_fallan(self, as_auditor: TestClient, ingreso_sin_rut: Ingreso):
+        r = as_auditor.get(f"/api/v1/auditoria/casos/{ingreso_sin_rut.id}")
+        assert r.status_code == 200
+        assert r.json()["datos_caso"]["rut"] is None
+        r = as_auditor.get("/api/v1/auditoria/casos", params={"folio": "2026-0777"})
+        assert r.status_code == 200
+        assert r.json()[0]["datos_caso"]["rut"] is None
+
+    def test_reporte_json_no_falla(self, as_auditor: TestClient, ingreso_sin_rut: Ingreso):
+        r = as_auditor.post("/api/v1/auditoria/reportes", json=self._FILTROS)
+        assert r.status_code == 200
+        fila = next(f for f in r.json()["filas"] if f["ingreso_id"] == ingreso_sin_rut.id)
+        assert fila["rut"] is None
+
+    def test_reporte_csv_no_falla(self, as_auditor: TestClient, ingreso_sin_rut: Ingreso):
+        r = as_auditor.post("/api/v1/auditoria/reportes/descargar", json=self._FILTROS)
+        assert r.status_code == 200
+        assert "2026-0777" in r.text

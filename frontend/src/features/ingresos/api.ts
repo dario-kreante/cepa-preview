@@ -82,7 +82,13 @@ export async function obtenerVista360(id: number): Promise<Vista360> {
 export async function crearIngreso(body: IngresoCreate): Promise<IngresoRead> {
   const { data, error, response } = await api.POST("/api/v1/ingresos", { body });
   if (error || !data) {
-    if (response.status === 409) throw new Error("El folio ya está emitido para otro ingreso.");
+    if (response.status === 409) {
+      // El detalle distingue folio repetido de RUT que ya tiene otro paciente.
+      const detalle = (error as { detail?: unknown } | undefined)?.detail;
+      throw new Error(
+        typeof detalle === "string" ? detalle : "El folio ya está emitido para otro ingreso.",
+      );
+    }
     if (response.status === 422) throw new Error("Datos inválidos. Revisa los campos.");
     throw new Error("No se pudo crear el ingreso");
   }
@@ -111,4 +117,13 @@ export async function obtenerRecetasPorIngreso(ingresoId: number): Promise<Recet
   });
   if (error) throw new Error("No se pudieron cargar las recetas");
   return data ?? [];
+}
+
+/** GET /api/v1/pacientes/{id}: el paciente a completar desde "Pendientes de folio". */
+export async function obtenerPaciente(id: number): Promise<PacienteRead> {
+  const { data, error } = await api.GET("/api/v1/pacientes/{paciente_id}", {
+    params: { path: { paciente_id: id } },
+  });
+  if (error || !data) throw new Error("No se pudo cargar el paciente");
+  return data;
 }

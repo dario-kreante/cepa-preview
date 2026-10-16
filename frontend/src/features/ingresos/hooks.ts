@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   buscarPacientes,
+  obtenerPaciente,
   crearIngreso,
   obtenerVista360,
   obtenerLicenciasPorIngreso,
@@ -54,6 +55,14 @@ export function useBuscarPacientes(q: string) {
   });
 }
 
+export function usePaciente(id: number | null) {
+  return useQuery({
+    queryKey: ["pacientes", id, "ficha"],
+    queryFn: () => obtenerPaciente(id!),
+    enabled: id !== null,
+  });
+}
+
 export function useVista360(id: number | null) {
   return useQuery({
     queryKey: ["pacientes", id, "vista360"],
@@ -94,6 +103,8 @@ export function useCrearIngreso() {
       qc.invalidateQueries({ queryKey: ["pacientes"] });
       // La píldora "N activos" del Topbar cambia con cada ingreso nuevo.
       qc.invalidateQueries({ queryKey: ["dashboard"] });
+      // Completar un borrador resuelve su alerta "Falta folio".
+      qc.invalidateQueries({ queryKey: ["alertas"] });
     },
   });
 }

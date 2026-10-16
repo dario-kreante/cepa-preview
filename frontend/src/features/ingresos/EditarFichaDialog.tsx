@@ -44,7 +44,7 @@ const TIPOS_INGRESO = {
 
 const edicionSchema = z.object({
   nombre: z.string().trim().min(1, "Requerido"),
-  sexo: z.enum(["F", "M", "otro"]),
+  sexo: z.enum(["F", "M", "otro"], { errorMap: () => ({ message: "Requerido" }) }),
   edad: z.coerce.number().int().min(1, "Edad fuera de rango").max(130, "Edad fuera de rango"),
   region: z.string().trim().min(1, "Requerido"),
   comuna: z.string().optional(),
@@ -65,9 +65,10 @@ type EdicionForm = z.infer<typeof edicionSchema>;
 function valoresIniciales(paciente: PacienteRead, ingreso: IngresoRead): EdicionForm {
   return {
     nombre: paciente.nombre,
-    sexo: paciente.sexo as EdicionForm["sexo"],
-    edad: paciente.edad,
-    region: paciente.region,
+    sexo: (paciente.sexo ?? "") as EdicionForm["sexo"],
+    // Sin edad, el campo parte vacío: el 0 no es un dato. El esquema lo exige antes de guardar.
+    edad: (paciente.edad ?? "") as unknown as number,
+    region: paciente.region ?? "",
     comuna: paciente.comuna ?? "",
     telefono: paciente.telefono ?? "",
     correo: paciente.correo ?? "",
@@ -170,7 +171,7 @@ export function EditarFichaDialog({ paciente, ingreso, open, onOpenChange }: Pro
         <DialogHeader>
           <DialogTitle>Editar ficha</DialogTitle>
           <p className="text-[12.5px] text-muted-foreground">
-            RUT <span className="font-mono">{paciente.rut}</span> · Folio{" "}
+            RUT <span className="font-mono">{paciente.rut ?? "—"}</span> · Folio{" "}
             <span className="font-mono">{ingreso.folio}</span>
             <span className="block text-[11.5px]">
               El RUT y el folio no se modifican desde la ficha.
@@ -187,10 +188,16 @@ export function EditarFichaDialog({ paciente, ingreso, open, onOpenChange }: Pro
             <div>
               <Label htmlFor="editar-sexo">Sexo</Label>
               <select id="editar-sexo" className={selectClass} {...register("sexo")}>
+                <option value="" disabled>
+                  Seleccione…
+                </option>
                 <option value="F">F</option>
                 <option value="M">M</option>
                 <option value="otro">Otro</option>
               </select>
+              {errors.sexo && (
+                <p className="text-[11.5px] text-destructive mt-1">{errors.sexo.message}</p>
+              )}
             </div>
             {campo("edad", "Edad", "number")}
             {campo("region", "Región")}

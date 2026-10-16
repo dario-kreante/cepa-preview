@@ -1,3 +1,4 @@
+from datetime import date
 from functools import lru_cache
 from typing import Literal
 
@@ -110,6 +111,9 @@ class Settings(BaseSettings):
     # Especialidades de SALUTEM cuya atención "Atendido" es un control médico del CEPA,
     # separadas por coma (sin distinguir mayúsculas).
     salutem_especialidades_control: str = "Médico/a,Primera consulta médica EP"
+    # Fecha ISO (AAAA-MM-DD): las personas atendidas en SALUTEM desde ese día y sin paciente
+    # en el SIGE reciben un paciente borrador pendiente de folio. Vacía = no se crean.
+    salutem_borradores_desde: str = ""
 
     # --- IMED feature flag (CEPA-122, P2, PA5) ---
     imed_enabled: bool = False
@@ -128,6 +132,19 @@ class Settings(BaseSettings):
         return frozenset(
             x.strip().casefold() for x in self.salutem_especialidades_control.split(",") if x.strip()
         )
+
+    @property
+    def salutem_borradores_desde_fecha(self) -> date | None:
+        """La fecha de corte; None si está vacía. ValueError si no es AAAA-MM-DD."""
+        valor = self.salutem_borradores_desde.strip()
+        if not valor:
+            return None
+        try:
+            return date.fromisoformat(valor)
+        except ValueError:
+            raise ValueError(
+                f"SALUTEM_BORRADORES_DESDE inválida: {self.salutem_borradores_desde!r} (se espera AAAA-MM-DD)"
+            ) from None
 
     @property
     def cors_origins_list(self) -> list[str]:

@@ -191,6 +191,7 @@ VENTANAS_DEFAULT: dict[str, dict] = {
     # Sin plazo: se crean en el sync al vincular el control; aquí solo se encienden o apagan.
     TipoAlerta.LICENCIA_EN_CONTROL.value: {"dias": 0, "habiles": False},
     TipoAlerta.RECETA_EN_CONTROL.value: {"dias": 0, "habiles": False},
+    TipoAlerta.PACIENTE_PENDIENTE_FOLIO.value: {"dias": 0, "habiles": False},
 }
 
 

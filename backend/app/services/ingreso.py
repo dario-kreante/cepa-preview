@@ -5,36 +5,16 @@ from enum import Enum
 from fastapi import HTTPException, status
 from sqlalchemy import select
 
+from app.audit.service import record_audit
+from app.domain.enums import EstadoRegistroPaciente
 from app.models.ingreso import Ingreso
 from app.models.paciente import Paciente
 from app.schemas.ingreso import IngresoCreate, IngresoUpdate
 from app.services.folio import folio_existe, siguiente_folio
+from app.services.salutem_sync.borradores import resolver_alerta_borrador
 
 
-def _obtener_o_crear_paciente(db, data: IngresoCreate) -> Paciente:
-    """Reutiliza el paciente si el RUT ya existe (RN-3); si no, lo crea.
-
-    Si existe, actualiza los datos de contacto/demográficos con lo enviado
-    (confirmar/actualizar del formulario).
-    """
-    paciente = db.execute(
-        select(Paciente).where(Paciente.rut == data.rut)
-    ).scalar_one_or_none()
-    if paciente is None:
-        paciente = Paciente(
-            rut=data.rut,
-            nombre=data.nombre,
-            sexo=data.sexo.value,
-            edad=data.edad,
-            region=data.region,
-            comuna=data.comuna,
-            telefono=data.telefono,
-            correo=data.correo,
-        )
-        db.add(paciente)
-        db.flush()
-        return paciente
-    # actualizar datos del paciente existente
+def _aplicar_datos(paciente: Paciente, data: IngresoCreate) -> None:
     paciente.nombre = data.nombre
     paciente.sexo = data.sexo.value
     paciente.edad = data.edad
@@ -42,8 +22,75 @@ def _obtener_o_crear_paciente(db, data: IngresoCreate) -> Paciente:
     paciente.comuna = data.comuna
     paciente.telefono = data.telefono
     paciente.correo = data.correo
+
+
+def _paciente_de_borrador(db, data: IngresoCreate) -> Paciente:
+    """Paciente explícito (completar un borrador): debe existir y estar pendiente de folio."""
+    paciente = db.get(Paciente, data.paciente_id)
+    if paciente is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Paciente no encontrado.")
+    if paciente.estado_registro != EstadoRegistroPaciente.PENDIENTE_FOLIO.value:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="El paciente no está pendiente de folio.",
+        )
+    if data.rut is not None and data.rut != paciente.rut:
+        otro = db.execute(
+            select(Paciente).where(Paciente.rut == data.rut, Paciente.id != paciente.id)
+        ).scalar_one_or_none()
+        if otro is not None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    f"El RUT {data.rut} ya pertenece a otro paciente. "
+                    "Si es la misma persona, descarta este borrador."
+                ),
+            )
+        paciente.rut = data.rut
+    return paciente
+
+
+def _obtener_o_crear_paciente(db, data: IngresoCreate) -> Paciente:
+    """Reutiliza el paciente (por `paciente_id` o por RUT, RN-3); si no existe, lo crea.
+
+    Si existe, actualiza los datos de contacto/demográficos con lo enviado
+    (confirmar/actualizar del formulario).
+    """
+    if data.paciente_id is not None:
+        paciente = _paciente_de_borrador(db, data)
+    else:
+        paciente = db.execute(
+            select(Paciente).where(Paciente.rut == data.rut)
+        ).scalar_one_or_none()
+    if paciente is None:
+        paciente = Paciente(rut=data.rut)
+        _aplicar_datos(paciente, data)
+        db.add(paciente)
+        db.flush()
+        return paciente
+    _aplicar_datos(paciente, data)
     db.flush()
     return paciente
+
+
+def _dejar_completo(db, paciente: Paciente, actor: str | None) -> None:
+    """Un ingreso deja al paciente `completo`: cierra la alerta del borrador o el descarte."""
+    anterior = paciente.estado_registro
+    if anterior == EstadoRegistroPaciente.COMPLETO.value:
+        return
+    paciente.estado_registro = EstadoRegistroPaciente.COMPLETO.value
+    if anterior == EstadoRegistroPaciente.PENDIENTE_FOLIO.value:
+        resolver_alerta_borrador(db, paciente.id)
+    else:
+        paciente.motivo_descarte = None
+        paciente.descartado_por = None
+        paciente.descartado_en = None
+    db.flush()
+    if actor is not None:
+        record_audit(
+            db, actor=actor, action="UPDATE", entity="paciente", entity_id=str(paciente.id),
+            valor_anterior=anterior, valor_nuevo=EstadoRegistroPaciente.COMPLETO.value,
+        )
 
 
 def _resolver_folio(db, data: IngresoCreate, paciente: Paciente) -> tuple[str, bool]:
@@ -71,9 +118,10 @@ def _resolver_folio(db, data: IngresoCreate, paciente: Paciente) -> tuple[str, b
     return data.folio, True
 
 
-def crear_ingreso(db, data: IngresoCreate) -> Ingreso:
+def crear_ingreso(db, data: IngresoCreate, actor: str | None = None) -> Ingreso:
     paciente = _obtener_o_crear_paciente(db, data)
     folio, folio_manual = _resolver_folio(db, data, paciente)
+    _dejar_completo(db, paciente, actor)
     ingreso = Ingreso(
         paciente_id=paciente.id,
         folio=folio,

@@ -19,6 +19,11 @@ def test_tabla_y_columnas():
         "telefono",
         "correo",
         "salutem_persona_id",
+        "estado_registro",
+        "origen",
+        "motivo_descarte",
+        "descartado_por",
+        "descartado_en",
         "created_at",
         "updated_at",
     }
@@ -55,3 +60,31 @@ def test_default_created_at_utc():
         valor = default.arg(None)
     assert valor.tzinfo == timezone.utc
     assert isinstance(valor, datetime)
+
+
+def test_un_paciente_nuevo_queda_completo_y_de_origen_sige(db_session):
+    p = Paciente(rut="11111111-1", nombre="Ana Pérez", sexo="F", edad=30, region="Maule")
+    db_session.add(p)
+    db_session.flush()
+    db_session.refresh(p)
+    assert p.estado_registro == "completo"
+    assert p.origen == "SIGE"
+
+
+def test_un_borrador_admite_rut_sexo_edad_y_region_nulos(db_session):
+    p = Paciente(
+        nombre="Borrador Salutem",
+        estado_registro="pendiente_folio",
+        origen="SALUTEM",
+        salutem_persona_id=1180505,
+    )
+    db_session.add(p)
+    db_session.flush()
+    assert p.id is not None
+    assert p.rut is None and p.sexo is None and p.edad is None and p.region is None
+
+
+def test_dos_borradores_sin_rut_no_chocan_por_unique(db_session):
+    db_session.add(Paciente(nombre="Borrador Uno", estado_registro="pendiente_folio", origen="SALUTEM"))
+    db_session.add(Paciente(nombre="Borrador Dos", estado_registro="pendiente_folio", origen="SALUTEM"))
+    db_session.flush()

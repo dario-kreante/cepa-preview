@@ -7,6 +7,7 @@ import { LoginPage } from "@/features/auth/LoginPage";
 import { SsoCallbackPage } from "@/features/auth/SsoCallbackPage";
 import { IngresosListaPage } from "@/features/ingresos/IngresosListaPage";
 import { AltaIngresoPage } from "@/features/ingresos/AltaIngresoPage";
+import { PendientesFolioPage } from "@/features/pacientes-borrador/PendientesFolioPage";
 import { LicenciasPage } from "@/features/licencias/LicenciasPage";
 import { FarmacosPage } from "@/features/farmacos/FarmacosPage";
 import { ControlesPage } from "@/features/controles/ControlesPage";
@@ -44,6 +45,7 @@ export function AppRoutes() {
           <Route path="/ingresos" element={<IngresosListaPage />} />
           <Route element={<ProtectedRoute rolesEscritura />}>
             <Route path="/ingresos/nuevo" element={<AltaIngresoPage />} />
+            <Route path="/pendientes-folio" element={<PendientesFolioPage />} />
           </Route>
           <Route path="/licencias" element={<LicenciasPage />} />
           <Route path="/farmacos" element={<FarmacosPage />} />

@@ -4,6 +4,9 @@ import { Sidebar } from "@/components/shell/Sidebar";
 import { Topbar } from "@/components/shell/Topbar";
 import { AlertsPanel } from "@/components/shell/AlertsPanel";
 import { useAlertas } from "@/features/alertas/hooks";
+import { usePendientesFolio } from "@/features/pacientes-borrador/hooks";
+import { useAuth } from "@/lib/auth/AuthContext";
+import { puedeEscribir, type Rol } from "@/lib/rbac";
 
 /**
  * AppShell — authenticated layout.
@@ -31,6 +34,9 @@ export function AppShell() {
   const [alertsVisible, setAlertsVisible] = useState(isWide);
 
   const { data: alertas = [] } = useAlertas();
+  const { rol } = useAuth();
+  // La lista de pendientes de folio es solo para quienes escriben (Auditor recibiría 403).
+  const { data: pendientesFolio = [] } = usePendientesFolio(puedeEscribir(rol as Rol));
 
   // Compute sidebar badges from real alert data
   const pendientes = alertas.filter((a) => a.estado === "pendiente");
@@ -42,6 +48,7 @@ export function AppShell() {
     ept: pendientes.filter(
       (a) => a.caso_tipo?.toLowerCase() === "ept",
     ).length,
+    pendientes_folio: pendientesFolio.length,
   };
 
 

@@ -158,3 +158,38 @@ Estimaciones para producción: la API responde ~0,5–0,6 s por llamada, así qu
   una editada en un control más antiguo, en hasta una hora.
 - Orden recomendado: correr `alembic upgrade head` primero en la Oracle de QA (segicepa-qa, BD
   CEPAQA) y recién después en dev y prod.
+
+## Pacientes borrador pendientes de folio (2026-10)
+
+- Qué hace: al final de cada ciclo del sync (después de la vinculación), las personas de SALUTEM
+  con una atención Atendida desde la fecha de corte y que no tienen paciente en el SIGE pasan a ser
+  pacientes **borrador** (`estado_registro = pendiente_folio`, origen SALUTEM). Un borrador no tiene
+  ingreso ni folio; no aparece en Ingresos.
+- `SALUTEM_BORRADORES_DESDE` (fecha ISO `AAAA-MM-DD`): vacía = apagado, no se crea ningún borrador.
+  En cada VM configurarla con el día de activación en `~/sige-cepa/backend/.env`. No poner una
+  fecha de corte pasada con mucha historia: cada persona atendida desde esa fecha y sin paciente
+  se convertiría en borrador de golpe. Si el valor es
+  inválido, el error queda en la bitácora del sync, no se crea ningún borrador y el ciclo sigue.
+- Migración 1330 (`paciente`): aplicarla **primero en la Oracle de QA** (segicepa-qa, BD CEPAQA) y
+  recién después en dev. El código y la migración 1330 van juntos: el modelo `Paciente` ya incluye
+  las columnas nuevas, así que sin la migración falla **toda** consulta a paciente (no solo el
+  paso de borradores).
+- En las VMs solo pueden generar borrador las personas de `SALUTEM_SYNC_PERSONAS_PERMITIDAS`, porque
+  esa lista limita qué personas se copian desde SALUTEM.
+- Completar: un administrativo o coordinador registra el folio desde la ficha del paciente (botón
+  "Completar registro", en la pantalla "Pendientes de folio"). Eso crea el ingreso y el paciente pasa
+  a `completo`. Si el RUT ya existe en otro paciente, el sistema responde con conflicto y el borrador
+  sigue pendiente. Las atenciones del paciente se unen en el siguiente ciclo de vinculación.
+- Descartar: si la persona no es un caso del CEPA, se descarta con un motivo (1 a 300 caracteres).
+  El borrador queda guardado como `descartado` y el sync nunca lo vuelve a crear. Solo
+  administrativos y coordinadores pueden descartar; el auditor ve la señal "Falta folio" pero no la
+  lista.
+- Alerta `paciente_pendiente_folio` ("Paciente nuevo pendiente de folio"): sale por cada borrador,
+  sin profesional asignado, y la ven administrativos y coordinación. Viene encendida por defecto y se
+  apaga en `/config-alertas`; con la alerta apagada el borrador se crea igual. Se resuelve sola al
+  completar o descartar.
+- Limitaciones conocidas de pacientes sin RUT: un borrador completado puede quedar sin RUT. El
+  reporte de auditoría y sus vistas lo muestran con "—". Pero el alta de reintegro
+  (`CasoReintegroCreate.rut`) y la de EPT (`rut_trabajador`) exigen RUT, y el pull manual de la
+  ficha clínica busca a la persona por RUT (`resolver_persona(rut)`), por lo que con RUT nulo
+  devuelve vacío. La vinculación automática sí funciona, porque usa `salutem_persona_id`.
