@@ -124,6 +124,7 @@ def sugerir_licencias(db: Session, folio: str) -> list[LicenciaSugeridaRead]:
             sugerencias.append(
                 LicenciaSugeridaRead(
                     ficha_clinica_id=ficha.id,
+                    cita_id=contenido.get("citaId") if isinstance(contenido.get("citaId"), int) else None,
                     cita_fecha=fecha,
                     texto=mencion.texto,
                     tipo_lm=TipoLicencia(tipo) if tipo else None,

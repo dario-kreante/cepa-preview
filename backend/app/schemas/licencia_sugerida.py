@@ -15,6 +15,8 @@ class LicenciaSugeridaRead(BaseModel):
     """
 
     ficha_clinica_id: int
+    # Cita de SALUTEM de la atención (para unirla con su alerta); None si no viene.
+    cita_id: int | None = None
     cita_fecha: date
     texto: str
     tipo_lm: TipoLicencia | None

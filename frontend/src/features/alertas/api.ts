@@ -7,6 +7,7 @@ export type AlertaRead = components["schemas"]["app__schemas__alertas__AlertaRea
 export type AlertaUpdate = components["schemas"]["AlertaUpdate"];
 export type EstadoAlerta = components["schemas"]["EstadoAlerta"];
 export type TareaItemRead = components["schemas"]["TareaItemRead"];
+export type AlertaContextoRead = components["schemas"]["AlertaContextoRead"];
 
 export async function listarAlertas(): Promise<AlertaRead[]> {
   const { data, error } = await api.GET("/api/v1/alertas", {});
@@ -30,5 +31,14 @@ export async function actualizarAlerta(
     body,
   });
   if (error || !data) throw new Error("No se pudo actualizar la alerta");
+  return data;
+}
+
+/** GET /api/v1/alertas/{id}/contexto — paciente, ingreso y cita de SALUTEM de la alerta. */
+export async function obtenerContextoAlerta(id: number): Promise<AlertaContextoRead> {
+  const { data, error } = await api.GET("/api/v1/alertas/{alerta_id}/contexto", {
+    params: { path: { alerta_id: id } },
+  });
+  if (error || !data) throw new Error("No se pudo cargar el paciente de la alerta");
   return data;
 }

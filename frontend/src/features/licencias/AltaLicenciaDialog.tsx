@@ -61,9 +61,11 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   /** Si viene, el formulario abre precargado y avisa que los datos son sugeridos. */
   sugerencia?: SugerenciaLicencia;
+  /** Se llama tras registrar la licencia (p. ej. para resolver la alerta que la originó). */
+  onCreada?: () => void;
 }
 
-export function AltaLicenciaDialog({ folio, ingresoId, open, onOpenChange, sugerencia }: Props) {
+export function AltaLicenciaDialog({ folio, ingresoId, open, onOpenChange, sugerencia, onCreada }: Props) {
   const crearMutation = useCrearLicencia(folio);
 
   const {
@@ -118,6 +120,7 @@ export function AltaLicenciaDialog({ folio, ingresoId, open, onOpenChange, suger
     try {
       await crearMutation.mutateAsync(body);
       toast.success("Licencia registrada correctamente");
+      onCreada?.();
       onOpenChange(false);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Error al registrar la licencia";

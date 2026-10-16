@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Search, Plus, Pill, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
@@ -8,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { cn, fmtDate } from "@/lib/utils";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { puedeEscribir, type Rol } from "@/lib/rbac";
-import { useBuscarPacientes, useVista360 } from "@/features/ingresos/hooks";
+import { useBuscarPacientes, usePaciente, useVista360 } from "@/features/ingresos/hooks";
 import { useRegistro, useRecetas, useGenerarAlertasRevision } from "./hooks";
 import { EsquemaPanel } from "./EsquemaPanel";
 import { FarmacosSugeridosPanel } from "./FarmacosSugeridosPanel";
@@ -324,15 +325,26 @@ export function FarmacosPage() {
   const [q, setQ] = useState("");
 
   // Selected paciente — cleared whenever the debounced query changes.
-  const [selectedPaciente, setSelectedPaciente] = useState<PacienteRead | null>(null);
+  const [elegido, setElegido] = useState<PacienteRead | null>(null);
 
   useEffect(() => {
     const t = setTimeout(() => {
       setQ(inputQ.trim());
-      setSelectedPaciente(null);
+      setElegido(null);
     }, 300);
     return () => clearTimeout(t);
   }, [inputQ]);
+
+  // ?paciente=ID (p. ej. desde una alerta de receta): abre ese paciente directo.
+  const [params, setParams] = useSearchParams();
+  const pacienteParam = Number(params.get("paciente")) || null;
+  const { data: pacienteDeAlerta } = usePaciente(q === "" && !elegido ? pacienteParam : null);
+  // Lo elegido en la lista manda; sin búsqueda, el paciente que vino por ?paciente=.
+  const selectedPaciente = elegido ?? (q === "" ? (pacienteDeAlerta ?? null) : null);
+  const setSelectedPaciente = (p: PacienteRead | null) => {
+    setElegido(p);
+    if (pacienteParam) setParams({}, { replace: true });
+  };
 
   const { data: pacientes = [], isFetching } = useBuscarPacientes(q);
 

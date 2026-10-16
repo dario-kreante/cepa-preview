@@ -1595,6 +1595,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/alertas/{alerta_id}/contexto": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Contexto Alerta
+         * @description Paciente, ingreso y cita de SALUTEM de la alerta, para gestionarla desde el panel.
+         */
+        get: operations["contexto_alerta_api_v1_alertas__alerta_id__contexto_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/alertas/{alerta_id}": {
         parameters: {
             query?: never;
@@ -2221,6 +2241,21 @@ export interface components {
             aumentos_isl: number;
             /** Pct Avance */
             pct_avance: number | null;
+        };
+        /** AlertaContextoRead */
+        AlertaContextoRead: {
+            /** Paciente Id */
+            paciente_id?: number | null;
+            /** Paciente Nombre */
+            paciente_nombre?: string | null;
+            /** Ingreso Id */
+            ingreso_id?: number | null;
+            /** Folio */
+            folio?: string | null;
+            /** Cita Id */
+            cita_id?: number | null;
+            /** Fecha */
+            fecha?: string | null;
         };
         /** AlertaLicenciaRead */
         AlertaLicenciaRead: {
@@ -3702,6 +3737,8 @@ export interface components {
         LicenciaSugeridaRead: {
             /** Ficha Clinica Id */
             ficha_clinica_id: number;
+            /** Cita Id */
+            cita_id?: number | null;
             /**
              * Cita Fecha
              * Format: date
@@ -8408,6 +8445,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["app__schemas__alertas__AlertaRead"][];
+                };
+            };
+        };
+    };
+    contexto_alerta_api_v1_alertas__alerta_id__contexto_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                alerta_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlertaContextoRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

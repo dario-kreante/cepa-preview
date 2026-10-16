@@ -225,4 +225,5 @@ def test_sugiere_el_reposo_aunque_no_diga_licencia(as_admin, folio):
     [s] = as_admin.get(f"/api/v1/fichas-clinicas/{folio}/licencias-sugeridas").json()
 
     assert (s["cantidad_dias"], s["fecha_inicio"], s["fecha_termino"]) == (15, "2026-10-15", "2026-10-29")
+    assert s["cita_id"] == 78  # une la sugerencia con la alerta de esa atención
     assert s["tipo_reposo"] == "total"

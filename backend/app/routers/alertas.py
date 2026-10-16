@@ -13,6 +13,7 @@ from app.domain.enums_alertas import EstadoAlerta
 from app.models.alertas import AlertaNotif
 from app.schemas.alertas import AlertaRead, AlertaUpdate, JobResultado
 from app.services.alertas import ejecutar_job_alertas
+from app.services.alertas_contexto import AlertaContextoRead, contexto_de_alerta
 
 router = APIRouter(prefix="/api/v1/alertas", tags=["alertas"])
 
@@ -69,6 +70,21 @@ def listar_alertas(
         )
     stmt = stmt.order_by(AlertaNotif.generada_en.desc())
     return list(db.scalars(stmt))
+
+
+@router.get(
+    "/{alerta_id}/contexto", response_model=AlertaContextoRead, dependencies=[Depends(_reader)]
+)
+def contexto_alerta(
+    alerta_id: int,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> AlertaContextoRead:
+    """Paciente, ingreso y cita de SALUTEM de la alerta, para gestionarla desde el panel."""
+    alerta = db.get(AlertaNotif, alerta_id)
+    if alerta is None or not _visible_para(alerta, current_user):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Alerta no encontrada")
+    return contexto_de_alerta(db, alerta)
 
 
 @router.patch("/{alerta_id}", response_model=AlertaRead, dependencies=[Depends(_writer)])
