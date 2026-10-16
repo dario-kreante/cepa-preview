@@ -31,6 +31,49 @@ class ResumenDashboard(BaseModel):
     filtros_aplicados: dict[str, Any]
 
 
+class ConteoEtiqueta(BaseModel):
+    etiqueta: str
+    total: int
+
+
+class PuntoTendencia(BaseModel):
+    semana: date  # lunes de la semana
+    atendidas: int
+    inasistencias: int
+
+
+class DashboardOperativo(BaseModel):
+    """Respuesta de GET /dashboard/operativo: atenciones SALUTEM + pendientes de gestión.
+
+    Las cifras de atenciones y de ingresos/altas/controles son del período; el resto
+    (activos, licencias, ODAs, EPT, borradores, alertas) es el estado a hoy.
+    """
+
+    periodo_desde: date
+    periodo_hasta: date
+    pacientes_activos: int
+    ingresos_periodo: int
+    altas_periodo: int
+    atenciones: int
+    inasistencias: int
+    anulaciones: int
+    tasa_inasistencia: float | None
+    agendadas_proximas: int
+    controles_periodo: int
+    licencias_activas: int
+    licencias_pendientes_isl: int
+    odas_vencidas: int
+    odas_por_vencer: int
+    ept_abiertos: int
+    pacientes_pendientes_folio: int
+    alertas_abiertas: int
+    alertas_por_tipo: list[ConteoEtiqueta]
+    activos_por_programa: list[ConteoEtiqueta]
+    atenciones_por_especialidad: list[ConteoEtiqueta]
+    atenciones_por_profesional: list[ConteoEtiqueta]
+    tendencia_semanal: list[PuntoTendencia]
+
+
 class IngresosActivos(BaseModel):
     """Respuesta de GET /dashboard/activos (píldora "N activos" del Topbar)."""
     total: int

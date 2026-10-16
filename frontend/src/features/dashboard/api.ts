@@ -2,6 +2,7 @@ import { api } from "@/lib/apiClient";
 import type { components } from "@/types/api";
 
 export type ResumenDashboard = components["schemas"]["ResumenDashboard"];
+export type DashboardOperativo = components["schemas"]["DashboardOperativo"];
 
 export interface DashboardFiltros {
   fecha_desde?: string;
@@ -18,6 +19,20 @@ export async function obtenerDashboard(
   if (filtros.fecha_hasta) query.fecha_hasta = filtros.fecha_hasta;
   if (filtros.programa) query.programa = filtros.programa;
   const { data, error } = await api.GET("/api/v1/dashboard", {
+    params: { query },
+  });
+  if (error || !data) throw new Error("No se pudo cargar el dashboard");
+  return data;
+}
+
+/** GET /api/v1/dashboard/operativo — atenciones SALUTEM del período + pendientes de gestión a hoy. */
+export async function obtenerDashboardOperativo(
+  periodo: { fecha_desde?: string; fecha_hasta?: string } = {},
+): Promise<DashboardOperativo> {
+  const query: Record<string, string> = {};
+  if (periodo.fecha_desde) query.fecha_desde = periodo.fecha_desde;
+  if (periodo.fecha_hasta) query.fecha_hasta = periodo.fecha_hasta;
+  const { data, error } = await api.GET("/api/v1/dashboard/operativo", {
     params: { query },
   });
   if (error || !data) throw new Error("No se pudo cargar el dashboard");
