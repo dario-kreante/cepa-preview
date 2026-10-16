@@ -8,6 +8,7 @@ export type ControlMedicoCreate = components["schemas"]["ControlMedicoCreate"];
 export type ProximoControlUpdate = components["schemas"]["ProximoControlUpdate"];
 export type LicenciaUpdate = components["schemas"]["LicenciaUpdate"];
 export type EvaluacionUpdate = components["schemas"]["EvaluacionUpdate"];
+export type ArchivoControlRead = components["schemas"]["ArchivoControlRead"];
 
 // Calificación RECA: mismo catálogo que la RECA del reintegro (D20).
 export type EstadoReca = components["schemas"]["TipoReca"];
@@ -110,4 +111,78 @@ export async function actualizarEvaluacion(
   if (error || !data)
     throw new Error("No se pudo actualizar la evaluación del control");
   return data;
+}
+
+/** GET /api/v1/controles-medicos/{control_id}/archivos */
+export async function archivosDeControl(controlId: number): Promise<ArchivoControlRead[]> {
+  const { data, error } = await api.GET("/api/v1/controles-medicos/{control_id}/archivos", {
+    params: { path: { control_id: controlId } },
+  });
+  if (error || !data) throw new Error("No se pudieron cargar los documentos de SALUTEM");
+  return data;
+}
+
+/** El navegador no dejó abrir la pestaña nueva (bloqueador de ventanas emergentes). */
+export class PestanaBloqueadaError extends Error {
+  constructor() {
+    super("El navegador bloqueó la pestaña nueva.");
+    this.name = "PestanaBloqueadaError";
+  }
+}
+
+// Solo estos tipos se muestran en una pestaña; el resto (p. ej. HTML o SVG) se descarga,
+// porque un documento activo abierto como blob correría con el origen de la aplicación.
+const TIPOS_ABRIBLES = new Set(["application/pdf", "image/jpeg", "image/png", "image/gif", "image/heic"]);
+const REVOCAR_URL_MS = 5 * 60_000;
+
+/**
+ * Abre un documento de SALUTEM. Se pide con la sesión (Bearer) y se entrega como blob:
+ * una URL directa del backend no llevaría el token.
+ *
+ * La pestaña se abre de forma síncrona en el clic y recién después se pide el contenido:
+ * un `window.open` tras un `await` lo bloquean los navegadores sin avisar.
+ */
+export async function abrirArchivoDeControl(
+  controlId: number,
+  archivoId: number,
+  nombre: string,
+): Promise<void> {
+  const pestana = window.open("", "_blank");
+  if (!pestana) throw new PestanaBloqueadaError();
+  try {
+    pestana.opener = null;
+    pestana.document.title = "Cargando documento…";
+    pestana.document.body.textContent = "Cargando documento…";
+  } catch {
+    // La pestaña es solo un contenedor: el texto de espera es cosmético.
+  }
+  try {
+    const { data, error } = await api.GET(
+      "/api/v1/controles-medicos/{control_id}/archivos/{archivo_id}/contenido",
+      { params: { path: { control_id: controlId, archivo_id: archivoId } }, parseAs: "blob" },
+    );
+    if (error || !data) throw new Error("No se pudo abrir el documento");
+    const blob = data as Blob;
+    const tipo = blob.type.split(";")[0].trim().toLowerCase();
+    if (TIPOS_ABRIBLES.has(tipo)) {
+      const url = URL.createObjectURL(blob);
+      pestana.location.href = url;
+      setTimeout(() => URL.revokeObjectURL(url), REVOCAR_URL_MS);
+    } else {
+      descargar(new Blob([blob], { type: "application/octet-stream" }), nombre);
+      pestana.close();
+    }
+  } catch (e) {
+    pestana.close();
+    throw e;
+  }
+}
+
+function descargar(blob: Blob, nombre: string): void {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = nombre;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), REVOCAR_URL_MS);
 }

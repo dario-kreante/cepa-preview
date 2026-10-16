@@ -28,8 +28,10 @@ from datetime import date
 from typing import Protocol, runtime_checkable
 
 from app.integrations.salutem.models import (
+    ArchivoSalutem,
     AtencionSalutem,
     CitaSalutem,
+    ContenidoArchivo,
     EstadoCitaSalutem,
     PersonaSalutem,
     TipoFechaCita,
@@ -86,4 +88,12 @@ class SalutemClientProtocol(Protocol):
         `estado` no es opcional: SALUTEM lo exige. Para barrer varios estados o
         varios días, se itera desde el llamador.
         """
+        ...
+
+    def listar_archivos(self, salutem_id: int) -> list[ArchivoSalutem]:
+        """Lista la biblioteca de archivos de la persona, sin contenido. Lista vacía si no hay."""
+        ...
+
+    def obtener_archivo(self, salutem_id: int, archivo_id: int) -> ContenidoArchivo | None:
+        """Trae un archivo con su contenido. None si no existe o llega sin contenido."""
         ...

@@ -3,7 +3,7 @@
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.audit.service import record_audit
@@ -18,6 +18,13 @@ router = APIRouter(prefix="/api/v1/alertas", tags=["alertas"])
 
 _writer = require_role("Administrativo", "Coordinacion")
 _reader = require_role("Administrativo", "Coordinacion", "Auditor")
+
+
+
+def _visible_para(alerta: AlertaNotif, current_user) -> bool:
+    """Una Administrativa ve (y gestiona) sus alertas y las de ingresos sin profesional asignado."""
+    return current_user.role != "Administrativo" or alerta.usuario_id in (None, current_user.id)
+
 
 # Transiciones de estado válidas (DD-E)
 _TRANSICIONES_VALIDAS: dict[str, set[str]] = {
@@ -51,12 +58,15 @@ def listar_alertas(
 ) -> list[AlertaNotif]:
     """Panel de notificaciones in-app: devuelve alertas filtradas por rol y asignación.
 
-    - Administrativo: solo sus alertas (usuario_id == current_user.id).
+    - Administrativo: sus alertas (usuario_id == current_user.id) y las de ingresos sin
+      profesional asignado (usuario_id nulo), que de otro modo solo vería Coordinación.
     - Coordinacion/Auditor: todas las alertas (alcance ampliado, RN-2/RN-3 CEPA-101).
     """
     stmt = select(AlertaNotif)
     if current_user.role == "Administrativo":
-        stmt = stmt.where(AlertaNotif.usuario_id == current_user.id)
+        stmt = stmt.where(
+            or_(AlertaNotif.usuario_id == current_user.id, AlertaNotif.usuario_id.is_(None))
+        )
     stmt = stmt.order_by(AlertaNotif.generada_en.desc())
     return list(db.scalars(stmt))
 
@@ -75,7 +85,8 @@ def actualizar_estado_alerta(
     DD-B: auditoría ANTES del commit.
     """
     alerta = db.get(AlertaNotif, alerta_id)
-    if alerta is None:
+    # Una alerta asignada a otra Administrativa no existe para esta (mismo criterio que el listado).
+    if alerta is None or not _visible_para(alerta, current_user):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Alerta no encontrada")
 
     estado_actual = alerta.estado

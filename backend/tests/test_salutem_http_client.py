@@ -335,3 +335,96 @@ def test_stub_obtener_persona_devuelve_none():
     from app.integrations.salutem.client import SalutemStubClient
 
     assert SalutemStubClient().obtener_persona(1) is None
+
+
+# ── Biblioteca de archivos (/personas-archivos) ───────────────────────────────
+
+import base64  # noqa: E402
+from datetime import datetime  # noqa: E402
+
+PDF = b"%PDF-1.6 contenido de prueba"
+
+
+def test_listar_archivos_pide_la_biblioteca_de_la_persona():
+    visto = {}
+
+    def handler(request):
+        visto["ruta"] = request.url.path
+        visto["cuerpo"] = json.loads(request.content)
+        return _ok([
+            {"id": 1368688, "nombre": "boletaPPL ripley.pdf", "nombreOriginal": "boletaPPL ripley.pdf",
+             "fechaCreacion": "15-10-2026 16:29", "tipo": "documento", "descripcion": ""},
+        ])
+
+    [archivo] = _cliente(handler).listar_archivos(1180505)
+
+    assert visto["ruta"].endswith("/96/personas-archivos")
+    assert visto["cuerpo"] == {"persona_id": "1180505"}
+    assert (archivo.archivo_id, archivo.persona_id, archivo.nombre, archivo.tipo) == (
+        1368688, 1180505, "boletaPPL ripley.pdf", "documento")
+    assert archivo.fecha_creacion == datetime(2026, 10, 15, 16, 29)
+
+
+def test_un_registro_ilegible_de_la_biblioteca_se_salta_sin_perder_los_demas():
+    handler = lambda request: _ok([  # noqa: E731
+        {"nombre": "sin id.pdf", "tipo": "documento"},
+        {"id": "no-numerico", "nombre": "raro.pdf"},
+        "basura",
+        {"id": 5, "nombre": "ok.pdf", "tipo": "documento"},
+    ])
+    assert [a.archivo_id for a in _cliente(handler).listar_archivos(1)] == [5]
+
+
+def test_el_tipo_de_un_archivo_se_trunca_a_30_caracteres():
+    handler = lambda request: _ok([{"id": 1, "nombre": "x.pdf", "tipo": "t" * 40}])  # noqa: E731
+    [archivo] = _cliente(handler).listar_archivos(1)
+    assert archivo.tipo == "t" * 30
+
+
+def test_una_fecha_de_creacion_ilegible_queda_nula():
+    handler = lambda request: _ok([{"id": 1, "nombre": "x.pdf", "fechaCreacion": "ayer", "tipo": "documento"}])  # noqa: E731
+    [archivo] = _cliente(handler).listar_archivos(1)
+    assert archivo.fecha_creacion is None
+
+
+def test_obtener_archivo_decodifica_el_base64_y_detecta_el_tipo():
+    visto = {}
+
+    def handler(request):
+        visto["cuerpo"] = json.loads(request.content)
+        return _ok({"id": 7, "nombre": "lm.pdf", "nombreOriginal": "LICENCIA.pdf",
+                    "archivo_base64": base64.b64encode(PDF).decode()})
+
+    contenido = _cliente(handler).obtener_archivo(1180505, 7)
+
+    assert visto["cuerpo"] == {"persona_id": "1180505", "archivo_id": "7"}
+    assert (contenido.nombre, contenido.media_type, contenido.datos) == ("LICENCIA.pdf", "application/pdf", PDF)
+
+
+def test_un_base64_vacio_es_un_archivo_sin_contenido():
+    handler = lambda request: _ok({"id": 7, "nombre": "x.pdf", "archivo_base64": ""})  # noqa: E731
+    assert _cliente(handler).obtener_archivo(1, 7) is None
+
+
+def test_una_foto_jpeg_se_reconoce():
+    jpeg = b"\xff\xd8\xff\xe0 foto"
+    handler = lambda request: _ok({"id": 8, "nombre": "r.jpg", "archivo_base64": base64.b64encode(jpeg).decode()})  # noqa: E731
+    assert _cliente(handler).obtener_archivo(1, 8).media_type == "image/jpeg"
+
+
+def test_el_cliente_sigue_cumpliendo_el_protocolo_con_la_biblioteca():
+    assert isinstance(_cliente(lambda r: _ok([])), SalutemClientProtocol)
+
+
+def test_un_base64_ilegible_es_un_error_de_salutem():
+    handler = lambda request: _ok({"id": 9, "nombre": "x.pdf", "archivo_base64": "no es base64!!"})  # noqa: E731
+    with pytest.raises(SalutemError) as exc:
+        _cliente(handler).obtener_archivo(1, 9)
+    assert exc.value.codigo == "ARCHIVO_ILEGIBLE"
+
+
+def test_un_base64_que_no_es_texto_es_un_error_de_salutem():
+    handler = lambda request: _ok({"id": 9, "nombre": "x.pdf", "archivo_base64": 123})  # noqa: E731
+    with pytest.raises(SalutemError) as exc:
+        _cliente(handler).obtener_archivo(1, 9)
+    assert exc.value.codigo == "ARCHIVO_ILEGIBLE"

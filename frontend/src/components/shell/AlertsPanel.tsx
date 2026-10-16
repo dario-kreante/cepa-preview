@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import {
   AlertCircle,
   Clock,
@@ -13,8 +14,9 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { puedeEscribir, type Rol } from "@/lib/rbac";
-import { useAlertas, useTareas } from "@/features/alertas/hooks";
+import { useActualizarAlerta, useAlertas, useTareas } from "@/features/alertas/hooks";
 import type { AlertaRead, TareaItemRead } from "@/features/alertas/api";
+import { DocumentosAlertaDialog } from "./DocumentosAlertaDialog";
 
 // ── visual helpers ────────────────────────────────────────────────────────────
 
@@ -50,13 +52,14 @@ const STYLE_MAP: Record<string, string> = {
 
 // ── date formatting ───────────────────────────────────────────────────────────
 
-function formatDate(iso: string | null | undefined): string {
+function formatDate(iso: string | null | undefined, timeZone?: string): string {
   if (!iso) return "—";
   try {
     return new Date(iso).toLocaleDateString("es-CL", {
       day: "2-digit",
       month: "short",
       year: "numeric",
+      timeZone,
     });
   } catch {
     return "—";
@@ -75,6 +78,15 @@ function todayLabel(): string {
 // Capitalize first letter
 function cap(s: string) {
   return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+export const TITULOS_ALERTA: Record<string, string> = {
+  licencia_en_control: "Licencia emitida en control",
+  receta_en_control: "Receta emitida en control",
+};
+
+export function tituloAlerta(tipo: string): string {
+  return TITULOS_ALERTA[tipo] ?? cap(tipo.replace(/_/g, " "));
 }
 
 /**
@@ -111,35 +123,111 @@ interface AlertItemProps {
   subtitle: string;
   meta: string;
   onClick: () => void;
+  /** Se llama una vez cuando la alerta estuvo a la vista VISTA_MS seguidos (para marcarla leída). */
+  onVista?: () => void;
+  /** Solo para quien puede gestionar alertas; sin él la alerta es de solo lectura. */
+  onResolver?: () => void;
+  ocupado?: boolean;
 }
 
-function AlertItem({ bucket, title, subtitle, meta, onClick }: AlertItemProps) {
+/** Tiempo que una alerta tiene que estar en pantalla para darla por leída. */
+const VISTA_MS = 1500;
+
+/**
+ * Llama a `onVista` una sola vez cuando el elemento estuvo al menos 60% visible durante
+ * VISTA_MS seguidos: pasar de largo al hacer scroll no cuenta como haberla leído.
+ */
+function useVistaDurante(onVista: (() => void) | undefined) {
+  const ref = useRef<HTMLDivElement>(null);
+  const llamar = useRef(onVista);
+  useEffect(() => {
+    llamar.current = onVista;
+  });
+  const activo = onVista !== undefined;
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!activo || !el || typeof IntersectionObserver === "undefined") return;
+    let temporizador: ReturnType<typeof setTimeout> | undefined;
+    let hecho = false;
+    const observador = new IntersectionObserver(
+      (entradas) => {
+        const visible = entradas.some((e) => e.isIntersecting);
+        if (visible && !temporizador && !hecho) {
+          temporizador = setTimeout(() => {
+            hecho = true;
+            observador.disconnect();
+            llamar.current?.();
+          }, VISTA_MS);
+        } else if (!visible && temporizador) {
+          clearTimeout(temporizador);
+          temporizador = undefined;
+        }
+      },
+      { threshold: 0.6 },
+    );
+    observador.observe(el);
+    return () => {
+      clearTimeout(temporizador);
+      observador.disconnect();
+    };
+  }, [activo]);
+
+  return ref;
+}
+
+function AlertItem({
+  bucket,
+  title,
+  subtitle,
+  meta,
+  onClick,
+  onVista,
+  onResolver,
+  ocupado = false,
+}: AlertItemProps) {
   const Icon = ICON_MAP[bucket];
+  const ref = useVistaDurante(onVista);
   return (
-    <button
-      onClick={onClick}
-      className="w-full text-left px-5 py-3 border-b hover:bg-muted/50 transition-colors flex gap-3 cursor-pointer"
-    >
-      <div
-        className={cn(
-          "size-8 rounded-lg grid place-items-center shrink-0",
-          STYLE_MAP[bucket],
-        )}
+    <div ref={ref} className="border-b hover:bg-muted/50 transition-colors">
+      <button
+        onClick={onClick}
+        className="w-full text-left px-5 pt-3 pb-2 flex gap-3 cursor-pointer"
       >
-        <Icon className="size-4" />
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="text-[12.5px] font-semibold leading-tight mb-0.5">
-          {title}
+        <div
+          className={cn(
+            "size-8 rounded-lg grid place-items-center shrink-0",
+            STYLE_MAP[bucket],
+          )}
+        >
+          <Icon className="size-4" />
         </div>
-        <div className="text-[11px] text-muted-foreground truncate">
-          {subtitle}
+        <div className="flex-1 min-w-0">
+          <div className="text-[12.5px] font-semibold leading-tight mb-0.5">
+            {title}
+          </div>
+          <div className="text-[11px] text-muted-foreground truncate">
+            {subtitle}
+          </div>
+          <div className="flex items-center gap-1.5 mt-1 text-[10.5px] text-muted-foreground">
+            <span>{meta}</span>
+          </div>
         </div>
-        <div className="flex items-center gap-1.5 mt-1 text-[10.5px] text-muted-foreground">
-          <span>{meta}</span>
+      </button>
+      {onResolver && (
+        <div className="flex gap-3 pl-16 pr-5 pb-2.5 text-[11px]">
+          <button
+            type="button"
+            disabled={ocupado}
+            onClick={onResolver}
+            aria-label={`Resolver: ${title}`}
+            className="text-muted-foreground hover:text-foreground underline-offset-2 hover:underline disabled:opacity-50"
+          >
+            Resolver
+          </button>
         </div>
-      </div>
-    </button>
+      )}
+    </div>
   );
 }
 
@@ -190,13 +278,21 @@ function TareaItem({ tarea, onClick }: TareaItemProps) {
 
 export function AlertsPanel() {
   const navigate = useNavigate();
-  const { rol } = useAuth();
+  const { rol, usuarioId } = useAuth();
   const escritor = puedeEscribir(rol as Rol);
 
   const { data: alertas = [] } = useAlertas();
   const { data: tareas = [] } = useTareas();
+  const actualizar = useActualizarAlerta();
+
+  const cambiarEstado = (a: AlertaRead, estado: "leida" | "resuelta") =>
+    actualizar.mutate(
+      { id: a.id, estado },
+      { onError: () => toast.error("No se pudo actualizar la alerta. Intenta de nuevo.") },
+    );
 
   const [tab, setTab] = useState<TabKey>("todas");
+  const [alertaControl, setAlertaControl] = useState<AlertaRead | null>(null);
 
   // Filter alertas to only pending/leidas (resolved are not shown)
   const activeAlertas = alertas.filter((a) => a.estado !== "resuelta");
@@ -222,6 +318,10 @@ export function AlertsPanel() {
   const displayTareas = tab === "todas" || tab === "proximas" ? activeTareas : [];
 
   const handleAlertaClick = (a: AlertaRead) => {
+    if (a.tipo in TITULOS_ALERTA) {
+      setAlertaControl(a);
+      return;
+    }
     navigate(routeForCaso(a.caso_tipo, a.caso_id));
   };
 
@@ -289,13 +389,18 @@ export function AlertsPanel() {
 
         {displayAlertas.map((a) => {
           const bucket = alertaTipoBucket(a);
-          const title = cap(a.tipo.replace(/_/g, " "));
+          const title = tituloAlerta(a.tipo);
           const subtitle =
             a.caso_tipo && a.caso_id
               ? `${a.caso_tipo} #${a.caso_id}`
               : "—";
+          // En licencia/receta de un control, plazo_objetivo es la fecha del control a medianoche
+          // UTC: en hora local de Chile caería el día anterior.
+          const esDeControl = a.tipo === "licencia_en_control" || a.tipo === "receta_en_control";
           const meta = a.plazo_objetivo
-            ? `Plazo: ${formatDate(a.plazo_objetivo)}`
+            ? esDeControl
+              ? `Control: ${formatDate(a.plazo_objetivo, "UTC")}`
+              : `Plazo: ${formatDate(a.plazo_objetivo)}`
             : formatDate(a.generada_en);
 
           return (
@@ -306,6 +411,19 @@ export function AlertsPanel() {
               subtitle={subtitle}
               meta={meta}
               onClick={() => handleAlertaClick(a)}
+              onVista={
+                // Se marca leída al verla, solo si es de quien la mira o no tiene dueño:
+                // Coordinación ve todas y no debe "leer" las de otra persona.
+                escritor &&
+                a.estado === "pendiente" &&
+                (a.usuario_id === null || a.usuario_id === usuarioId)
+                  ? () => actualizar.mutate({ id: a.id, estado: "leida" })
+                  : undefined
+              }
+              onResolver={
+                escritor && a.estado !== "resuelta" ? () => cambiarEstado(a, "resuelta") : undefined
+              }
+              ocupado={actualizar.isPending}
             />
           );
         })}
@@ -353,6 +471,12 @@ export function AlertsPanel() {
           </Button>
         </div>
       </div>
+
+      <DocumentosAlertaDialog
+        titulo={alertaControl ? tituloAlerta(alertaControl.tipo) : ""}
+        controlId={alertaControl?.caso_id ?? null}
+        onOpenChange={(open) => !open && setAlertaControl(null)}
+      />
     </aside>
   );
 }

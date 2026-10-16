@@ -20,6 +20,7 @@ from sqlalchemy.orm import Session
 from app.integrations.salutem.client import SalutemStubClient
 from app.integrations.salutem.protocol import SalutemClientProtocol
 from app.models.salutem_sync import SalutemSyncEjecucion
+from app.services.salutem_sync.archivos import refrescar_archivos
 from app.services.salutem_sync.backfill import DIAS_FUTURO, ejecutar_backfill
 from app.services.salutem_sync.bitacora import abrir_ejecucion, cerrar_ejecucion, registrar_omitida
 from app.services.salutem_sync.incremental import (
@@ -100,6 +101,10 @@ def correr(
             al_avanzar=renovar,
         )
         errores = errores + vinculacion.errores
+        if modo == "caliente":
+            archivos = refrescar_archivos(db, cliente, ritmo, ahora(), al_avanzar=renovar)
+            errores = errores + archivos.errores
+            log.info("Biblioteca SALUTEM: %d personas revisadas", archivos.personas)
         log.info("Modo %s terminado: %s, vinculación %s", modo, contadores, vinculacion)
         # Si otro proceso tomó el lease, esta corrida pudo pisarse con la suya: no es `ok`.
         renovar()

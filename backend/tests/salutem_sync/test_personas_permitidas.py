@@ -68,3 +68,24 @@ def test_no_pide_personas_ni_atenciones_fuera_de_la_lista(salutem):
 def test_sin_lista_el_cliente_queda_tal_cual(salutem):
     assert envolver_si_corresponde(salutem, frozenset()) is salutem
     assert isinstance(envolver_si_corresponde(salutem, frozenset({PRUEBA})), ClientePersonasPermitidas)
+
+
+def test_el_filtro_cumple_todo_el_protocolo_del_cliente(salutem):
+    """Si el cliente suma un método y el filtro no, el sync de la VM falla en producción."""
+    from app.integrations.salutem.protocol import SalutemClientProtocol
+
+    metodos = {m for m in dir(SalutemClientProtocol) if not m.startswith("_")}
+    filtro = ClientePersonasPermitidas(salutem, frozenset({PRUEBA}))
+    assert metodos <= {m for m in dir(filtro) if not m.startswith("_")}
+
+
+def test_la_biblioteca_solo_se_lee_de_personas_permitidas(salutem):
+    salutem.agregar_archivo(1, PRUEBA, nombre="prueba.pdf")
+    salutem.agregar_archivo(2, REAL, nombre="real.pdf")
+    cliente = ClientePersonasPermitidas(salutem, frozenset({PRUEBA}))
+
+    assert [a.archivo_id for a in cliente.listar_archivos(PRUEBA)] == [1]
+    assert cliente.obtener_archivo(PRUEBA, 1) is not None
+    assert cliente.listar_archivos(REAL) == []
+    assert cliente.obtener_archivo(REAL, 2) is None
+    assert not [ll for ll in salutem.llamadas if REAL in ll[1:]]

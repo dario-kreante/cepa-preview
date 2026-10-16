@@ -11,11 +11,15 @@ de medicina general no tiene). Se conserva crudo en `contenido`, que es lo que
 termina en `FichaClinica.contenido`.
 """
 
-from datetime import date
+import base64
+import binascii
+from datetime import date, datetime
 from enum import IntEnum
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict
+
+from app.integrations.salutem.errors import SalutemError
 
 
 class EstadoCitaSalutem(IntEnum):
@@ -127,3 +131,100 @@ class AtencionSalutem(BaseModel):
     @classmethod
     def desde_api(cls, d: dict[str, Any]) -> "AtencionSalutem":
         return cls(cita=CitaSalutem.desde_api(d), contenido=d)
+
+
+def _fecha_archivo(valor: Any) -> datetime | None:
+    """SALUTEM entrega `fechaCreacion` como "DD-MM-AAAA HH:MM", hora de Chile."""
+    if not isinstance(valor, str):
+        return None
+    try:
+        return datetime.strptime(valor.strip()[:16], "%d-%m-%Y %H:%M")
+    except ValueError:
+        return None
+
+
+_FIRMAS = (
+    (b"%PDF", "application/pdf"),
+    (b"\xff\xd8\xff", "image/jpeg"),
+    (b"\x89PNG", "image/png"),
+    (b"GIF8", "image/gif"),
+)
+
+
+def _media_type(datos: bytes) -> str:
+    for firma, tipo in _FIRMAS:
+        if datos.startswith(firma):
+            return tipo
+    if datos[4:12] in (b"ftypheic", b"ftypheix", b"ftypmif1"):
+        return "image/heic"
+    return "application/octet-stream"
+
+
+class ArchivoSalutem(BaseModel):
+    """Un archivo de la biblioteca de la persona. El listado no trae carpeta ni cita."""
+
+    model_config = ConfigDict(frozen=True)
+
+    archivo_id: int
+    persona_id: int
+    nombre: str
+    tipo: str | None = None
+    fecha_creacion: datetime | None = None
+    crudo: dict[str, Any] = {}
+
+    @classmethod
+    def desde_api(cls, d: dict[str, Any], persona_id: int) -> "ArchivoSalutem":
+        nombre = str(d.get("nombreOriginal") or d.get("nombre") or "")
+        return cls(
+            archivo_id=int(d["id"]),
+            persona_id=persona_id,
+            nombre=nombre[:255],
+            tipo=str(d["tipo"])[:30] if d.get("tipo") else None,
+            fecha_creacion=_fecha_archivo(d.get("fechaCreacion")),
+            crudo=d,
+        )
+
+
+def archivos_desde_api(registros: list[Any], persona_id: int) -> list[ArchivoSalutem]:
+    """Convierte el listado de la biblioteca saltando los registros ilegibles (sin id, id no
+    numérico, no objeto): uno malformado no debe tumbar la lista entera."""
+    archivos = []
+    for registro in registros:
+        try:
+            archivos.append(ArchivoSalutem.desde_api(registro, persona_id))
+        except (KeyError, TypeError, ValueError, AttributeError):
+            continue
+    return archivos
+
+
+class ContenidoArchivo(BaseModel):
+    """El archivo descargado. No se persiste: se entrega al navegador y se descarta."""
+
+    model_config = ConfigDict(frozen=True)
+
+    nombre: str
+    media_type: str
+    datos: bytes
+
+    @classmethod
+    def desde_api(cls, d: dict[str, Any]) -> "ContenidoArchivo | None":
+        # La copia de QA no conserva los binarios antiguos: llega el registro con base64 vacío.
+        crudo = d.get("archivo_base64")
+        if crudo is None or (isinstance(crudo, str) and not crudo.strip()):
+            return None
+        if not isinstance(crudo, str):
+            raise SalutemError(
+                "SALUTEM entregó un archivo con contenido ilegible", codigo="ARCHIVO_ILEGIBLE"
+            )
+        try:
+            # Los espacios se descartan antes: el base64 de SALUTEM puede venir partido en líneas.
+            datos = base64.b64decode("".join(crudo.split()), validate=True)
+        except (binascii.Error, ValueError) as e:
+            raise SalutemError(
+                "SALUTEM entregó un archivo con contenido ilegible", codigo="ARCHIVO_ILEGIBLE"
+            ) from e
+        return cls(
+            nombre=str(d.get("nombreOriginal") or d.get("nombre") or "archivo"),
+            media_type=_media_type(datos),
+            datos=datos,
+        )

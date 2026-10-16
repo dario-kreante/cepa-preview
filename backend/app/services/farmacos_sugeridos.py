@@ -14,8 +14,8 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.integrations.salutem.campos import items
 from app.integrations.salutem.farmacos import extraer_farmacos
+from app.integrations.salutem.senales import registros_receta
 from app.models.farmacos import EsquemaIndicacion, Receta, RegistroFarmacologico
 from app.models.ficha_clinica import FichaClinica
 from app.models.ingreso import Ingreso
@@ -29,25 +29,6 @@ def _fecha_cita(valor: Any) -> date | None:
         return date.fromisoformat(valor[:10])
     except ValueError:
         return None
-
-
-def _es_receta(indicacion: Any) -> bool:
-    if not isinstance(indicacion, dict):
-        return False
-    # SALUTEM separa por tipo: "Receta Medicamentos" (con nombre "Receta" o
-    # "Indicaciones de tratamiento farmacológico"), "Indicación", "Documento"...
-    return "receta" in str(indicacion.get("tipo") or "").casefold()
-
-
-def _es_campo_indicaciones(item: dict[str, Any]) -> bool:
-    # El campo "Indicaciones" del formulario del CEPA, en la sección que sea.
-    return str(item.get("nombre") or "").strip().casefold() == "indicaciones"
-
-
-def _recetas(contenido: dict[str, Any]) -> list[Any]:
-    return [
-        i.get("registro") for i in items(contenido) if _es_receta(i) or _es_campo_indicaciones(i)
-    ]
 
 
 def _clave(texto: str) -> str:
@@ -89,7 +70,7 @@ def sugerir_farmacos(db: Session, ingreso_id: int) -> list[FarmacoSugeridoRead]:
         if fecha is None:
             continue
         profesional = contenido.get("profesionalNombre")
-        for registro_receta in _recetas(contenido):
+        for registro_receta in registros_receta(contenido):
             for m in extraer_farmacos(registro_receta):
                 clave = (_clave(m.medicamento), _clave(m.dosis), m.frecuencia.value)
                 previa = por_clave.get(clave)

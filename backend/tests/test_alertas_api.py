@@ -21,7 +21,7 @@ def _get_user_id(client: TestClient) -> int:
 def _alerta_en_bd(
     db: Session,
     *,
-    usuario_id: int,
+    usuario_id: int | None,
     tipo: str = "oda_por_vencer",
 ) -> AlertaNotif:
     """Helper: inserta una alerta directamente para setup de tests."""
@@ -144,3 +144,35 @@ def test_segregacion_admin_no_ve_alertas_de_otro_usuario(
     assert resp.status_code == 200
     ids_usuario = {a["usuario_id"] for a in resp.json()}
     assert 9999 not in ids_usuario
+
+
+def test_admin_ve_tambien_las_alertas_sin_asignar(as_admin: TestClient, db_session: Session):
+    """Una alerta de un ingreso sin profesional asignado la ven todas las Administrativas."""
+    sin_asignar = _alerta_en_bd(db_session, usuario_id=None, tipo="licencia_en_control")
+    _alerta_en_bd(db_session, usuario_id=9999, tipo="oda_por_vencer")
+    resp = as_admin.get("/api/v1/alertas")
+    assert resp.status_code == 200
+    ids = {a["id"] for a in resp.json()}
+    assert sin_asignar.id in ids
+    assert 9999 not in {a["usuario_id"] for a in resp.json()}
+
+
+def test_admin_puede_resolver_una_alerta_sin_asignar(as_admin: TestClient, db_session: Session):
+    alerta = _alerta_en_bd(db_session, usuario_id=None, tipo="receta_en_control")
+    resp = as_admin.patch(f"/api/v1/alertas/{alerta.id}", json={"estado": "resuelta"})
+    assert resp.status_code == 200
+    assert resp.json()["estado"] == "resuelta"
+
+
+def test_admin_no_puede_cambiar_la_alerta_de_otro_usuario(as_admin: TestClient, db_session: Session):
+    alerta = _alerta_en_bd(db_session, usuario_id=9999, tipo="oda_por_vencer")
+    resp = as_admin.patch(f"/api/v1/alertas/{alerta.id}", json={"estado": "resuelta"})
+    assert resp.status_code == 404
+    db_session.refresh(alerta)
+    assert alerta.estado == "pendiente"
+
+
+def test_coordinacion_puede_cambiar_cualquier_alerta(as_coordinacion: TestClient, db_session: Session):
+    alerta = _alerta_en_bd(db_session, usuario_id=9999, tipo="oda_por_vencer")
+    resp = as_coordinacion.patch(f"/api/v1/alertas/{alerta.id}", json={"estado": "leida"})
+    assert resp.status_code == 200

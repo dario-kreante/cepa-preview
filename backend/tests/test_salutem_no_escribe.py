@@ -158,7 +158,15 @@ def test_d12_pull_positivo_persiste_con_origen_salutem(monkeypatch, as_admin, db
 # ── Superficie del cliente SALUTEM: solo lectura ──────────────────────────────
 
 METODOS_LECTURA_APROBADOS = frozenset(
-    {"resolver_persona", "obtener_persona", "listar_atenciones", "obtener_atencion", "listar_citas"}
+    {
+        "resolver_persona",
+        "obtener_persona",
+        "listar_atenciones",
+        "obtener_atencion",
+        "listar_citas",
+        "listar_archivos",
+        "obtener_archivo",
+    }
 )
 
 

@@ -16,6 +16,7 @@ const CONFIG = [
   { tipo: "vencimiento_licencia", dias: 3, habiles: true, activo: true, actualizado_por: "migracion" },
   { tipo: "oda_por_vencer", dias: 7, habiles: false, activo: true, actualizado_por: "migracion" },
   { tipo: "gaf_licencia", dias: 30, habiles: false, activo: false, actualizado_por: "migracion" },
+  { tipo: "licencia_en_control", dias: 0, habiles: false, activo: true, actualizado_por: "migracion" },
 ];
 const FESTIVOS = [{ id: 1, fecha: "2026-09-18", descripcion: "Independencia Nacional" }];
 
@@ -62,6 +63,15 @@ function renderComo(rol: keyof typeof TOKENS) {
 }
 
 describe("ConfigAlertasPage (COMP-2609-07)", () => {
+  it("las alertas del control solo se encienden o apagan", async () => {
+    renderComo("Coordinacion");
+    const fila = await screen.findByTestId("fila-licencia_en_control");
+    expect(within(fila).getByText("Licencia emitida en control")).toBeInTheDocument();
+    expect(within(fila).queryByLabelText(/días/i)).not.toBeInTheDocument();
+    expect(within(fila).queryByLabelText(/hábiles/i)).not.toBeInTheDocument();
+    expect(within(fila).getByLabelText(/activo/i)).toBeInTheDocument();
+  });
+
   it.each(["Administrativo", "Auditor"] as const)("%s no puede entrar", (rol) => {
     renderComo(rol);
     expect(screen.getByText(/restringida al perfil Coordinación/i)).toBeInTheDocument();

@@ -12,6 +12,8 @@ export type ErrorSesion = "servidor" | "sesion";
 interface AuthState {
   rol: Rol | null;
   username: string | null;
+  /** Id del usuario (claim `sub` del token), para saber qué alertas son suyas. */
+  usuarioId: number | null;
   cargando: boolean;
   errorSesion: ErrorSesion | null;
   login: (username: string, password: string) => Promise<void>;
@@ -21,6 +23,16 @@ interface AuthState {
 }
 
 const AuthCtx = createContext<AuthState | null>(null);
+
+function idDesdeToken(token: string | null): number | null {
+  if (!token) return null;
+  try {
+    const id = Number(jwtDecode<JwtClaims>(token).sub);
+    return Number.isInteger(id) ? id : null;
+  } catch {
+    return null;
+  }
+}
 
 function rolDesdeToken(token: string | null): { rol: Rol | null; username: string | null } {
   if (!token) return { rol: null, username: null };
@@ -97,7 +109,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const value = useMemo(
-    () => ({ rol, username, cargando, errorSesion, login, canjearCodigoSso, logout }),
+    () => ({
+      rol,
+      username,
+      // Se lee del token en cada render de la sesión: cambia junto con rol/username.
+      usuarioId: idDesdeToken(tokenStore.getAccess()),
+      cargando,
+      errorSesion,
+      login,
+      canjearCodigoSso,
+      logout,
+    }),
     [rol, username, cargando, errorSesion],
   );
   return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;

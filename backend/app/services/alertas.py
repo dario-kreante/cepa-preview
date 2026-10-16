@@ -188,6 +188,9 @@ VENTANAS_DEFAULT: dict[str, dict] = {
     # CEPA-075: "dias" = límite superior del tramo umbral de GAF. Desactivada por defecto:
     # sin criterio de la contraparte no se alerta (RN-2); 30 es provisorio (COMP-2609-13).
     TipoAlerta.GAF_LICENCIA.value: {"dias": 30, "habiles": False, "activo": False},
+    # Sin plazo: se crean en el sync al vincular el control; aquí solo se encienden o apagan.
+    TipoAlerta.LICENCIA_EN_CONTROL.value: {"dias": 0, "habiles": False},
+    TipoAlerta.RECETA_EN_CONTROL.value: {"dias": 0, "habiles": False},
 }
 
 

@@ -19,6 +19,9 @@ class TipoAlerta(str, Enum):
     ODA_POR_VENCER = "oda_por_vencer"
     # CEPA-075 / COMP-2609-20: no es un plazo; alerta por tramo de GAF de la licencia.
     GAF_LICENCIA = "gaf_licencia"
+    # Alertas del sync de SALUTEM: el médico emitió una licencia o una receta en un control.
+    LICENCIA_EN_CONTROL = "licencia_en_control"
+    RECETA_EN_CONTROL = "receta_en_control"
 
 
 class EstadoAlerta(str, Enum):

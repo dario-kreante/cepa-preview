@@ -180,16 +180,18 @@ def refrescar_atenciones(
     lote: int = 50,
     al_avanzar: Callable[[], None] = lambda: None,
     errores: list[str] | None = None,
+    especialidades: frozenset[str] | None = None,
 ) -> Contadores:
     """Vuelve a traer las atenciones de un rango de fechas para detectar ediciones.
 
     `al_avanzar` se llama en cada lote confirmado: en la fría son cientos de llamadas
     y el orquestador lo usa para renovar el lease. Las atenciones que SALUTEM rechaza
-    se saltan y se anotan en `errores` (si se pasa).
+    se saltan y se anotan en `errores` (si se pasa). Con `especialidades` (nombres en
+    minúscula) solo se releen las atenciones de esas especialidades.
     """
     contadores = Contadores()
-    claves = db.execute(
-        select(SalutemAtencion.persona_id, SalutemAtencion.cita_id)
+    filas = db.execute(
+        select(SalutemAtencion.persona_id, SalutemAtencion.cita_id, SalutemAtencion.contenido)
         .where(
             SalutemAtencion.fecha_cita >= desde,
             SalutemAtencion.fecha_cita <= hasta,
@@ -197,6 +199,12 @@ def refrescar_atenciones(
         )
         .order_by(SalutemAtencion.cita_id)
     ).all()
+    claves = [
+        (persona_id, cita_id)
+        for persona_id, cita_id, contenido in filas
+        if especialidades is None
+        or str((contenido or {}).get("especialidadNombre") or "").strip().casefold() in especialidades
+    ]
     for i, (persona_id, cita_id) in enumerate(claves, start=1):
         try:
             traer_atencion(db, cliente, ritmo, persona_id, cita_id, ahora, contadores)
