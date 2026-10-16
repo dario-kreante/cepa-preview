@@ -8,11 +8,13 @@ from datetime import date, timedelta
 
 from app.agendamiento.enums import PrioridadCita
 from app.agendamiento.scheduler import (
+    CargaDia,
     Candidato,
     DisponibilidadDia,
     ReposoPaciente,
     proponer_agenda,
     proponer_agenda_semana,
+    repartir_carga,
     tiene_reposo_vigente,
 )
 
@@ -393,3 +395,80 @@ def test_rn5_reposo_evaluado_por_fecha_candidata_no_hoy():
     propuestos = [r for r in resultado if r.excluida_por is None]
     assert len(propuestos) == 1
     assert propuestos[0].fecha_candidata == date(2026, 7, 6)  # lunes
+
+
+# ─── repartir_carga: reparto de carga con feriados y sin cupo ──────────────────
+
+def test_repartir_carga_salta_feriados():
+    """Un feriado no tiene cupo: el reparto solo usa los días hábiles no feriados."""
+    lunes = date(2026, 7, 6)
+    martes = date(2026, 7, 7)
+    candidatos = [candidato_control_vencido(i, HOY) for i in range(1, 4)]
+    resultado = repartir_carga(
+        candidatos=candidatos,
+        desde=lunes,
+        hasta=martes,
+        disponibilidad=[DisponibilidadDia(dia_semana=1, cupo=2), DisponibilidadDia(dia_semana=2, cupo=2)],
+        festivos=frozenset({lunes}),
+    )
+    assert resultado.por_dia == [CargaDia(fecha=martes, cupo=2, asignados=2)]
+    assert len(resultado.asignados) == 2
+    assert all(r.fecha_candidata == martes for r in resultado.asignados)
+    assert len(resultado.sin_cupo) == 1
+    assert resultado.en_reposo == []
+
+
+def test_repartir_carga_rango_solo_fin_de_semana():
+    """Un rango sábado–domingo no tiene días hábiles: todos quedan sin cupo."""
+    sabado = date(2026, 7, 11)
+    domingo = date(2026, 7, 12)
+    candidatos = [candidato_control_vencido(1, HOY), candidato_receta(2)]
+    resultado = repartir_carga(
+        candidatos=candidatos,
+        desde=sabado,
+        hasta=domingo,
+        disponibilidad=DISPONIBILIDAD_COMPLETA,
+    )
+    assert resultado.por_dia == []
+    assert resultado.asignados == []
+    assert resultado.en_reposo == []
+    assert len(resultado.sin_cupo) == 2
+
+
+def test_repartir_carga_reposo_en_todo_el_rango_va_a_en_reposo():
+    """Un paciente con reposo en todos los días del rango va a en_reposo, no a sin_cupo."""
+    lunes = date(2026, 7, 6)
+    viernes = date(2026, 7, 10)
+    candidato = Candidato(
+        paciente_id=1,
+        prioridad=PrioridadCita.CONTROL_VENCIDO,
+        razon="control vencido",
+        fecha_ctrl=HOY,
+        reposos=[ReposoPaciente(inicio=lunes, fin=viernes)],
+    )
+    resultado = repartir_carga(
+        candidatos=[candidato],
+        desde=lunes,
+        hasta=viernes,
+        disponibilidad=DISPONIBILIDAD_COMPLETA,
+    )
+    assert resultado.asignados == []
+    assert resultado.sin_cupo == []
+    assert len(resultado.en_reposo) == 1
+    assert resultado.en_reposo[0].excluida_por == f"reposo vigente hasta {viernes.isoformat()}"
+
+
+def test_repartir_carga_respeta_prioridad():
+    """Con cupo 1, el paciente de mayor prioridad (P1) se asigna y el P3 queda sin cupo."""
+    lunes = date(2026, 7, 6)
+    p3 = candidato_receta(1)
+    p1 = candidato_control_vencido(2, HOY)
+    resultado = repartir_carga(
+        candidatos=[p3, p1],
+        desde=lunes,
+        hasta=lunes,
+        disponibilidad=[DisponibilidadDia(dia_semana=1, cupo=1)],
+    )
+    assert [r.paciente_id for r in resultado.asignados] == [2]
+    assert [c.paciente_id for c in resultado.sin_cupo] == [1]
+    assert resultado.por_dia == [CargaDia(fecha=lunes, cupo=1, asignados=1)]

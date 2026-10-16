@@ -240,3 +240,97 @@ def proponer_agenda_semana(
             ))
 
     return resultado
+
+
+# ─── Reparto de carga (feriados y sin cupo) ────────────────────────────────────
+
+@dataclass
+class CargaDia:
+    """Cupo de un día hábil y cuántos pacientes se asignaron en él."""
+    fecha: date
+    cupo: int
+    asignados: int
+
+
+@dataclass
+class Reparto:
+    """Resultado de repartir candidatos sobre un rango de días."""
+    asignados: list[ResultadoCandidato]   # excluida_por es None; fecha_candidata = día sugerido
+    en_reposo: list[ResultadoCandidato]   # excluida_por = "reposo vigente hasta AAAA-MM-DD"
+    sin_cupo: list[Candidato]             # no cupieron en ningún día hábil del rango
+    por_dia: list[CargaDia]               # solo días hábiles no feriados con cupo > 0, en orden
+
+
+def repartir_carga(
+    candidatos: list[Candidato],
+    desde: date,
+    hasta: date,
+    disponibilidad: list[DisponibilidadDia],
+    festivos: frozenset[date] = frozenset(),
+) -> Reparto:
+    """Reparte candidatos sobre los días hábiles no feriados del rango.
+
+    Usa el mismo algoritmo que proponer_agenda_semana: por cada candidato (orden RN-2)
+    se asigna el primer día con cupo restante y sin reposo vigente (RN-5). Si no se
+    asignó y hubo reposo en algún día con cupo, va a en_reposo; en otro caso, a sin_cupo.
+    Los días en festivos no tienen cupo.
+    """
+    dias = [d for d in _dias_habiles_en_rango(desde, hasta) if d not in festivos]
+
+    cargas: dict[date, CargaDia] = {}
+    for d in dias:
+        cupo = _cupo_para_dia(disponibilidad, d)
+        if cupo > 0:
+            cargas[d] = CargaDia(fecha=d, cupo=cupo, asignados=0)
+
+    asignados: list[ResultadoCandidato] = []
+    en_reposo: list[ResultadoCandidato] = []
+    sin_cupo: list[Candidato] = []
+
+    primer_dia_con_cupo = next(iter(cargas), None)
+
+    for c in sorted(candidatos, key=_clave_orden):
+        asignado = False
+        primer_reposo_fin: date | None = None
+
+        for d, carga in cargas.items():
+            if carga.asignados >= carga.cupo:
+                continue  # cupo agotado
+
+            fin_reposo = _reposo_vigente_hasta(c.reposos, d)
+            if fin_reposo is not None:
+                if primer_reposo_fin is None:
+                    primer_reposo_fin = fin_reposo
+                continue  # buscar otro día
+
+            asignados.append(ResultadoCandidato(
+                paciente_id=c.paciente_id,
+                fecha_candidata=d,
+                prioridad=c.prioridad,
+                razon=c.razon,
+                excluida_por=None,
+            ))
+            carga.asignados += 1
+            asignado = True
+            break
+
+        if asignado:
+            continue
+
+        if primer_reposo_fin is not None and primer_dia_con_cupo is not None:
+            en_reposo.append(ResultadoCandidato(
+                paciente_id=c.paciente_id,
+                fecha_candidata=primer_dia_con_cupo,
+                prioridad=c.prioridad,
+                razon=c.razon,
+                excluida_por=f"reposo vigente hasta {primer_reposo_fin.isoformat()}",
+            ))
+        else:
+            sin_cupo.append(c)
+
+    return Reparto(
+        asignados=asignados,
+        en_reposo=en_reposo,
+        sin_cupo=sin_cupo,
+        por_dia=list(cargas.values()),
+    )
