@@ -1726,6 +1726,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/profesionales": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Listar */
+        get: operations["listar_api_v1_profesionales_get"];
+        put?: never;
+        /** Crear */
+        post: operations["crear_api_v1_profesionales_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/profesionales/{profesional_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Actualizar */
+        patch: operations["actualizar_api_v1_profesionales__profesional_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/profesionales/importar-salutem": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Importar Salutem */
+        post: operations["importar_salutem_api_v1_profesionales_importar_salutem_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tareas": {
         parameters: {
             query?: never;
@@ -3439,6 +3491,11 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        /** ImportacionSalutemResultado */
+        ImportacionSalutemResultado: {
+            /** Creados */
+            creados: number;
+        };
         /**
          * IngresoCierre
          * @description Cierre/alta del caso (CEPA-014). Solo se permite estado cerrado o derivado.
@@ -4115,6 +4172,43 @@ export interface components {
             doc_incumplimiento?: string | null;
             /** Observaciones */
             observaciones?: string | null;
+        };
+        /** ProfesionalCreate */
+        ProfesionalCreate: {
+            /** Nombre */
+            nombre: string;
+            /** Especialidad */
+            especialidad?: string | null;
+        };
+        /** ProfesionalRead */
+        ProfesionalRead: {
+            /** Id */
+            id: number;
+            /** Nombre */
+            nombre: string;
+            /** Especialidad */
+            especialidad: string | null;
+            /** Origen */
+            origen: string;
+            /** Activo */
+            activo: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /**
+         * ProfesionalUpdate
+         * @description Campos opcionales: solo se cambia lo que viene.
+         */
+        ProfesionalUpdate: {
+            /** Nombre */
+            nombre?: string | null;
+            /** Especialidad */
+            especialidad?: string | null;
+            /** Activo */
+            activo?: boolean | null;
         };
         /** PropuestaAgendaRead */
         PropuestaAgendaRead: {
@@ -8625,6 +8719,125 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["GafTramoRead"][];
+                };
+            };
+        };
+    };
+    listar_api_v1_profesionales_get: {
+        parameters: {
+            query?: {
+                solo_activos?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfesionalRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    crear_api_v1_profesionales_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProfesionalCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfesionalRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    actualizar_api_v1_profesionales__profesional_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                profesional_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProfesionalUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfesionalRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    importar_salutem_api_v1_profesionales_importar_salutem_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportacionSalutemResultado"];
                 };
             };
         };

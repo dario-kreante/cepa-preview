@@ -16,6 +16,7 @@ const DESCRIPCIONES: Record<string, string> = {
   "/usuarios": "Alta de usuarios, asignación de perfiles y desactivación de cuentas.",
   "/config-formularios": "Campos y versiones de los formularios dinámicos de ingreso.",
   "/ventanas-proceso": "Columnas y orden por defecto de los listados de cada proceso.",
+  "/profesionales": "Profesionales que aparecen en el agendamiento; importación desde SALUTEM.",
 };
 
 export function ConfiguracionPage() {

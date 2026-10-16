@@ -1,7 +1,7 @@
 /**
  * AgendaPage — Agendamiento inteligente (EPIC-08, CEPA-080).
  *
- * Profesional-driven: se carga un profesional por id → se gestiona su
+ * Profesional-driven: se elige un profesional del catálogo → se gestiona su
  * disponibilidad (días hábiles + cupo), se genera una propuesta automática
  * (diaria/semanal/mensual) y se revisan/confirman las citas candidatas
  * priorizadas (control vencido > próximo > seguimiento receta).
@@ -12,7 +12,8 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { Calendar, Hash, Plus, CheckCircle2 } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Calendar, Plus, CheckCircle2, UserRound } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +22,7 @@ import { Label } from "@/components/ui/label";
 import { cn, fmtDate } from "@/lib/utils";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { puedeEscribir, type Rol } from "@/lib/rbac";
+import { useProfesionales } from "@/features/profesionales/hooks";
 import {
   useCitas,
   useConfirmarCitas,
@@ -283,8 +285,9 @@ export function AgendaPage() {
   const { rol } = useAuth();
   const canWrite = puedeEscribir(rol as Rol);
 
-  const [profIdInput, setProfIdInput] = useState("");
   const [profesionalId, setProfesionalId] = useState<number | null>(null);
+  const { data: profesionales = [], isLoading: cargandoProfesionales } =
+    useProfesionales(true);
   const [propuestaSel, setPropuestaSel] = useState<PropuestaAgendaRead | null>(
     null,
   );
@@ -301,12 +304,9 @@ export function AgendaPage() {
     defaultValues: { tipo: "semanal", fecha_inicio: "" },
   });
 
-  function cargarProfesional() {
-    const n = parseInt(profIdInput, 10);
-    if (!isNaN(n) && n > 0) {
-      setProfesionalId(n);
-      setPropuestaSel(null);
-    }
+  function elegirProfesional(valor: string) {
+    setProfesionalId(valor ? Number(valor) : null);
+    setPropuestaSel(null);
   }
 
   async function onGenerar(v: PropuestaForm) {
@@ -337,39 +337,43 @@ export function AgendaPage() {
         </p>
       </div>
 
-      {/* Cargar profesional */}
-      <div className="flex items-center gap-2">
-        <Hash className="size-3.5 text-muted-foreground shrink-0" />
-        <Input
-          type="number"
-          min={1}
-          value={profIdInput}
-          onChange={(e) => setProfIdInput(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") cargarProfesional();
-          }}
-          placeholder="ID profesional"
-          className="h-9 w-[180px] text-[13px]"
-          aria-label="ID del profesional"
-          data-testid="input-prof-id"
-        />
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={cargarProfesional}
-          disabled={!profIdInput}
-          data-testid="btn-cargar-prof"
+      {/* Elegir profesional */}
+      <div className="flex flex-wrap items-center gap-2">
+        <UserRound className="size-3.5 text-muted-foreground shrink-0" />
+        <select
+          value={profesionalId ?? ""}
+          onChange={(e) => elegirProfesional(e.target.value)}
+          className={cn(selectCls, "w-[320px]")}
+          aria-label="Profesional"
+          disabled={cargandoProfesionales}
+          data-testid="select-profesional"
         >
-          Cargar
-        </Button>
+          <option value="">
+            {cargandoProfesionales ? "Cargando profesionales…" : "Selecciona un profesional"}
+          </option>
+          {profesionales.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.especialidad ? `${p.nombre} · ${p.especialidad}` : p.nombre}
+            </option>
+          ))}
+        </select>
+        {canWrite && (
+          <Link
+            to="/profesionales"
+            className="text-[12.5px] text-primary hover:underline"
+          >
+            Gestionar profesionales
+          </Link>
+        )}
       </div>
 
       {profesionalId === null ? (
         <div className="rounded-lg border border-dashed border-border bg-muted/20 px-6 py-12 text-center">
           <Calendar className="mx-auto mb-3 size-8 text-muted-foreground/50" />
           <p className="text-[13.5px] text-muted-foreground">
-            Carga un profesional por su ID para gestionar disponibilidad y
-            generar propuestas de agenda.
+            {!cargandoProfesionales && profesionales.length === 0
+              ? "No hay profesionales activos en el catálogo."
+              : "Elige un profesional para gestionar su disponibilidad y generar propuestas de agenda."}
           </p>
         </div>
       ) : (

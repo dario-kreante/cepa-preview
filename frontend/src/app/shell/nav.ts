@@ -15,6 +15,7 @@ import {
   FileScan,
   BellRing,
   UserRoundSearch,
+  Contact,
   type LucideIcon,
 } from "lucide-react";
 import type { Rol } from "@/lib/rbac";
@@ -101,6 +102,12 @@ export const NAV: NavSection[] = [
         icon: LayoutGrid,
       },
       {
+        to: "/profesionales",
+        label: "Profesionales",
+        icon: Contact,
+        roles: ["Coordinacion", "Administrativo"],
+      },
+      {
         to: "/config-alertas",
         label: "Umbrales de alerta",
         icon: BellRing,
@@ -138,6 +145,7 @@ export const TITLE_MAP: Record<string, string> = {
   "/usuarios": "Usuarios y roles",
   "/config-formularios": "Formularios dinámicos",
   "/ventanas-proceso": "Ventanas de proceso",
+  "/profesionales": "Profesionales",
   "/config-alertas": "Umbrales de alerta",
   "/configuracion": "Configuración",
   "/ayuda": "Ayuda y soporte",
@@ -161,6 +169,7 @@ export const CRUMBS_MAP: Record<string, string> = {
   "/usuarios": "Inicio · Administración · Usuarios y roles",
   "/config-formularios": "Inicio · Administración · Formularios dinámicos",
   "/ventanas-proceso": "Inicio · Administración · Ventanas de proceso",
+  "/profesionales": "Inicio · Administración · Profesionales",
   "/config-alertas": "Inicio · Administración · Umbrales de alerta",
   "/configuracion": "Inicio · Configuración",
   "/ayuda": "Inicio · Ayuda y soporte",
