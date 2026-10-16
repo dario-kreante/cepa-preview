@@ -15,6 +15,8 @@ class LicenciaSugeridaRead(BaseModel):
     """
 
     ficha_clinica_id: int
+    # Cita de SALUTEM de la atención (para unirla con su alerta); None si no viene.
+    cita_id: int | None = None
     cita_fecha: date
     texto: str
     tipo_lm: TipoLicencia | None
@@ -24,5 +26,7 @@ class LicenciaSugeridaRead(BaseModel):
     fecha_termino: date | None
     termino_calculado: bool
     cantidad_dias: int | None
+    # Tramo del campo "GAF" de la atención ("41-50"), para precargar la licencia.
+    eeag_gaf_tramo: str | None = None
     avisos: list[str]
     ya_registrada: bool

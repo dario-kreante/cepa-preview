@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { actualizarAlerta, listarAlertas, listarTareas } from "./api";
+import { actualizarAlerta, listarAlertas, listarTareas, obtenerContextoAlerta } from "./api";
 import type { EstadoAlerta } from "./api";
 
 export function useAlertas() {
@@ -18,5 +18,13 @@ export function useActualizarAlerta() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["alertas"] });
     },
+  });
+}
+
+export function useContextoAlerta(id: number | null) {
+  return useQuery({
+    queryKey: ["alertas", id, "contexto"],
+    queryFn: () => obtenerContextoAlerta(id!),
+    enabled: id !== null,
   });
 }

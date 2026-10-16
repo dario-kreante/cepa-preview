@@ -9,6 +9,7 @@ import {
   Plus,
   FileText,
   Pill,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -16,11 +17,11 @@ import { useAuth } from "@/lib/auth/AuthContext";
 import { puedeEscribir, type Rol } from "@/lib/rbac";
 import { useActualizarAlerta, useAlertas, useTareas } from "@/features/alertas/hooks";
 import type { AlertaRead, TareaItemRead } from "@/features/alertas/api";
-import { DocumentosAlertaDialog } from "./DocumentosAlertaDialog";
+import { DocumentosAlertaDialog, type CasoAlerta } from "./DocumentosAlertaDialog";
 
 // ── visual helpers ────────────────────────────────────────────────────────────
 
-type TabKey = "todas" | "criticas" | "proximas" | "info";
+type TabKey = "todas" | "sin_leer" | "resueltas";
 type BucketKey = "criticas" | "proximas" | "info";
 
 /**
@@ -89,20 +90,57 @@ export const TITULOS_ALERTA: Record<string, string> = {
 /** Alertas de un control médico: al hacer clic abren sus documentos en un diálogo. */
 const TIPOS_DE_CONTROL = ["licencia_en_control", "receta_en_control"];
 
-export function tituloAlerta(tipo: string): string {
+/** Alertas de una atención médica que no es control (Evaluación médica, psiquiátrica…). */
+const CASO_ATENCION = "salutem_atencion";
+
+const TITULOS_ATENCION: Record<string, string> = {
+  licencia_en_control: "Licencia emitida en atención médica",
+  receta_en_control: "Receta emitida en atención médica",
+};
+
+export function tituloAlerta(tipo: string, casoTipo?: string | null): string {
+  if (casoTipo === CASO_ATENCION && TITULOS_ATENCION[tipo]) return TITULOS_ATENCION[tipo];
   return TITULOS_ALERTA[tipo] ?? cap(tipo.replace(/_/g, " "));
+}
+
+const ETIQUETAS_CASO: Record<string, string> = {
+  control_medico: "Control",
+  [CASO_ATENCION]: "Atención SALUTEM",
+  paciente: "Paciente",
+};
+
+function subtituloCaso(casoTipo: string | null | undefined, casoId: number | null | undefined): string {
+  if (!casoTipo || !casoId) return "—";
+  return `${ETIQUETAS_CASO[casoTipo] ?? casoTipo} #${casoId}`;
+}
+
+/**
+ * Una alerta es "para mí" si me la asignaron o no tiene dueño. Coordinación ve también las
+ * de otros profesionales, pero esas no las lee ella: la leída es de quien la tiene asignada.
+ */
+export function esParaMi(a: AlertaRead, usuarioId: number | null | undefined): boolean {
+  return a.usuario_id === null || a.usuario_id === usuarioId;
+}
+
+/** Alertas que la persona todavía no ha visto: el número de la campana. */
+export function alertasSinLeer(alertas: AlertaRead[], usuarioId: number | null | undefined) {
+  return alertas.filter((a) => a.estado === "pendiente" && esParaMi(a, usuarioId));
 }
 
 /**
  * Mapea un caso (caso_tipo + caso_id) a la ruta de su módulo. Los valores de
  * caso_tipo provienen del generador de alertas: oda, licencia, ept, ingreso,
- * control_medico, receta, paciente. EPT acepta deep-link por ?caso=; el resto navega a su
- * página (paciente-driven, sin parámetro de caso).
+ * control_medico, receta, paciente. EPT acepta deep-link por ?caso=; ODA e ingreso abren
+ * la ficha del paciente (?paciente=, y la pestaña ODA) cuando la alerta trae paciente_id;
+ * el resto navega a su página (paciente-driven, sin parámetro de caso).
  */
 export function routeForCaso(
   casoTipo: string | null | undefined,
   casoId: number | null | undefined,
+  pacienteId?: number | null,
 ): string {
+  if (pacienteId && casoTipo === "oda") return `/ingresos?paciente=${pacienteId}&tab=odas`;
+  if (pacienteId && casoTipo === "ingreso") return `/ingresos?paciente=${pacienteId}`;
   switch (casoTipo) {
     case "ept":
       return casoId ? `/ept?caso=${casoId}` : "/ept";
@@ -129,6 +167,10 @@ interface AlertItemProps {
   subtitle: string;
   meta: string;
   onClick: () => void;
+  /** Pendiente y para quien mira: se destaca hasta que la vea. */
+  sinLeer?: boolean;
+  /** Asignada a otro profesional (solo la ve Coordinación). */
+  ajena?: boolean;
   /** Se llama una vez cuando la alerta estuvo a la vista VISTA_MS seguidos (para marcarla leída). */
   onVista?: () => void;
   /** Solo para quien puede gestionar alertas; sin él la alerta es de solo lectura. */
@@ -188,6 +230,8 @@ function AlertItem({
   subtitle,
   meta,
   onClick,
+  sinLeer = false,
+  ajena = false,
   onVista,
   onResolver,
   ocupado = false,
@@ -195,7 +239,20 @@ function AlertItem({
   const Icon = ICON_MAP[bucket];
   const ref = useVistaDurante(onVista);
   return (
-    <div ref={ref} className="border-b hover:bg-muted/50 transition-colors">
+    <div
+      ref={ref}
+      data-sin-leer={sinLeer || undefined}
+      className={cn(
+        "relative border-b transition-colors",
+        sinLeer ? "bg-primary/[0.06] hover:bg-primary/10" : "hover:bg-muted/50",
+      )}
+    >
+      {sinLeer && (
+        <span
+          aria-label="Sin leer"
+          className="absolute left-2 top-[1.35rem] size-1.5 rounded-full bg-primary"
+        />
+      )}
       <button
         onClick={onClick}
         className="w-full text-left px-5 pt-3 pb-2 flex gap-3 cursor-pointer"
@@ -209,7 +266,12 @@ function AlertItem({
           <Icon className="size-4" />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-[12.5px] font-semibold leading-tight mb-0.5">
+          <div
+            className={cn(
+              "text-[12.5px] leading-tight mb-0.5",
+              sinLeer ? "font-bold" : "font-medium",
+            )}
+          >
             {title}
           </div>
           <div className="text-[11px] text-muted-foreground truncate">
@@ -217,6 +279,12 @@ function AlertItem({
           </div>
           <div className="flex items-center gap-1.5 mt-1 text-[10.5px] text-muted-foreground">
             <span>{meta}</span>
+            {ajena && (
+              <>
+                <span>•</span>
+                <span>Asignada a otro profesional</span>
+              </>
+            )}
           </div>
         </div>
       </button>
@@ -282,7 +350,12 @@ function TareaItem({ tarea, onClick }: TareaItemProps) {
 
 // ── main panel ────────────────────────────────────────────────────────────────
 
-export function AlertsPanel() {
+interface AlertsPanelProps {
+  /** Cierra la ventana flotante (también al navegar desde una alerta o tarea). */
+  onClose?: () => void;
+}
+
+export function AlertsPanel({ onClose }: AlertsPanelProps = {}) {
   const navigate = useNavigate();
   const { rol, usuarioId } = useAuth();
   const escritor = puedeEscribir(rol as Rol);
@@ -299,64 +372,65 @@ export function AlertsPanel() {
 
   const [tab, setTab] = useState<TabKey>("todas");
   const [alertaControl, setAlertaControl] = useState<AlertaRead | null>(null);
+  const casoAbierto: CasoAlerta | null =
+    alertaControl?.caso_id != null
+      ? { tipo: alertaControl.caso_tipo === CASO_ATENCION ? "atencion" : "control", id: alertaControl.caso_id }
+      : null;
 
-  // Filter alertas to only pending/leidas (resolved are not shown)
+  // "Todas" son las abiertas (pendientes y leídas); las resueltas tienen su pestaña.
   const activeAlertas = alertas.filter((a) => a.estado !== "resuelta");
   const activeTareas = tareas.filter((t) => t.estado !== "completada");
+  const sinLeer = alertasSinLeer(alertas, usuarioId);
+  const resueltas = alertas.filter((a) => a.estado === "resuelta").slice(0, 20);
 
-  const criticas = activeAlertas.filter((a) => a.estado === "pendiente");
-  const proximas = activeAlertas.filter((a) => a.estado === "leida");
-  const info = alertas.filter((a) => a.estado === "resuelta").slice(0, 5); // show recent resolved as "info"
+  const displayAlertas =
+    tab === "todas" ? activeAlertas : tab === "sin_leer" ? sinLeer : resueltas;
+  const displayTareas = tab === "todas" ? activeTareas : [];
 
-  const totalCount = activeAlertas.length + activeTareas.length;
-  const criticasCount = criticas.length;
-
-  // Items to display per tab
-  function getDisplayAlertas(): AlertaRead[] {
-    if (tab === "todas") return activeAlertas;
-    if (tab === "criticas") return criticas;
-    if (tab === "proximas") return proximas;
-    if (tab === "info") return info;
-    return [];
-  }
-
-  const displayAlertas = getDisplayAlertas();
-  const displayTareas = tab === "todas" || tab === "proximas" ? activeTareas : [];
+  const ir = (ruta: string) => {
+    navigate(ruta);
+    onClose?.();
+  };
 
   const handleAlertaClick = (a: AlertaRead) => {
     if (TIPOS_DE_CONTROL.includes(a.tipo)) {
       setAlertaControl(a);
       return;
     }
-    navigate(routeForCaso(a.caso_tipo, a.caso_id));
+    ir(routeForCaso(a.caso_tipo, a.caso_id, a.paciente_id));
   };
 
   const handleTareaClick = (t: TareaItemRead) => {
-    navigate(routeForCaso(t.caso_tipo, t.caso_id));
+    ir(routeForCaso(t.caso_tipo, t.caso_id));
   };
 
   const TABS: { key: TabKey; label: string }[] = [
     { key: "todas", label: "Todas" },
-    { key: "criticas", label: "Críticas" },
-    { key: "proximas", label: "Próximas" },
-    { key: "info", label: "Info" },
+    { key: "sin_leer", label: sinLeer.length ? `Sin leer (${sinLeer.length})` : "Sin leer" },
+    { key: "resueltas", label: "Resueltas" },
   ];
 
   return (
-    <aside className="w-80 max-w-[85vw] h-full shrink-0 bg-card border-l flex flex-col overflow-hidden">
+    <aside
+      aria-label="Alertas y tareas"
+      className="w-[380px] max-w-[calc(100vw-1.5rem)] max-h-[min(640px,calc(100vh-5rem))] bg-card border rounded-xl shadow-2xl flex flex-col overflow-hidden"
+    >
       {/* Header */}
-      <div className="flex items-center gap-2 px-5 h-[3.75rem] border-b">
+      <div className="flex items-center gap-2 pl-5 pr-2 h-12 border-b">
         <Bell className="size-4 text-primary" />
         <h3 className="text-sm font-bold">Alertas y tareas</h3>
-        {criticasCount > 0 && (
-          <span className="ml-auto size-5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold grid place-items-center">
-            {criticasCount}
-          </span>
+        {sinLeer.length > 0 && (
+          <span className="text-[11px] text-muted-foreground">· {sinLeer.length} sin leer</span>
         )}
-        {criticasCount === 0 && totalCount > 0 && (
-          <span className="ml-auto size-5 rounded-full bg-muted text-muted-foreground text-[10px] font-bold grid place-items-center">
-            {totalCount}
-          </span>
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Cerrar alertas"
+            className="ml-auto size-8 rounded-md grid place-items-center text-muted-foreground hover:bg-muted hover:text-foreground"
+          >
+            <X className="size-4" />
+          </button>
         )}
       </div>
 
@@ -389,23 +463,20 @@ export function AlertsPanel() {
       <div className="flex-1 overflow-y-auto">
         {displayAlertas.length === 0 && displayTareas.length === 0 && (
           <div className="px-5 py-8 text-center text-[12px] text-muted-foreground">
-            Sin alertas en esta categoría
+            {tab === "sin_leer" ? "No tienes alertas sin leer" : "Sin alertas en esta categoría"}
           </div>
         )}
 
         {displayAlertas.map((a) => {
           const bucket = alertaTipoBucket(a);
-          const title = tituloAlerta(a.tipo);
-          const subtitle =
-            a.caso_tipo && a.caso_id
-              ? `${a.caso_tipo} #${a.caso_id}`
-              : "—";
+          const title = tituloAlerta(a.tipo, a.caso_tipo);
+          const subtitle = subtituloCaso(a.caso_tipo, a.caso_id);
           // En licencia/receta de un control, plazo_objetivo es la fecha del control a medianoche
           // UTC: en hora local de Chile caería el día anterior.
           const esDeControl = a.tipo === "licencia_en_control" || a.tipo === "receta_en_control";
           const meta = a.plazo_objetivo
             ? esDeControl
-              ? `Control: ${formatDate(a.plazo_objetivo, "UTC")}`
+              ? `${a.caso_tipo === CASO_ATENCION ? "Atención" : "Control"}: ${formatDate(a.plazo_objetivo, "UTC")}`
               : `Plazo: ${formatDate(a.plazo_objetivo)}`
             : formatDate(a.generada_en);
 
@@ -417,12 +488,14 @@ export function AlertsPanel() {
               subtitle={subtitle}
               meta={meta}
               onClick={() => handleAlertaClick(a)}
+              sinLeer={a.estado === "pendiente" && esParaMi(a, usuarioId)}
+              ajena={!esParaMi(a, usuarioId)}
               onVista={
                 // Se marca leída al verla, solo si es de quien la mira o no tiene dueño:
                 // Coordinación ve todas y no debe "leer" las de otra persona.
                 escritor &&
                 a.estado === "pendiente" &&
-                (a.usuario_id === null || a.usuario_id === usuarioId)
+                esParaMi(a, usuarioId)
                   ? () => actualizar.mutate({ id: a.id, estado: "leida" })
                   : undefined
               }
@@ -454,7 +527,7 @@ export function AlertsPanel() {
               variant="ghost"
               size="sm"
               className="justify-start h-8 text-[12px]"
-              onClick={() => navigate("/ingresos/nuevo")}
+              onClick={() => ir("/ingresos/nuevo")}
             >
               <Plus className="size-3.5" /> Nuevo ingreso
             </Button>
@@ -463,7 +536,7 @@ export function AlertsPanel() {
             variant="ghost"
             size="sm"
             className="justify-start h-8 text-[12px]"
-            onClick={() => navigate("/licencias")}
+            onClick={() => ir("/licencias")}
           >
             <FileText className="size-3.5" /> Registrar licencia
           </Button>
@@ -471,7 +544,7 @@ export function AlertsPanel() {
             variant="ghost"
             size="sm"
             className="justify-start h-8 text-[12px]"
-            onClick={() => navigate("/farmacos")}
+            onClick={() => ir("/farmacos")}
           >
             <Pill className="size-3.5" /> Nueva receta
           </Button>
@@ -479,9 +552,15 @@ export function AlertsPanel() {
       </div>
 
       <DocumentosAlertaDialog
-        titulo={alertaControl ? tituloAlerta(alertaControl.tipo) : ""}
-        controlId={alertaControl?.caso_id ?? null}
+        titulo={alertaControl ? tituloAlerta(alertaControl.tipo, alertaControl.caso_tipo) : ""}
+        caso={casoAbierto}
         onOpenChange={(open) => !open && setAlertaControl(null)}
+        alertaId={alertaControl?.id ?? null}
+        tipoAlerta={alertaControl?.tipo}
+        pendiente={alertaControl ? alertaControl.estado !== "resuelta" : false}
+        puedeGestionar={escritor}
+        onResolver={alertaControl ? () => cambiarEstado(alertaControl, "resuelta") : undefined}
+        onIr={ir}
       />
     </aside>
   );

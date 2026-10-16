@@ -1,14 +1,13 @@
 import { Link, useLocation } from "react-router-dom";
 import { Bell, HelpCircle } from "lucide-react";
 import { TITLE_MAP, CRUMBS_MAP } from "@/app/shell/nav";
-import { useIngresosActivos } from "@/features/dashboard/hooks";
+import { cn } from "@/lib/utils";
 
 interface TopbarProps {
   alertsVisible: boolean;
   onToggleAlerts: () => void;
-  /** Alertas en estado pendiente. El modelo de alertas no tiene severidad, así que la
-   *  píldora roja se rotula "pendientes" (no "críticas"). */
-  alertasPendientes: number;
+  /** Alertas sin leer de quien mira (asignadas a ella o sin dueño): el número de la campana. */
+  alertasSinLeer: number;
 }
 
 /**
@@ -28,10 +27,9 @@ function resolvePathKey(
 export function Topbar({
   alertsVisible,
   onToggleAlerts,
-  alertasPendientes,
+  alertasSinLeer,
 }: TopbarProps) {
   const { pathname } = useLocation();
-  const activos = useIngresosActivos();
 
   const titleKey = resolvePathKey(TITLE_MAP, pathname);
   const title = (titleKey && TITLE_MAP[titleKey]) ?? "SIGE";
@@ -50,33 +48,6 @@ export function Topbar({
 
       <div className="flex-1" />
 
-      {/* Ingresos activos: si la consulta falla, la píldora se oculta (no muestra un valor falso).
-          El listado de Ingresos aún no filtra por estado, así que el clic lleva al listado. */}
-      {activos.isPending && (
-        <div className="flex items-center gap-2 bg-muted text-muted-foreground border px-2.5 py-1 rounded-full text-[11px] font-semibold">
-          <span className="size-1.5 rounded-full bg-muted-foreground/50 animate-pulse" />
-          Cargando activos…
-        </div>
-      )}
-      {activos.isSuccess && (
-        <Link
-          to="/ingresos"
-          title="Ver ingresos y pacientes"
-          className="flex items-center gap-2 bg-[oklch(0.96_0.05_155)] text-[oklch(0.38_0.12_155)] border border-[oklch(0.88_0.05_155)] px-2.5 py-1 rounded-full text-[11px] font-semibold hover:bg-[oklch(0.93_0.06_155)] transition-colors"
-        >
-          <span className="size-1.5 rounded-full bg-[oklch(0.64_0.14_155)]" />
-          {activos.data} activos
-        </Link>
-      )}
-
-      {/* Alertas pendientes */}
-      <div className="flex items-center gap-2 bg-destructive/10 text-destructive border border-destructive/20 px-2.5 py-1 rounded-full text-[11px] font-semibold">
-        <span className="size-1.5 rounded-full bg-destructive animate-pulse" />
-        {alertasPendientes > 0 ? `${alertasPendientes} pendientes` : "sin pendientes"}
-      </div>
-
-      <div className="w-px h-6 bg-border mx-1" />
-
       <Link
         to="/ayuda"
         title="Ayuda"
@@ -89,11 +60,20 @@ export function Topbar({
       <button
         onClick={onToggleAlerts}
         title={alertsVisible ? "Ocultar alertas" : "Mostrar alertas"}
-        className="size-9 rounded-md grid place-items-center hover:bg-muted transition-colors relative cursor-pointer text-muted-foreground hover:text-foreground"
+        aria-label={
+          alertasSinLeer > 0 ? `Alertas: ${alertasSinLeer} sin leer` : "Alertas"
+        }
+        aria-expanded={alertsVisible}
+        className={cn(
+          "size-9 rounded-md grid place-items-center hover:bg-muted transition-colors relative cursor-pointer text-muted-foreground hover:text-foreground",
+          alertsVisible && "bg-muted text-foreground",
+        )}
       >
         <Bell className="size-[18px]" />
-        {alertasPendientes > 0 && (
-          <span className="absolute top-2 right-2 size-1.5 bg-destructive rounded-full ring-2 ring-card" />
+        {alertasSinLeer > 0 && (
+          <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold leading-[18px] text-center ring-2 ring-card">
+            {alertasSinLeer > 99 ? "99+" : alertasSinLeer}
+          </span>
         )}
       </button>
     </header>

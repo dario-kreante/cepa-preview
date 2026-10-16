@@ -15,6 +15,7 @@ from app.models.control_medico import ControlMedico
 from app.models.farmacos import EsquemaIndicacion, Receta, RegistroFarmacologico
 from app.models.ingreso import Ingreso
 from app.models.licencia import LicenciaMedica
+from app.models.oda import Oda
 from app.models.reintegro import CasoReintegro
 from app.models.paciente import Paciente
 from app.models.salutem_copia import SalutemPersona
@@ -102,7 +103,7 @@ def vista_360(db, paciente: Paciente) -> dict:
             select(Ingreso).where(Ingreso.paciente_id == paciente.id).order_by(Ingreso.id)
         ).scalars()
     )
-    vacio = {"farmacos": [], "licencias": [], "controles": [], "reintegro": []}
+    vacio = {"farmacos": [], "licencias": [], "controles": [], "odas": [], "reintegro": []}
     if not ingresos:
         return {"paciente": paciente, "ingresos": ingresos, **vacio}
     ids = [i.id for i in ingresos]
@@ -121,6 +122,14 @@ def vista_360(db, paciente: Paciente) -> dict:
             .order_by(ControlMedico.fecha_control, ControlMedico.id)
         )
     )
+    # La vigente primero; dentro de cada grupo, la que vence antes.
+    odas = list(
+        db.scalars(
+            select(Oda)
+            .where(Oda.ingreso_id.in_(ids))
+            .order_by(Oda.vigente.desc(), Oda.fecha_vencimiento, Oda.id)
+        )
+    )
     reintegro = list(
         db.scalars(
             select(CasoReintegro)
@@ -134,6 +143,7 @@ def vista_360(db, paciente: Paciente) -> dict:
         "farmacos": _farmacos_por_ingresos(db, ids),
         "licencias": licencias,
         "controles": controles,
+        "odas": odas,
         "reintegro": reintegro,
     }
 

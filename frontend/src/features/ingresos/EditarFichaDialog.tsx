@@ -2,7 +2,8 @@
  * EditarFichaDialog — edición de la ficha de ingreso (BUG-2608-01 / CEPA-010).
  *
  * RUT y folio se muestran pero no se editan: el RUT ancla la integración con
- * SALUTEM y el folio tiene reglas propias (PA-v5-01). Un guardado fallido nunca
+ * SALUTEM y el folio tiene reglas propias (PA-v5-01): lo corrige la Administrativa desde
+ * la tarjeta Folio del resumen (FolioCard). Un guardado fallido nunca
  * es silencioso: el error queda visible y el formulario conserva lo escrito.
  */
 import { useEffect, useState } from "react";
@@ -174,7 +175,7 @@ export function EditarFichaDialog({ paciente, ingreso, open, onOpenChange }: Pro
             RUT <span className="font-mono">{paciente.rut ?? "—"}</span> · Folio{" "}
             <span className="font-mono">{ingreso.folio}</span>
             <span className="block text-[11.5px]">
-              El RUT y el folio no se modifican desde la ficha.
+              El RUT no se modifica. El folio lo corrige una Administrativa desde la tarjeta Folio del resumen.
             </span>
           </p>
         </DialogHeader>

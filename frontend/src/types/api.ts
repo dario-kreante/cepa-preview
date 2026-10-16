@@ -300,6 +300,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/ingresos/{ingreso_id}/folio": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Cambiar Folio
+         * @description Corrige el folio de un ingreso (y de sus reingresos, fichas e IMED con ese folio).
+         */
+        put: operations["cambiar_folio_api_v1_ingresos__ingreso_id__folio_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/ingresos/{ingreso_id}/seguimiento": {
         parameters: {
             query?: never;
@@ -1609,6 +1629,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/alertas/{alerta_id}/contexto": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Contexto Alerta
+         * @description Paciente, ingreso y cita de SALUTEM de la alerta, para gestionarla desde el panel.
+         */
+        get: operations["contexto_alerta_api_v1_alertas__alerta_id__contexto_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/alertas/{alerta_id}": {
         parameters: {
             query?: never;
@@ -2066,6 +2106,60 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/salutem/atenciones/{cita_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Obtener Atencion */
+        get: operations["obtener_atencion_api_v1_salutem_atenciones__cita_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/salutem/atenciones/{cita_id}/archivos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Listar Archivos */
+        get: operations["listar_archivos_api_v1_salutem_atenciones__cita_id__archivos_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/salutem/atenciones/{cita_id}/archivos/{archivo_id}/contenido": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Contenido Archivo
+         * @description Pide el archivo a SALUTEM y lo entrega sin guardarlo (ni en BD ni en disco).
+         */
+        get: operations["contenido_archivo_api_v1_salutem_atenciones__cita_id__archivos__archivo_id__contenido_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/licencias/folio/{folio}": {
         parameters: {
             query?: never;
@@ -2234,6 +2328,21 @@ export interface components {
             /** Pct Avance */
             pct_avance: number | null;
         };
+        /** AlertaContextoRead */
+        AlertaContextoRead: {
+            /** Paciente Id */
+            paciente_id?: number | null;
+            /** Paciente Nombre */
+            paciente_nombre?: string | null;
+            /** Ingreso Id */
+            ingreso_id?: number | null;
+            /** Folio */
+            folio?: string | null;
+            /** Cita Id */
+            cita_id?: number | null;
+            /** Fecha */
+            fecha?: string | null;
+        };
         /** AlertaLicenciaRead */
         AlertaLicenciaRead: {
             /** Id */
@@ -2269,6 +2378,23 @@ export interface components {
             tipo: string | null;
             /** Fecha Creacion */
             fecha_creacion: string | null;
+        };
+        /** AtencionSalutemRead */
+        AtencionSalutemRead: {
+            /** Cita Id */
+            cita_id: number;
+            /** Fecha */
+            fecha: string | null;
+            /** Especialidad */
+            especialidad: string | null;
+            /** Profesional */
+            profesional: string | null;
+            /** Indicacion Licencia */
+            indicacion_licencia: string | null;
+            /** Tipo Reposo */
+            tipo_reposo?: string | null;
+            /** Gaf Tramo */
+            gaf_tramo?: string | null;
         };
         /** AuditLogRead */
         AuditLogRead: {
@@ -3297,6 +3423,14 @@ export interface components {
             tipo_denuncia?: string | null;
         };
         /**
+         * FolioUpdate
+         * @description Corrección del folio de un ingreso (solo Administrativo).
+         */
+        FolioUpdate: {
+            /** Folio */
+            folio: string;
+        };
+        /**
          * FormVersionCreate
          * @description Cuerpo de la petición de creación/actualización de borrador.
          */
@@ -3678,6 +3812,8 @@ export interface components {
             diagnostico: string;
             /** @default sistema */
             origen: components["schemas"]["OrigenLicencia"];
+            /** Eeag Gaf Tramo */
+            eeag_gaf_tramo?: string | null;
         };
         /**
          * LicenciaISLUpdate
@@ -3704,6 +3840,8 @@ export interface components {
         LicenciaSugeridaRead: {
             /** Ficha Clinica Id */
             ficha_clinica_id: number;
+            /** Cita Id */
+            cita_id?: number | null;
             /**
              * Cita Fecha
              * Format: date
@@ -3722,6 +3860,8 @@ export interface components {
             termino_calculado: boolean;
             /** Cantidad Dias */
             cantidad_dias: number | null;
+            /** Eeag Gaf Tramo */
+            eeag_gaf_tramo?: string | null;
             /** Avisos */
             avisos: string[];
             /** Ya Registrada */
@@ -5025,6 +5165,11 @@ export interface components {
              */
             controles: components["schemas"]["ControlMedicoRead"][];
             /**
+             * Odas
+             * @default []
+             */
+            odas: components["schemas"]["OdaRead"][];
+            /**
              * Reintegro
              * @default []
              */
@@ -5090,6 +5235,8 @@ export interface components {
             resuelta_en: string | null;
             /** Email Enviado */
             email_enviado: boolean;
+            /** Paciente Id */
+            paciente_id?: number | null;
         };
         /** AlertaRead */
         app__schemas__farmacos__AlertaRead: {
@@ -5763,6 +5910,41 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["IngresoUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IngresoRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cambiar_folio_api_v1_ingresos__ingreso_id__folio_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ingreso_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FolioUpdate"];
             };
         };
         responses: {
@@ -8544,6 +8726,37 @@ export interface operations {
             };
         };
     };
+    contexto_alerta_api_v1_alertas__alerta_id__contexto_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                alerta_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlertaContextoRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     actualizar_estado_alerta_api_v1_alertas__alerta_id__patch: {
         parameters: {
             query?: never;
@@ -9303,6 +9516,98 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EstadoSyncRead"];
+                };
+            };
+        };
+    };
+    obtener_atencion_api_v1_salutem_atenciones__cita_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cita_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AtencionSalutemRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    listar_archivos_api_v1_salutem_atenciones__cita_id__archivos_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cita_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArchivoControlRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    contenido_archivo_api_v1_salutem_atenciones__cita_id__archivos__archivo_id__contenido_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cita_id: number;
+                archivo_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

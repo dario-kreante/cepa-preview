@@ -13,8 +13,13 @@ from sqlalchemy import false, select
 from sqlalchemy.orm import Session
 
 from app.domain.enums_licencia import OrigenLicencia, TipoLicencia, TipoReposo
-from app.integrations.salutem.campos import campo
-from app.integrations.salutem.licencias import ClaseMencion, MencionLicencia, extraer_licencia
+from app.integrations.salutem.campos import campo, tramo_gaf
+from app.integrations.salutem.licencias import (
+    ClaseMencion,
+    MencionLicencia,
+    extraer_indicacion_reposo,
+    extraer_licencia,
+)
 from app.models.ficha_clinica import FichaClinica
 from app.models.licencia import LicenciaMedica
 from app.schemas.licencia_sugerida import LicenciaSugeridaRead
@@ -32,13 +37,17 @@ def _fecha_cita(valor: Any) -> date | None:
         return None
 
 
-def _registros(contenido: dict[str, Any]) -> list[Any]:
+def _menciones(contenido: dict[str, Any], fecha: date) -> list[MencionLicencia | None]:
     indicaciones = contenido.get("indicaciones") or []
     if isinstance(indicaciones, dict):
         indicaciones = [indicaciones]
     return [
-        *(i.get("registro") if isinstance(i, dict) else i for i in indicaciones),
-        campo(contenido, "Indicación de reposo"),
+        *(
+            extraer_licencia(i.get("registro") if isinstance(i, dict) else i, fecha_atencion=fecha)
+            for i in indicaciones
+        ),
+        # El campo "Indicación de reposo" es la licencia aunque no diga "licencia".
+        extraer_indicacion_reposo(campo(contenido, "Indicación de reposo"), fecha_atencion=fecha),
     ]
 
 
@@ -89,8 +98,7 @@ def sugerir_licencias(db: Session, folio: str) -> list[LicenciaSugeridaRead]:
         fecha = _fecha_cita(contenido.get("citaFecha"))
         if fecha is None:
             continue
-        for registro in _registros(contenido):
-            mencion = extraer_licencia(registro, fecha_atencion=fecha)
+        for mencion in _menciones(contenido, fecha):
             if mencion is None or mencion.clase != ClaseMencion.LICENCIA:
                 continue
             # El médico suele repetir la misma licencia en varias indicaciones.
@@ -116,6 +124,7 @@ def sugerir_licencias(db: Session, folio: str) -> list[LicenciaSugeridaRead]:
             sugerencias.append(
                 LicenciaSugeridaRead(
                     ficha_clinica_id=ficha.id,
+                    cita_id=contenido.get("citaId") if isinstance(contenido.get("citaId"), int) else None,
                     cita_fecha=fecha,
                     texto=mencion.texto,
                     tipo_lm=TipoLicencia(tipo) if tipo else None,
@@ -129,6 +138,7 @@ def sugerir_licencias(db: Session, folio: str) -> list[LicenciaSugeridaRead]:
                     fecha_termino=mencion.fecha_termino,
                     termino_calculado=mencion.termino_calculado,
                     cantidad_dias=mencion.dias,
+                    eeag_gaf_tramo=tramo_gaf(campo(contenido, "GAF")),
                     avisos=avisos,
                     ya_registrada=_ya_registrada(mencion, registradas),
                 )

@@ -50,6 +50,7 @@ def crear_licencia(db, data: LicenciaCreate) -> tuple[LicenciaMedica, str | None
         indicacion_reposo=data.indicacion_reposo,
         diagnostico=data.diagnostico,
         origen=data.origen.value,
+        eeag_gaf_tramo=resolver_tramo(db, data.eeag_gaf_tramo, None) if data.eeag_gaf_tramo else None,
         envio_isl="pendiente",
         anulada=False,
     )

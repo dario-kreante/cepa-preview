@@ -57,6 +57,8 @@ describe("AlertsPanel: alertas de licencia del control", () => {
           medico_tratante: "DRA. PAULA ROJAS",
           tiene_licencia: true,
           resumen_termino_lm: "LM tipo 6 por 30 días",
+          tipo_reposo: "parcial",
+          gaf_tramo: "41-50",
           origen: "SALUTEM",
         }),
       ),
@@ -80,6 +82,8 @@ describe("AlertsPanel: alertas de licencia del control", () => {
     const dialogo = await screen.findByRole("dialog");
     expect(await within(dialogo).findByText(/DRA\. PAULA ROJAS/)).toBeInTheDocument();
     expect(within(dialogo).getByText(/LM tipo 6 por 30 días/)).toBeInTheDocument();
+    expect(within(dialogo).getByText("Tipo de reposo").nextSibling).toHaveTextContent("Parcial");
+    expect(within(dialogo).getByText("GAF").nextSibling).toHaveTextContent("41-50");
     expect(await within(dialogo).findByText("LICENCIA.pdf")).toBeInTheDocument();
     expect(within(dialogo).getByRole("button", { name: /ir a controles/i })).toBeInTheDocument();
   });
@@ -161,6 +165,11 @@ describe("routeForCaso", () => {
     expect(routeForCaso("licencia", 1)).toBe("/licencias");
     expect(routeForCaso("oda", 1)).toBe("/ingresos");
     expect(routeForCaso("ingreso", 1)).toBe("/ingresos");
+  });
+
+  it("ODA con paciente abre su ficha directo en la pestaña ODA", () => {
+    expect(routeForCaso("oda", 3, 42)).toBe("/ingresos?paciente=42&tab=odas");
+    expect(routeForCaso("ingreso", 3, 42)).toBe("/ingresos?paciente=42");
   });
 
   it("tipo desconocido o nulo cae a /ingresos", () => {
@@ -332,5 +341,258 @@ describe("AlertsPanel: paciente pendiente de folio", () => {
 
   it("routeForCaso lleva el caso 'paciente' a /pendientes-folio", () => {
     expect(routeForCaso("paciente", 7)).toBe("/pendientes-folio");
+  });
+});
+
+describe("AlertsPanel: sin leer y ventana flotante", () => {
+  function conAlertas(alertas: unknown[]) {
+    server.use(
+      http.get(`${BASE}/api/v1/alertas`, () => HttpResponse.json(alertas)),
+      http.get(`${BASE}/api/v1/tareas`, () => HttpResponse.json([])),
+    );
+  }
+  const base = {
+    caso_id: 7,
+    caso_tipo: "oda",
+    plazo_objetivo: null,
+    ventana_dias: 0,
+    generada_en: "2026-10-15T19:35:00Z",
+    resuelta_en: null,
+    email_enviado: false,
+  };
+
+  it("destaca solo las pendientes para quien mira; las de otro profesional van rotuladas", async () => {
+    tokenStore.setAccess(TOKENS.Coordinacion);
+    conAlertas([
+      { ...base, id: 1, tipo: "oda_por_vencer", estado: "pendiente", usuario_id: null },
+      { ...base, id: 2, tipo: "plazo_isl", estado: "leida", usuario_id: null },
+      { ...base, id: 3, tipo: "plazo_ept", estado: "pendiente", usuario_id: 999 },
+    ]);
+    const { container } = renderPanel();
+    await screen.findByText("Oda por vencer");
+    expect(container.querySelectorAll("[data-sin-leer]")).toHaveLength(1);
+    expect(screen.getAllByLabelText("Sin leer")).toHaveLength(1);
+    expect(screen.getByText("Asignada a otro profesional")).toBeInTheDocument();
+    expect(screen.getByText("· 1 sin leer")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Sin leer (1)" }));
+    expect(screen.getByText("Oda por vencer")).toBeInTheDocument();
+    expect(screen.queryByText("Plazo isl")).not.toBeInTheDocument();
+    expect(screen.queryByText("Plazo ept")).not.toBeInTheDocument();
+  });
+
+  it("al ir a una alerta la ventana se cierra; también con su botón", async () => {
+    tokenStore.setAccess(TOKENS.Coordinacion);
+    conAlertas([{ ...base, id: 1, tipo: "oda_por_vencer", estado: "leida", usuario_id: null }]);
+    const onClose = vi.fn();
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={qc}>
+        <MemoryRouter>
+          <AuthProvider>
+            <AlertsPanel onClose={onClose} />
+          </AuthProvider>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    await userEvent.click(await screen.findByText("Oda por vencer"));
+    expect(onClose).toHaveBeenCalledTimes(1);
+    await userEvent.click(screen.getByRole("button", { name: "Cerrar alertas" }));
+    expect(onClose).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("AlertsPanel: licencia emitida en una atención médica que no es control", () => {
+  it("se titula 'en atención médica' y abre la atención con su indicación y documentos", async () => {
+    tokenStore.setAccess(TOKENS.Coordinacion);
+    server.use(
+      http.get(`${BASE}/api/v1/alertas`, () =>
+        HttpResponse.json([
+          {
+            id: 9,
+            tipo: "licencia_en_control",
+            estado: "leida",
+            caso_id: 16625886,
+            caso_tipo: "salutem_atencion",
+            usuario_id: null,
+            plazo_objetivo: "2026-10-15T00:00:00Z",
+            ventana_dias: 0,
+            generada_en: "2026-10-16T19:35:00Z",
+            resuelta_en: null,
+            email_enviado: false,
+          },
+        ]),
+      ),
+      http.get(`${BASE}/api/v1/tareas`, () => HttpResponse.json([])),
+      http.get(`${BASE}/api/v1/salutem/atenciones/16625886`, () =>
+        HttpResponse.json({
+          cita_id: 16625886,
+          fecha: "2026-10-15",
+          especialidad: "Evaluación médica",
+          profesional: "DRA. PAULA ROJAS",
+          indicacion_licencia: "Reposo por 15 días desde el 15/10/2026",
+          tipo_reposo: "Total",
+          gaf_tramo: "51-60",
+        }),
+      ),
+      http.get(`${BASE}/api/v1/salutem/atenciones/16625886/archivos`, () =>
+        HttpResponse.json([
+          { archivo_id: 1, nombre: "LICENCIA.pdf", tipo: "documento", fecha_creacion: "2026-10-15T16:29:00" },
+        ]),
+      ),
+    );
+    renderPanel();
+
+    expect(await screen.findByText("Atención SALUTEM #16625886")).toBeInTheDocument();
+    expect(screen.getByText(/^Atención: 15 oct/i)).toBeInTheDocument();
+    await userEvent.click(screen.getByText("Licencia emitida en atención médica"));
+
+    const dialogo = await screen.findByRole("dialog");
+    expect(await within(dialogo).findByText(/Evaluación médica del 15-10-2026 · DRA\. PAULA ROJAS/)).toBeInTheDocument();
+    expect(within(dialogo).getByText("Reposo por 15 días desde el 15/10/2026")).toBeInTheDocument();
+    // El ítem "Indicación de reposo" completo: indicación, tipo de reposo y GAF.
+    expect(within(dialogo).getByText("Tipo de reposo").nextSibling).toHaveTextContent("Total");
+    expect(within(dialogo).getByText("GAF").nextSibling).toHaveTextContent("51-60");
+    expect(await within(dialogo).findByText("LICENCIA.pdf")).toBeInTheDocument();
+    expect(within(dialogo).queryByRole("button", { name: /ir a controles/i })).not.toBeInTheDocument();
+  });
+});
+
+describe("AlertsPanel: gestionar la alerta desde el diálogo", () => {
+  const base = {
+    estado: "pendiente",
+    usuario_id: null,
+    plazo_objetivo: "2026-10-15T00:00:00Z",
+    ventana_dias: 0,
+    generada_en: "2026-10-16T19:35:00Z",
+    resuelta_en: null,
+    email_enviado: false,
+  };
+  const CONTEXTO = {
+    paciente_id: 82,
+    paciente_nombre: "Humberto Escobar",
+    ingreso_id: 102,
+    folio: "F-2026-0063",
+    cita_id: 16625886,
+    fecha: "2026-10-15",
+  };
+  const SUGERIDA = {
+    ficha_clinica_id: 207,
+    cita_id: 16625886,
+    cita_fecha: "2026-10-15",
+    texto: "Reposo por 15 días desde el 15/10/2026",
+    tipo_lm: null,
+    tipo_reposo: "total",
+    origen: "sistema",
+    fecha_inicio: "2026-10-15",
+    fecha_termino: "2026-10-29",
+    termino_calculado: true,
+    cantidad_dias: 15,
+    eeag_gaf_tramo: "51-60",
+    avisos: [],
+    ya_registrada: false,
+  };
+
+  function conAtencion(alerta: Record<string, unknown>, sugeridas: unknown[]) {
+    const cambios: Array<{ id: string; estado: string }> = [];
+    server.use(
+      http.get(`${BASE}/api/v1/alertas`, () => HttpResponse.json([alerta])),
+      http.get(`${BASE}/api/v1/tareas`, () => HttpResponse.json([])),
+      http.get(`${BASE}/api/v1/alertas/:id/contexto`, () => HttpResponse.json(CONTEXTO)),
+      http.get(`${BASE}/api/v1/fichas-clinicas/:folio/licencias-sugeridas`, () => HttpResponse.json(sugeridas)),
+      http.get(`${BASE}/api/v1/salutem/atenciones/16625886`, () =>
+        HttpResponse.json({
+          cita_id: 16625886, fecha: "2026-10-15", especialidad: "Evaluación médica",
+          profesional: "PILAR GARCÍA", indicacion_licencia: SUGERIDA.texto,
+        }),
+      ),
+      http.get(`${BASE}/api/v1/salutem/atenciones/16625886/archivos`, () => HttpResponse.json([])),
+      http.patch(`${BASE}/api/v1/alertas/:id`, async ({ request, params }) => {
+        const body = (await request.json()) as { estado: string };
+        cambios.push({ id: String(params.id), estado: body.estado });
+        return HttpResponse.json({ ...alerta, estado: body.estado });
+      }),
+    );
+    return cambios;
+  }
+
+  const LICENCIA = { ...base, id: 21, tipo: "licencia_en_control", caso_id: 16625886, caso_tipo: "salutem_atencion" };
+
+  it("muestra el paciente y ofrece registrar la licencia con lo leído de SALUTEM", async () => {
+    tokenStore.setAccess(TOKENS.Coordinacion);
+    conAtencion(LICENCIA, [SUGERIDA, { ...SUGERIDA, cita_id: 999, ficha_clinica_id: 1 }]);
+    renderPanel();
+    await userEvent.click(await screen.findByText("Licencia emitida en atención médica"));
+    const dialogo = await screen.findByRole("dialog");
+
+    expect(await within(dialogo).findByText("Humberto Escobar")).toBeInTheDocument();
+    // Solo la licencia de esta atención, no la de otra cita del mismo folio.
+    const botones = await within(dialogo).findAllByRole("button", { name: /Registrar licencia/ });
+    expect(botones).toHaveLength(1);
+    expect(botones[0]).toHaveTextContent("Registrar licencia (15 días)");
+
+    await userEvent.click(botones[0]);
+    expect(await screen.findByText("Nueva licencia médica")).toBeInTheDocument();
+    expect(screen.getByText(/Datos sugeridos desde SALUTEM/)).toBeInTheDocument();
+    // GAF e indicación de reposo vienen precargados desde la atención.
+    await vi.waitFor(() => expect(screen.getByLabelText(/Tramo de GAF/)).toHaveValue("51-60"));
+    expect(screen.getByLabelText(/Indicación de reposo/)).toHaveValue("Reposo por 15 días desde el 15/10/2026");
+  });
+
+  it("si la licencia ya está registrada lo dice y no ofrece registrarla", async () => {
+    tokenStore.setAccess(TOKENS.Coordinacion);
+    conAtencion(LICENCIA, [{ ...SUGERIDA, ya_registrada: true }]);
+    renderPanel();
+    await userEvent.click(await screen.findByText("Licencia emitida en atención médica"));
+    const dialogo = await screen.findByRole("dialog");
+
+    expect(await within(dialogo).findByText(/ya está registrada/)).toBeInTheDocument();
+    expect(within(dialogo).queryByRole("button", { name: /Registrar licencia/ })).not.toBeInTheDocument();
+  });
+
+  it("se puede marcar como resuelta desde el diálogo", async () => {
+    tokenStore.setAccess(TOKENS.Coordinacion);
+    const cambios = conAtencion(LICENCIA, [SUGERIDA]);
+    renderPanel();
+    await userEvent.click(await screen.findByText("Licencia emitida en atención médica"));
+    const dialogo = await screen.findByRole("dialog");
+    await userEvent.click(within(dialogo).getByRole("button", { name: "Marcar como resuelta" }));
+
+    await vi.waitFor(() => expect(cambios).toEqual([{ id: "21", estado: "resuelta" }]));
+  });
+
+  it("el Auditor ve el paciente pero no puede registrar ni resolver", async () => {
+    tokenStore.setAccess(TOKENS.Auditor);
+    conAtencion(LICENCIA, [SUGERIDA]);
+    renderPanel();
+    await userEvent.click(await screen.findByText("Licencia emitida en atención médica"));
+    const dialogo = await screen.findByRole("dialog");
+
+    expect(await within(dialogo).findByText("Humberto Escobar")).toBeInTheDocument();
+    expect(within(dialogo).queryByRole("button", { name: /Registrar licencia/ })).not.toBeInTheDocument();
+    expect(within(dialogo).queryByRole("button", { name: "Marcar como resuelta" })).not.toBeInTheDocument();
+  });
+
+  it("la alerta de receta lleva a Fármacos con el paciente seleccionado", async () => {
+    tokenStore.setAccess(TOKENS.Coordinacion);
+    conAtencion({ ...LICENCIA, id: 22, tipo: "receta_en_control" }, []);
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={qc}>
+        <MemoryRouter initialEntries={["/"]}>
+          <AuthProvider>
+            <Routes>
+              <Route path="/" element={<AlertsPanel />} />
+              <Route path="/farmacos" element={<p>página de fármacos</p>} />
+            </Routes>
+          </AuthProvider>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    await userEvent.click(await screen.findByText("Receta emitida en atención médica"));
+    const dialogo = await screen.findByRole("dialog");
+    await userEvent.click(await within(dialogo).findByRole("button", { name: /Gestionar en Fármacos/ }));
+
+    expect(await screen.findByText("página de fármacos")).toBeInTheDocument();
   });
 });

@@ -3,10 +3,12 @@
 from enum import Enum
 
 from fastapi import HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import select, update
 
 from app.audit.service import record_audit
 from app.domain.enums import EstadoRegistroPaciente
+from app.models.ficha_clinica import FichaClinica
+from app.models.imed_payload import ImedPayload
 from app.models.ingreso import Ingreso
 from app.models.paciente import Paciente
 from app.schemas.ingreso import IngresoCreate, IngresoUpdate
@@ -160,4 +162,61 @@ def actualizar_ingreso(db, ingreso_id: int, data: IngresoUpdate) -> Ingreso:
         destino = ingreso.paciente if campo in _CAMPOS_PACIENTE else ingreso
         setattr(destino, campo, valor)
     db.flush()
+    return ingreso
+
+
+def corregir_folio(db, ingreso_id: int, folio_nuevo: str, actor: str) -> Ingreso:
+    """Cambia el folio de un ingreso (corrección de la Administrativa).
+
+    El folio viaja como texto en otras tablas, así que se cambia en bloque: los
+    reingresos del mismo paciente que comparten el folio, sus fichas clínicas y los
+    datos de IMED. Rechaza un folio que ya use otro paciente. No hace commit.
+    """
+    ingreso = db.get(Ingreso, ingreso_id)
+    if ingreso is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ingreso no encontrado.")
+    folio_anterior = ingreso.folio
+    if folio_nuevo == folio_anterior:
+        return ingreso
+
+    ajeno = db.scalars(
+        select(Ingreso.id)
+        .where(Ingreso.folio == folio_nuevo, Ingreso.paciente_id != ingreso.paciente_id)
+        .limit(1)
+    ).first()
+    if ajeno is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"El folio {folio_nuevo} ya está emitido para otro paciente.",
+        )
+
+    db.execute(
+        update(Ingreso)
+        .where(Ingreso.paciente_id == ingreso.paciente_id, Ingreso.folio == folio_anterior)
+        .values(folio=folio_nuevo, folio_manual=True)
+        .execution_options(synchronize_session="fetch")
+    )
+    db.execute(
+        update(FichaClinica)
+        .where(FichaClinica.folio == folio_anterior)
+        .values(folio=folio_nuevo)
+        .execution_options(synchronize_session="fetch")
+    )
+    db.execute(
+        update(ImedPayload)
+        .where(ImedPayload.folio == folio_anterior)
+        .values(folio=folio_nuevo)
+        .execution_options(synchronize_session="fetch")
+    )
+    record_audit(
+        db,
+        actor=actor,
+        action="UPDATE",
+        entity="ingreso",
+        entity_id=str(ingreso.id),
+        valor_anterior=folio_anterior,
+        valor_nuevo=folio_nuevo,
+    )
+    db.flush()
+    db.refresh(ingreso)
     return ingreso
