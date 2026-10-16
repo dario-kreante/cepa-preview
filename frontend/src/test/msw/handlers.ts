@@ -12,6 +12,8 @@ export const GAF_TRAMOS = Array.from({ length: 10 }, (_, i) => ({
 }));
 
 export const handlers = [
+  // Catálogo de profesionales vacío por defecto (lo monta NuevoControlDialog); cada test lo sobrescribe.
+  http.get(`${BASE}/api/v1/profesionales`, () => HttpResponse.json([])),
   http.get(`${BASE}/api/v1/gaf-tramos`, () => HttpResponse.json(GAF_TRAMOS)),
   http.get(`${BASE}/api/v1/pacientes/buscar`, () => HttpResponse.json([])),
   // Default handler for the esquema endpoint — returns empty list.
