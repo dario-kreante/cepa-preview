@@ -15,7 +15,7 @@ from __future__ import annotations
 from collections import Counter
 from datetime import date, timedelta
 
-from sqlalchemy import func, select
+from sqlalchemy import false, func, select, true
 from sqlalchemy.orm import Session
 
 from app.domain.enums import EstadoCaso, EstadoRegistroPaciente
@@ -174,7 +174,7 @@ def resumen_operativo(
     )
 
     # ── Pendientes de gestión (estado a hoy, no dependen del período) ────────
-    lm_vigente = LicenciaMedica.anulada.is_(False)
+    lm_vigente = LicenciaMedica.anulada == false()
     licencias_activas = _contar(
         db,
         select(func.count()).select_from(LicenciaMedica).where(
@@ -191,7 +191,7 @@ def resumen_operativo(
         select(func.count())
         .select_from(Oda)
         .join(Ingreso, Oda.ingreso_id == Ingreso.id)
-        .where(Oda.vigente.is_(True), activo)
+        .where(Oda.vigente == true(), activo)
     )
     odas_vencidas = _contar(db, odas_activas.where(Oda.fecha_vencimiento < hoy))
     odas_por_vencer = _contar(
