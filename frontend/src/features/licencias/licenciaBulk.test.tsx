@@ -8,7 +8,7 @@
  * to enumerate all licencias across patients/regions. Bulk send operates only over
  * the currently selected rows of the active folio search (per-patient scope).
  */
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { http, HttpResponse } from "msw";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -54,6 +54,24 @@ function renderPage(token = FAKE_TOKEN) {
 }
 
 const FOLIO = "FOLIO-BULK";
+
+// La página busca pacientes (RUT, folio, nombre o ID SALUTEM) y lista las licencias del
+// folio del ingreso principal: con un solo resultado se abre directo.
+beforeEach(() => {
+  server.use(
+    http.get(`${BASE}/api/v1/pacientes/buscar`, () =>
+      HttpResponse.json([
+        {
+          id: 1, rut: "123456785", nombre: "Juan Pérez", sexo: "M", edad: 40, region: "Maule",
+          comuna: null, telefono: null, correo: null, estado_registro: "completo", origen: "SIGE",
+        },
+      ]),
+    ),
+    http.get(`${BASE}/api/v1/pacientes/:id/vista-360`, () =>
+      HttpResponse.json({ paciente: { id: 1, nombre: "Juan Pérez" }, ingresos: [{ id: 5, folio: FOLIO }] }),
+    ),
+  );
+});
 
 // Two non-anulled licencias for bulk selection tests
 const SLIM_1 = {
@@ -124,7 +142,7 @@ function registerTwoRowHandlers() {
 
 /** Type a folio into the search box and wait for 2 rows to render. */
 async function searchAndWaitRows() {
-  const input = screen.getByPlaceholderText("Buscar por folio");
+  const input = screen.getByPlaceholderText("Buscar por RUT, folio, nombre o ID SALUTEM");
   fireEvent.change(input, { target: { value: FOLIO } });
   // Wait for at least both row checkboxes to appear (one per non-anulled row)
   await waitFor(
@@ -151,7 +169,7 @@ describe("LicenciasPage — Envío masivo ISL", () => {
   it("does NOT show checkboxes for Auditor", async () => {
     registerTwoRowHandlers();
     renderPage(AUDITOR_TOKEN);
-    const input = screen.getByPlaceholderText("Buscar por folio");
+    const input = screen.getByPlaceholderText("Buscar por RUT, folio, nombre o ID SALUTEM");
     fireEvent.change(input, { target: { value: FOLIO } });
     // Wait until table rows appear (Tipo badge for tipo_lm "5" appears)
     await waitFor(
@@ -232,7 +250,7 @@ describe("LicenciasPage — Envío masivo ISL", () => {
   it("shows 'Envío masivo ISL' button only for writers (not auditor)", async () => {
     registerTwoRowHandlers();
     renderPage(AUDITOR_TOKEN);
-    const input = screen.getByPlaceholderText("Buscar por folio");
+    const input = screen.getByPlaceholderText("Buscar por RUT, folio, nombre o ID SALUTEM");
     fireEvent.change(input, { target: { value: FOLIO } });
     await waitFor(
       () => expect(screen.getByDisplayValue("Tipo LM: Todos")).toBeInTheDocument(),
@@ -254,7 +272,7 @@ describe("LicenciasPage — Generar alertas de vencimiento", () => {
 
   it("does NOT show 'Generar alertas' button for Auditor", async () => {
     renderPage(AUDITOR_TOKEN);
-    await screen.findByText(/Ingresa un folio/i);
+    await screen.findByText(/Escribe un RUT, folio, nombre o ID SALUTEM/i);
     expect(
       screen.queryByRole("button", { name: /generar alertas/i })
     ).not.toBeInTheDocument();
