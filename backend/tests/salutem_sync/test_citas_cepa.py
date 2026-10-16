@@ -306,3 +306,45 @@ def test_estado_desconocido_no_toca_la_fila(db_session):
     assert fila.estado == "agendada"
     assert r.estado_desconocido == 1
     assert (r.creadas, r.actualizadas, r.eliminadas) == (0, 0, 0)
+
+
+def test_incremental_no_revisa_citas_sin_cambios(db_session):
+    _, ingreso, _c = _escenario(db_session, estado_id=1, cambiado_en=AHORA - timedelta(days=10))
+    ingreso.updated_at = AHORA - timedelta(days=10)
+    db_session.flush()
+    sincronizar_citas(db_session, desde=None, ahora=AHORA)
+    fila = _filas(db_session)[0]
+    fila.estado = "anulada"  # fila deliberadamente desactualizada
+    db_session.flush()
+
+    r = sincronizar_citas(db_session, desde=AHORA - timedelta(hours=1), ahora=AHORA)
+
+    assert (r.creadas, r.actualizadas) == (0, 0)
+    assert _filas(db_session)[0].estado == "anulada"
+    r = sincronizar_citas(db_session, desde=None, ahora=AHORA)
+    assert r.actualizadas == 1
+    assert _filas(db_session)[0].estado == "agendada"
+
+
+def test_incremental_ambigua_con_un_solo_ingreso_reciente_se_omite(db_session):
+    reciente = _ingreso(db_session, _paciente(db_session))
+    _ingreso(db_session, _paciente(db_session, rut="111111111", persona_id=501))
+    _persona(db_session, 501)
+    _cita(db_session, 501, cambiado_en=AHORA - timedelta(days=10))
+    desde = AHORA - timedelta(hours=1)
+    reciente.updated_at = AHORA
+    db_session.flush()
+
+    r = sincronizar_citas(db_session, desde=desde, ahora=AHORA)
+
+    assert _filas(db_session) == []
+    assert r.ambiguas == 1
+
+
+def test_incremental_cambiada_antes_del_corte_no_se_importa(db_session):
+    _escenario(db_session, fecha=date(2025, 12, 31), cambiado_en=AHORA)
+
+    r = sincronizar_citas(db_session, desde=AHORA - timedelta(hours=1), ahora=AHORA)
+
+    assert _filas(db_session) == []
+    assert (r.creadas, r.sin_ingreso) == (0, 0)

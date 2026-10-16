@@ -93,23 +93,36 @@ def _texto(contenido: dict | None, clave: str, maximo: int) -> str | None:
 
 
 def _candidatas(db: Session, desde: datetime | None, corte: date) -> dict[int, set[int]]:
-    """cita_id -> pacientes con los que cruza. Incluye las desaparecidas (sirven para borrar)."""
-    base = (
-        select(SalutemCita.cita_id, Paciente.id)
+    """cita_id -> pacientes con los que cruza. Incluye las desaparecidas (sirven para borrar).
+
+    Con `desde`, solo las citas cambiadas desde entonces o de pacientes con ingresos
+    editados desde entonces. Los pacientes de cada cita se leen aparte y sin ese filtro,
+    para que una cita que cruza con dos pacientes siga viéndose ambigua.
+    """
+    seleccion = (
+        select(SalutemCita.cita_id)
         .join(SalutemPersona, SalutemPersona.salutem_id == SalutemCita.persona_id)
         .join(Paciente, cruce_con_paciente())
+        .where(SalutemCita.fecha_cita >= corte)
     )
-    condicion = SalutemCita.fecha_cita >= corte
     if desde is not None:
-        condicion = or_(
-            condicion,
-            SalutemCita.cambiado_en >= desde,
-            Paciente.id.in_(select(Ingreso.paciente_id).where(Ingreso.updated_at >= desde)),
+        seleccion = seleccion.where(
+            or_(
+                SalutemCita.cambiado_en >= desde,
+                Paciente.id.in_(select(Ingreso.paciente_id).where(Ingreso.updated_at >= desde)),
+            )
         )
-    pares = db.execute(base.where(condicion).distinct()).all()
+    ids = sorted(set(db.scalars(seleccion).all()))
     por_cita: dict[int, set[int]] = defaultdict(set)
-    for cita_id, paciente_id in pares:
-        por_cita[cita_id].add(paciente_id)
+    for lote in lotes(ids):
+        pares = db.execute(
+            select(SalutemCita.cita_id, Paciente.id)
+            .join(SalutemPersona, SalutemPersona.salutem_id == SalutemCita.persona_id)
+            .join(Paciente, cruce_con_paciente())
+            .where(SalutemCita.cita_id.in_(lote))
+        ).all()
+        for cita_id, paciente_id in pares:
+            por_cita[cita_id].add(paciente_id)
     return por_cita
 
 
@@ -120,7 +133,7 @@ def sincronizar_citas(db: Session, *, desde: datetime | None, ahora: datetime) -
     cambiadas desde entonces y todas las de pacientes con ingresos creados o editados desde
     entonces (un ingreso nuevo puede traer citas antiguas).
 
-    Cada cita va en su propio savepoint; se hace commit por lote, pero no al final.
+    Cada cita va en su propio savepoint; se hace commit por lote y uno final.
     """
     ahora = a_utc(ahora)
     hoy = hoy_en_santiago(ahora)
