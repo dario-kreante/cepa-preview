@@ -87,7 +87,11 @@ def descartar(db: Session, paciente_id: int, motivo: str, actor: str) -> Pacient
     paciente.descartado_en = datetime.now(timezone.utc)
     db.flush()
     resolver_alerta_borrador(db, paciente.id)
-    record_audit(db, actor=actor, action="UPDATE", entity="paciente", entity_id=str(paciente.id))
+    record_audit(
+        db, actor=actor, action="UPDATE", entity="paciente", entity_id=str(paciente.id),
+        valor_anterior=EstadoRegistroPaciente.PENDIENTE_FOLIO.value,
+        valor_nuevo=f"{EstadoRegistroPaciente.DESCARTADO.value}: {motivo}",
+    )
     db.commit()
     db.refresh(paciente)
     return paciente

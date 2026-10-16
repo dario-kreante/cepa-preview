@@ -104,6 +104,8 @@ def test_descartar_registra_motivo_actor_alerta_y_auditoria(as_admin, db_session
         select(AuditLog).where(AuditLog.entity == "paciente", AuditLog.entity_id == str(p.id))
     ).all()
     assert [(a.actor, a.action) for a in acciones] == [("admin_test", "UPDATE")]
+    assert acciones[0].valor_anterior == "pendiente_folio"
+    assert acciones[0].valor_nuevo == "descartado: Paciente de prueba"
 
 
 def test_descartar_un_completo_es_409(as_admin, db_session):
