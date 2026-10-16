@@ -8,7 +8,9 @@ from app.db.session import get_db
 from app.models.paciente import Paciente
 from app.schemas.busqueda import Vista360
 from app.schemas.ingreso import PacienteRead
+from app.schemas.paciente_borrador import DescarteIn, PacientePendienteRead
 from app.services.busqueda import buscar_pacientes, obtener_paciente, vista_360
+from app.services.pacientes_borrador import descartar, listar_pendientes
 
 router = APIRouter(prefix="/api/v1/pacientes", tags=["pacientes"])
 
@@ -32,6 +34,16 @@ class PacienteUpdateSchema(BaseModel):
 def buscar(q: str, db: Session = Depends(get_db)) -> list[PacienteRead]:
     """CA-1: búsqueda de paciente por RUT, nombre o folio."""
     return buscar_pacientes(db, q)
+
+
+@router.get(
+    "/pendientes-folio",
+    response_model=list[PacientePendienteRead],
+    dependencies=[Depends(_writer)],
+)
+def pendientes_folio(db: Session = Depends(get_db)) -> list[PacientePendienteRead]:
+    """Pacientes borrador creados desde SALUTEM que esperan su folio."""
+    return listar_pendientes(db)
 
 
 @router.get("/{paciente_id}", response_model=PacienteRead, dependencies=[Depends(_reader)])
@@ -79,3 +91,18 @@ def vista_360_endpoint(paciente_id: int, db: Session = Depends(get_db)) -> Vista
     if paciente is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Paciente no encontrado")
     return vista_360(db, paciente)
+
+
+@router.post(
+    "/{paciente_id}/descartar",
+    response_model=PacienteRead,
+    dependencies=[Depends(_writer)],
+)
+def descartar_paciente(
+    paciente_id: int,
+    payload: DescarteIn,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+) -> Paciente:
+    """Descarta un borrador pendiente de folio (no es paciente del CEPA)."""
+    return descartar(db, paciente_id, payload.motivo, current_user.username)
