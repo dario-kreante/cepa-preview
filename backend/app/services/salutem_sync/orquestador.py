@@ -108,10 +108,15 @@ def correr(
         except ValueError as e:
             desde = None
             errores = errores + [str(e)]
-        borradores = crear_borradores(db, ahora(), desde)
-        errores = errores + borradores.errores
-        if borradores.creados:
-            log.info("Borradores de pacientes creados desde SALUTEM: %d", borradores.creados)
+        try:
+            borradores = crear_borradores(db, ahora(), desde)
+            errores = errores + borradores.errores
+            if borradores.creados:
+                log.info("Borradores de pacientes creados desde SALUTEM: %d", borradores.creados)
+        except Exception as e:  # noqa: BLE001 — un fallo de este paso no debe perder el resto del ciclo
+            log.exception("Modo %s: falló la creación de borradores", modo)
+            db.rollback()
+            errores = errores + [f"borradores: {type(e).__name__}: {e}"]
         if modo == "caliente":
             archivos = refrescar_archivos(db, cliente, ritmo, ahora(), al_avanzar=renovar)
             errores = errores + archivos.errores

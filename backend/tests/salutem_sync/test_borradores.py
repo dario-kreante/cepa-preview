@@ -197,6 +197,28 @@ def test_corte_invalido_no_crea_y_registra_el_error(db_session, salutem, ritmo, 
     assert "16/10/2026" in ejecucion.error
 
 
+def test_error_en_borradores_no_pierde_el_resto_del_ciclo(db_session, salutem, ritmo, monkeypatch):
+    from app.services.salutem_sync import orquestador
+
+    def revienta(*a, **k):
+        raise RuntimeError("falla de BD en borradores")
+
+    llamadas = []
+    monkeypatch.setattr(orquestador, "crear_borradores", revienta)
+    monkeypatch.setattr(
+        orquestador,
+        "refrescar_archivos",
+        lambda *a, **k: llamadas.append(1) or type("R", (), {"errores": [], "personas": 0})(),
+    )
+
+    assert correr("caliente", db_session, salutem, ritmo, ahora=lambda: AHORA, habilitado=True, dueno="test") == 0
+
+    ejecucion = db_session.scalars(select(SalutemSyncEjecucion)).one()
+    assert ejecucion.estado == "con_errores"
+    assert "falla de BD en borradores" in ejecucion.error
+    assert llamadas == [1]
+
+
 def test_corte_vacio_o_valido_desde_el_setting(db_session, monkeypatch):
     s = get_settings()
     monkeypatch.setattr(s, "salutem_borradores_desde", "")
