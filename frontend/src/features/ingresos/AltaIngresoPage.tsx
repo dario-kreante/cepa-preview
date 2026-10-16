@@ -1,6 +1,6 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { ingresoSchema, ingresoSinRutSchema, type IngresoForm } from "./ingresoSchema";
 import { useCrearIngreso, usePaciente } from "./hooks";
@@ -132,6 +132,20 @@ export function AltaIngresoPage() {
     return <p className="text-[13px] text-muted-foreground">Cargando paciente…</p>;
   if (pacienteId !== null && (isError || !paciente))
     return <p className="text-[13px] text-destructive">No se pudo cargar el paciente.</p>;
+
+  if (paciente && paciente.estado_registro !== "pendiente_folio")
+    return (
+      <div className="space-y-2">
+        <p className="text-[13px]">
+          {paciente.estado_registro === "descartado"
+            ? "Este paciente fue descartado."
+            : "Este paciente ya tiene su registro completo."}
+        </p>
+        <Link to="/ingresos" className="text-[13px] underline">
+          Ir a Ingresos
+        </Link>
+      </div>
+    );
 
   return <AltaIngresoForm paciente={paciente} />;
 }

@@ -103,6 +103,8 @@ export function useCrearIngreso() {
       qc.invalidateQueries({ queryKey: ["pacientes"] });
       // La píldora "N activos" del Topbar cambia con cada ingreso nuevo.
       qc.invalidateQueries({ queryKey: ["dashboard"] });
+      // Completar un borrador resuelve su alerta "Falta folio".
+      qc.invalidateQueries({ queryKey: ["alertas"] });
     },
   });
 }

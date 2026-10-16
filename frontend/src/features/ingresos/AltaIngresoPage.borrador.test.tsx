@@ -13,6 +13,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
+import { vi } from "vitest";
 import { server } from "@/test/msw/server";
 import { AuthProvider } from "@/lib/auth/AuthContext";
 import { tokenStore } from "@/lib/tokenStore";
@@ -82,11 +83,14 @@ function mockAlta(paciente: object = BORRADOR) {
   return enviados;
 }
 
+let ultimoQc: QueryClient;
+
 function renderPage(ruta: string) {
   tokenStore.setAccess(TOKENS.Administrativo);
   const qc = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
+  ultimoQc = qc;
   return render(
     <QueryClientProvider client={qc}>
       <MemoryRouter initialEntries={[ruta]}>
@@ -163,5 +167,38 @@ describe("AltaIngresoPage — completar un paciente borrador", () => {
     await user.click(screen.getByRole("button", { name: /crear ingreso/i }));
     expect((await screen.findAllByText("Requerido")).length).toBeGreaterThan(0);
     expect(enviados).toHaveLength(0);
+  });
+
+  it("al crear el ingreso invalida las alertas (la de Falta folio se resuelve)", async () => {
+    mockAlta();
+    renderPage("/ingresos/nuevo?paciente=7");
+    const spy = vi.spyOn(ultimoQc, "invalidateQueries");
+    const user = userEvent.setup();
+
+    await waitFor(() => expect(screen.getByLabelText("Nombre")).toHaveValue("JUAN PEREZ SOTO"));
+    await completarCampos(user);
+    await user.click(screen.getByRole("button", { name: /crear ingreso/i }));
+
+    await waitFor(() =>
+      expect(spy).toHaveBeenCalledWith(expect.objectContaining({ queryKey: ["alertas"] })),
+    );
+  });
+
+  it("un paciente con registro completo no muestra el formulario de completar", async () => {
+    mockAlta({ ...BORRADOR, estado_registro: "completo", rut: "11.111.111-1" });
+    renderPage("/ingresos/nuevo?paciente=7");
+
+    expect(await screen.findByText("Este paciente ya tiene su registro completo.")).toBeInTheDocument();
+    expect(screen.queryByText("Completar registro")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /crear ingreso/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /ingresos/i })).toHaveAttribute("href", "/ingresos");
+  });
+
+  it("un paciente descartado indica que fue descartado", async () => {
+    mockAlta({ ...BORRADOR, estado_registro: "descartado" });
+    renderPage("/ingresos/nuevo?paciente=7");
+
+    expect(await screen.findByText("Este paciente fue descartado.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /crear ingreso/i })).not.toBeInTheDocument();
   });
 });
