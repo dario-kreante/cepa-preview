@@ -1,20 +1,16 @@
-import { describe, it, expect, vi } from "vitest";
-import { http, HttpResponse, delay } from "msw";
+import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
-import { server } from "@/test/msw/server";
 import { Topbar } from "./Topbar";
-
-const BASE = import.meta.env.VITE_API_BASE_URL;
 
 function Ubicacion() {
   const { pathname } = useLocation();
   return <p data-testid="ubicacion">{pathname}</p>;
 }
 
-function renderTopbar(alertasPendientes = 0) {
+function renderTopbar(alertasSinLeer = 0) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={qc}>
@@ -22,7 +18,7 @@ function renderTopbar(alertasPendientes = 0) {
         <Topbar
           alertsVisible={false}
           onToggleAlerts={() => {}}
-          alertasPendientes={alertasPendientes}
+          alertasSinLeer={alertasSinLeer}
         />
         <Routes>
           <Route path="*" element={<Ubicacion />} />
@@ -32,58 +28,21 @@ function renderTopbar(alertasPendientes = 0) {
   );
 }
 
-describe("Topbar · píldora de ingresos activos (COMP-2609-03)", () => {
-  it("muestra el conteo real de activos y lleva a Ingresos", async () => {
-    server.use(
-      http.get(`${BASE}/api/v1/dashboard/activos`, () => HttpResponse.json({ total: 42 })),
-    );
-    renderTopbar();
-
-    const pildora = await screen.findByRole("link", { name: /42 activos/i });
-    expect(screen.queryByText(/— activos/)).not.toBeInTheDocument();
-
-    await userEvent.click(pildora);
-    expect(screen.getByTestId("ubicacion")).toHaveTextContent(/^\/ingresos$/);
-  });
-
-  it("mientras carga muestra un estado de carga, no un guion", async () => {
-    server.use(
-      http.get(`${BASE}/api/v1/dashboard/activos`, async () => {
-        await delay("infinite");
-        return HttpResponse.json({ total: 1 });
-      }),
-    );
-    renderTopbar();
-    expect(screen.getByText(/Cargando activos/i)).toBeInTheDocument();
-    expect(screen.queryByText(/— activos/)).not.toBeInTheDocument();
-  });
-
-  it("si la consulta falla, oculta la píldora", async () => {
-    let llamado = false;
-    server.use(
-      http.get(`${BASE}/api/v1/dashboard/activos`, () => {
-        llamado = true;
-        return new HttpResponse(null, { status: 500 });
-      }),
-    );
-    renderTopbar();
-    await vi.waitFor(() => expect(llamado).toBe(true));
-    await vi.waitFor(() =>
-      expect(screen.queryByText(/activos/i)).not.toBeInTheDocument(),
-    );
-  });
-});
-
-describe("Topbar · alertas pendientes", () => {
-  it("rotula el conteo como 'pendientes'", () => {
+describe("Topbar · campana de alertas", () => {
+  it("muestra en la campana cuántas alertas quedan sin leer, sin píldoras sueltas", () => {
     renderTopbar(3);
-    expect(screen.getByText("3 pendientes")).toBeInTheDocument();
-    expect(screen.queryByText(/críticas/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Alertas: 3 sin leer" })).toHaveTextContent("3");
+    expect(screen.queryByText(/pendientes|activos/i)).not.toBeInTheDocument();
   });
 
-  it("sin alertas muestra 'sin pendientes'", () => {
+  it("sin alertas por leer la campana no lleva número", () => {
     renderTopbar(0);
-    expect(screen.getByText("sin pendientes")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Alertas" })).not.toHaveTextContent(/\d/);
+  });
+
+  it("más de 99 se abrevia", () => {
+    renderTopbar(140);
+    expect(screen.getByRole("button", { name: /140 sin leer/ })).toHaveTextContent("99+");
   });
 });
 

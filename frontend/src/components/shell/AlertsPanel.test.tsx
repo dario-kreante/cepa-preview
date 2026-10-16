@@ -334,3 +334,61 @@ describe("AlertsPanel: paciente pendiente de folio", () => {
     expect(routeForCaso("paciente", 7)).toBe("/pendientes-folio");
   });
 });
+
+describe("AlertsPanel: sin leer y ventana flotante", () => {
+  function conAlertas(alertas: unknown[]) {
+    server.use(
+      http.get(`${BASE}/api/v1/alertas`, () => HttpResponse.json(alertas)),
+      http.get(`${BASE}/api/v1/tareas`, () => HttpResponse.json([])),
+    );
+  }
+  const base = {
+    caso_id: 7,
+    caso_tipo: "oda",
+    plazo_objetivo: null,
+    ventana_dias: 0,
+    generada_en: "2026-10-15T19:35:00Z",
+    resuelta_en: null,
+    email_enviado: false,
+  };
+
+  it("destaca solo las pendientes para quien mira; las de otro profesional van rotuladas", async () => {
+    tokenStore.setAccess(TOKENS.Coordinacion);
+    conAlertas([
+      { ...base, id: 1, tipo: "oda_por_vencer", estado: "pendiente", usuario_id: null },
+      { ...base, id: 2, tipo: "plazo_isl", estado: "leida", usuario_id: null },
+      { ...base, id: 3, tipo: "plazo_ept", estado: "pendiente", usuario_id: 999 },
+    ]);
+    const { container } = renderPanel();
+    await screen.findByText("Oda por vencer");
+    expect(container.querySelectorAll("[data-sin-leer]")).toHaveLength(1);
+    expect(screen.getAllByLabelText("Sin leer")).toHaveLength(1);
+    expect(screen.getByText("Asignada a otro profesional")).toBeInTheDocument();
+    expect(screen.getByText("· 1 sin leer")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Sin leer (1)" }));
+    expect(screen.getByText("Oda por vencer")).toBeInTheDocument();
+    expect(screen.queryByText("Plazo isl")).not.toBeInTheDocument();
+    expect(screen.queryByText("Plazo ept")).not.toBeInTheDocument();
+  });
+
+  it("al ir a una alerta la ventana se cierra; también con su botón", async () => {
+    tokenStore.setAccess(TOKENS.Coordinacion);
+    conAlertas([{ ...base, id: 1, tipo: "oda_por_vencer", estado: "leida", usuario_id: null }]);
+    const onClose = vi.fn();
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={qc}>
+        <MemoryRouter>
+          <AuthProvider>
+            <AlertsPanel onClose={onClose} />
+          </AuthProvider>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    await userEvent.click(await screen.findByText("Oda por vencer"));
+    expect(onClose).toHaveBeenCalledTimes(1);
+    await userEvent.click(screen.getByRole("button", { name: "Cerrar alertas" }));
+    expect(onClose).toHaveBeenCalledTimes(2);
+  });
+});
