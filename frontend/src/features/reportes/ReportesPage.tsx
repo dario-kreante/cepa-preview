@@ -21,7 +21,12 @@ import {
 } from "./hooks";
 
 type Tab =
-  "operativo" | "convenio" | "carga" | "licencias" | "odas" | "adherencia";
+  | "operativo"
+  | "convenio"
+  | "carga"
+  | "licencias"
+  | "odas"
+  | "adherencia";
 
 const TABS: [Tab, string][] = [
   ["operativo", "Operativo"],
@@ -165,15 +170,7 @@ function OperativoTab() {
       />
       {m.data && (
         <Tabla
-          headers={[
-            "Fecha",
-            "Programa",
-            "Citas",
-            "Realizadas",
-            "Inasist.",
-            "Anuladas",
-            "Agendadas",
-          ]}
+          headers={["Fecha", "Programa", "Citas", "Realizadas", "Inasist.", "Anuladas", "Agendadas"]}
           rows={m.data.items.map((it) => [
             fmtDate(it.fecha),
             it.programa ?? "—",
@@ -355,12 +352,7 @@ function OdasTab() {
           <p className="text-[13px] text-muted-foreground">
             ODAS con fecha de vencimiento pasada a hoy.
           </p>
-          <Button
-            size="sm"
-            onClick={gen}
-            disabled={m.isPending}
-            data-testid="btn-generar-reporte"
-          >
+          <Button size="sm" onClick={gen} disabled={m.isPending} data-testid="btn-generar-reporte">
             <FileText className="size-3.5" />
             {m.isPending ? "Consultando…" : "Consultar"}
           </Button>
@@ -368,14 +360,7 @@ function OdasTab() {
       </Card>
       {m.data && (
         <Tabla
-          headers={[
-            "ODA",
-            "Folio",
-            "Registro",
-            "Vencimiento",
-            "Programa",
-            "Región",
-          ]}
+          headers={["ODA", "Folio", "Registro", "Vencimiento", "Programa", "Región"]}
           rows={m.data.items.map((it) => [
             it.id,
             it.folio_id,
@@ -436,12 +421,7 @@ function AdherenciaTab() {
               data-testid="input-folio-adherencia"
             />
           </div>
-          <Button
-            size="sm"
-            onClick={gen}
-            disabled={m.isPending}
-            data-testid="btn-generar-reporte"
-          >
+          <Button size="sm" onClick={gen} disabled={m.isPending} data-testid="btn-generar-reporte">
             <FileText className="size-3.5" />
             {m.isPending ? "Consultando…" : "Consultar"}
           </Button>
@@ -454,21 +434,14 @@ function AdherenciaTab() {
             <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
               Adherencia
             </p>
-            <p
-              className="text-[22px] font-semibold"
-              data-testid="kpi-adherencia"
-            >
+            <p className="text-[22px] font-semibold" data-testid="kpi-adherencia">
               {pct(d.pct_adherencia)}
             </p>
             <p className="text-[11.5px] text-muted-foreground">
               {d.citas_realizadas}/{d.citas_agendadas} citas
             </p>
-            <p
-              className="mt-1 text-[11.5px] text-muted-foreground"
-              data-testid="ayuda-adherencia"
-            >
-              Atendidas sobre el total de citas atendidas más inasistencias. Las
-              anuladas y las futuras no cuentan.
+            <p className="mt-1 text-[11.5px] text-muted-foreground" data-testid="ayuda-adherencia">
+              Atendidas sobre el total de citas atendidas más inasistencias. Las anuladas y las futuras no cuentan.
             </p>
           </Card>
           <Card className="p-4">
@@ -509,9 +482,7 @@ export function ReportesPage() {
       <div className="flex items-center gap-2">
         <BarChart3 className="size-5 text-muted-foreground" />
         <div>
-          <h1 className="text-[22px] font-semibold tracking-tight">
-            Reportería
-          </h1>
+          <h1 className="text-[22px] font-semibold tracking-tight">Reportería</h1>
           <p className="text-[13px] text-muted-foreground">
             Reportes operativos y de cumplimiento · solo lectura
           </p>

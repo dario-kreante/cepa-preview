@@ -23,20 +23,14 @@ describe("ReportesPage — pestaña Adherencia", () => {
         }),
       ),
     );
-    const qc = new QueryClient({
-      defaultOptions: { queries: { retry: false } },
-    });
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     render(
       <QueryClientProvider client={qc}>
         <ReportesPage />
       </QueryClientProvider>,
     );
-    fireEvent.click(
-      screen.getByText("Adherencia", { selector: "button *, button" }),
-    );
-    fireEvent.change(screen.getByTestId("input-folio-adherencia"), {
-      target: { value: "1" },
-    });
+    fireEvent.click(screen.getByText("Adherencia", { selector: "button *, button" }));
+    fireEvent.change(screen.getByTestId("input-folio-adherencia"), { target: { value: "1" } });
     fireEvent.click(screen.getByTestId("btn-generar-reporte"));
     expect(await screen.findByTestId("kpi-adherencia")).toBeTruthy();
     expect(screen.getByTestId("ayuda-adherencia").textContent).toBe(

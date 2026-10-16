@@ -118,13 +118,8 @@ export const NAV: NavSection[] = [
 ];
 
 /** Items de `items` visibles para `rol` (RBAC de menú). Sin rol, solo los no restringidos. */
-export function itemsVisibles(
-  items: NavItem[],
-  rol: Rol | null | undefined,
-): NavItem[] {
-  return items.filter(
-    (item) => !item.roles || (rol != null && item.roles.includes(rol)),
-  );
+export function itemsVisibles(items: NavItem[], rol: Rol | null | undefined): NavItem[] {
+  return items.filter((item) => !item.roles || (rol != null && item.roles.includes(rol)));
 }
 
 /** Sección "Administración": la reusa el índice de /configuracion. */

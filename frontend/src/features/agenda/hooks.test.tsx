@@ -58,12 +58,9 @@ describe("usePacientesPorCitar", () => {
         return HttpResponse.json(RESPUESTA);
       }),
     );
-    const { result } = renderHook(
-      () => usePacientesPorCitar(5, "dos_semanas"),
-      {
-        wrapper,
-      },
-    );
+    const { result } = renderHook(() => usePacientesPorCitar(5, "dos_semanas"), {
+      wrapper,
+    });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(url!.searchParams.get("profesional_id")).toBe("5");
     expect(url!.searchParams.has("desde")).toBe(false);

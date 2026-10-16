@@ -137,13 +137,7 @@ function Plegable({
 
 // ── Carga por día ───────────────────────────────────────────────────────────────
 
-function FranjaCarga({
-  dias,
-  feriados,
-}: {
-  dias: CargaDiaRead[];
-  feriados: string[];
-}) {
+function FranjaCarga({ dias, feriados }: { dias: CargaDiaRead[]; feriados: string[] }) {
   const chips = [
     ...dias.map((d) => ({ fecha: d.fecha, carga: d })),
     ...feriados.map((fecha) => ({ fecha, carga: null })),
@@ -153,10 +147,7 @@ function FranjaCarga({
     <div className="flex flex-wrap gap-2" aria-label="Carga por día">
       {chips.map(({ fecha, carga }) =>
         carga ? (
-          <Badge
-            key={fecha}
-            variant={carga.asignados >= carga.cupo ? "warning" : "neutral"}
-          >
+          <Badge key={fecha} variant={carga.asignados >= carga.cupo ? "warning" : "neutral"}>
             {chipDia(fecha)} · {carga.asignados}/{carga.cupo}
           </Badge>
         ) : (
@@ -253,10 +244,7 @@ function TablaPacientes({
                     size="sm"
                     variant="outline"
                     onClick={() =>
-                      onContactar({
-                        paciente_id: p.paciente_id,
-                        nombre: p.nombre,
-                      })
+                      onContactar({ paciente_id: p.paciente_id, nombre: p.nombre })
                     }
                   >
                     <Phone className="size-3.5" /> Registrar contacto
@@ -394,11 +382,8 @@ export function AgendaPage() {
 
   const { data: profesionales = [], isLoading: cargandoProfesionales } =
     useProfesionales(true);
-  const {
-    data: lista,
-    isLoading: cargandoLista,
-    isError,
-  } = usePacientesPorCitar(profesionalId, rango);
+  const { data: lista, isLoading: cargandoLista, isError } =
+    usePacientesPorCitar(profesionalId, rango);
   const { data: dispo, isSuccess: dispoCargada } =
     useDisponibilidad(profesionalId);
 
@@ -432,9 +417,7 @@ export function AgendaPage() {
           data-testid="select-profesional"
         >
           <option value="">
-            {cargandoProfesionales
-              ? "Cargando profesionales…"
-              : "Selecciona un profesional"}
+            {cargandoProfesionales ? "Cargando profesionales…" : "Selecciona un profesional"}
           </option>
           {profesionales.map((p) => (
             <option key={p.id} value={p.id}>
@@ -480,14 +463,12 @@ export function AgendaPage() {
               role="status"
               className="rounded-md border border-[oklch(0.85_0.1_85)] bg-[oklch(0.97_0.05_85)] px-4 py-2.5 text-[13px] text-[oklch(0.42_0.14_75)]"
             >
-              Este profesional no tiene disponibilidad cargada: todos sus
-              pacientes aparecen como sin cupo.
+              Este profesional no tiene disponibilidad cargada: todos sus pacientes
+              aparecen como sin cupo.
             </div>
           )}
 
-          {lista && (
-            <FranjaCarga dias={lista.por_dia} feriados={lista.feriados} />
-          )}
+          {lista && <FranjaCarga dias={lista.por_dia} feriados={lista.feriados} />}
 
           {isError ? (
             <p className="text-[13px] text-destructive">
@@ -529,10 +510,7 @@ export function AgendaPage() {
             </>
           )}
 
-          <DisponibilidadCard
-            profesionalId={profesionalId}
-            canWrite={canWrite}
-          />
+          <DisponibilidadCard profesionalId={profesionalId} canWrite={canWrite} />
 
           <RegistrarContactoDialog
             paciente={contacto}
