@@ -4,10 +4,8 @@ Endpoints:
   POST   /api/v1/disponibilidad-profesional          Administrativo | Coordinacion
   GET    /api/v1/disponibilidad-profesional/{prof_id} Todos los roles
   DELETE /api/v1/disponibilidad-profesional/{id}     Administrativo | Coordinacion
-  POST   /api/v1/propuestas-agenda                   Administrativo | Coordinacion
   GET    /api/v1/propuestas-agenda                   Todos los roles
   GET    /api/v1/propuestas-agenda/{id}              Todos los roles
-  POST   /api/v1/propuestas-agenda/{id}/confirmar    Administrativo | Coordinacion
   GET    /api/v1/propuestas-agenda/{id}/citas        Todos los roles
   POST   /api/v1/pacientes-por-citar/{paciente_id}/gestiones  Administrativo | Coordinacion
   GET    /api/v1/pacientes-por-citar/{paciente_id}/gestiones  Todos los roles
@@ -29,20 +27,16 @@ from app.agendamiento.models import (
 )
 from app.agendamiento.schemas import (
     CitaPropuestaRead,
-    ConfirmarCitasRequest,
     DisponibilidadProfCreate,
     DisponibilidadProfRead,
-    GenerarPropuestaRequest,
     GestionCreate,
     GestionRead,
     PacientesPorCitarRead,
     PropuestaAgendaRead,
 )
 from app.agendamiento.service import (
-    confirmar_citas,
     crear_disponibilidad,
     dar_de_baja_disponibilidad,
-    generar_propuesta,
     obtener_propuesta,
 )
 from app.auth.deps import get_current_user, require_role
@@ -123,23 +117,6 @@ def dar_de_baja_disponibilidad_endpoint(
 
 # ─── Propuestas ────────────────────────────────────────────────────────────────
 
-@router.post(
-    "/api/v1/propuestas-agenda",
-    response_model=PropuestaAgendaRead,
-    status_code=status.HTTP_201_CREATED,
-    dependencies=[_writer],
-)
-def crear_propuesta(
-    payload: GenerarPropuestaRequest,
-    db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
-) -> PropuestaAgenda:
-    propuesta = generar_propuesta(db=db, req=payload, actor=current_user.username)
-    db.commit()
-    db.refresh(propuesta)
-    return propuesta
-
-
 @router.get(
     "/api/v1/propuestas-agenda",
     response_model=list[PropuestaAgendaRead],
@@ -184,30 +161,6 @@ def listar_citas_de_propuesta(
         .where(CitaPropuesta.propuesta_id == propuesta_id)
         .order_by(CitaPropuesta.fecha_candidata, CitaPropuesta.prioridad)
     ))
-
-
-@router.post(
-    "/api/v1/propuestas-agenda/{propuesta_id}/confirmar",
-    response_model=list[CitaPropuestaRead],
-    dependencies=[_writer],
-)
-def confirmar_citas_endpoint(
-    propuesta_id: int,
-    payload: ConfirmarCitasRequest,
-    db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
-) -> list[CitaPropuesta]:
-    propuesta = obtener_propuesta(db=db, propuesta_id=propuesta_id)
-    if propuesta is None:
-        raise HTTPException(status_code=404, detail="Propuesta no encontrada")
-    confirmadas = confirmar_citas(
-        db=db,
-        propuesta_id=propuesta_id,
-        cita_ids=payload.cita_ids,
-        actor=current_user.username,
-    )
-    db.commit()
-    return confirmadas
 
 
 # ─── Gestión de contacto ───────────────────────────────────────────────────────

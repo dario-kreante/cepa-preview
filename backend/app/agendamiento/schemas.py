@@ -1,16 +1,15 @@
 """Schemas Pydantic v2 para el módulo de agendamiento (EPIC-08).
 
-GenerarPropuestaRequest calcula fecha_fin automáticamente según el tipo de propuesta,
-evitando que el cliente deba calcular rangos de fechas.
+Las propuestas ya no se generan desde el SIGE (las horas se agendan en SALUTEM); quedan los
+schemas de lectura del historial.
 """
 
 from __future__ import annotations
 
-import calendar
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.agendamiento.enums import (
     DiaSemana,
@@ -51,44 +50,6 @@ class DisponibilidadProfRead(BaseModel):
 
 # ─── Propuesta ─────────────────────────────────────────────────────────────────
 
-class GenerarPropuestaRequest(BaseModel):
-    """Parámetros de generación de una propuesta de agenda.
-
-    fecha_inicio debe ser un día hábil (lun–vie).
-    fecha_fin se calcula automáticamente según el tipo:
-      - diaria: misma fecha que fecha_inicio
-      - semanal: viernes de la semana de fecha_inicio
-      - mensual: último día del mes de fecha_inicio
-    """
-
-    profesional_id: int
-    tipo: TipoPropuesta
-    fecha_inicio: date
-    fecha_fin: date = Field(default=None)  # type: ignore[assignment]
-
-    @field_validator("fecha_inicio")
-    @classmethod
-    def debe_ser_dia_habil(cls, v: date) -> date:
-        if v.isoweekday() > 5:
-            raise ValueError(
-                f"fecha_inicio {v} es fin de semana. Solo se aceptan días hábiles (lun–vie)."
-            )
-        return v
-
-    @model_validator(mode="after")
-    def calcular_fecha_fin(self) -> "GenerarPropuestaRequest":
-        if self.tipo == TipoPropuesta.DIARIA:
-            self.fecha_fin = self.fecha_inicio
-        elif self.tipo == TipoPropuesta.SEMANAL:
-            # viernes de la semana (isoweekday=5)
-            dias_hasta_viernes = 5 - self.fecha_inicio.isoweekday()
-            self.fecha_fin = self.fecha_inicio + timedelta(days=dias_hasta_viernes)
-        elif self.tipo == TipoPropuesta.MENSUAL:
-            ultimo = calendar.monthrange(self.fecha_inicio.year, self.fecha_inicio.month)[1]
-            self.fecha_fin = date(self.fecha_inicio.year, self.fecha_inicio.month, ultimo)
-        return self
-
-
 class PropuestaAgendaRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -116,11 +77,6 @@ class CitaPropuestaRead(BaseModel):
     estado: EstadoCita
     excluida_por: str | None
     created_at: datetime
-
-
-class ConfirmarCitasRequest(BaseModel):
-    """IDs de CitaPropuesta a confirmar (deben pertenecer a la misma propuesta)."""
-    cita_ids: list[int] = Field(min_length=1)
 
 
 # ─── Gestión de contacto ───────────────────────────────────────────────────────
