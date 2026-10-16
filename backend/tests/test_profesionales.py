@@ -68,11 +68,13 @@ def test_siembra_de_la_migracion_toma_medicos_salutem_distintos(db_session: Sess
     with Operations.context(ctx):
         mig._sembrar()
 
-    filas = db_session.scalars(select(Profesional).order_by(Profesional.nombre)).all()
-    assert [(p.nombre, p.origen, p.activo) for p in filas] == [
+    # Se compara como conjunto: el orden por nombre depende del collation de la BD.
+    filas = db_session.scalars(select(Profesional)).all()
+    assert {(p.nombre, p.origen, p.activo) for p in filas} == {
         ("Dr. Luis Soto", "SALUTEM", True),
         ("Dra. Ana Rojas", "SALUTEM", True),
-    ]
+    }
+    assert len(filas) == 2
 
 
 def test_listar_lo_pueden_ver_los_tres_roles(as_auditor: TestClient, db_session: Session):
