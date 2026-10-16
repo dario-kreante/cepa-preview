@@ -21,7 +21,11 @@ from app.db.session import get_db
 from app.models.cita import Cita
 from app.models.ingreso import Ingreso
 from app.schemas.reportes import ReporteOperativoItem, ReporteOperativoResponse
-from app.services.reportes_filtros import FiltrosDashboard, aplicar_filtros_ingreso
+from app.services.reportes_filtros import (
+    FiltrosDashboard,
+    aplicar_filtros_ingreso,
+    condicion_citas_reportables,
+)
 
 router = APIRouter(prefix="/api/v1/reportes", tags=["reportes"])
 
@@ -53,8 +57,10 @@ def get_reporte_operativo(
             select(func.count())
             .select_from(Cita)
             .join(Ingreso, Cita.ingreso_id == Ingreso.id)
+            .where(condicion_citas_reportables())
             .where(Cita.estado == estado)
-            .where(Cita.fecha >= fecha_desde)
+            .where(condicion_citas_reportables())
+        .where(Cita.fecha >= fecha_desde)
             .where(Cita.fecha <= fecha_hasta)
         )
         stmt = aplicar_filtros_ingreso(stmt, Ingreso, filtros)
@@ -76,6 +82,7 @@ def get_reporte_operativo(
         )
         .select_from(Cita)
         .join(Ingreso, Cita.ingreso_id == Ingreso.id)
+        .where(condicion_citas_reportables())
         .where(Cita.fecha >= fecha_desde)
         .where(Cita.fecha <= fecha_hasta)
         .group_by(Cita.fecha, Ingreso.programa, Ingreso.profesional_id)
@@ -96,6 +103,7 @@ def get_reporte_operativo(
         )
         .select_from(Cita)
         .join(Ingreso, Cita.ingreso_id == Ingreso.id)
+        .where(condicion_citas_reportables())
         .where(Cita.fecha >= fecha_desde)
         .where(Cita.fecha <= fecha_hasta)
         .group_by(Cita.fecha, Ingreso.programa, Ingreso.profesional_id, Cita.estado)

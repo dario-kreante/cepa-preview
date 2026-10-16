@@ -45,7 +45,7 @@ def paciente_con_ingreso(db_session):
 def cita_agendada(db_session, paciente_con_ingreso):
     """Cita en estado 'agendada' directamente en tabla de hechos."""
     ing = paciente_con_ingreso["ingreso"]
-    c = Cita(ingreso_id=ing.id, estado="agendada", fecha=date(2026, 3, 10))
+    c = Cita(origen="SALUTEM", ingreso_id=ing.id, estado="agendada", fecha=date(2026, 3, 10))
     db_session.add(c)
     db_session.commit()
     return c
