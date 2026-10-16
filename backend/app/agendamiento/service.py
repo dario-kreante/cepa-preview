@@ -32,7 +32,7 @@ paciente; si no existe se omite silenciosamente (no bloquea el flujo de agendami
 
 from datetime import date, timedelta
 
-from sqlalchemy import false, func, select, true
+from sqlalchemy import false, func, or_, select, true
 from sqlalchemy.orm import Session
 
 from app.agendamiento.enums import EstadoCita, EstadoPropuesta, PrioridadCita
@@ -46,6 +46,7 @@ from app.agendamiento.scheduler import (
 )
 from app.agendamiento.schemas import GenerarPropuestaRequest
 from app.audit.service import record_audit
+from app.domain.enums import EstadoCaso
 
 # ─── Ventana de seguimiento de receta (parametrizable — RN-6) ──────────────────
 VENTANA_SEGUIMIENTO_RECETA_DIAS: int = 30
@@ -131,7 +132,7 @@ def _cargar_reposos_batch(
 
 
 def _cargar_candidatos(
-    db: Session, profesional_id: int, fecha_ini: date, fecha_fin: date
+    db: Session, profesional_id: int, fecha_ini: date, fecha_fin: date, hoy: date
 ) -> list[Candidato]:
     """Construye la lista de candidatos a partir de controles y recetas.
 
@@ -157,8 +158,6 @@ def _cargar_candidatos(
     if nombre_prof is None:
         return []
 
-    hoy = date.today()
-
     vistos: dict[int, Candidato] = {}
 
     # Subquery portable (sin DISTINCT ON) que retorna solo el último control por ingreso.
@@ -180,6 +179,7 @@ def _cargar_candidatos(
             _cm.proximo_control,
             _cm.proximo_agendado,
             _cm.medico_tratante,
+            _cm.origen,
         )
         .join(
             _max_fc_sub,
@@ -194,9 +194,11 @@ def _cargar_candidatos(
         select(Ingreso.paciente_id, _latest_ctrl.c.proximo_control)
         .join(Ingreso, Ingreso.id == _latest_ctrl.c.ingreso_id)
         .where(
+            Ingreso.estado == EstadoCaso.ACTIVO.value,
             _latest_ctrl.c.proximo_control.isnot(None),
             _latest_ctrl.c.proximo_control < hoy,
-            _latest_ctrl.c.proximo_agendado == false(),
+            # En controles de SALUTEM el flag no manda: la hora se verifica contra la copia.
+            or_(_latest_ctrl.c.origen == "SALUTEM", _latest_ctrl.c.proximo_agendado == false()),
             func.trim(_latest_ctrl.c.medico_tratante) == nombre_prof,
         )
     )
@@ -212,10 +214,12 @@ def _cargar_candidatos(
         select(Ingreso.paciente_id, _latest_ctrl.c.proximo_control)
         .join(Ingreso, Ingreso.id == _latest_ctrl.c.ingreso_id)
         .where(
+            Ingreso.estado == EstadoCaso.ACTIVO.value,
             _latest_ctrl.c.proximo_control.isnot(None),
             _latest_ctrl.c.proximo_control >= hoy,
             _latest_ctrl.c.proximo_control <= horizonte,
-            _latest_ctrl.c.proximo_agendado == false(),
+            # En controles de SALUTEM el flag no manda: la hora se verifica contra la copia.
+            or_(_latest_ctrl.c.origen == "SALUTEM", _latest_ctrl.c.proximo_agendado == false()),
             func.trim(_latest_ctrl.c.medico_tratante) == nombre_prof,
         )
     )
@@ -234,6 +238,7 @@ def _cargar_candidatos(
         .join(RegistroFarmacologico, RegistroFarmacologico.ingreso_id == Ingreso.id)
         .join(Receta, Receta.registro_id == RegistroFarmacologico.id)
         .where(
+            Ingreso.estado == EstadoCaso.ACTIVO.value,
             Receta.fecha_revision >= hoy,
             Receta.fecha_revision <= limite_revision,
             Receta.fecha_envio.is_(None),  # RN-6: excluir recetas ya gestionadas
@@ -297,7 +302,7 @@ def generar_propuesta(
     Registra auditoría (RN-9). No hace commit — el caller (router) es responsable.
     """
     disponibilidad = _cargar_disponibilidad(db, req.profesional_id)
-    candidatos = _cargar_candidatos(db, req.profesional_id, req.fecha_inicio, req.fecha_fin)
+    candidatos = _cargar_candidatos(db, req.profesional_id, req.fecha_inicio, req.fecha_fin, date.today())
 
     propuesta = PropuestaAgenda(
         profesional_id=req.profesional_id,

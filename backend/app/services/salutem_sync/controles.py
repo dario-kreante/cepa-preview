@@ -46,11 +46,10 @@ from app.models.control_medico import ControlMedico
 from app.models.ingreso import Ingreso
 from app.models.salutem_copia import SalutemAtencion, SalutemCita
 from app.services.salutem_sync.alertas_control import ACTOR, alertar_control, resolver_alertas_control
+from app.services.salutem_sync.vigencia import cita_vigente
 
 ORIGEN = "SALUTEM"
 ATENDIDO = int(EstadoCitaSalutem.ATENDIDO)
-# Una cita anulada o a la que no asistió no es un próximo control.
-_NO_VIGENTES = (int(EstadoCitaSalutem.ANULADO), int(EstadoCitaSalutem.NO_ASISTE))
 _RE_GAF = re.compile(r"\bGAF\s*:?\s*(\d{1,3})\b", re.IGNORECASE)
 _RE_BR = re.compile(r"<br\s*/?>", re.IGNORECASE)
 _RE_TAG = re.compile(r"<[^>]+>")
@@ -147,8 +146,7 @@ def _proxima_cita(db: Session, persona_id: int, fecha: date) -> date | None:
         .where(
             SalutemCita.persona_id == persona_id,
             SalutemCita.fecha_cita > fecha,
-            SalutemCita.desaparecida_en.is_(None),
-            SalutemCita.estado_id.not_in(_NO_VIGENTES),
+            cita_vigente(),
         )
         .order_by(SalutemCita.fecha_cita)
         .limit(1)

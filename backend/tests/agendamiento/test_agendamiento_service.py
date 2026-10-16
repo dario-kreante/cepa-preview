@@ -293,6 +293,7 @@ def test_control_stale_no_genera_candidato_si_hay_control_futuro(db_session):
         profesional_id=PROF_ID,
         fecha_ini=hoy_real,
         fecha_fin=hoy_real + timedelta(days=6),
+        hoy=hoy_real,
     )
     pids_vencidos = [
         c.paciente_id for c in candidatos
@@ -325,6 +326,7 @@ def test_control_proximo_agendado_no_genera_candidato(db_session):
         profesional_id=PROF_ID,
         fecha_ini=hoy_real,
         fecha_fin=hoy_real + timedelta(days=6),
+        hoy=hoy_real,
     )
     pids = [c.paciente_id for c in candidatos if c.paciente_id == ingreso.paciente_id]
     assert pids == [], "proximo_agendado=True no debe generar candidato"
@@ -378,6 +380,7 @@ def test_receta_fuera_de_ventana_no_genera_candidato(db_session):
         profesional_id=PROF_ID,
         fecha_ini=hoy_real,
         fecha_fin=hoy_real + timedelta(days=6),
+        hoy=hoy_real,
     )
     pids = [
         c.paciente_id for c in candidatos
@@ -408,6 +411,7 @@ def test_receta_gestionada_no_genera_candidato(db_session):
         profesional_id=PROF_ID,
         fecha_ini=hoy_real,
         fecha_fin=hoy_real + timedelta(days=6),
+        hoy=hoy_real,
     )
     pids = [
         c.paciente_id for c in candidatos
@@ -438,6 +442,7 @@ def test_receta_dentro_de_ventana_genera_candidato(db_session):
         profesional_id=PROF_ID,
         fecha_ini=hoy_real,
         fecha_fin=hoy_real + timedelta(days=6),
+        hoy=hoy_real,
     )
     pids = [
         c.paciente_id for c in candidatos
@@ -455,6 +460,7 @@ def _candidatos_hoy(db, profesional_id: int = PROF_ID):
     return _cargar_candidatos(
         db, profesional_id=profesional_id,
         fecha_ini=hoy_real, fecha_fin=hoy_real + timedelta(days=6),
+        hoy=hoy_real,
     )
 
 
