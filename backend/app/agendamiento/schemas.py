@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import calendar
 from datetime import date, datetime, timedelta
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -147,3 +148,41 @@ class GestionRead(BaseModel):
     nota: str | None
     usuario: str
     created_at: datetime
+
+
+# ─── Lista de pacientes por citar ──────────────────────────────────────────────
+
+class CargaDiaRead(BaseModel):
+    fecha: date
+    cupo: int
+    asignados: int
+
+
+class UltimaGestionRead(BaseModel):
+    fecha: datetime
+    resultado: ResultadoGestion
+    usuario: str
+    nota: str | None
+
+
+class PacientePorCitarRead(BaseModel):
+    paciente_id: int
+    nombre: str
+    folio: str | None
+    prioridad: PrioridadCita
+    razon: str
+    fecha_objetivo: date | None
+    dia_sugerido: date | None
+    seccion: Literal["por_citar", "sin_cupo", "en_reposo"]
+    reposo_hasta: date | None
+    sin_vinculo_salutem: bool
+    dijo_agendada_sin_hora: bool
+    ultima_gestion: UltimaGestionRead | None
+
+
+class PacientesPorCitarRead(BaseModel):
+    profesional_id: int
+    desde: date
+    hasta: date
+    por_dia: list[CargaDiaRead]
+    pacientes: list[PacientePorCitarRead]

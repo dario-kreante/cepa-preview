@@ -10,13 +10,16 @@ Endpoints:
   GET    /api/v1/propuestas-agenda/{id}/citas        Todos los roles
   POST   /api/v1/pacientes-por-citar/{paciente_id}/gestiones  Administrativo | Coordinacion
   GET    /api/v1/pacientes-por-citar/{paciente_id}/gestiones  Todos los roles
+  GET    /api/v1/pacientes-por-citar                 Todos los roles
 """
+
+from datetime import date, datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select, true
 from sqlalchemy.orm import Session
 
-from app.agendamiento import gestion
+from app.agendamiento import gestion, lista
 from app.agendamiento.models import (
     CitaPropuesta,
     DisponibilidadProf,
@@ -31,6 +34,7 @@ from app.agendamiento.schemas import (
     GenerarPropuestaRequest,
     GestionCreate,
     GestionRead,
+    PacientesPorCitarRead,
     PropuestaAgendaRead,
 )
 from app.agendamiento.service import (
@@ -41,6 +45,8 @@ from app.agendamiento.service import (
 )
 from app.auth.deps import get_current_user, require_role
 from app.db.session import get_db
+from app.models.profesional import Profesional
+from app.services.salutem_sync.incremental import hoy_en_santiago
 
 router = APIRouter(tags=["agendamiento"])
 
@@ -216,3 +222,47 @@ def listar_gestiones_endpoint(
     paciente_id: int, db: Session = Depends(get_db)
 ) -> list[GestionCitacion]:
     return gestion.listar_gestiones(db, paciente_id)
+
+
+# ─── Lista calculada de pacientes por citar ────────────────────────────────────
+
+_MAX_DIAS_RANGO = 62
+
+
+def _hoy() -> date:
+    return hoy_en_santiago(datetime.now(timezone.utc))
+
+
+@router.get(
+    "/api/v1/pacientes-por-citar",
+    response_model=PacientesPorCitarRead,
+    dependencies=[_reader],
+)
+def pacientes_por_citar_endpoint(
+    profesional_id: int,
+    desde: date | None = None,
+    hasta: date | None = None,
+    db: Session = Depends(get_db),
+) -> PacientesPorCitarRead:
+    prof = db.get(Profesional, profesional_id)
+    if prof is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Profesional no encontrado")
+    if not prof.activo:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="El profesional está inactivo"
+        )
+    hoy = _hoy()
+    desde = desde or hoy
+    if hasta is None:
+        # viernes de la semana siguiente a la de `desde`
+        hasta = desde - timedelta(days=desde.weekday()) + timedelta(days=7 + 4)
+    if hasta < desde:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="'hasta' no puede ser anterior a 'desde'"
+        )
+    if (hasta - desde).days > _MAX_DIAS_RANGO:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"El rango no puede superar {_MAX_DIAS_RANGO} días",
+        )
+    return lista.calcular_pacientes_por_citar(db, profesional_id, desde, hasta, hoy)
