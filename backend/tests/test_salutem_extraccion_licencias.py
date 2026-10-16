@@ -12,7 +12,11 @@ from datetime import date
 
 import pytest
 
-from app.integrations.salutem.licencias import ClaseMencion, extraer_licencia
+from app.integrations.salutem.licencias import (
+    ClaseMencion,
+    extraer_indicacion_reposo,
+    extraer_licencia,
+)
 
 # ── Prórrogas con tipo, reposo, inicio y días ────────────────────────────────
 
@@ -227,3 +231,42 @@ def test_reconoce_la_abreviatura_lm_de_los_medicos():
 
 def test_lm_en_minusculas_dentro_de_otra_palabra_no_es_licencia():
     assert extraer_licencia("Paciente con film de rayos, control en 15 dias", date(2024, 4, 14)) is None
+
+
+# ── Campo "Indicación de reposo": es la licencia aunque no diga "licencia" ──────
+
+ATENCION = date(2026, 10, 15)
+
+
+def test_reposo_por_dias_desde_fecha_es_licencia():
+    """Caso real de QA (15-10-2026): el médico escribe solo el reposo."""
+    m = extraer_indicacion_reposo("Reposo por 15 días desde el 15/10/2026", ATENCION)
+    assert m is not None and m.clase == ClaseMencion.LICENCIA
+    assert (m.dias, m.fecha_inicio, m.fecha_termino) == (15, date(2026, 10, 15), date(2026, 10, 29))
+    assert m.texto == "Reposo por 15 días desde el 15/10/2026"
+
+
+@pytest.mark.parametrize("texto", ["Reposo por 15 días", "Reposo 15 días", "15 dias", "<p>Reposo total</p>"])
+def test_variantes_de_reposo_son_licencia(texto):
+    m = extraer_indicacion_reposo(texto, ATENCION)
+    assert m is not None and m.clase == ClaseMencion.LICENCIA
+
+
+def test_reposo_sin_por_toma_los_dias():
+    assert extraer_indicacion_reposo("Reposo 10 días", ATENCION).dias == 10
+
+
+@pytest.mark.parametrize(
+    "texto",
+    ["", "No", "N/A", "-", "Sin reposo", "No requiere reposo", "No aplica",
+     "antecedente de prueba para ambiente de capacitación"],
+)
+def test_negaciones_y_texto_libre_no_son_licencia(texto):
+    m = extraer_indicacion_reposo(texto, ATENCION)
+    assert m is None or m.clase != ClaseMencion.LICENCIA
+
+
+def test_lo_que_ya_reconocia_el_extractor_no_cambia():
+    m = extraer_indicacion_reposo("Se extiende LM tipo 6 por 30 días", ATENCION)
+    assert (m.clase, m.tipo_licencia, m.dias) == (ClaseMencion.LICENCIA, "6", 30)
+    assert extraer_indicacion_reposo("Alta laboral total", ATENCION).clase == ClaseMencion.ALTA_LABORAL
