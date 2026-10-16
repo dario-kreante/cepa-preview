@@ -134,3 +134,17 @@ def test_auditor_no_puede_anular(as_admin, as_auditor):
         json={"observaciones": "intento de anulación"},
     )
     assert r.status_code == 403
+
+
+# GAF de la atención de SALUTEM: se puede registrar el tramo al crear la licencia.
+def test_crear_lm_con_tramo_de_gaf(as_admin):
+    ing_id = _payload_ingreso(as_admin)
+    r = as_admin.post("/api/v1/licencias", json=_payload_lm(ing_id, eeag_gaf_tramo="41-50"))
+    assert r.status_code == 201, r.text
+    assert r.json()["eeag_gaf_tramo"] == "41-50"
+
+
+def test_crear_lm_con_tramo_fuera_del_catalogo_422(as_admin):
+    ing_id = _payload_ingreso(as_admin)
+    r = as_admin.post("/api/v1/licencias", json=_payload_lm(ing_id, eeag_gaf_tramo="41-55"))
+    assert r.status_code == 422

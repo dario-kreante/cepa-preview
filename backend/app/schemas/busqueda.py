@@ -4,6 +4,7 @@ from app.schemas.control_medico import ControlMedicoRead
 from app.schemas.farmacos import EsquemaIndicacionRead, RecetaRead, RegistroFarmacologicoRead
 from app.schemas.ingreso import IngresoRead, PacienteRead
 from app.schemas.licencia import LicenciaRead
+from app.schemas.oda import OdaRead
 from app.schemas.reintegro import CasoReintegroRead
 
 
@@ -30,4 +31,5 @@ class Vista360(BaseModel):
     farmacos: list[FarmacosIngresoRead] = []
     licencias: list[LicenciaRead] = []
     controles: list[ControlMedicoRead] = []
+    odas: list[OdaRead] = []
     reintegro: list[CasoReintegroRead] = []

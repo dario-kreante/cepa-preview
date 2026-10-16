@@ -4,6 +4,8 @@ import {
   actualizarLicencia,
   actualizarProximoControl,
   archivosDeControl,
+  archivosDeAtencion,
+  obtenerAtencionSalutem,
   controlesPorIngreso,
   crearControl,
   obtenerControl,
@@ -36,6 +38,22 @@ export function useArchivosDeControl(controlId: number, habilitado = true) {
     queryKey: ["controles", "archivos", controlId],
     queryFn: () => archivosDeControl(controlId),
     enabled: habilitado && controlId > 0,
+  });
+}
+
+export function useAtencionSalutem(citaId: number) {
+  return useQuery({
+    queryKey: ["salutem", "atencion", citaId],
+    queryFn: () => obtenerAtencionSalutem(citaId),
+    enabled: citaId > 0,
+  });
+}
+
+export function useArchivosDeAtencion(citaId: number, habilitado = true) {
+  return useQuery({
+    queryKey: ["salutem", "atencion", citaId, "archivos"],
+    queryFn: () => archivosDeAtencion(citaId),
+    enabled: habilitado && citaId > 0,
   });
 }
 

@@ -66,13 +66,17 @@ export function IngresosListaPage() {
   const puedeCrear = puedeEscribir(rol as Rol);
 
   // ?q= viene del buscador lateral: se busca de inmediato, sin esperar el debounce.
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const qUrl = searchParams.get("q")?.trim() ?? "";
+  // ?paciente= (y opcional ?tab=) viene de una alerta: abre su ficha directo en esa pestaña.
+  const pacienteUrl = Number(searchParams.get("paciente")) || null;
+  const tabUrl = searchParams.get("tab") ?? undefined;
   const [inputQ, setInputQ] = useState(qUrl);
   const [q, setQ] = useState(qUrl);
   const [regionFilter, setRegionFilter] = useState("Todas");
   const [page, setPage] = useState(0);
-  const [sheetId, setSheetId] = useState<number | null>(null);
+  const [sheetId, setSheetId] = useState<number | null>(pacienteUrl);
+  const [sheetTab, setSheetTab] = useState<string | undefined>(tabUrl);
 
   // Una búsqueda nueva desde el lateral estando ya en Ingresos: se ajusta el estado
   // durante el render (sin efecto) cuando cambia el ?q=.
@@ -83,6 +87,27 @@ export function IngresosListaPage() {
       setInputQ(qUrl);
       setQ(qUrl);
       setPage(0);
+    }
+  }
+  // Otra alerta clickeada estando ya en Ingresos: se abre la ficha nueva.
+  const [pacienteUrlPrevio, setPacienteUrlPrevio] = useState(pacienteUrl);
+  if (pacienteUrl !== pacienteUrlPrevio) {
+    setPacienteUrlPrevio(pacienteUrl);
+    if (pacienteUrl) {
+      setSheetId(pacienteUrl);
+      setSheetTab(tabUrl);
+    }
+  }
+
+  function cerrarFicha() {
+    setSheetId(null);
+    setSheetTab(undefined);
+    // Se limpia el deep-link para que la misma alerta vuelva a abrir la ficha.
+    if (searchParams.has("paciente") || searchParams.has("tab")) {
+      const siguiente = new URLSearchParams(searchParams);
+      siguiente.delete("paciente");
+      siguiente.delete("tab");
+      setSearchParams(siguiente, { replace: true });
     }
   }
 
@@ -117,6 +142,7 @@ export function IngresosListaPage() {
 
   function onOpenPatient(p: PacienteRead) {
     setSheetId(p.id);
+    setSheetTab(undefined);
   }
 
   return (
@@ -313,7 +339,8 @@ export function IngresosListaPage() {
       <PatientSheet
         pacienteId={sheetId}
         open={sheetId !== null}
-        onOpenChange={(o) => { if (!o) setSheetId(null); }}
+        onOpenChange={(o) => { if (!o) cerrarFicha(); }}
+        tabInicial={sheetTab}
       />
     </div>
   );

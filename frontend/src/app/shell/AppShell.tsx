@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Outlet } from "react-router-dom";
 import { Sidebar } from "@/components/shell/Sidebar";
 import { Topbar } from "@/components/shell/Topbar";
-import { AlertsPanel } from "@/components/shell/AlertsPanel";
+import { AlertsPanel, alertasSinLeer } from "@/components/shell/AlertsPanel";
 import { useAlertas } from "@/features/alertas/hooks";
 import { usePendientesFolio } from "@/features/pacientes-borrador/hooks";
 import { useAuth } from "@/lib/auth/AuthContext";
@@ -17,24 +17,19 @@ import { puedeEscribir, type Rol } from "@/lib/rbac";
  * Badge computation:
  *   - "licencias" badge = alertas pendientes cuyo tipo contiene "licencia"
  *   - "ept"       badge = alertas pendientes cuyo caso_tipo == "ept"
- *   - pendientes (Topbar) = alertas con estado == "pendiente". El modelo de alertas
- *     no tiene severidad/prioridad, así que no hay criterio de "crítica".
+ *   - campana (Topbar) = alertas sin leer de quien mira (asignadas a ella o sin dueño).
  */
-/** Anchos de chrome fijos. Por debajo de `xl` el panel de alertas pasa a overlay
- *  y el sidebar arranca colapsado, para no aplastar el contenido. */
-function isWide(): boolean {
-  return typeof window !== "undefined" ? window.innerWidth >= 1280 : true;
-}
+/** Por debajo de `lg` el sidebar arranca colapsado, para no aplastar el contenido. */
 function isNarrow(): boolean {
   return typeof window !== "undefined" ? window.innerWidth < 1024 : false;
 }
 
 export function AppShell() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(isNarrow);
-  const [alertsVisible, setAlertsVisible] = useState(isWide);
+  const [alertsVisible, setAlertsVisible] = useState(false);
 
   const { data: alertas = [] } = useAlertas();
-  const { rol } = useAuth();
+  const { rol, usuarioId } = useAuth();
   // La lista de pendientes de folio es solo para quienes escriben (Auditor recibiría 403).
   const { data: pendientesFolio = [] } = usePendientesFolio(puedeEscribir(rol as Rol));
 
@@ -51,6 +46,14 @@ export function AppShell() {
     pendientes_folio: pendientesFolio.length,
   };
 
+  // La ventana de alertas flota sobre el contenido: se cierra con Escape o al hacer clic fuera.
+  useEffect(() => {
+    if (!alertsVisible) return;
+    const alPresionar = (e: KeyboardEvent) => e.key === "Escape" && setAlertsVisible(false);
+    window.addEventListener("keydown", alPresionar);
+    return () => window.removeEventListener("keydown", alPresionar);
+  }, [alertsVisible]);
+
 
 
   return (
@@ -65,7 +68,7 @@ export function AppShell() {
         <Topbar
           alertsVisible={alertsVisible}
           onToggleAlerts={() => setAlertsVisible((v) => !v)}
-          alertasPendientes={pendientes.length}
+          alertasSinLeer={alertasSinLeer(alertas, usuarioId).length}
         />
 
         <main className="flex-1 overflow-y-auto bg-[oklch(0.985_0.003_195)]">
@@ -77,16 +80,16 @@ export function AppShell() {
 
       {alertsVisible && (
         <>
-          {/* Backdrop solo en pantallas < xl (modo overlay) */}
+          {/* Capa invisible: un clic fuera de la ventana la cierra. */}
           <button
             type="button"
             aria-label="Cerrar panel de alertas"
+            tabIndex={-1}
             onClick={() => setAlertsVisible(false)}
-            className="xl:hidden fixed inset-0 z-30 bg-black/40"
+            className="fixed inset-0 z-30 cursor-default bg-transparent"
           />
-          {/* Inline (xl+) / drawer flotante a la derecha (< xl) */}
-          <div className="fixed inset-y-0 right-0 z-40 shrink-0 shadow-xl xl:static xl:z-auto xl:shadow-none">
-            <AlertsPanel />
+          <div className="fixed top-[3.75rem] right-3 sm:right-4 z-40">
+            <AlertsPanel onClose={() => setAlertsVisible(false)} />
           </div>
         </>
       )}

@@ -182,4 +182,24 @@ describe("IngresosListaPage", () => {
     expect(fila.textContent).not.toMatch(/años/);
     expect(within(fila).getAllByText("—").length).toBeGreaterThanOrEqual(3);
   });
+
+  it("?paciente=&tab=odas (desde una alerta) abre la ficha en la pestaña ODA", async () => {
+    server.use(
+      http.get(`${BASE}/api/v1/pacientes/:paciente_id/vista-360`, () =>
+        HttpResponse.json({
+          paciente: MOCK_PACIENTE,
+          ingresos: [],
+          farmacos: [],
+          licencias: [],
+          controles: [],
+          odas: [],
+          reintegro: [],
+        })
+      )
+    );
+    renderPage("/ingresos?paciente=42&tab=odas");
+    const pestana = await screen.findByRole("tab", { name: /ODA \(0\)/ });
+    expect(pestana).toHaveAttribute("data-state", "active");
+    expect(screen.getByText("Sin ODA registradas")).toBeInTheDocument();
+  });
 });

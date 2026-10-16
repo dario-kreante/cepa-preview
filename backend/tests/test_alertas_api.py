@@ -176,3 +176,32 @@ def test_coordinacion_puede_cambiar_cualquier_alerta(as_coordinacion: TestClient
     alerta = _alerta_en_bd(db_session, usuario_id=9999, tipo="oda_por_vencer")
     resp = as_coordinacion.patch(f"/api/v1/alertas/{alerta.id}", json={"estado": "leida"})
     assert resp.status_code == 200
+
+
+# Al hacer clic en "ODA por vencer" el panel abre la ficha: el listado trae el paciente del caso.
+def test_listado_trae_paciente_de_la_oda(as_admin: TestClient, db_session: Session):
+    from datetime import date
+
+    from app.models.oda import Oda
+
+    ingreso = as_admin.post(
+        "/api/v1/ingresos",
+        json={
+            "rut": "11.111.111-1", "nombre": "Ana González", "sexo": "F", "edad": 33,
+            "region": "Maule", "diagnostico": "x", "tipo_derivacion": "DIAT",
+            "tipo_ingreso": "convenio", "modelo_tratamiento": "ambulatorio",
+            "fecha_ingreso": "2026-06-10",
+        },
+    ).json()
+    oda = Oda(ingreso_id=ingreso["id"], identificador="ODA-1", fecha_vencimiento=date(2026, 10, 20))
+    db_session.add(oda)
+    db_session.flush()
+    alerta = _alerta_en_bd(db_session, usuario_id=None)
+    alerta.caso_id = oda.id
+    sin_caso = _alerta_en_bd(db_session, usuario_id=None, tipo="plazo_ept")
+    sin_caso.caso_tipo = "ept"
+    db_session.commit()
+
+    data = {a["id"]: a for a in as_admin.get("/api/v1/alertas").json()}
+    assert data[alerta.id]["paciente_id"] == ingreso["paciente_id"]
+    assert data[sin_caso.id]["paciente_id"] is None

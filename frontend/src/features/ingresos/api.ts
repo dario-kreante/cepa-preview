@@ -8,6 +8,7 @@ export type IngresoRead = components["schemas"]["IngresoRead"];
 export type LicenciaRead = components["schemas"]["app__schemas__licencia__LicenciaRead"];
 export type ControlMedicoRead = components["schemas"]["ControlMedicoRead"];
 export type RecetaRead = components["schemas"]["RecetaRead"];
+export type OdaRead = components["schemas"]["OdaRead"];
 export type FichaClinicaRead = components["schemas"]["FichaClinicaRead"];
 export type IngresoUpdate = components["schemas"]["IngresoUpdate"];
 export type LicenciaSugeridaRead = components["schemas"]["LicenciaSugeridaRead"];
@@ -34,6 +35,22 @@ export async function actualizarIngreso(
     if (response.status === 404) throw new Error("El ingreso ya no existe.");
     if (response.status === 422) throw new Error("Hay datos inválidos. Revisa los campos.");
     if (response.status === 403) throw new Error("Tu perfil no puede editar fichas.");
+    throw new Error("El servidor no respondió. Intenta nuevamente.");
+  }
+  return data;
+}
+
+/** PUT /api/v1/ingresos/{id}/folio — corrige el folio (solo Administrativo). */
+export async function corregirFolio(ingresoId: number, folio: string): Promise<IngresoRead> {
+  const { data, error, response } = await api.PUT("/api/v1/ingresos/{ingreso_id}/folio", {
+    params: { path: { ingreso_id: ingresoId } },
+    body: { folio },
+  });
+  if (error || !data) {
+    if (response.status === 409) throw new Error(`El folio ${folio} ya está emitido para otro paciente.`);
+    if (response.status === 404) throw new Error("El ingreso ya no existe.");
+    if (response.status === 422) throw new Error("El folio no es válido (máximo 30 caracteres).");
+    if (response.status === 403) throw new Error("Solo una Administrativa puede corregir el folio.");
     throw new Error("El servidor no respondió. Intenta nuevamente.");
   }
   return data;

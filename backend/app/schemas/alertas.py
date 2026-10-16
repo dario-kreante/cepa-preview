@@ -21,6 +21,9 @@ class AlertaRead(BaseModel):
     generada_en: datetime
     resuelta_en: datetime | None
     email_enviado: bool
+    # Paciente del caso, para abrir su ficha desde el panel. Solo se resuelve en el listado
+    # y para los casos que cuelgan de un ingreso (ODA, ingreso); el resto queda en None.
+    paciente_id: int | None = None
 
 
 class AlertaUpdate(BaseModel):

@@ -165,3 +165,38 @@ def extraer_licencia(registro: Any, fecha_atencion: date) -> MencionLicencia | N
         avisos=avisos,
         texto=texto,
     )
+
+
+# El campo "Indicación de reposo" del formulario del CEPA es la licencia: el médico
+# escribe "Reposo por 15 días" sin la palabra "licencia". Cuenta si habla de reposo,
+# de días o de fechas, y no lo niega. Un texto libre ("antecedente de prueba") no.
+_RE_INDICA_REPOSO = re.compile(
+    r"\breposo\b|\b\d+\s*d[ií]as?\b|\b(?:desde|hasta)\s+el\s*\d", re.IGNORECASE
+)
+_RE_NIEGA_REPOSO = re.compile(
+    r"\bsin\s+(?:reposo|licencia)\b"
+    r"|\bno\s+(?:requiere|amerita|corresponde|aplica|se\s+indica)\b"
+    r"|^\s*(?:no|n/?a|ningun[oa]|-+)\s*\.?\s*$",
+    re.IGNORECASE,
+)
+_RE_DIAS_SUELTOS = re.compile(r"\b(\d+)\s*d[ií]as?\b", re.IGNORECASE)
+
+
+def extraer_indicacion_reposo(registro: Any, fecha_atencion: date) -> MencionLicencia | None:
+    """Lee el campo "Indicación de reposo": una licencia aunque no diga "licencia"."""
+    mencion = extraer_licencia(registro, fecha_atencion)
+    if mencion is not None:
+        return mencion
+    texto = _texto_plano(registro)
+    if not texto or _RE_NIEGA_REPOSO.search(texto) or not _RE_INDICA_REPOSO.search(texto):
+        return None
+    mencion = extraer_licencia(f"licencia {texto}", fecha_atencion)
+    if mencion is None:
+        return None
+    cambios: dict[str, Any] = {"texto": texto}
+    if mencion.dias is None and (m := _RE_DIAS_SUELTOS.search(texto)):
+        cambios["dias"] = int(m.group(1))
+        if mencion.fecha_inicio is not None and mencion.fecha_termino is None:
+            cambios["fecha_termino"] = mencion.fecha_inicio + timedelta(days=int(m.group(1)) - 1)
+            cambios["termino_calculado"] = True
+    return mencion.model_copy(update=cambios)

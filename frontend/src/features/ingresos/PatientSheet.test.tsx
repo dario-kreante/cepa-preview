@@ -72,7 +72,7 @@ const MOCK_LICENCIA = {
   anulada: false,
 };
 
-function setupMocks() {
+function setupMocks(odas: unknown[] = []) {
   server.use(
     http.get(`${BASE}/api/v1/pacientes/:paciente_id/vista-360`, () =>
       HttpResponse.json({
@@ -81,6 +81,7 @@ function setupMocks() {
         farmacos: [],
         licencias: [],
         controles: [],
+        odas,
         reintegro: [],
       })
     ),
@@ -97,7 +98,7 @@ function setupMocks() {
   );
 }
 
-function renderSheet(pacienteId: number | null, open = true) {
+function renderSheet(pacienteId: number | null, open = true, tabInicial?: string) {
   tokenStore.setAccess(FAKE_TOKEN);
   const qc = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
@@ -110,6 +111,7 @@ function renderSheet(pacienteId: number | null, open = true) {
             pacienteId={pacienteId}
             open={open}
             onOpenChange={() => {}}
+            tabInicial={tabInicial}
           />
         </AuthProvider>
       </MemoryRouter>
@@ -177,5 +179,17 @@ describe("PatientSheet", () => {
     // No mocks needed since pacienteId=null and open=false
     renderSheet(null, false);
     expect(screen.queryByText("Carmen Soto")).not.toBeInTheDocument();
+  });
+
+  it("abre directo en la pestaña ODA con la ODA vigente y su vencimiento", async () => {
+    setupMocks([
+      { id: 1, ingreso_id: 55, identificador: "ODA-778", fecha_vencimiento: "2020-01-10", vigente: false },
+      { id: 2, ingreso_id: 55, identificador: "ODA-901", fecha_vencimiento: "2099-12-31", vigente: true },
+    ]);
+    renderSheet(7, true, "odas");
+    expect(await screen.findByText("ODA ODA-901")).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /ODA \(2\)/ })).toHaveAttribute("data-state", "active");
+    expect(screen.getByText("Vencimiento: 31/12/2099")).toBeInTheDocument();
+    expect(screen.getByText("Reemplazada")).toBeInTheDocument();
   });
 });
