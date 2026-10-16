@@ -48,9 +48,13 @@ def test_administrativo_corrige_el_folio_y_queda_auditado(as_admin, db_session):
     db_session.expire_all()
     assert db_session.scalars(select(FichaClinica.folio)).all() == ["F-2026-0999"]
     assert db_session.scalars(select(ImedPayload.folio)).all() == ["F-2026-0999"]
-    traza = db_session.scalars(
-        select(AuditLog).where(AuditLog.entity == "ingreso", AuditLog.valor_nuevo == "F-2026-0999")
-    ).one()
+    # valor_nuevo es CLOB en Oracle: no se compara en el WHERE (ORA-22848).
+    trazas = db_session.scalars(
+        select(AuditLog).where(
+            AuditLog.entity == "ingreso", AuditLog.entity_id == str(ingreso["id"])
+        )
+    ).all()
+    traza = next(t for t in trazas if t.valor_nuevo == "F-2026-0999")
     assert traza.valor_anterior == anterior
     assert traza.actor == "admin_test"
 
