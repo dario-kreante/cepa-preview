@@ -129,6 +129,30 @@ def test_filtro_especialidades_reportes(as_coordinacion, db_session, ing, monkey
     assert body["total_atenciones"] == 1
 
 
+def test_filtro_especialidades_en_adherencia_convenio_y_carga(
+    as_coordinacion, db_session, ing, monkeypatch
+):
+    _cita(db_session, ing, "realizada", especialidad="Psicología", profesional_nombre="Ana", dia=1)
+    _cita(db_session, ing, "realizada", especialidad="Médico/a", profesional_nombre="Bea", dia=2)
+    _cita(db_session, ing, "inasistencia", especialidad="Médico/a", profesional_nombre="Bea", dia=3)
+    db_session.commit()
+    monkeypatch.setattr(
+        "app.services.reportes_filtros.get_settings",
+        lambda: SimpleNamespace(citas_especialidades_reportes_set=frozenset({"psicología"})),
+    )
+
+    adh = as_coordinacion.get(f"/api/v1/reportes/adherencia/{ing.id}").json()
+    assert (adh["citas_agendadas"], adh["citas_realizadas"]) == (1, 1)
+
+    conv = as_coordinacion.get(
+        "/api/v1/reportes/convenio", params={**_P, "tipo_convenio": "DIEP"}
+    ).json()["items"][0]
+    assert (conv["total_atenciones"], conv["total_inasistencias"]) == (1, 0)
+
+    carga = as_coordinacion.get("/api/v1/reportes/carga-laboral", params=_P).json()["items"]
+    assert [(i["nombre_profesional"], i["total_atenciones"]) for i in carga] == [("Ana", 1)]
+
+
 def test_condicion_citas_reportables_sin_join(db_session, ing):
     from app.services.reportes_filtros import condicion_citas_reportables
 

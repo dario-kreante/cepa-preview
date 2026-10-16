@@ -1,4 +1,4 @@
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, timedelta, timezone
 
 import pytest
 from sqlalchemy import select
@@ -348,3 +348,33 @@ def test_incremental_cambiada_antes_del_corte_no_se_importa(db_session):
 
     assert _filas(db_session) == []
     assert (r.creadas, r.sin_ingreso) == (0, 0)
+
+
+def test_al_avanzar_se_llama_por_lote_de_commit(db_session, monkeypatch):
+    from app.services.salutem_sync import citas_cepa
+
+    monkeypatch.setattr(citas_cepa, "LOTE_COMMIT", 1)
+    paciente = _paciente(db_session)
+    _ingreso(db_session, paciente)
+    _persona(db_session, 501)
+    _cita(db_session, 501, fecha=date(2026, 5, 10))
+    _cita(db_session, 501, fecha=date(2026, 5, 11))
+    _cita(db_session, 501, fecha=date(2026, 5, 12))
+    llamadas = []
+
+    sincronizar_citas(db_session, desde=None, ahora=AHORA, al_avanzar=lambda: llamadas.append(1))
+
+    assert len(llamadas) >= 3
+
+
+def test_estado_desconocido_con_fila_previa_conserva_el_estado(db_session):
+    _, _, cita = _escenario(db_session, estado_id=1)
+    sincronizar_citas(db_session, desde=None, ahora=AHORA)
+
+    cita.estado_id = 99
+    db_session.flush()
+    r = sincronizar_citas(db_session, desde=None, ahora=AHORA)
+
+    (fila,) = _filas(db_session)
+    assert fila.estado == "agendada"
+    assert r.estado_desconocido == 1

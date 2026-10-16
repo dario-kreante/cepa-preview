@@ -7,16 +7,17 @@ sus ingresos. El upsert es por `salutem_cita_id`. No habla con SALUTEM.
 
 import logging
 from collections import defaultdict
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
+from app.agendamiento.salutem import lotes
 from app.audit.service import record_audit
 from app.config import get_settings
 from app.integrations.salutem.models import EstadoCitaSalutem
-from app.agendamiento.salutem import lotes
 from app.models.cita import Cita
 from app.models.ingreso import Ingreso
 from app.models.paciente import Paciente
@@ -25,11 +26,13 @@ from app.models.salutem_copia import SalutemCita, SalutemPersona
 from app.services.alertas_citas import alertar_inasistencia, resolver_alertas_con_hora
 from app.services.config_alertas import cargar_ventanas
 from app.services.ficha_clinica import _en_ventana_del_ingreso
+from app.services.salutem_sync.alertas_control import (
+    ACTOR,  # noqa: F401 — también lo importan los tests
+)
 from app.services.salutem_sync.filtro import cruce_con_paciente
 from app.services.salutem_sync.incremental import hoy_en_santiago
 from app.services.salutem_sync.tipos import a_utc
 
-ACTOR = "sistema:salutem-sync"
 DIAS_AGENDADA_ANTIGUA = 90
 LOTE_COMMIT = 200
 _MAX_ESPECIALIDAD = 80
@@ -128,14 +131,22 @@ def _candidatas(db: Session, desde: datetime | None, corte: date) -> dict[int, s
     return por_cita
 
 
-def sincronizar_citas(db: Session, *, desde: datetime | None, ahora: datetime) -> ResultadoCitas:
+def sincronizar_citas(
+    db: Session,
+    *,
+    desde: datetime | None,
+    ahora: datetime,
+    al_avanzar: Callable[[], None] = lambda: None,
+) -> ResultadoCitas:
     """Refleja en `cita` las citas SALUTEM de los pacientes del CEPA.
 
     `desde=None` revisa todo (backfill y arranque en frío). Con `desde`, revisa las citas
     cambiadas desde entonces y todas las de pacientes con ingresos creados o editados desde
     entonces (un ingreso nuevo puede traer citas antiguas).
 
-    Cada cita va en su propio savepoint; se hace commit por lote y uno final.
+    Cada cita va en su propio savepoint; se hace commit por lote y uno final. `al_avanzar`
+    se llama tras cada commit por lote (el orquestador renueva el lease: un arranque en
+    frío puede tardar más que su vigencia).
     """
     ahora = a_utc(ahora)
     hoy = hoy_en_santiago(ahora)
@@ -188,28 +199,41 @@ def sincronizar_citas(db: Session, *, desde: datetime | None, ahora: datetime) -
             resultado.errores.append(f"cita {cita_id}: {type(e).__name__}: {e}")
         if n % LOTE_COMMIT == 0:
             db.commit()
+            al_avanzar()
     db.commit()
+    al_avanzar()
 
     ventanas = cargar_ventanas(db)
     for lote in lotes(ids):
         for cita in db.scalars(
             select(Cita).where(Cita.salutem_cita_id.in_(lote), Cita.estado == "inasistencia")
         ):
-            if alertar_inasistencia(
-                db, salutem_cita_id=cita.salutem_cita_id, cita=cita, hoy=hoy, ventanas=ventanas
-            ):
+            try:
+                with db.begin_nested():
+                    creada = alertar_inasistencia(
+                        db, salutem_cita_id=cita.salutem_cita_id, cita=cita, hoy=hoy,
+                        ventanas=ventanas,
+                    )
+            except Exception as e:  # noqa: BLE001 — una alerta fallida no debe bloquear las demás
+                log.warning(
+                    "Alerta de inasistencia de la cita %s falló: %s: %s",
+                    cita.salutem_cita_id, type(e).__name__, e,
+                )
+                resultado.errores.append(
+                    f"alerta inasistencia cita {cita.salutem_cita_id}: {type(e).__name__}: {e}"
+                )
+                continue
+            if creada:
                 resultado.alertas_inasistencia += 1
     resultado.alertas_resueltas = resolver_alertas_con_hora(db, hoy, ACTOR)
     db.commit()
 
     limite = hoy - timedelta(days=DIAS_AGENDADA_ANTIGUA)
-    resultado.agendadas_antiguas = len(
-        db.scalars(
-            select(Cita.id).where(
-                Cita.origen == "SALUTEM", Cita.estado == "agendada", Cita.fecha < limite
-            )
-        ).all()
-    )
+    resultado.agendadas_antiguas = db.scalar(
+        select(func.count()).select_from(Cita).where(
+            Cita.origen == "SALUTEM", Cita.estado == "agendada", Cita.fecha < limite
+        )
+    ) or 0
     return resultado
 
 
@@ -238,6 +262,7 @@ def _procesar(
 
     estado = estado_cita(salutem.estado_id)
     if estado is None:
+        # Intencional: si ya hay fila, conserva su estado anterior (no se borra ni se pisa).
         resultado.estado_desconocido += 1
         log.warning(
             "Cita %s con estado_id %r desconocido: no se importa", salutem.cita_id, salutem.estado_id

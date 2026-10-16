@@ -2,7 +2,7 @@
 
 La inasistencia se crea en el sync de citas (no en el job diario). Una por cita para
 siempre: si la encargada la resolvió no reaparece, y solo se avisa de las recientes
-(DIAS_NOVEDAD_INASISTENCIA) para que el backfill no llene el panel con inasistencias viejas.
+(DIAS_NOVEDAD) para que el backfill no llene el panel con inasistencias viejas.
 
 `resolver_alertas_con_hora` cierra las alertas de control médico e inasistencia de un
 paciente que ya tiene hora vigente en SALUTEM: el aviso cumplió su propósito.
@@ -22,9 +22,9 @@ from app.models.cita import Cita
 from app.models.control_medico import ControlMedico
 from app.models.ingreso import Ingreso
 from app.services.alertas import _resolver_usuario
+from app.services.salutem_sync.alertas_control import ACTOR, DIAS_NOVEDAD
 
 CASO_TIPO_INASISTENCIA = "salutem_cita"
-DIAS_NOVEDAD_INASISTENCIA = 14
 _ABIERTAS = (EstadoAlerta.PENDIENTE.value, EstadoAlerta.LEIDA.value)
 
 
@@ -34,7 +34,7 @@ def alertar_inasistencia(
     """Crea la alerta de inasistencia de una cita si corresponde. True si la creó."""
     if cita.estado != "inasistencia":
         return False
-    if cita.fecha < hoy - timedelta(days=DIAS_NOVEDAD_INASISTENCIA):
+    if cita.fecha < hoy - timedelta(days=DIAS_NOVEDAD):
         return False
     if not ventanas.get(TipoAlerta.INASISTENCIA.value, {}).get("activo", True):
         return False
@@ -64,7 +64,7 @@ def alertar_inasistencia(
     )
     db.flush()
     record_audit(
-        db, actor="sistema:salutem-sync", action="CREATE", entity="alerta_notif",
+        db, actor=ACTOR, action="CREATE", entity="alerta_notif",
         entity_id=f"cita:{salutem_cita_id}",
     )
     return True

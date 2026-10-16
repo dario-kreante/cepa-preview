@@ -563,7 +563,7 @@ def ejecutar_job_alertas(
 
     from app.services.alertas_citas import resolver_alertas_con_hora
 
-    resolver_alertas_con_hora(db, hoy, actor)
+    resueltas = resolver_alertas_con_hora(db, hoy, actor)
 
     hitos: list[HitoPlazos] = []
     hitos.extend(_construir_hitos_oda(db, ventanas))
@@ -603,6 +603,8 @@ def ejecutar_job_alertas(
             entity="alerta_notif",
             entity_id=f"job:{len(resultados)}",
         )
+    if resultados or resueltas:
+        # Las resoluciones por hora vigente solo se flushean: sin alertas nuevas igual hay que persistirlas.
         db.commit()
 
     return len(resultados)

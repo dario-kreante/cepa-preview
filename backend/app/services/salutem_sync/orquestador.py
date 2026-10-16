@@ -23,7 +23,12 @@ from app.integrations.salutem.protocol import SalutemClientProtocol
 from app.models.salutem_sync import SalutemSyncEjecucion
 from app.services.salutem_sync.archivos import refrescar_archivos
 from app.services.salutem_sync.backfill import DIAS_FUTURO, ejecutar_backfill
-from app.services.salutem_sync.bitacora import abrir_ejecucion, cerrar_ejecucion, registrar_omitida
+from app.services.salutem_sync.bitacora import (
+    abrir_ejecucion,
+    cerrar_ejecucion,
+    registrar_omitida,
+    ultimo_inicio_ok,
+)
 from app.services.salutem_sync.borradores import crear_borradores
 from app.services.salutem_sync.citas_cepa import sincronizar_citas
 from app.services.salutem_sync.incremental import (
@@ -94,6 +99,9 @@ def correr(
     ejecucion = None
     try:
         ingresos_desde = _ultimo_inicio_exitoso(db)
+        # Las citas solo avanzan tras una ejecución limpia: si el paso falló, el siguiente
+        # ciclo lo reintenta desde el mismo punto.
+        citas_desde = ultimo_inicio_ok(db)
         ejecucion = abrir_ejecucion(db, modo, inicio)
         contadores, errores = _ejecutar_modo(modo, db, cliente, ritmo, inicio, opciones, renovar)
         vinculacion = vincular(
@@ -120,7 +128,10 @@ def correr(
             errores = errores + [f"borradores: {type(e).__name__}: {e}"]
         try:
             citas = sincronizar_citas(
-                db, desde=None if modo in _VINCULAN_TODO else ingresos_desde, ahora=ahora()
+                db,
+                desde=None if modo in _VINCULAN_TODO else citas_desde,
+                ahora=ahora(),
+                al_avanzar=renovar,
             )
             errores = errores + citas.errores
             log.info(

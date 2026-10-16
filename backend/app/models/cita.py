@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from datetime import date, datetime, timezone
 
-from sqlalchemy import BigInteger, Date, DateTime, ForeignKey, Identity, String
+from sqlalchemy import BigInteger, Date, DateTime, ForeignKey, Identity, Index, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -28,6 +28,7 @@ class Cita(Base):
     """
 
     __tablename__ = "cita"
+    __table_args__ = (Index("uq_cita_salutem_cita_id", "salutem_cita_id", unique=True),)
 
     id: Mapped[int] = mapped_column(BigInteger, Identity(always=False), primary_key=True)
     ingreso_id: Mapped[int] = mapped_column(
@@ -40,7 +41,7 @@ class Cita(Base):
     )
     # Fase 2 (cita desde SALUTEM): espejo de la cita de SALUTEM cuando el origen es SALUTEM.
     # Único cuando no es nulo; las citas creadas en el SIGE quedan con NULL.
-    salutem_cita_id: Mapped[int | None] = mapped_column(BigInteger, unique=True, nullable=True)
+    salutem_cita_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     origen: Mapped[str] = mapped_column(
         String(10), nullable=False, default="SIGE", server_default="SIGE"
     )

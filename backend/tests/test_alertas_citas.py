@@ -3,8 +3,7 @@
 from datetime import date, datetime, timedelta, timezone
 from types import SimpleNamespace
 
-import pytest
-from sqlalchemy import func, select
+from sqlalchemy import select
 
 from app.domain.enums import EstadoCaso
 from app.domain.enums_alertas import EstadoAlerta, TipoAlerta
@@ -52,9 +51,11 @@ def _ingreso(db, paciente: Paciente, estado: str = EstadoCaso.ACTIVO.value) -> I
     return i
 
 
-def _control(db, ingreso, *, origen="SALUTEM", agendado=False, proximo=None) -> ControlMedico:
+def _control(
+    db, ingreso, *, origen="SALUTEM", agendado=False, proximo=None, fecha=date(2026, 10, 1)
+) -> ControlMedico:
     c = ControlMedico(
-        ingreso_id=ingreso.id, fecha_control=date(2026, 10, 1), semana_control=1,
+        ingreso_id=ingreso.id, fecha_control=fecha, semana_control=1,
         medico_tratante="Dra Alerta", region_derivacion="Maule",
         proximo_control=proximo or HOY + timedelta(days=3),
         proximo_agendado=agendado, tiene_licencia=False, origen=origen,
@@ -147,6 +148,41 @@ def test_alerta_control_abierta_se_resuelve_al_aparecer_hora(db_session):
     (alerta,) = _alertas(db_session, "control_medico", c.id)
     assert alerta.estado == EstadoAlerta.RESUELTA.value
     assert alerta.resuelta_en is not None
+
+
+def test_ultimo_control_cepa_agendado_con_anterior_sin_agendar_no_alerta(db_session):
+    ing = _ingreso(db_session, _paciente(db_session, "10000006"))
+    anterior = _control(db_session, ing, origen="CEPA", agendado=False, fecha=date(2026, 9, 20))
+    ultimo = _control(db_session, ing, origen="CEPA", agendado=True, fecha=date(2026, 10, 1))
+    ejecutar_job_alertas(db_session, actor="test", hoy=HOY)
+    assert _alertas(db_session, "control_medico", ultimo.id) == []
+    assert _alertas(db_session, "control_medico", anterior.id) == []
+
+
+def test_control_desempata_por_fecha_y_luego_por_id(db_session):
+    ing = _ingreso(db_session, _paciente(db_session, "10000007"))
+    viejo = _control(db_session, ing, fecha=date(2026, 9, 1))
+    nuevo = _control(db_session, ing, fecha=date(2026, 10, 1))
+    mismo_dia = _control(db_session, ing, fecha=date(2026, 10, 1))  # id mayor, misma fecha
+    ejecutar_job_alertas(db_session, actor="test", hoy=HOY)
+    assert _alertas(db_session, "control_medico", viejo.id) == []
+    assert _alertas(db_session, "control_medico", nuevo.id) == []
+    assert len(_alertas(db_session, "control_medico", mismo_dia.id)) == 1
+
+
+def test_job_sin_hitos_nuevos_persiste_las_resoluciones(db_session):
+    p = _paciente(db_session, "10000008")
+    c = _control(db_session, _ingreso(db_session, p))
+    ejecutar_job_alertas(db_session, actor="test", hoy=HOY)
+    (alerta,) = _alertas(db_session, "control_medico", c.id)
+    _hora_vigente(db_session, "10000008", 9108)
+    db_session.commit()  # el estado previo queda firme; lo que sigue debe commitearlo el job
+
+    assert ejecutar_job_alertas(db_session, actor="test", hoy=HOY) == 0
+    db_session.rollback()  # si el job solo hubiera flusheado, la resolución se perdería aquí
+
+    db_session.refresh(alerta)
+    assert alerta.estado == EstadoAlerta.RESUELTA.value
 
 
 # ── Inasistencia ───────────────────────────────────────────────────────────────
@@ -260,3 +296,44 @@ def test_sync_de_citas_crea_alerta_de_inasistencia(db_session):
     assert r.alertas_inasistencia == 1
     assert len(_alertas(db_session, TipoAlerta.INASISTENCIA.value, sid)) == 1
     assert sincronizar_citas(db_session, desde=None, ahora=AHORA).alertas_inasistencia == 0
+
+
+def test_alerta_de_inasistencia_fallida_no_bloquea_las_demas(db_session, monkeypatch):
+    from app.services.salutem_sync import citas_cepa
+
+    p = _paciente(db_session, "10000020")
+    _ingreso(db_session, p)
+    db_session.add(
+        SalutemPersona(
+            salutem_id=9120, rut="10000020", contenido={}, hash_contenido="h",
+            visto_primera_vez=AHORA, visto_ultima_vez=AHORA, cambiado_en=AHORA,
+        )
+    )
+    db_session.flush()
+    for dias in (2, 3):
+        db_session.add(
+            SalutemCita(
+                cita_id=_n() + 940000, persona_id=9120, fecha_cita=HOY - timedelta(days=dias),
+                estado_id=int(EstadoCitaSalutem.NO_ASISTE), contenido={}, hash_contenido="h",
+                visto_primera_vez=AHORA, visto_ultima_vez=AHORA, cambiado_en=AHORA,
+            )
+        )
+    db_session.flush()
+
+    real = citas_cepa.alertar_inasistencia
+    llamadas = []
+
+    def falla_la_primera(db, **kw):
+        llamadas.append(kw["salutem_cita_id"])
+        if len(llamadas) == 1:
+            raise RuntimeError("boom")
+        return real(db, **kw)
+
+    monkeypatch.setattr(citas_cepa, "alertar_inasistencia", falla_la_primera)
+
+    r = citas_cepa.sincronizar_citas(db_session, desde=None, ahora=AHORA)
+
+    assert len(llamadas) == 2
+    assert r.alertas_inasistencia == 1
+    assert len(r.errores) == 1 and "boom" in r.errores[0]
+    assert len(_alertas(db_session, TipoAlerta.INASISTENCIA.value)) == 1

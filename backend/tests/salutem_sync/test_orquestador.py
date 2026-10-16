@@ -4,13 +4,14 @@ from sqlalchemy import select
 
 from app.integrations.salutem.client import SalutemStubClient
 from app.integrations.salutem.models import EstadoCitaSalutem
+from app.models.cita import Cita
 from app.models.ficha_clinica import FichaClinica
 from app.models.ingreso import Ingreso
-from app.models.cita import Cita
 from app.models.paciente import Paciente
 from app.models.salutem_sync import SalutemSyncEjecucion, SalutemSyncLease
 from app.services.salutem_sync import orquestador
 from app.services.salutem_sync.archivos import ResultadoArchivos
+from app.services.salutem_sync.bitacora import ultimo_inicio_ok
 from app.services.salutem_sync.borradores import ResultadoBorradores
 from app.services.salutem_sync.lease import tomar_lease
 from app.services.salutem_sync.orquestador import Opciones, correr
@@ -235,9 +236,9 @@ def test_orquestador_backfill_revisa_todo(db_session, salutem, ritmo, monkeypatc
     recibidos = []
     real = orquestador.sincronizar_citas
 
-    def espiar(db, *, desde, ahora):
+    def espiar(db, *, desde, ahora, al_avanzar):
         recibidos.append(desde)
-        return real(db, desde=desde, ahora=ahora)
+        return real(db, desde=desde, ahora=ahora, al_avanzar=al_avanzar)
 
     monkeypatch.setattr(orquestador, "sincronizar_citas", espiar)
     opciones = Opciones(desde=HOY - timedelta(days=1), verificar=False, dias_futuro=0)
@@ -262,3 +263,31 @@ def test_fallo_en_citas_no_pierde_el_ciclo(db_session, salutem, ritmo, monkeypat
     assert ejecucion.estado == "con_errores"
     assert "citas: RuntimeError: boom" in ejecucion.error
     assert db_session.get(SalutemSyncLease, "salutem").dueno is None
+
+
+def test_citas_no_avanza_su_desde_tras_una_ejecucion_con_errores(db_session, salutem, ritmo, monkeypatch):
+    recibidos = []
+    real = orquestador.sincronizar_citas
+
+    def espiar(db, *, desde, ahora, al_avanzar):
+        recibidos.append(desde)
+        return real(db, desde=desde, ahora=ahora, al_avanzar=al_avanzar)
+
+    monkeypatch.setattr(orquestador, "sincronizar_citas", espiar)
+    # Una ejecución `ok` previa fija el punto de partida de las citas.
+    previa = SalutemSyncEjecucion(
+        modo="caliente", estado="ok", inicio=AHORA - timedelta(hours=3),
+        fin=AHORA - timedelta(hours=3), llamadas=0, nuevos=0, cambiados=0, desaparecidos=0,
+    )
+    # Y una posterior con errores no debe adelantarlo.
+    con_errores = SalutemSyncEjecucion(
+        modo="caliente", estado="con_errores", inicio=AHORA - timedelta(hours=1),
+        fin=AHORA - timedelta(hours=1), llamadas=0, nuevos=0, cambiados=0, desaparecidos=0,
+    )
+    db_session.add_all([previa, con_errores])
+    db_session.flush()
+
+    assert _correr(db_session, salutem, ritmo) == 0
+
+    assert recibidos == [previa.inicio]
+    assert ultimo_inicio_ok(db_session) == AHORA  # la corrida limpia sí lo adelanta

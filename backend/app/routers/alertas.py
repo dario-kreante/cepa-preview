@@ -6,12 +6,12 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
+from app.agendamiento.salutem import lotes
 from app.audit.service import record_audit
 from app.auth.deps import get_current_user, require_role
 from app.db.session import get_db
 from app.domain.enums_alertas import EstadoAlerta
 from app.models.alertas import AlertaNotif
-from app.agendamiento.salutem import lotes
 from app.models.cita import Cita
 from app.models.ingreso import Ingreso
 from app.models.oda import Oda
