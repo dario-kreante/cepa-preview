@@ -130,13 +130,17 @@ export function alertasSinLeer(alertas: AlertaRead[], usuarioId: number | null |
 /**
  * Mapea un caso (caso_tipo + caso_id) a la ruta de su módulo. Los valores de
  * caso_tipo provienen del generador de alertas: oda, licencia, ept, ingreso,
- * control_medico, receta, paciente. EPT acepta deep-link por ?caso=; el resto navega a su
- * página (paciente-driven, sin parámetro de caso).
+ * control_medico, receta, paciente. EPT acepta deep-link por ?caso=; ODA e ingreso abren
+ * la ficha del paciente (?paciente=, y la pestaña ODA) cuando la alerta trae paciente_id;
+ * el resto navega a su página (paciente-driven, sin parámetro de caso).
  */
 export function routeForCaso(
   casoTipo: string | null | undefined,
   casoId: number | null | undefined,
+  pacienteId?: number | null,
 ): string {
+  if (pacienteId && casoTipo === "oda") return `/ingresos?paciente=${pacienteId}&tab=odas`;
+  if (pacienteId && casoTipo === "ingreso") return `/ingresos?paciente=${pacienteId}`;
   switch (casoTipo) {
     case "ept":
       return casoId ? `/ept?caso=${casoId}` : "/ept";
@@ -393,7 +397,7 @@ export function AlertsPanel({ onClose }: AlertsPanelProps = {}) {
       setAlertaControl(a);
       return;
     }
-    ir(routeForCaso(a.caso_tipo, a.caso_id));
+    ir(routeForCaso(a.caso_tipo, a.caso_id, a.paciente_id));
   };
 
   const handleTareaClick = (t: TareaItemRead) => {

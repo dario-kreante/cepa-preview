@@ -11,6 +11,8 @@ from app.auth.deps import get_current_user, require_role
 from app.db.session import get_db
 from app.domain.enums_alertas import EstadoAlerta
 from app.models.alertas import AlertaNotif
+from app.models.ingreso import Ingreso
+from app.models.oda import Oda
 from app.schemas.alertas import AlertaRead, AlertaUpdate, JobResultado
 from app.services.alertas import ejecutar_job_alertas
 
@@ -55,7 +57,7 @@ def ejecutar_job(
 def listar_alertas(
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> list[AlertaNotif]:
+) -> list[AlertaRead]:
     """Panel de notificaciones in-app: devuelve alertas filtradas por rol y asignación.
 
     - Administrativo: sus alertas (usuario_id == current_user.id) y las de ingresos sin
@@ -68,7 +70,32 @@ def listar_alertas(
             or_(AlertaNotif.usuario_id == current_user.id, AlertaNotif.usuario_id.is_(None))
         )
     stmt = stmt.order_by(AlertaNotif.generada_en.desc())
-    return list(db.scalars(stmt))
+    alertas = list(db.scalars(stmt))
+    pacientes = _pacientes_de_casos(db, alertas)
+    return [
+        AlertaRead.model_validate(a).model_copy(
+            update={"paciente_id": pacientes.get((a.caso_tipo, a.caso_id))}
+        )
+        for a in alertas
+    ]
+
+
+def _pacientes_de_casos(db: Session, alertas: list[AlertaNotif]) -> dict[tuple[str, int], int]:
+    """Paciente de cada caso que cuelga de un ingreso (ODA, ingreso): una consulta por tipo."""
+    odas = {a.caso_id for a in alertas if a.caso_tipo == "oda"}
+    ingresos = {a.caso_id for a in alertas if a.caso_tipo == "ingreso"}
+    pacientes: dict[tuple[str, int], int] = {}
+    if odas:
+        filas = db.execute(
+            select(Oda.id, Ingreso.paciente_id)
+            .join(Ingreso, Ingreso.id == Oda.ingreso_id)
+            .where(Oda.id.in_(odas))
+        )
+        pacientes.update({("oda", oda_id): pid for oda_id, pid in filas})
+    if ingresos:
+        filas = db.execute(select(Ingreso.id, Ingreso.paciente_id).where(Ingreso.id.in_(ingresos)))
+        pacientes.update({("ingreso", ing_id): pid for ing_id, pid in filas})
+    return pacientes
 
 
 @router.patch("/{alerta_id}", response_model=AlertaRead, dependencies=[Depends(_writer)])

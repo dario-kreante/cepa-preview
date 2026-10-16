@@ -8,6 +8,7 @@ export type IngresoRead = components["schemas"]["IngresoRead"];
 export type LicenciaRead = components["schemas"]["app__schemas__licencia__LicenciaRead"];
 export type ControlMedicoRead = components["schemas"]["ControlMedicoRead"];
 export type RecetaRead = components["schemas"]["RecetaRead"];
+export type OdaRead = components["schemas"]["OdaRead"];
 export type FichaClinicaRead = components["schemas"]["FichaClinicaRead"];
 export type IngresoUpdate = components["schemas"]["IngresoUpdate"];
 export type LicenciaSugeridaRead = components["schemas"]["LicenciaSugeridaRead"];

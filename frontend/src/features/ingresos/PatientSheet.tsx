@@ -14,6 +14,7 @@ import {
   Stethoscope,
   Edit3,
   Loader2,
+  CalendarClock,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -26,7 +27,7 @@ import {
   useRecetasPorIngreso,
   useFichasClinicas,
 } from "./hooks";
-import type { LicenciaRead, ControlMedicoRead, RecetaRead } from "./api";
+import type { LicenciaRead, ControlMedicoRead, RecetaRead, OdaRead } from "./api";
 import { SalutemTab } from "./SalutemTab";
 import { EditarFichaDialog } from "./EditarFichaDialog";
 import { FolioCard } from "./FolioCard";
@@ -237,6 +238,57 @@ function ControlesTab({ controles }: { controles: ControlMedicoRead[] }) {
 }
 
 // ---------------------------------------------------------------------------
+// Tab: ODA
+// ---------------------------------------------------------------------------
+
+/** Días entre hoy y la fecha ISO (YYYY-MM-DD), en calendario local. */
+function diasHasta(iso: string): number {
+  const [y, m, d] = iso.split("-").map(Number);
+  const hoy = new Date();
+  const objetivo = new Date(y, m - 1, d);
+  const base = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+  return Math.round((objetivo.getTime() - base.getTime()) / 86_400_000);
+}
+
+function estadoOda(o: OdaRead): { label: string; variant: "neutral" | "destructive" | "warning" | "success" } {
+  if (!o.vigente) return { label: "Reemplazada", variant: "neutral" };
+  const dias = diasHasta(o.fecha_vencimiento);
+  if (dias < 0) return { label: "Vencida", variant: "destructive" };
+  if (dias === 0) return { label: "Vence hoy", variant: "warning" };
+  if (dias <= 7) return { label: `Vence en ${dias} día${dias === 1 ? "" : "s"}`, variant: "warning" };
+  return { label: "Vigente", variant: "success" };
+}
+
+function OdasTab({ odas }: { odas: OdaRead[] }) {
+  if (odas.length === 0) {
+    return <EmptyState icon={<CalendarClock />} msg="Sin ODA registradas" />;
+  }
+  return (
+    <div className="space-y-2">
+      {odas.map((o) => {
+        const estado = estadoOda(o);
+        return (
+          <Card key={o.id} className={cn(!o.vigente && "opacity-70")}>
+            <CardContent className="p-4 flex items-center gap-4">
+              <div className="size-10 rounded-md bg-[oklch(0.95_0.05_230)] text-[oklch(0.40_0.14_230)] grid place-items-center shrink-0">
+                <CalendarClock className="size-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="font-semibold text-[13px]">ODA {o.identificador}</div>
+                <div className="text-[11px] text-muted-foreground">
+                  Vencimiento: {formatDate(o.fecha_vencimiento)}
+                </div>
+              </div>
+              <Badge variant={estado.variant}>{estado.label}</Badge>
+            </CardContent>
+          </Card>
+        );
+      })}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Main export
 // ---------------------------------------------------------------------------
 
@@ -244,9 +296,16 @@ export interface PatientSheetProps {
   pacienteId: number | null;
   open: boolean;
   onOpenChange: (o: boolean) => void;
+  /** Pestaña con la que se abre la ficha (p. ej. "odas" al venir desde una alerta). */
+  tabInicial?: string;
 }
 
-export function PatientSheet({ pacienteId, open, onOpenChange }: PatientSheetProps) {
+export function PatientSheet({
+  pacienteId,
+  open,
+  onOpenChange,
+  tabInicial = "resumen",
+}: PatientSheetProps) {
   const { rol } = useAuth();
   const canWrite = puedeEscribir(rol as Rol);
   const navigate = useNavigate();
@@ -277,6 +336,15 @@ export function PatientSheet({ pacienteId, open, onOpenChange }: PatientSheetPro
   const [editarOpen, setEditarOpen] = useState(false);
   const [licenciaOpen, setLicenciaOpen] = useState(false);
   const [controlOpen, setControlOpen] = useState(false);
+  const odas = vista?.odas ?? [];
+
+  // Cada vez que se abre otro paciente (o se pide otra pestaña) se parte en la pestaña pedida.
+  const [tab, setTab] = useState(tabInicial);
+  const [aperturaPrevia, setAperturaPrevia] = useState({ pacienteId, tabInicial });
+  if (aperturaPrevia.pacienteId !== pacienteId || aperturaPrevia.tabInicial !== tabInicial) {
+    setAperturaPrevia({ pacienteId, tabInicial });
+    setTab(tabInicial);
+  }
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -428,7 +496,7 @@ export function PatientSheet({ pacienteId, open, onOpenChange }: PatientSheetPro
         {/* ---------------------------------------------------------------- */}
         <div className="flex-1 overflow-y-auto">
           {vista && (
-            <Tabs defaultValue="resumen">
+            <Tabs value={tab} onValueChange={setTab}>
               <div className="border-b sticky top-0 bg-card z-10 px-6">
                 <TabsList className="bg-transparent p-0 h-auto rounded-none gap-1">
                   {[
@@ -436,6 +504,7 @@ export function PatientSheet({ pacienteId, open, onOpenChange }: PatientSheetPro
                     { v: "licencias", l: `Licencias (${licencias.length})` },
                     { v: "farmacos", l: `Fármacos (${recetas.length})` },
                     { v: "controles", l: `Controles (${controles.length})` },
+                    { v: "odas", l: `ODA (${odas.length})` },
                     { v: "salutem", l: `SALUTEM (${fichasSalutem.length})` },
                   ].map((t) => (
                     <TabsTrigger
@@ -450,6 +519,11 @@ export function PatientSheet({ pacienteId, open, onOpenChange }: PatientSheetPro
               </div>
 
               <div className="p-6">
+                {/* -------- ODA -------- */}
+                <TabsContent value="odas" className="mt-0">
+                  <OdasTab odas={odas} />
+                </TabsContent>
+
                 {/* -------- Resumen -------- */}
                 <TabsContent value="resumen" className="mt-0 space-y-4">
                   <div className="grid grid-cols-2 gap-3">
