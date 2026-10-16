@@ -2,7 +2,6 @@
 
 from datetime import datetime, timedelta, timezone
 
-import pytest
 from sqlalchemy import select
 
 from app.agendamiento import gestion
@@ -122,13 +121,14 @@ def test_ocultos_por_agendada_es_por_profesional(db_session):
     assert gestion.ocultos_por_agendada(db_session, a.id, [pac.id], BASE + timedelta(minutes=1)) == set()
 
 
-def test_ultima_agendada_por_profesional(db_session):
+def test_ultima_gestion_por_profesional(db_session):
     p1, p2 = _paciente(db_session), _paciente(db_session)
     a, b = _profesional(db_session, "Dra Gestion J"), _profesional(db_session, "Dr Gestion K")
     _gestion(db_session, p1, a, ResultadoGestion.AGENDADA_EN_SALUTEM, 0)
-    esperada = _gestion(db_session, p1, a, ResultadoGestion.AGENDADA_EN_SALUTEM, 7)
-    _gestion(db_session, p1, a, ResultadoGestion.NO_CONTESTA, 20)  # otro resultado: no cuenta
-    _gestion(db_session, p1, b, ResultadoGestion.AGENDADA_EN_SALUTEM, 30)  # otro profesional
+    esperada = _gestion(db_session, p1, a, ResultadoGestion.NO_CONTESTA, 7)  # cualquier resultado cuenta
+    _gestion(db_session, p1, b, ResultadoGestion.AGENDADA_EN_SALUTEM, 30)  # otro profesional: no cuenta
     _gestion(db_session, p2, b, ResultadoGestion.AGENDADA_EN_SALUTEM, 1)
-    res = gestion.ultima_agendada_por_profesional(db_session, a.id, [p1.id, p2.id])
-    assert res == {p1.id: esperada.created_at}
+    res = gestion.ultima_gestion_por_profesional(db_session, a.id, [p1.id, p2.id])
+    assert set(res) == {p1.id}
+    assert res[p1.id].id == esperada.id
+    assert gestion.ultima_gestion_por_profesional(db_session, a.id, []) == {}

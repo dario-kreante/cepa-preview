@@ -177,6 +177,57 @@ def test_lista_vuelve_tras_3_dias_habiles_con_marca(as_admin, db_session, prof):
     assert filas[antigua.id]["ultima_gestion"]["usuario"] == "tester"
 
 
+def _flag_dijo_agendada(as_admin, db_session, prof, paciente) -> bool:
+    body = _get(as_admin, prof, desde=LUNES.isoformat(), hasta=LUNES.isoformat()).json()
+    return next(f for f in body["pacientes"] if f["paciente_id"] == paciente.id)["dijo_agendada_sin_hora"]
+
+
+def test_dijo_agendada_marca_si_fuera_de_ventana_y_dentro_de_30_dias(as_admin, db_session, prof):
+    _cupo(db_session, prof, 1, 5)
+    p = _candidato(db_session, prof)
+    _gestion(db_session, p, prof, ResultadoGestion.AGENDADA_EN_SALUTEM, AHORA - timedelta(days=10))
+    assert _flag_dijo_agendada(as_admin, db_session, prof, p) is True
+
+
+def test_dijo_agendada_no_marca_pasados_30_dias(as_admin, db_session, prof):
+    _cupo(db_session, prof, 1, 5)
+    p = _candidato(db_session, prof)
+    _gestion(db_session, p, prof, ResultadoGestion.AGENDADA_EN_SALUTEM, AHORA - timedelta(days=40))
+    assert _flag_dijo_agendada(as_admin, db_session, prof, p) is False
+
+
+def test_dijo_agendada_no_marca_si_hubo_gestion_posterior_con_el_mismo_profesional(
+    as_admin, db_session, prof
+):
+    _cupo(db_session, prof, 1, 5)
+    p = _candidato(db_session, prof)
+    _gestion(db_session, p, prof, ResultadoGestion.AGENDADA_EN_SALUTEM, AHORA - timedelta(days=10))
+    _gestion(db_session, p, prof, ResultadoGestion.NO_CONTESTA, AHORA - timedelta(days=8))
+    assert _flag_dijo_agendada(as_admin, db_session, prof, p) is False
+
+
+def test_dijo_agendada_no_marca_si_la_agendada_es_de_otro_profesional(as_admin, db_session, prof):
+    _cupo(db_session, prof, 1, 5)
+    otro = Profesional(nombre=f"Dr Otro {_n()}", origen="SIGE", activo=True)
+    db_session.add(otro)
+    db_session.flush()
+    p = _candidato(db_session, prof)
+    _gestion(db_session, p, otro, ResultadoGestion.AGENDADA_EN_SALUTEM, AHORA - timedelta(days=10))
+    assert _flag_dijo_agendada(as_admin, db_session, prof, p) is False
+
+
+def test_dijo_agendada_marca_aunque_otro_profesional_gestione_despues(as_admin, db_session, prof):
+    """Solo cuentan las gestiones de ESTE profesional para decidir cuál es la más reciente."""
+    _cupo(db_session, prof, 1, 5)
+    otro = Profesional(nombre=f"Dr Otro {_n()}", origen="SIGE", activo=True)
+    db_session.add(otro)
+    db_session.flush()
+    p = _candidato(db_session, prof)
+    _gestion(db_session, p, prof, ResultadoGestion.AGENDADA_EN_SALUTEM, AHORA - timedelta(days=10))
+    _gestion(db_session, p, otro, ResultadoGestion.NO_CONTESTA, AHORA - timedelta(days=5))
+    assert _flag_dijo_agendada(as_admin, db_session, prof, p) is True
+
+
 def test_lista_feriado_cuenta_para_la_ventana(as_admin, db_session, prof):
     """Con el jueves 15 feriado, la ventana de 3 días hábiles llega hasta el lunes 12 y lo cubre."""
     _cupo(db_session, prof, 1, 5)

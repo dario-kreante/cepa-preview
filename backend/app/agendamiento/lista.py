@@ -10,6 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.agendamiento import gestion
+from app.agendamiento.enums import ResultadoGestion
 from app.agendamiento.salutem import _lotes, pacientes_con_hora_vigente, pacientes_sin_vinculo
 from app.agendamiento.scheduler import _clave_orden, repartir_carga
 from app.agendamiento.schemas import (
@@ -28,6 +29,11 @@ from app.services.salutem_sync.incremental import ZONA
 # Días hábiles que se oculta a un paciente tras decir "agendada en SALUTEM"; pasado ese plazo, si
 # sigue sin hora en SALUTEM, vuelve a la lista con la marca `dijo_agendada_sin_hora`.
 DIAS_HABILES_OCULTO_AGENDADA = 3
+
+# La marca `dijo_agendada_sin_hora` solo se muestra si la gestión "agendada" tiene como máximo estos
+# días de antigüedad: pasado ese plazo se asume que el paciente fue atendido y volvió a corresponderle
+# control, no que la hora falte en SALUTEM.
+DIAS_AVISO_AGENDADA = 30
 
 _PREFIJO_REPOSO = "reposo vigente hasta "
 
@@ -91,9 +97,18 @@ def calcular_pacientes_por_citar(
     candidatos = [c for c in candidatos if c.paciente_id not in ocultos]
     ids = [c.paciente_id for c in candidatos]
 
-    # 3. Dijeron "agendada" hace más de la ventana y siguen sin hora: vuelven con marca.
-    agendadas = gestion.ultima_agendada_por_profesional(db, profesional_id, ids)
-    dijo_agendada = {pid for pid, creado in agendadas.items() if _a_utc(creado) < inicio_ventana}
+    # 3. Marca "dijo agendada, sin hora": la última gestión con ESTE profesional fue "agendada", ya salió
+    #    de la ventana de ocultamiento y tiene como máximo DIAS_AVISO_AGENDADA días.
+    limite_aviso = datetime.combine(hoy, time.min, tzinfo=ZONA).astimezone(timezone.utc) - timedelta(
+        days=DIAS_AVISO_AGENDADA
+    )
+    propias = gestion.ultima_gestion_por_profesional(db, profesional_id, ids)
+    dijo_agendada = {
+        pid
+        for pid, g in propias.items()
+        if g.resultado == ResultadoGestion.AGENDADA_EN_SALUTEM.value
+        and limite_aviso <= _a_utc(g.created_at) < inicio_ventana
+    }
 
     # 4. Reparto de la carga sobre los días con cupo.
     reparto = repartir_carga(

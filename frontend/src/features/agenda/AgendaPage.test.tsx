@@ -132,6 +132,30 @@ describe("AgendaPage", () => {
     expect(screen.getByText("Mié 14 · 3/4")).toBeInTheDocument();
   });
 
+  it("muestra el día del último contacto en hora de Santiago, no en UTC", async () => {
+    // 01:30 UTC del 16-10 son las 22:30 del 15-10 en Santiago (UTC-3 en octubre).
+    const lista = {
+      ...LISTA,
+      pacientes: [
+        {
+          ...LISTA.pacientes[0],
+          ultima_gestion: {
+            ...LISTA.pacientes[0].ultima_gestion,
+            fecha: "2026-10-16T01:30:00Z",
+          },
+        },
+      ],
+    };
+    server.use(
+      http.get(`${BASE}/api/v1/pacientes-por-citar`, () => HttpResponse.json(lista)),
+    );
+    renderPage();
+    await elegirProfesional();
+    expect(
+      await screen.findByText("No contesta · 15-10 · cvidal"),
+    ).toBeInTheDocument();
+  });
+
   it("avisa cuando el profesional no tiene disponibilidad", async () => {
     server.use(
       http.get(`${BASE}/api/v1/disponibilidad-profesional/:id`, () =>

@@ -83,9 +83,18 @@ function chipDia(fecha: string): string {
   return `${DIA_CORTO[new Date(y, m - 1, d).getDay()]} ${d}`;
 }
 
-/** Fecha/hora ISO -> "15-10" (día-mes). */
+const FORMATO_DIA_MES = new Intl.DateTimeFormat("es-CL", {
+  timeZone: "America/Santiago",
+  day: "2-digit",
+  month: "2-digit",
+});
+
+/** Fecha/hora ISO (UTC) -> "15-10" (día-mes) en hora de Santiago. */
 function diaMes(iso: string): string {
-  return `${iso.slice(8, 10)}-${iso.slice(5, 7)}`;
+  const partes = FORMATO_DIA_MES.formatToParts(new Date(iso));
+  const dia = partes.find((p) => p.type === "day")?.value ?? "";
+  const mes = partes.find((p) => p.type === "month")?.value ?? "";
+  return `${dia}-${mes}`;
 }
 
 function Th({ children }: { children: React.ReactNode }) {

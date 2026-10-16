@@ -16,12 +16,12 @@ import pytest
 
 from app.agendamiento.enums import PrioridadCita
 from app.agendamiento.models import DisponibilidadProf
-from app.agendamiento.service import crear_disponibilidad, obtener_propuesta
+from app.agendamiento.scheduler import _cupo_para_dia
+from app.agendamiento.service import _cargar_disponibilidad, crear_disponibilidad, obtener_propuesta
 
 HOY = date(2026, 7, 7)  # martes
 PROF_ID = 101
 PROF_NOMBRE = "Dr Test"
-PACIENTE_ID = 201
 
 
 @pytest.fixture(autouse=True)
@@ -30,14 +30,6 @@ def _profesional(db_session):
     from app.models.profesional import Profesional
     db_session.add(Profesional(id=PROF_ID, nombre=PROF_NOMBRE, origen="SIGE", activo=True))
     db_session.flush()
-
-
-def _insertar_disponibilidad_completa(db):
-    for dia in range(1, 6):
-        db.add(DisponibilidadProf(
-            profesional_id=PROF_ID, dia_semana=dia, cupo_diario=8, activo=True,
-        ))
-    db.flush()
 
 
 def _crear_paciente_e_ingreso(db, rut: str = "11222333-9"):
@@ -93,6 +85,19 @@ def test_crear_disponibilidad(db_session):
     assert dp.id is not None
     assert dp.cupo_diario == 6
     assert dp.activo is True
+
+
+def test_disponibilidad_duplicada_usa_la_fila_de_menor_id(db_session):
+    """Con filas activas duplicadas para el mismo día gana la de menor id (como el upsert)."""
+    # Se inserta primero la de id MAYOR: sin ORDER BY el scan devolvería esa antes que la de menor id.
+    base = 900_000_000
+    for id_, cupo in ((base + 2, 5), (base + 1, 1)):
+        db_session.add(DisponibilidadProf(
+            id=id_, profesional_id=PROF_ID, dia_semana=1, cupo_diario=cupo, activo=True,
+        ))
+        db_session.flush()
+    dias = _cargar_disponibilidad(db_session, PROF_ID)
+    assert _cupo_para_dia(dias, date(2026, 10, 19)) == 1  # lunes
 
 
 def test_obtener_propuesta_inexistente_retorna_none(db_session):

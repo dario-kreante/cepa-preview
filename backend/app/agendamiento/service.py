@@ -4,15 +4,13 @@ El SIGE ya no agenda: las horas se reservan en SALUTEM. Este módulo arma los ca
 "Pacientes por citar" (ver lista.py); el reparto de carga (reposo, prioridad, cupo) vive en
 scheduler.py. Solo sabe de modelos SQLAlchemy y del patrón de repositorio.
 
-Adaptaciones respecto al plan (Deviaciones 5-7):
-  - Tabla real: control_medico (no control). Columnas: ingreso_id, proximo_control,
-    medico_tratante. Sin paciente_id/profesional_id directos — se obtiene vía ingreso.
-  - Tabla real: licencia_medica (no licencia). Columnas: ingreso_id, inicio_reposo,
-    fin_reposo. Sin paciente_id directo — se obtiene vía ingreso.
-  - Tabla real: receta, ligada a reg_farmacologico.ingreso_id. Sin requiere_seguimiento
-    ni gestionada; se usa fecha_revision futura como proxy de seguimiento pendiente.
-  - profesional_id en DisponibilidadProf/PropuestaAgenda es el id del catálogo
-    `profesional` (migración 1340).
+Esquema real que se consulta:
+  - control_medico: ingreso_id, proximo_control, medico_tratante. No tiene paciente_id ni
+    profesional_id directos; el paciente se obtiene vía ingreso.
+  - licencia_medica: ingreso_id, inicio_reposo, fin_reposo. El paciente también sale vía ingreso.
+  - receta, ligada a reg_farmacologico.ingreso_id. No tiene requiere_seguimiento ni gestionada;
+    una fecha_revision futura hace de seguimiento pendiente.
+  - profesional_id en DisponibilidadProf es el id del catálogo `profesional` (migración 1340).
 
 Candidatos por profesional:
   control_medico y reg_farmacologico guardan al médico como texto (medico_tratante), no
@@ -37,6 +35,7 @@ from sqlalchemy.orm import Session
 
 from app.agendamiento.enums import PrioridadCita
 from app.agendamiento.models import DisponibilidadProf, PropuestaAgenda
+from app.agendamiento.salutem import _lotes
 from app.agendamiento.scheduler import (
     Candidato,
     DisponibilidadDia,
@@ -135,6 +134,8 @@ def _cargar_disponibilidad(db: Session, profesional_id: int) -> list[Disponibili
             DisponibilidadProf.profesional_id == profesional_id,
             DisponibilidadProf.activo == true(),
         )
+        # Con filas duplicadas legadas gana la de menor id, igual que el upsert de crear_disponibilidad.
+        .order_by(DisponibilidadProf.id)
     ).all()
     return [DisponibilidadDia(dia_semana=r.dia_semana, cupo=r.cupo_diario) for r in rows]
 
@@ -161,22 +162,22 @@ def _cargar_reposos_batch(
     if not paciente_ids:
         return {}
 
-    # Core ORM — portable Oracle/Postgres (D15): false() renderiza 0/FALSE según dialecto.
-    stmt = (
-        select(Ingreso.paciente_id, LicenciaMedica.inicio_reposo, LicenciaMedica.fin_reposo)
-        .join(Ingreso, Ingreso.id == LicenciaMedica.ingreso_id)
-        .where(
-            Ingreso.paciente_id.in_(list(paciente_ids)),
-            LicenciaMedica.anulada == false(),
-            LicenciaMedica.inicio_reposo <= fecha_fin,
-            LicenciaMedica.fin_reposo >= fecha_ini,
-        )
-    )
-    rows = db.execute(stmt).fetchall()
-
     resultado: dict[int, list[ReposoPaciente]] = {pid: [] for pid in paciente_ids}
-    for r in rows:
-        resultado[r[0]].append(ReposoPaciente(inicio=r[1], fin=r[2]))
+    # Core ORM — portable Oracle/Postgres (D15): false() renderiza 0/FALSE según dialecto.
+    # IN por lotes: Oracle no admite más de 1000 elementos en una lista IN.
+    for lote in _lotes(paciente_ids):
+        stmt = (
+            select(Ingreso.paciente_id, LicenciaMedica.inicio_reposo, LicenciaMedica.fin_reposo)
+            .join(Ingreso, Ingreso.id == LicenciaMedica.ingreso_id)
+            .where(
+                Ingreso.paciente_id.in_(lote),
+                LicenciaMedica.anulada == false(),
+                LicenciaMedica.inicio_reposo <= fecha_fin,
+                LicenciaMedica.fin_reposo >= fecha_ini,
+            )
+        )
+        for pid, inicio, fin in db.execute(stmt):
+            resultado[pid].append(ReposoPaciente(inicio=inicio, fin=fin))
     return resultado
 
 

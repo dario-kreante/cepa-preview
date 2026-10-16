@@ -103,20 +103,37 @@ def ocultos_por_agendada(
     return ocultos
 
 
-def ultima_agendada_por_profesional(
+def ultima_gestion_por_profesional(
     db: Session, profesional_id: int, paciente_ids: Collection[int]
-) -> dict[int, datetime]:
-    """Por paciente, el created_at de su gestión 'agendada_en_salutem' más reciente con ese profesional."""
-    resultado: dict[int, datetime] = {}
+) -> dict[int, GestionCitacion]:
+    """La última gestión (cualquier resultado) de cada paciente con ESE profesional.
+
+    Ante empate de created_at gana el id mayor. Portable: máximo por subconsulta, sin DISTINCT ON.
+    """
+    resultado: dict[int, GestionCitacion] = {}
     for lote in _lotes(paciente_ids):
-        filas = db.execute(
-            select(GestionCitacion.paciente_id, func.max(GestionCitacion.created_at))
+        maximo = (
+            select(
+                GestionCitacion.paciente_id.label("paciente_id"),
+                func.max(GestionCitacion.created_at).label("max_creado"),
+            )
             .where(
                 GestionCitacion.paciente_id.in_(lote),
                 GestionCitacion.profesional_id == profesional_id,
-                GestionCitacion.resultado == ResultadoGestion.AGENDADA_EN_SALUTEM.value,
             )
             .group_by(GestionCitacion.paciente_id)
+            .subquery()
         )
-        resultado.update({pid: creado for pid, creado in filas})
+        filas = db.scalars(
+            select(GestionCitacion)
+            .join(
+                maximo,
+                (GestionCitacion.paciente_id == maximo.c.paciente_id)
+                & (GestionCitacion.created_at == maximo.c.max_creado),
+            )
+            .where(GestionCitacion.profesional_id == profesional_id)
+            .order_by(GestionCitacion.id)
+        )
+        for g in filas:  # ordenadas por id: la última escritura por paciente es el id mayor
+            resultado[g.paciente_id] = g
     return resultado
