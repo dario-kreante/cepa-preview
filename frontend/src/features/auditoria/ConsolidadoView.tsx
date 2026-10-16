@@ -52,7 +52,7 @@ export function ConsolidadoView({ caso }: { caso: CasoConsolidadoRead }) {
               {datos_caso.nombre_completo}
             </h2>
             <p className="text-[12.5px] text-muted-foreground font-mono">
-              {datos_caso.rut}
+              {datos_caso.rut ?? "—"}
             </p>
           </div>
           <Badge variant="neutral">Solo lectura</Badge>

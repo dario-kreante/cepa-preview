@@ -20,7 +20,7 @@ class SeccionDatosCasoRead(BaseModel):
     tipo_denuncia: str | None
     fecha_derivacion: datetime.date | None
     nombre_completo: str
-    rut: str
+    rut: str | None
     region: str | None
 
 
@@ -127,7 +127,7 @@ class FilaReporteRead(BaseModel):
     ingreso_id: int
     folio: str
     numero_siniestro: str | None
-    rut: str
+    rut: str | None
     nombre_completo: str
     region: str | None
     fecha_denuncia: datetime.date | None

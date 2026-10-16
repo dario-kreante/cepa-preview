@@ -217,7 +217,7 @@ def descargar_reporte_csv(
             fila.ingreso_id,
             _sanitize_csv_cell(fila.folio),
             _sanitize_csv_cell(fila.numero_siniestro or ""),
-            _sanitize_csv_cell(fila.rut),
+            _sanitize_csv_cell(fila.rut or ""),
             _sanitize_csv_cell(fila.nombre_completo),
             _sanitize_csv_cell(fila.region or ""),
             fila.fecha_denuncia or "",

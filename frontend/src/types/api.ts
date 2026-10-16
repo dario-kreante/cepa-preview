@@ -3141,7 +3141,7 @@ export interface components {
             /** Numero Siniestro */
             numero_siniestro: string | null;
             /** Rut */
-            rut: string;
+            rut: string | null;
             /** Nombre Completo */
             nombre_completo: string;
             /** Region */
@@ -4476,7 +4476,7 @@ export interface components {
             /** Nombre Completo */
             nombre_completo: string;
             /** Rut */
-            rut: string;
+            rut: string | null;
             /** Region */
             region: string | null;
         };
