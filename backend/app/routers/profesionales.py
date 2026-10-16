@@ -13,6 +13,7 @@ from app.auth.deps import CurrentUser, require_role
 from app.db.session import get_db
 from app.models.profesional import Profesional
 from app.schemas.profesional import (
+    ActividadProfesionalRead,
     ImportacionSalutemResultado,
     ProfesionalCreate,
     ProfesionalRead,
@@ -33,6 +34,15 @@ def listar(
     _usuario: CurrentUser = Depends(_lector),
 ) -> list[Profesional]:
     return servicio.listar_profesionales(db, solo_activos=solo_activos)
+
+
+@router.get("/{profesional_id}/actividad", response_model=ActividadProfesionalRead)
+def actividad(
+    profesional_id: int,
+    db: Session = Depends(get_db),
+    _usuario: CurrentUser = Depends(_lector),
+) -> ActividadProfesionalRead:
+    return servicio.actividad_de_profesional(db, profesional_id)
 
 
 @router.post("", response_model=ProfesionalRead, status_code=status.HTTP_201_CREATED)
@@ -67,6 +77,9 @@ def importar_salutem(
     db: Session = Depends(get_db),
     actor: CurrentUser = Depends(_escritor),
 ) -> ImportacionSalutemResultado:
-    creados = servicio.importar_desde_salutem(db, actor.username, actor.role)
+    resultado = servicio.importar_desde_salutem(db, actor.username, actor.role)
     db.commit()
-    return ImportacionSalutemResultado(creados=creados)
+    return ImportacionSalutemResultado(
+        creados=resultado.creados, actualizados=resultado.actualizados,
+        adoptados=resultado.adoptados, vinculados=resultado.vinculados, errores=resultado.errores,
+    )
