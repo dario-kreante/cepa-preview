@@ -40,6 +40,22 @@ export async function actualizarIngreso(
   return data;
 }
 
+/** PUT /api/v1/ingresos/{id}/folio — corrige el folio (solo Administrativo). */
+export async function corregirFolio(ingresoId: number, folio: string): Promise<IngresoRead> {
+  const { data, error, response } = await api.PUT("/api/v1/ingresos/{ingreso_id}/folio", {
+    params: { path: { ingreso_id: ingresoId } },
+    body: { folio },
+  });
+  if (error || !data) {
+    if (response.status === 409) throw new Error(`El folio ${folio} ya está emitido para otro paciente.`);
+    if (response.status === 404) throw new Error("El ingreso ya no existe.");
+    if (response.status === 422) throw new Error("El folio no es válido (máximo 30 caracteres).");
+    if (response.status === 403) throw new Error("Solo una Administrativa puede corregir el folio.");
+    throw new Error("El servidor no respondió. Intenta nuevamente.");
+  }
+  return data;
+}
+
 export async function listarFichasClinicas(folio: string): Promise<FichaClinicaRead[]> {
   const { data, error } = await api.GET("/api/v1/fichas-clinicas/{folio}", {
     params: { path: { folio } },

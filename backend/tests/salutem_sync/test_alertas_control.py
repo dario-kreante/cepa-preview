@@ -183,3 +183,110 @@ def test_el_actor_de_la_alerta_es_el_mismo_del_resto_del_sync(db_session):
 
     actores = set(db_session.scalars(select(AuditLog.actor).where(AuditLog.entity == "alerta_notif")))
     assert actores == {"sistema:salutem-sync"}
+
+
+def test_un_control_que_gana_licencia_en_la_revinculacion_alerta(db_session):
+    """Caso real de QA (15-10-2026): el control quedó sin licencia porque el extractor no
+    reconocía "Reposo por 15 días"; al reconocerla, la re-vinculación completa alerta."""
+    _ingreso(db_session)
+    _atencion(db_session, 7010, antecedentes=[
+        {"nombre": "Indicación de reposo", "registro": "Reposo por 15 días desde el 10/09/2026"}])
+    vincular(db_session, AHORA)
+    [control] = db_session.scalars(select(ControlMedico)).all()
+    # Como lo dejó el extractor anterior: sin licencia y sin alerta.
+    control.tiene_licencia = False
+    for a in _alertas(db_session):
+        db_session.delete(a)
+    db_session.flush()
+
+    vincular(db_session, AHORA, todo=True)  # la atención no cambió en SALUTEM
+
+    assert control.tiene_licencia is True
+    assert [a.tipo for a in _alertas(db_session)] == ["licencia_en_control"]
+
+
+def test_la_revinculacion_sin_cambios_no_repite_alertas(db_session):
+    _ingreso(db_session)
+    _atencion(db_session, 7011, **LICENCIA)
+    vincular(db_session, AHORA)
+    [a] = _alertas(db_session)
+    a.estado = "resuelta"
+    db_session.flush()
+
+    vincular(db_session, AHORA, todo=True)
+
+    assert [x.estado for x in _alertas(db_session)] == ["resuelta"]
+
+
+# ── Atenciones médicas que no son control (Evaluación médica, psiquiátrica) ──────
+
+EVALUACION = {"especialidadNombre": "Evaluación médica"}
+REPOSO = {"antecedentes": [{"nombre": "Indicación de reposo",
+                            "registro": "Reposo por 15 días desde el 10/09/2026"}]}
+
+
+def test_evaluacion_medica_con_licencia_alerta_aunque_no_sea_control(db_session):
+    """Caso real de QA (15-10-2026): la licencia se emitió en una Evaluación médica."""
+    _ingreso(db_session)
+    _atencion(db_session, 7020, **EVALUACION, **REPOSO)
+
+    vincular(db_session, AHORA)
+
+    assert db_session.scalars(select(ControlMedico)).all() == []
+    [a] = _alertas(db_session)
+    assert (a.tipo, a.caso_tipo, a.caso_id, a.estado) == ("licencia_en_control", "salutem_atencion", 7020, "pendiente")
+    assert a.plazo_objetivo.astimezone(timezone.utc).date() == date(2026, 9, 10)
+
+
+def test_evaluacion_psiquiatrica_con_receta_alerta(db_session):
+    _ingreso(db_session)
+    _atencion(db_session, 7021, especialidadNombre="Evaluación psiquiátrica", **RECETA)
+
+    vincular(db_session, AHORA)
+
+    assert [(a.tipo, a.caso_tipo) for a in _alertas(db_session)] == [("receta_en_control", "salutem_atencion")]
+
+
+def test_la_atencion_no_medica_no_alerta(db_session):
+    _ingreso(db_session)
+    _atencion(db_session, 7022, especialidadNombre="Psicología", **REPOSO, **RECETA)
+
+    vincular(db_session, AHORA)
+
+    assert _alertas(db_session) == []
+
+
+def test_la_alerta_de_la_atencion_no_se_repite_ni_reaparece(db_session):
+    _ingreso(db_session)
+    _atencion(db_session, 7023, **EVALUACION, **REPOSO)
+    vincular(db_session, AHORA)
+    [a] = _alertas(db_session)
+    a.estado = "resuelta"
+    db_session.flush()
+    _atencion(db_session, 7023, **EVALUACION, **REPOSO, evolucionTratamiento=[{"nombre": "E", "registro": "cambio"}])
+
+    vincular(db_session, AHORA)
+    vincular(db_session, AHORA, todo=True)
+
+    assert [x.estado for x in _alertas(db_session)] == ["resuelta"]
+
+
+def test_al_anularse_la_evaluacion_su_alerta_queda_resuelta(db_session):
+    _ingreso(db_session)
+    _atencion(db_session, 7024, **EVALUACION, **REPOSO)
+    vincular(db_session, AHORA)
+    _atencion(db_session, 7024, estado=int(EstadoCitaSalutem.ANULADO), **EVALUACION, **REPOSO)
+
+    vincular(db_session, AHORA)
+
+    [a] = _alertas(db_session)
+    assert a.estado == "resuelta"
+
+
+def test_una_evaluacion_antigua_no_alerta(db_session):
+    _ingreso(db_session)
+    _atencion(db_session, 7025, fecha="2026-08-20", **EVALUACION, **REPOSO)
+
+    vincular(db_session, AHORA, todo=True)
+
+    assert _alertas(db_session) == []

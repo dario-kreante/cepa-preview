@@ -30,6 +30,7 @@ import {
 import type { LicenciaRead, ControlMedicoRead, RecetaRead, OdaRead } from "./api";
 import { SalutemTab } from "./SalutemTab";
 import { EditarFichaDialog } from "./EditarFichaDialog";
+import { FolioCard } from "./FolioCard";
 import { AltaLicenciaDialog } from "@/features/licencias/AltaLicenciaDialog";
 import { NuevoControlDialog } from "@/features/controles/NuevoControlDialog";
 
@@ -547,6 +548,15 @@ export function PatientSheet({
                       value={vista.paciente.comuna}
                     />
                   </div>
+
+                  {primaryIngreso?.folio && (
+                    <FolioCard
+                      pacienteId={vista.paciente.id}
+                      ingresoId={primaryIngreso.id}
+                      folio={primaryIngreso.folio}
+                      editable={rol === "Administrativo"}
+                    />
+                  )}
 
                   {primaryIngreso && (
                     <Card>

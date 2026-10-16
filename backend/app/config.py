@@ -111,6 +111,9 @@ class Settings(BaseSettings):
     # Especialidades de SALUTEM cuya atención "Atendido" es un control médico del CEPA,
     # separadas por coma (sin distinguir mayúsculas).
     salutem_especialidades_control: str = "Médico/a,Primera consulta médica EP"
+    # Otras especialidades médicas cuya atención no es control pero alerta si el médico
+    # emitió una licencia o una receta, separadas por coma.
+    salutem_especialidades_alerta: str = "Evaluación médica,Evaluación psiquiátrica"
     # Fecha ISO (AAAA-MM-DD): las personas atendidas en SALUTEM desde ese día y sin paciente
     # en el SIGE reciben un paciente borrador pendiente de folio. Vacía = no se crean.
     salutem_borradores_desde: str = ""
@@ -131,6 +134,12 @@ class Settings(BaseSettings):
     def salutem_especialidades_control_set(self) -> frozenset[str]:
         return frozenset(
             x.strip().casefold() for x in self.salutem_especialidades_control.split(",") if x.strip()
+        )
+
+    @property
+    def salutem_especialidades_alerta_set(self) -> frozenset[str]:
+        return frozenset(
+            x.strip().casefold() for x in self.salutem_especialidades_alerta.split(",") if x.strip()
         )
 
     @property

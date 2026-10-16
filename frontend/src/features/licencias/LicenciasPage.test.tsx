@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { http, HttpResponse } from "msw";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -41,6 +41,24 @@ function renderPage(token = FAKE_TOKEN) {
 }
 
 const FOLIO = "FOLIO-001";
+
+// La página busca pacientes (RUT, folio, nombre o ID SALUTEM) y lista las licencias del
+// folio del ingreso principal: con un solo resultado se abre directo.
+beforeEach(() => {
+  server.use(
+    http.get(`${BASE}/api/v1/pacientes/buscar`, () =>
+      HttpResponse.json([
+        {
+          id: 1, rut: "123456785", nombre: "Juan Pérez", sexo: "M", edad: 40, region: "Maule",
+          comuna: null, telefono: null, correo: null, estado_registro: "completo", origen: "SIGE",
+        },
+      ]),
+    ),
+    http.get(`${BASE}/api/v1/pacientes/:id/vista-360`, () =>
+      HttpResponse.json({ paciente: { id: 1, nombre: "Juan Pérez" }, ingresos: [{ id: 5, folio: FOLIO }] }),
+    ),
+  );
+});
 
 const MOCK_SLIM_LICENCIA = {
   id: 10,
@@ -111,7 +129,7 @@ describe("LicenciasPage", () => {
     );
 
     renderPage();
-    fireEvent.change(screen.getByPlaceholderText("Buscar por folio"), {
+    fireEvent.change(screen.getByPlaceholderText("Buscar por RUT, folio, nombre o ID SALUTEM"), {
       target: { value: FOLIO },
     });
 
@@ -142,14 +160,14 @@ describe("LicenciasPage", () => {
   it("muestra el prompt inicial cuando no hay folio ingresado", async () => {
     renderPage();
     expect(
-      await screen.findByText(/Ingresa un folio para ver sus licencias/i)
+      await screen.findByText(/Escribe un RUT, folio, nombre o ID SALUTEM/i)
     ).toBeInTheDocument();
   });
 
   it("tiene el placeholder exacto requerido", () => {
     renderPage();
     expect(
-      screen.getByPlaceholderText("Buscar por folio")
+      screen.getByPlaceholderText("Buscar por RUT, folio, nombre o ID SALUTEM")
     ).toBeInTheDocument();
   });
 
@@ -160,7 +178,7 @@ describe("LicenciasPage", () => {
 
   it("NO muestra 'Nueva licencia' para Auditor", async () => {
     renderPage(AUDITOR_TOKEN);
-    await screen.findByText(/Ingresa un folio/i);
+    await screen.findByText(/Escribe un RUT, folio, nombre o ID SALUTEM/i);
     expect(screen.queryByRole("button", { name: /Nueva licencia/i })).not.toBeInTheDocument();
   });
 
@@ -180,7 +198,7 @@ describe("LicenciasPage", () => {
     );
 
     renderPage();
-    const input = screen.getByPlaceholderText("Buscar por folio");
+    const input = screen.getByPlaceholderText("Buscar por RUT, folio, nombre o ID SALUTEM");
     // Use fireEvent.change to fire a single change event; the debounce then fires after 400ms
     fireEvent.change(input, { target: { value: FOLIO } });
 
@@ -218,7 +236,7 @@ describe("LicenciasPage", () => {
     );
 
     renderPage();
-    const input = screen.getByPlaceholderText("Buscar por folio");
+    const input = screen.getByPlaceholderText("Buscar por RUT, folio, nombre o ID SALUTEM");
     fireEvent.change(input, { target: { value: FOLIO } });
 
     // Estado badge and "Vigente (Xd)" vence-en badge both contain "Vigente"
@@ -252,7 +270,7 @@ describe("LicenciasPage", () => {
     );
 
     renderPage();
-    const input = screen.getByPlaceholderText("Buscar por folio");
+    const input = screen.getByPlaceholderText("Buscar por RUT, folio, nombre o ID SALUTEM");
     fireEvent.change(input, { target: { value: FOLIO } });
 
     // Expect any "Vence en Xd" badge (warning = amber, between 3-7 days)
@@ -264,7 +282,7 @@ describe("LicenciasPage", () => {
     );
   });
 
-  it("muestra 'Sin licencias para este folio' cuando historial está vacío", async () => {
+  it("muestra 'Sin licencias para este paciente' cuando historial está vacío", async () => {
     server.use(
       http.get(`${BASE}/api/v1/licencias/folio/:folio`, () =>
         HttpResponse.json({ folio: "X-999", historial: [], dias_acumulados: 0 })
@@ -272,12 +290,12 @@ describe("LicenciasPage", () => {
     );
 
     renderPage();
-    const input = screen.getByPlaceholderText("Buscar por folio");
+    const input = screen.getByPlaceholderText("Buscar por RUT, folio, nombre o ID SALUTEM");
     fireEvent.change(input, { target: { value: "X-999" } });
 
     await waitFor(
       () => {
-        expect(screen.getByText(/Sin licencias para este folio/i)).toBeInTheDocument();
+        expect(screen.getByText(/Sin licencias para este paciente/i)).toBeInTheDocument();
       },
       { timeout: 8000 }
     );
@@ -299,7 +317,7 @@ describe("LicenciasPage", () => {
     );
 
     renderPage();
-    const input = screen.getByPlaceholderText("Buscar por folio");
+    const input = screen.getByPlaceholderText("Buscar por RUT, folio, nombre o ID SALUTEM");
     fireEvent.change(input, { target: { value: FOLIO } });
 
     await waitFor(
@@ -319,5 +337,66 @@ describe("LicenciasPage", () => {
     // The selects exist in DOM even before search
     expect(screen.getByDisplayValue("Reposo: Todos")).toBeInTheDocument();
     expect(screen.getByDisplayValue("ISL: Todos")).toBeInTheDocument();
+  });
+});
+
+describe("LicenciasPage · buscador de pacientes", () => {
+  const PACIENTE = {
+    rut: null, sexo: "F", edad: 30, region: "Maule", comuna: null, telefono: null,
+    correo: null, estado_registro: "completo", origen: "SIGE",
+  };
+
+  it("con varios pacientes se elige uno y se ven las licencias de su folio", async () => {
+    let buscado = "";
+    let folioPedido = "";
+    server.use(
+      http.get(`${BASE}/api/v1/pacientes/buscar`, ({ request }) => {
+        buscado = new URL(request.url).searchParams.get("q") ?? "";
+        return HttpResponse.json([
+          { ...PACIENTE, id: 1, nombre: "María Soto" },
+          { ...PACIENTE, id: 2, nombre: "María Rojas" },
+        ]);
+      }),
+      http.get(`${BASE}/api/v1/pacientes/:id/vista-360`, ({ params }) =>
+        HttpResponse.json({
+          paciente: { id: Number(params.id) },
+          ingresos: [{ id: 7, folio: params.id === "2" ? "F-ROJAS" : "F-SOTO" }],
+        }),
+      ),
+      http.get(`${BASE}/api/v1/licencias/folio/:folio`, ({ params }) => {
+        folioPedido = String(params.folio);
+        return HttpResponse.json({
+          folio: params.folio,
+          ingreso_id: 7,
+          historial: [MOCK_SLIM_LICENCIA],
+          dias_acumulados: 14,
+        });
+      }),
+    );
+
+    renderPage();
+    fireEvent.change(screen.getByPlaceholderText("Buscar por RUT, folio, nombre o ID SALUTEM"), {
+      target: { value: "maría" },
+    });
+    fireEvent.click(await screen.findByText("María Rojas", {}, { timeout: 4000 }));
+
+    expect(await screen.findByText("LM-00001", {}, { timeout: 4000 })).toBeInTheDocument();
+    expect(buscado).toBe("maría");
+    expect(folioPedido).toBe("F-ROJAS");
+  });
+
+  it("un paciente sin ingresos lo dice en vez de quedarse vacío", async () => {
+    server.use(
+      http.get(`${BASE}/api/v1/pacientes/:id/vista-360`, () =>
+        HttpResponse.json({ paciente: { id: 1 }, ingresos: [] }),
+      ),
+    );
+    renderPage();
+    fireEvent.change(screen.getByPlaceholderText("Buscar por RUT, folio, nombre o ID SALUTEM"), {
+      target: { value: "sin_id_123" },
+    });
+    expect(
+      await screen.findByText("Este paciente no tiene ingresos registrados.", {}, { timeout: 4000 }),
+    ).toBeInTheDocument();
   });
 });
