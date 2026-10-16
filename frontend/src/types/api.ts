@@ -2305,6 +2305,10 @@ export interface components {
             profesional: string | null;
             /** Indicacion Licencia */
             indicacion_licencia: string | null;
+            /** Tipo Reposo */
+            tipo_reposo?: string | null;
+            /** Gaf Tramo */
+            gaf_tramo?: string | null;
         };
         /** AuditLogRead */
         AuditLogRead: {
@@ -3711,6 +3715,8 @@ export interface components {
             diagnostico: string;
             /** @default sistema */
             origen: components["schemas"]["OrigenLicencia"];
+            /** Eeag Gaf Tramo */
+            eeag_gaf_tramo?: string | null;
         };
         /**
          * LicenciaISLUpdate
@@ -3757,6 +3763,8 @@ export interface components {
             termino_calculado: boolean;
             /** Cantidad Dias */
             cantidad_dias: number | null;
+            /** Eeag Gaf Tramo */
+            eeag_gaf_tramo?: string | null;
             /** Avisos */
             avisos: string[];
             /** Ya Registrada */

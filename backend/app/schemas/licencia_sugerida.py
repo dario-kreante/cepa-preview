@@ -26,5 +26,7 @@ class LicenciaSugeridaRead(BaseModel):
     fecha_termino: date | None
     termino_calculado: bool
     cantidad_dias: int | None
+    # Tramo del campo "GAF" de la atención ("41-50"), para precargar la licencia.
+    eeag_gaf_tramo: str | None = None
     avisos: list[str]
     ya_registrada: bool

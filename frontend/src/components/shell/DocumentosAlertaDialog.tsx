@@ -117,9 +117,11 @@ function DetalleControl({ controlId }: { controlId: number }) {
       <p>
         Control del {fecha(control.fecha_control)} · {control.medico_tratante}
       </p>
-      {control.resumen_termino_lm && (
-        <p className="rounded-md bg-muted/40 p-2">{control.resumen_termino_lm}</p>
-      )}
+      <CamposReposo
+        indicacion={control.resumen_termino_lm}
+        tipo={control.tipo_reposo}
+        gaf={control.gaf_tramo ?? (control.gaf != null ? String(control.gaf) : null)}
+      />
       <DocumentosSalutem controlId={control.id} />
     </div>
   );
@@ -141,9 +143,11 @@ function DetalleAtencion({ citaId }: { citaId: number }) {
         {atencion.especialidad ?? "Atención"} del {fecha(atencion.fecha)}
         {atencion.profesional ? ` · ${atencion.profesional}` : ""}
       </p>
-      {atencion.indicacion_licencia && (
-        <p className="rounded-md bg-muted/40 p-2">{atencion.indicacion_licencia}</p>
-      )}
+      <CamposReposo
+        indicacion={atencion.indicacion_licencia}
+        tipo={atencion.tipo_reposo}
+        gaf={atencion.gaf_tramo}
+      />
       <DocumentosSalutem citaId={atencion.cita_id} />
     </div>
   );
@@ -235,5 +239,35 @@ function Gestion({
         </Button>
       )}
     </section>
+  );
+}
+
+const TIPO_REPOSO: Record<string, string> = { total: "Total", parcial: "Parcial" };
+
+/** El ítem "Indicación de reposo" de la ficha de SALUTEM: indicación, tipo de reposo y GAF. */
+function CamposReposo({
+  indicacion,
+  tipo,
+  gaf,
+}: {
+  indicacion: string | null | undefined;
+  tipo: string | null | undefined;
+  gaf: string | null | undefined;
+}) {
+  if (!indicacion && !tipo && !gaf) return null;
+  const filas: Array<[string, string]> = [
+    ["Indicación de reposo", indicacion || "—"],
+    ["Tipo de reposo", (tipo && (TIPO_REPOSO[tipo.toLowerCase()] ?? tipo)) || "—"],
+    ["GAF", gaf || "—"],
+  ];
+  return (
+    <dl className="grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1 rounded-md bg-muted/40 p-2">
+      {filas.map(([k, v]) => (
+        <div key={k} className="contents">
+          <dt className="text-muted-foreground">{k}</dt>
+          <dd>{v}</dd>
+        </div>
+      ))}
+    </dl>
   );
 }

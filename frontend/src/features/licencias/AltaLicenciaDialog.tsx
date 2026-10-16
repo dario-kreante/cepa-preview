@@ -16,6 +16,7 @@
  *   origen:      "sistema" | "extra_sistema"
  */
 import { useEffect } from "react";
+import { GafTramoSelect } from "@/features/gaf-tramos/GafTramoSelect";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
@@ -73,6 +74,7 @@ export function AltaLicenciaDialog({ folio, ingresoId, open, onOpenChange, suger
     handleSubmit,
     reset,
     setValue,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<LicenciaForm>({
     resolver: zodResolver(licenciaSchema),
@@ -115,6 +117,7 @@ export function AltaLicenciaDialog({ folio, ingresoId, open, onOpenChange, suger
       origen: values.origen,
       folio_lm: values.folio_lm?.trim() || undefined,
       indicacion_reposo: values.indicacion_reposo?.trim() || undefined,
+      eeag_gaf_tramo: values.eeag_gaf_tramo?.trim() || undefined,
     };
 
     try {
@@ -315,6 +318,21 @@ export function AltaLicenciaDialog({ folio, ingresoId, open, onOpenChange, suger
               <span className="text-[11px] text-muted-foreground font-normal">(opcional)</span>
             </Label>
             <Input id="indicacion_reposo" type="text" {...register("indicacion_reposo")} />
+          </div>
+
+          {/* eeag_gaf_tramo (optional) — catálogo de tramos (v5 D18) */}
+          <div>
+            <Label htmlFor="eeag_gaf_tramo">
+              Tramo de GAF/EEAG{" "}
+              <span className="text-[11px] text-muted-foreground font-normal">(opcional)</span>
+            </Label>
+            {/* Controlado: las opciones llegan después del reset y un select no controlado
+                perdería el tramo precargado desde SALUTEM. */}
+            <GafTramoSelect
+              id="eeag_gaf_tramo"
+              value={watch("eeag_gaf_tramo") ?? ""}
+              onChange={(e) => setValue("eeag_gaf_tramo", e.target.value)}
+            />
           </div>
 
           {/* origen */}

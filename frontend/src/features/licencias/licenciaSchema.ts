@@ -52,6 +52,9 @@ export const licenciaSchema = z
 
     indicacion_reposo: z.string().trim().optional().or(z.literal("")),
 
+    // Tramo de GAF/EEAG del catálogo ("41-50"); "" = sin tramo.
+    eeag_gaf_tramo: z.string().trim().optional().or(z.literal("")),
+
     diagnostico: z
       .string()
       .trim()

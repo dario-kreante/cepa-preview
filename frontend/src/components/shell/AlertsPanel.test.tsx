@@ -57,6 +57,8 @@ describe("AlertsPanel: alertas de licencia del control", () => {
           medico_tratante: "DRA. PAULA ROJAS",
           tiene_licencia: true,
           resumen_termino_lm: "LM tipo 6 por 30 días",
+          tipo_reposo: "parcial",
+          gaf_tramo: "41-50",
           origen: "SALUTEM",
         }),
       ),
@@ -80,6 +82,8 @@ describe("AlertsPanel: alertas de licencia del control", () => {
     const dialogo = await screen.findByRole("dialog");
     expect(await within(dialogo).findByText(/DRA\. PAULA ROJAS/)).toBeInTheDocument();
     expect(within(dialogo).getByText(/LM tipo 6 por 30 días/)).toBeInTheDocument();
+    expect(within(dialogo).getByText("Tipo de reposo").nextSibling).toHaveTextContent("Parcial");
+    expect(within(dialogo).getByText("GAF").nextSibling).toHaveTextContent("41-50");
     expect(await within(dialogo).findByText("LICENCIA.pdf")).toBeInTheDocument();
     expect(within(dialogo).getByRole("button", { name: /ir a controles/i })).toBeInTheDocument();
   });
@@ -422,6 +426,8 @@ describe("AlertsPanel: licencia emitida en una atención médica que no es contr
           especialidad: "Evaluación médica",
           profesional: "DRA. PAULA ROJAS",
           indicacion_licencia: "Reposo por 15 días desde el 15/10/2026",
+          tipo_reposo: "Total",
+          gaf_tramo: "51-60",
         }),
       ),
       http.get(`${BASE}/api/v1/salutem/atenciones/16625886/archivos`, () =>
@@ -439,6 +445,9 @@ describe("AlertsPanel: licencia emitida en una atención médica que no es contr
     const dialogo = await screen.findByRole("dialog");
     expect(await within(dialogo).findByText(/Evaluación médica del 15-10-2026 · DRA\. PAULA ROJAS/)).toBeInTheDocument();
     expect(within(dialogo).getByText("Reposo por 15 días desde el 15/10/2026")).toBeInTheDocument();
+    // El ítem "Indicación de reposo" completo: indicación, tipo de reposo y GAF.
+    expect(within(dialogo).getByText("Tipo de reposo").nextSibling).toHaveTextContent("Total");
+    expect(within(dialogo).getByText("GAF").nextSibling).toHaveTextContent("51-60");
     expect(await within(dialogo).findByText("LICENCIA.pdf")).toBeInTheDocument();
     expect(within(dialogo).queryByRole("button", { name: /ir a controles/i })).not.toBeInTheDocument();
   });
@@ -474,6 +483,7 @@ describe("AlertsPanel: gestionar la alerta desde el diálogo", () => {
     fecha_termino: "2026-10-29",
     termino_calculado: true,
     cantidad_dias: 15,
+    eeag_gaf_tramo: "51-60",
     avisos: [],
     ya_registrada: false,
   };
@@ -519,6 +529,9 @@ describe("AlertsPanel: gestionar la alerta desde el diálogo", () => {
     await userEvent.click(botones[0]);
     expect(await screen.findByText("Nueva licencia médica")).toBeInTheDocument();
     expect(screen.getByText(/Datos sugeridos desde SALUTEM/)).toBeInTheDocument();
+    // GAF e indicación de reposo vienen precargados desde la atención.
+    await vi.waitFor(() => expect(screen.getByLabelText(/Tramo de GAF/)).toHaveValue("51-60"));
+    expect(screen.getByLabelText(/Indicación de reposo/)).toHaveValue("Reposo por 15 días desde el 15/10/2026");
   });
 
   it("si la licencia ya está registrada lo dice y no ofrece registrarla", async () => {
