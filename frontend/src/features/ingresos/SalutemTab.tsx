@@ -2,7 +2,8 @@ import { useState } from "react";
 import { AlertTriangle, CheckCircle2, CloudDownload, FileText, Loader2, Stethoscope } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { AltaLicenciaDialog, type SugerenciaLicencia } from "@/features/licencias/AltaLicenciaDialog";
+import { AltaLicenciaDialog } from "@/features/licencias/AltaLicenciaDialog";
+import { aSugerencia } from "@/features/licencias/sugerencia";
 import { useImportarSalutem, useLicenciasSugeridas } from "./hooks";
 import type { FichaClinicaRead, LicenciaSugeridaRead } from "./api";
 
@@ -31,23 +32,6 @@ function periodo(s: LicenciaSugeridaRead): string | null {
   if (s.fecha_termino) return `Hasta el ${fechaCorta(s.fecha_termino)}`;
   if (s.fecha_inicio) return `Desde el ${fechaCorta(s.fecha_inicio)}`;
   return null;
-}
-
-/** Lo que la indicación dice pasa al alta; el reposo parte igual que la licencia. */
-function aSugerencia(s: LicenciaSugeridaRead): SugerenciaLicencia {
-  return {
-    valores: {
-      tipo_lm: s.tipo_lm ?? undefined,
-      tipo_reposo: s.tipo_reposo ?? undefined,
-      fecha_inicio: s.fecha_inicio ?? undefined,
-      fecha_termino: s.fecha_termino ?? undefined,
-      inicio_reposo: s.fecha_inicio ?? undefined,
-      fin_reposo: s.fecha_termino ?? undefined,
-      cantidad_dias: s.cantidad_dias ?? undefined,
-      origen: s.origen,
-    },
-    avisos: s.avisos,
-  };
 }
 
 function LicenciasDetectadas({

@@ -28,6 +28,8 @@ class LicenciaCreate(BaseModel):
     indicacion_reposo: str | None = None
     diagnostico: str
     origen: OrigenLicencia = OrigenLicencia.SISTEMA
+    # Tramo del catálogo gaf_tramo (v5 D18), p. ej. el GAF de la atención de SALUTEM.
+    eeag_gaf_tramo: str | None = Field(default=None, max_length=10)
 
     @model_validator(mode="after")
     def _validar_coherencia_fechas(self) -> "LicenciaCreate":

@@ -555,6 +555,12 @@ export function AlertsPanel({ onClose }: AlertsPanelProps = {}) {
         titulo={alertaControl ? tituloAlerta(alertaControl.tipo, alertaControl.caso_tipo) : ""}
         caso={casoAbierto}
         onOpenChange={(open) => !open && setAlertaControl(null)}
+        alertaId={alertaControl?.id ?? null}
+        tipoAlerta={alertaControl?.tipo}
+        pendiente={alertaControl ? alertaControl.estado !== "resuelta" : false}
+        puedeGestionar={escritor}
+        onResolver={alertaControl ? () => cambiarEstado(alertaControl, "resuelta") : undefined}
+        onIr={ir}
       />
     </aside>
   );
