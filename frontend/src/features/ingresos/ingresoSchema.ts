@@ -8,7 +8,7 @@ export const ingresoSchema = z.object({
     .min(1, "Requerido")
     .refine((v) => v === "" || rutValido(v), "RUT inválido"),
   nombre: z.string().min(1, "Requerido"),
-  sexo: z.enum(["F", "M", "otro"]),
+  sexo: z.enum(["F", "M", "otro"], { errorMap: () => ({ message: "Requerido" }) }),
   // El input entrega texto: "" es "falta el dato", no un 0.
   edad: z.preprocess(
     (v) => (typeof v === "string" && v.trim() === "" ? undefined : v),
@@ -26,6 +26,17 @@ export const ingresoSchema = z.object({
   fecha_ingreso: z.string().min(1, "Requerido"),
   folio: z.string().optional(),
   es_reingreso: z.boolean().default(false),
+});
+
+/**
+ * Completar un borrador de SALUTEM que no trae RUT: el RUT es opcional (si se escribe,
+ * se valida igual). Si el borrador ya trae RUT se usa `ingresoSchema`.
+ */
+export const ingresoSinRutSchema = ingresoSchema.extend({
+  rut: z
+    .string()
+    .optional()
+    .refine((v) => !v || rutValido(v), "RUT inválido"),
 });
 
 export type IngresoForm = z.infer<typeof ingresoSchema>;

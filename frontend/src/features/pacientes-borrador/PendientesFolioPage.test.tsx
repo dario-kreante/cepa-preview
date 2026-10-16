@@ -32,7 +32,7 @@ const BORRADOR = {
   salutem_persona_id: 1141409,
   creado_en: "2026-10-16T09:00:00Z",
   primera_atencion: "2026-10-15",
-  ultima_atencion: "2026-10-15",
+  ultima_atencion: "2026-10-17",
   atenciones: 1,
   especialidades: ["Médico/a"],
 };
@@ -92,7 +92,9 @@ describe("PendientesFolioPage", () => {
 
     expect(await screen.findByText("JUAN PEREZ SOTO")).toBeInTheDocument();
     expect(screen.getByText("sin_id_1141409")).toBeInTheDocument();
-    expect(screen.getAllByText("15-10-2026").length).toBeGreaterThan(0);
+    expect(screen.getByRole("columnheader", { name: "Última atención" })).toBeInTheDocument();
+    expect(screen.getByText("15-10-2026")).toBeInTheDocument();
+    expect(screen.getByText("17-10-2026")).toBeInTheDocument();
     expect(screen.getByText("Médico/a")).toBeInTheDocument();
   });
 

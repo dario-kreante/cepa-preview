@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   buscarPacientes,
+  obtenerPaciente,
   crearIngreso,
   obtenerVista360,
   obtenerLicenciasPorIngreso,
@@ -51,6 +52,14 @@ export function useBuscarPacientes(q: string) {
     queryKey: ["pacientes", "buscar", q],
     queryFn: () => buscarPacientes(q),
     enabled: q.trim().length > 0,
+  });
+}
+
+export function usePaciente(id: number | null) {
+  return useQuery({
+    queryKey: ["pacientes", id, "ficha"],
+    queryFn: () => obtenerPaciente(id!),
+    enabled: id !== null,
   });
 }
 

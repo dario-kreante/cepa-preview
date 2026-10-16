@@ -42,7 +42,7 @@ export function PendientesFolioPage() {
           <table className="w-full text-[13px]">
             <thead className="bg-muted/50 text-muted-foreground">
               <tr>
-                {["Paciente", "Identificación SALUTEM", "Primera atención", "Atenciones", "Especialidad", ""].map(
+                {["Paciente", "Identificación SALUTEM", "Primera atención", "Última atención", "Atenciones", "Especialidad", ""].map(
                   (h) => (
                     <th
                       key={h || "acciones"}
@@ -60,6 +60,7 @@ export function PendientesFolioPage() {
                   <td className="px-4 py-3 font-medium">{p.nombre}</td>
                   <td className="px-4 py-3">{p.rut ?? p.identificacion_salutem ?? "—"}</td>
                   <td className="px-4 py-3">{fechaDMA(p.primera_atencion)}</td>
+                  <td className="px-4 py-3">{fechaDMA(p.ultima_atencion)}</td>
                   <td className="px-4 py-3">{p.atenciones}</td>
                   <td className="px-4 py-3">
                     {p.especialidades.length > 0 ? p.especialidades.join(", ") : "—"}

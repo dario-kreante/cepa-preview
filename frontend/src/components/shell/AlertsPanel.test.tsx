@@ -3,7 +3,7 @@ import { http, HttpResponse } from "msw";
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { server } from "@/test/msw/server";
 import { AuthProvider } from "@/lib/auth/AuthContext";
 import { tokenStore } from "@/lib/tokenStore";
@@ -16,6 +16,10 @@ describe("tituloAlerta", () => {
   it("nombra las alertas de licencia y receta del control", () => {
     expect(tituloAlerta("licencia_en_control")).toBe("Licencia emitida en control");
     expect(tituloAlerta("receta_en_control")).toBe("Receta emitida en control");
+  });
+
+  it("nombra la alerta de paciente nuevo pendiente de folio", () => {
+    expect(tituloAlerta("paciente_pendiente_folio")).toBe("Paciente nuevo pendiente de folio");
   });
 
   it("los demás tipos conservan su título derivado", () => {
@@ -282,5 +286,51 @@ describe("AlertsPanel: leída al verla y resolver", () => {
     mostrarTodo(true);
     await esperarVisible(1600);
     expect(cambios).toEqual([]);
+  });
+});
+
+describe("AlertsPanel: paciente pendiente de folio", () => {
+  it("se titula 'Paciente nuevo pendiente de folio' y al hacer clic navega a /pendientes-folio", async () => {
+    tokenStore.setAccess(TOKENS.Administrativo);
+    server.use(
+      http.get(`${BASE}/api/v1/alertas`, () =>
+        HttpResponse.json([
+          {
+            id: 9,
+            tipo: "paciente_pendiente_folio",
+            estado: "pendiente",
+            caso_id: 7,
+            caso_tipo: "paciente",
+            usuario_id: null,
+            plazo_objetivo: null,
+            ventana_dias: 0,
+            generada_en: "2026-10-16T09:00:00Z",
+            resuelta_en: null,
+            email_enviado: false,
+          },
+        ]),
+      ),
+      http.get(`${BASE}/api/v1/tareas`, () => HttpResponse.json([])),
+    );
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={qc}>
+        <MemoryRouter initialEntries={["/"]}>
+          <AuthProvider>
+            <Routes>
+              <Route path="/" element={<AlertsPanel />} />
+              <Route path="/pendientes-folio" element={<p>pantalla pendientes</p>} />
+            </Routes>
+          </AuthProvider>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    await userEvent.click(await screen.findByText("Paciente nuevo pendiente de folio"));
+    expect(await screen.findByText("pantalla pendientes")).toBeInTheDocument();
+  });
+
+  it("routeForCaso lleva el caso 'paciente' a /pendientes-folio", () => {
+    expect(routeForCaso("paciente", 7)).toBe("/pendientes-folio");
   });
 });

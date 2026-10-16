@@ -83,7 +83,11 @@ function cap(s: string) {
 export const TITULOS_ALERTA: Record<string, string> = {
   licencia_en_control: "Licencia emitida en control",
   receta_en_control: "Receta emitida en control",
+  paciente_pendiente_folio: "Paciente nuevo pendiente de folio",
 };
+
+/** Alertas de un control médico: al hacer clic abren sus documentos en un diálogo. */
+const TIPOS_DE_CONTROL = ["licencia_en_control", "receta_en_control"];
 
 export function tituloAlerta(tipo: string): string {
   return TITULOS_ALERTA[tipo] ?? cap(tipo.replace(/_/g, " "));
@@ -92,7 +96,7 @@ export function tituloAlerta(tipo: string): string {
 /**
  * Mapea un caso (caso_tipo + caso_id) a la ruta de su módulo. Los valores de
  * caso_tipo provienen del generador de alertas: oda, licencia, ept, ingreso,
- * control_medico, receta. EPT acepta deep-link por ?caso=; el resto navega a su
+ * control_medico, receta, paciente. EPT acepta deep-link por ?caso=; el resto navega a su
  * página (paciente-driven, sin parámetro de caso).
  */
 export function routeForCaso(
@@ -108,6 +112,8 @@ export function routeForCaso(
       return "/farmacos";
     case "licencia":
       return "/licencias";
+    case "paciente":
+      return "/pendientes-folio";
     case "oda":
     case "ingreso":
     default:
@@ -318,7 +324,7 @@ export function AlertsPanel() {
   const displayTareas = tab === "todas" || tab === "proximas" ? activeTareas : [];
 
   const handleAlertaClick = (a: AlertaRead) => {
-    if (a.tipo in TITULOS_ALERTA) {
+    if (TIPOS_DE_CONTROL.includes(a.tipo)) {
       setAlertaControl(a);
       return;
     }
