@@ -17,7 +17,7 @@ import { useAuth } from "@/lib/auth/AuthContext";
 import { puedeEscribir, type Rol } from "@/lib/rbac";
 import { useActualizarAlerta, useAlertas, useTareas } from "@/features/alertas/hooks";
 import type { AlertaRead, TareaItemRead } from "@/features/alertas/api";
-import { DocumentosAlertaDialog } from "./DocumentosAlertaDialog";
+import { DocumentosAlertaDialog, type CasoAlerta } from "./DocumentosAlertaDialog";
 
 // ── visual helpers ────────────────────────────────────────────────────────────
 
@@ -90,8 +90,28 @@ export const TITULOS_ALERTA: Record<string, string> = {
 /** Alertas de un control médico: al hacer clic abren sus documentos en un diálogo. */
 const TIPOS_DE_CONTROL = ["licencia_en_control", "receta_en_control"];
 
-export function tituloAlerta(tipo: string): string {
+/** Alertas de una atención médica que no es control (Evaluación médica, psiquiátrica…). */
+const CASO_ATENCION = "salutem_atencion";
+
+const TITULOS_ATENCION: Record<string, string> = {
+  licencia_en_control: "Licencia emitida en atención médica",
+  receta_en_control: "Receta emitida en atención médica",
+};
+
+export function tituloAlerta(tipo: string, casoTipo?: string | null): string {
+  if (casoTipo === CASO_ATENCION && TITULOS_ATENCION[tipo]) return TITULOS_ATENCION[tipo];
   return TITULOS_ALERTA[tipo] ?? cap(tipo.replace(/_/g, " "));
+}
+
+const ETIQUETAS_CASO: Record<string, string> = {
+  control_medico: "Control",
+  [CASO_ATENCION]: "Atención SALUTEM",
+  paciente: "Paciente",
+};
+
+function subtituloCaso(casoTipo: string | null | undefined, casoId: number | null | undefined): string {
+  if (!casoTipo || !casoId) return "—";
+  return `${ETIQUETAS_CASO[casoTipo] ?? casoTipo} #${casoId}`;
 }
 
 /**
@@ -348,6 +368,10 @@ export function AlertsPanel({ onClose }: AlertsPanelProps = {}) {
 
   const [tab, setTab] = useState<TabKey>("todas");
   const [alertaControl, setAlertaControl] = useState<AlertaRead | null>(null);
+  const casoAbierto: CasoAlerta | null =
+    alertaControl?.caso_id != null
+      ? { tipo: alertaControl.caso_tipo === CASO_ATENCION ? "atencion" : "control", id: alertaControl.caso_id }
+      : null;
 
   // "Todas" son las abiertas (pendientes y leídas); las resueltas tienen su pestaña.
   const activeAlertas = alertas.filter((a) => a.estado !== "resuelta");
@@ -441,17 +465,14 @@ export function AlertsPanel({ onClose }: AlertsPanelProps = {}) {
 
         {displayAlertas.map((a) => {
           const bucket = alertaTipoBucket(a);
-          const title = tituloAlerta(a.tipo);
-          const subtitle =
-            a.caso_tipo && a.caso_id
-              ? `${a.caso_tipo} #${a.caso_id}`
-              : "—";
+          const title = tituloAlerta(a.tipo, a.caso_tipo);
+          const subtitle = subtituloCaso(a.caso_tipo, a.caso_id);
           // En licencia/receta de un control, plazo_objetivo es la fecha del control a medianoche
           // UTC: en hora local de Chile caería el día anterior.
           const esDeControl = a.tipo === "licencia_en_control" || a.tipo === "receta_en_control";
           const meta = a.plazo_objetivo
             ? esDeControl
-              ? `Control: ${formatDate(a.plazo_objetivo, "UTC")}`
+              ? `${a.caso_tipo === CASO_ATENCION ? "Atención" : "Control"}: ${formatDate(a.plazo_objetivo, "UTC")}`
               : `Plazo: ${formatDate(a.plazo_objetivo)}`
             : formatDate(a.generada_en);
 
@@ -527,8 +548,8 @@ export function AlertsPanel({ onClose }: AlertsPanelProps = {}) {
       </div>
 
       <DocumentosAlertaDialog
-        titulo={alertaControl ? tituloAlerta(alertaControl.tipo) : ""}
-        controlId={alertaControl?.caso_id ?? null}
+        titulo={alertaControl ? tituloAlerta(alertaControl.tipo, alertaControl.caso_tipo) : ""}
+        caso={casoAbierto}
         onOpenChange={(open) => !open && setAlertaControl(null)}
       />
     </aside>

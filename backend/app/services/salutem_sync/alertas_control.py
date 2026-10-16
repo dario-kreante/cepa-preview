@@ -1,4 +1,9 @@
-"""Alertas de licencia y receta emitidas en un control creado desde SALUTEM.
+"""Alertas de licencia y receta emitidas en una atención médica de SALUTEM.
+
+Si la atención es un control, la alerta apunta al control (caso_tipo control_medico).
+Las demás atenciones médicas (Evaluación médica, Evaluación psiquiátrica…; se configura
+en SALUTEM_ESPECIALIDADES_ALERTA) no crean control y la alerta apunta a la atención
+(caso_tipo salutem_atencion, caso_id = cita de SALUTEM).
 
 Se crean en la vinculación del sync, no en el job diario: llegan con el retraso del
 sync (~5 min). Una por control y tipo para siempre: si el médico corrige la atención no
@@ -23,26 +28,44 @@ from app.services.config_alertas import cargar_ventanas
 
 ACTOR = "sistema:salutem-sync"  # el mismo de controles.py y vinculacion.py
 CASO_TIPO = "control_medico"
+CASO_ATENCION = "salutem_atencion"
 DIAS_NOVEDAD = 14
 TIPOS = (TipoAlerta.LICENCIA_EN_CONTROL.value, TipoAlerta.RECETA_EN_CONTROL.value)
 
 
 def alertar_control(db: Session, control: ControlMedico, contenido: dict[str, Any], hoy: date) -> int:
     """Crea las alertas que falten para este control. Devuelve cuántas creó."""
-    if control.fecha_control < hoy - timedelta(days=DIAS_NOVEDAD):
-        return 0
     senales = {
         TipoAlerta.LICENCIA_EN_CONTROL.value: bool(control.tiene_licencia) or certificado_reposo(contenido),
         TipoAlerta.RECETA_EN_CONTROL.value: tiene_receta(contenido),
     }
-    if not any(senales.values()):
+    return _crear_alertas(db, CASO_TIPO, control.id, control.ingreso_id, control.fecha_control, senales, hoy)
+
+
+def alertar_atencion(
+    db: Session, cita_id: int, ingreso_id: int, fecha: date, hay_licencia: bool,
+    contenido: dict[str, Any], hoy: date,
+) -> int:
+    """Crea las alertas que falten para una atención médica que no es control."""
+    senales = {
+        TipoAlerta.LICENCIA_EN_CONTROL.value: hay_licencia or certificado_reposo(contenido),
+        TipoAlerta.RECETA_EN_CONTROL.value: tiene_receta(contenido),
+    }
+    return _crear_alertas(db, CASO_ATENCION, cita_id, ingreso_id, fecha, senales, hoy)
+
+
+def _crear_alertas(
+    db: Session, caso_tipo: str, caso_id: int, ingreso_id: int, fecha: date,
+    senales: dict[str, bool], hoy: date,
+) -> int:
+    if fecha < hoy - timedelta(days=DIAS_NOVEDAD) or not any(senales.values()):
         return 0
     ventanas = cargar_ventanas(db)
     existentes = set(
         db.scalars(
             select(AlertaNotif.tipo).where(
-                AlertaNotif.caso_tipo == CASO_TIPO,
-                AlertaNotif.caso_id == control.id,
+                AlertaNotif.caso_tipo == caso_tipo,
+                AlertaNotif.caso_id == caso_id,
                 AlertaNotif.tipo.in_(TIPOS),
             )
         )
@@ -55,10 +78,10 @@ def alertar_control(db: Session, control: ControlMedico, contenido: dict[str, An
             AlertaNotif(
                 tipo=tipo,
                 estado=EstadoAlerta.PENDIENTE.value,
-                caso_id=control.id,
-                caso_tipo=CASO_TIPO,
-                usuario_id=_resolver_usuario(control.ingreso_id, db),
-                plazo_objetivo=datetime.combine(control.fecha_control, time.min, tzinfo=timezone.utc),
+                caso_id=caso_id,
+                caso_tipo=caso_tipo,
+                usuario_id=_resolver_usuario(ingreso_id, db),
+                plazo_objetivo=datetime.combine(fecha, time.min, tzinfo=timezone.utc),
                 ventana_dias=0,
                 email_enviado=False,
             )
@@ -66,16 +89,17 @@ def alertar_control(db: Session, control: ControlMedico, contenido: dict[str, An
         creadas += 1
     if creadas:
         db.flush()
-        record_audit(db, actor=ACTOR, action="CREATE", entity="alerta_notif", entity_id=f"control:{control.id}")
+        prefijo = "control" if caso_tipo == CASO_TIPO else "atencion"
+        record_audit(db, actor=ACTOR, action="CREATE", entity="alerta_notif", entity_id=f"{prefijo}:{caso_id}")
     return creadas
 
 
-def resolver_alertas_control(db: Session, control_id: int) -> None:
-    """Resuelve las alertas abiertas de un control que el sync va a eliminar."""
+def resolver_alertas_control(db: Session, control_id: int, caso_tipo: str = CASO_TIPO) -> None:
+    """Resuelve las alertas abiertas de un control (o atención) que dejó de existir."""
     ahora = datetime.now(timezone.utc)
     for alerta in db.scalars(
         select(AlertaNotif).where(
-            AlertaNotif.caso_tipo == CASO_TIPO,
+            AlertaNotif.caso_tipo == caso_tipo,
             AlertaNotif.caso_id == control_id,
             AlertaNotif.tipo.in_(TIPOS),
             AlertaNotif.estado != EstadoAlerta.RESUELTA.value,

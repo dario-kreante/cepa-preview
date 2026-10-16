@@ -392,3 +392,54 @@ describe("AlertsPanel: sin leer y ventana flotante", () => {
     expect(onClose).toHaveBeenCalledTimes(2);
   });
 });
+
+describe("AlertsPanel: licencia emitida en una atención médica que no es control", () => {
+  it("se titula 'en atención médica' y abre la atención con su indicación y documentos", async () => {
+    tokenStore.setAccess(TOKENS.Coordinacion);
+    server.use(
+      http.get(`${BASE}/api/v1/alertas`, () =>
+        HttpResponse.json([
+          {
+            id: 9,
+            tipo: "licencia_en_control",
+            estado: "leida",
+            caso_id: 16625886,
+            caso_tipo: "salutem_atencion",
+            usuario_id: null,
+            plazo_objetivo: "2026-10-15T00:00:00Z",
+            ventana_dias: 0,
+            generada_en: "2026-10-16T19:35:00Z",
+            resuelta_en: null,
+            email_enviado: false,
+          },
+        ]),
+      ),
+      http.get(`${BASE}/api/v1/tareas`, () => HttpResponse.json([])),
+      http.get(`${BASE}/api/v1/salutem/atenciones/16625886`, () =>
+        HttpResponse.json({
+          cita_id: 16625886,
+          fecha: "2026-10-15",
+          especialidad: "Evaluación médica",
+          profesional: "DRA. PAULA ROJAS",
+          indicacion_licencia: "Reposo por 15 días desde el 15/10/2026",
+        }),
+      ),
+      http.get(`${BASE}/api/v1/salutem/atenciones/16625886/archivos`, () =>
+        HttpResponse.json([
+          { archivo_id: 1, nombre: "LICENCIA.pdf", tipo: "documento", fecha_creacion: "2026-10-15T16:29:00" },
+        ]),
+      ),
+    );
+    renderPanel();
+
+    expect(await screen.findByText("Atención SALUTEM #16625886")).toBeInTheDocument();
+    expect(screen.getByText(/^Atención: 15 oct/i)).toBeInTheDocument();
+    await userEvent.click(screen.getByText("Licencia emitida en atención médica"));
+
+    const dialogo = await screen.findByRole("dialog");
+    expect(await within(dialogo).findByText(/Evaluación médica del 15-10-2026 · DRA\. PAULA ROJAS/)).toBeInTheDocument();
+    expect(within(dialogo).getByText("Reposo por 15 días desde el 15/10/2026")).toBeInTheDocument();
+    expect(await within(dialogo).findByText("LICENCIA.pdf")).toBeInTheDocument();
+    expect(within(dialogo).queryByRole("button", { name: /ir a controles/i })).not.toBeInTheDocument();
+  });
+});

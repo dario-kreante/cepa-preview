@@ -50,7 +50,13 @@ from app.integrations.salutem.models import EstadoCitaSalutem
 from app.models.control_medico import ControlMedico
 from app.models.ingreso import Ingreso
 from app.models.salutem_copia import SalutemAtencion, SalutemCita
-from app.services.salutem_sync.alertas_control import ACTOR, alertar_control, resolver_alertas_control
+from app.services.salutem_sync.alertas_control import (
+    ACTOR,
+    CASO_ATENCION,
+    alertar_atencion,
+    alertar_control,
+    resolver_alertas_control,
+)
 
 ORIGEN = "SALUTEM"
 ATENDIDO = int(EstadoCitaSalutem.ATENDIDO)
@@ -113,6 +119,35 @@ def sincronizar_control(
         alertar_control(db, control, atencion.contenido, hoy)
 
 
+def es_atencion_medica_sin_control(atencion: SalutemAtencion) -> bool:
+    """Atendida, de una especialidad médica que alerta (SALUTEM_ESPECIALIDADES_ALERTA)
+    y que no es control."""
+    c = atencion.contenido
+    return (
+        atencion.desaparecida_en is None
+        and atencion.fecha_cita is not None
+        and c.get("estadoCitaId") == ATENDIDO
+        and str(c.get("especialidadNombre") or "").strip().casefold()
+        in get_settings().salutem_especialidades_alerta_set
+        and not es_control(atencion)
+    )
+
+
+def sincronizar_alerta_atencion(db: Session, atencion: SalutemAtencion, ingreso: Ingreso, *, hoy: date) -> None:
+    """Alerta la licencia o receta de una atención médica que no es control.
+
+    Una vez por atención y tipo: si ya se alertó (aunque esté resuelta) no se repite. Si la
+    atención se anula o desaparece, sus alertas abiertas quedan resueltas.
+    """
+    if not es_atencion_medica_sin_control(atencion):
+        resolver_alertas_control(db, atencion.cita_id, CASO_ATENCION)
+        return
+    hay_licencia = licencia_de_atencion(atencion.contenido, atencion.fecha_cita) is not None
+    alertar_atencion(
+        db, atencion.cita_id, ingreso.id, atencion.fecha_cita, hay_licencia, atencion.contenido, hoy
+    )
+
+
 def _campos(db: Session, atencion: SalutemAtencion, ingreso: Ingreso) -> dict[str, Any]:
     c = atencion.contenido
     fecha = atencion.fecha_cita
@@ -120,7 +155,7 @@ def _campos(db: Session, atencion: SalutemAtencion, ingreso: Ingreso) -> dict[st
     agendado = proximo is not None
     if proximo is None:
         proximo = _plazo(campo(c, "Próximo control"), fecha)
-    licencia = _licencia(c, fecha)
+    licencia = licencia_de_atencion(c, fecha)
     reposo = (campo(c, "Tipo de reposo") or "").casefold()
     if reposo not in {e.value for e in TipoReposo}:
         reposo = licencia.tipo_reposo if licencia else None
@@ -185,7 +220,7 @@ def _registros(contenido: dict[str, Any], seccion: str) -> list[Any]:
     return [v.get("registro") if isinstance(v, dict) else v for v in valor]
 
 
-def _licencia(contenido: dict[str, Any], fecha: date) -> MencionLicencia | None:
+def licencia_de_atencion(contenido: dict[str, Any], fecha: date) -> MencionLicencia | None:
     menciones = [
         *(extraer_licencia(r, fecha_atencion=fecha) for r in _registros(contenido, "indicaciones")),
         extraer_indicacion_reposo(campo(contenido, "Indicación de reposo"), fecha_atencion=fecha),

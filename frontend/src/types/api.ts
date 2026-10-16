@@ -2000,6 +2000,60 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/salutem/atenciones/{cita_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Obtener Atencion */
+        get: operations["obtener_atencion_api_v1_salutem_atenciones__cita_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/salutem/atenciones/{cita_id}/archivos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Listar Archivos */
+        get: operations["listar_archivos_api_v1_salutem_atenciones__cita_id__archivos_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/salutem/atenciones/{cita_id}/archivos/{archivo_id}/contenido": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Contenido Archivo
+         * @description Pide el archivo a SALUTEM y lo entrega sin guardarlo (ni en BD ni en disco).
+         */
+        get: operations["contenido_archivo_api_v1_salutem_atenciones__cita_id__archivos__archivo_id__contenido_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/licencias/folio/{folio}": {
         parameters: {
             query?: never;
@@ -2203,6 +2257,19 @@ export interface components {
             tipo: string | null;
             /** Fecha Creacion */
             fecha_creacion: string | null;
+        };
+        /** AtencionSalutemRead */
+        AtencionSalutemRead: {
+            /** Cita Id */
+            cita_id: number;
+            /** Fecha */
+            fecha: string | null;
+            /** Especialidad */
+            especialidad: string | null;
+            /** Profesional */
+            profesional: string | null;
+            /** Indicacion Licencia */
+            indicacion_licencia: string | null;
         };
         /** AuditLogRead */
         AuditLogRead: {
@@ -8985,6 +9052,98 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EstadoSyncRead"];
+                };
+            };
+        };
+    };
+    obtener_atencion_api_v1_salutem_atenciones__cita_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cita_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AtencionSalutemRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    listar_archivos_api_v1_salutem_atenciones__cita_id__archivos_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cita_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArchivoControlRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    contenido_archivo_api_v1_salutem_atenciones__cita_id__archivos__archivo_id__contenido_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cita_id: number;
+                archivo_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
