@@ -14,6 +14,7 @@ import {
   LayoutGrid,
   FileScan,
   BellRing,
+  UserRoundSearch,
   type LucideIcon,
 } from "lucide-react";
 import type { Rol } from "@/lib/rbac";
@@ -41,6 +42,13 @@ export const NAV: NavSection[] = [
     label: "Módulos clínicos",
     items: [
       { to: "/ingresos", label: "Ingresos y pacientes", icon: Users },
+      {
+        to: "/pendientes-folio",
+        label: "Pendientes de folio",
+        icon: UserRoundSearch,
+        badgeKey: "pendientes_folio",
+        roles: ["Administrativo", "Coordinacion"],
+      },
       {
         to: "/licencias",
         label: "Licencias médicas",
@@ -117,6 +125,7 @@ export const TITLE_MAP: Record<string, string> = {
   "/": "Dashboard",
   "/ingresos": "Pacientes",
   "/ingresos/nuevo": "Nuevo ingreso",
+  "/pendientes-folio": "Pendientes de folio",
   "/licencias": "Licencias médicas",
   "/farmacos": "Gestión de fármacos",
   "/controles": "Controles médicos",
@@ -139,6 +148,7 @@ export const CRUMBS_MAP: Record<string, string> = {
   "/": "Inicio · Dashboard",
   "/ingresos": "Inicio · Pacientes",
   "/ingresos/nuevo": "Inicio · Pacientes · Nuevo ingreso",
+  "/pendientes-folio": "Inicio · Clínico · Pendientes de folio",
   "/licencias": "Inicio · Clínico · Licencias médicas",
   "/farmacos": "Inicio · Clínico · Fármacos",
   "/controles": "Inicio · Clínico · Controles médicos",

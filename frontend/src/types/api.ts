@@ -428,6 +428,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/pacientes/pendientes-folio": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Pendientes Folio
+         * @description Pacientes borrador creados desde SALUTEM que esperan su folio.
+         */
+        get: operations["pendientes_folio_api_v1_pacientes_pendientes_folio_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/pacientes/{paciente_id}": {
         parameters: {
             query?: never;
@@ -463,6 +483,26 @@ export interface paths {
         get: operations["vista_360_endpoint_api_v1_pacientes__paciente_id__vista_360_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pacientes/{paciente_id}/descartar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Descartar Paciente
+         * @description Descarta un borrador pendiente de folio (no es paciente del CEPA).
+         */
+        post: operations["descartar_paciente_api_v1_pacientes__paciente_id__descartar_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1522,7 +1562,8 @@ export interface paths {
          * Listar Alertas
          * @description Panel de notificaciones in-app: devuelve alertas filtradas por rol y asignación.
          *
-         *     - Administrativo: solo sus alertas (usuario_id == current_user.id).
+         *     - Administrativo: sus alertas (usuario_id == current_user.id) y las de ingresos sin
+         *       profesional asignado (usuario_id nulo), que de otro modo solo vería Coordinación.
          *     - Coordinacion/Auditor: todas las alertas (alcance ampliado, RN-2/RN-3 CEPA-101).
          */
         get: operations["listar_alertas_api_v1_alertas_get"];
@@ -2665,6 +2706,11 @@ export interface components {
                 [key: string]: unknown;
             } | null;
         };
+        /** DescarteIn */
+        DescarteIn: {
+            /** Motivo */
+            motivo: string;
+        };
         /**
          * DiaSemana
          * @description ISO weekday: 1=lunes … 5=viernes (no se admiten 6=sáb, 7=dom — RN-4).
@@ -3321,8 +3367,10 @@ export interface components {
          *     almacene en la tabla `ingreso` y los reportes puedan filtrar por ellos.
          */
         IngresoCreate: {
+            /** Paciente Id */
+            paciente_id?: number | null;
             /** Rut */
-            rut: string;
+            rut?: string | null;
             /** Nombre */
             nombre: string;
             sexo: components["schemas"]["Sexo"];
@@ -3699,26 +3747,59 @@ export interface components {
          * @enum {string}
          */
         OrigenLicencia: "sistema" | "extra_sistema";
+        /**
+         * PacientePendienteRead
+         * @description Fila de la lista de pacientes borrador pendientes de folio.
+         */
+        PacientePendienteRead: {
+            /** Id */
+            id: number;
+            /** Nombre */
+            nombre: string;
+            /** Rut */
+            rut: string | null;
+            /** Identificacion Salutem */
+            identificacion_salutem: string | null;
+            /** Salutem Persona Id */
+            salutem_persona_id: number | null;
+            /**
+             * Creado En
+             * Format: date-time
+             */
+            creado_en: string;
+            /** Primera Atencion */
+            primera_atencion: string | null;
+            /** Ultima Atencion */
+            ultima_atencion: string | null;
+            /** Atenciones */
+            atenciones: number;
+            /** Especialidades */
+            especialidades: string[];
+        };
         /** PacienteRead */
         PacienteRead: {
             /** Id */
             id: number;
             /** Rut */
-            rut: string;
+            rut: string | null;
             /** Nombre */
             nombre: string;
             /** Sexo */
-            sexo: string;
+            sexo: string | null;
             /** Edad */
-            edad: number;
+            edad: number | null;
             /** Region */
-            region: string;
+            region: string | null;
             /** Comuna */
             comuna: string | null;
             /** Telefono */
             telefono: string | null;
             /** Correo */
             correo: string | null;
+            /** Estado Registro */
+            estado_registro: string;
+            /** Origen */
+            origen: string;
         };
         /**
          * PacienteUpdateSchema
@@ -4576,7 +4657,7 @@ export interface components {
          * @description Tipos de alerta del motor: los 7 de CEPA-100 más el GAF de licencia (CEPA-075).
          * @enum {string}
          */
-        TipoAlerta: "control_medico" | "vencimiento_licencia" | "plazo_ept" | "plazo_isl" | "consentimiento_pendiente" | "receta_por_renovar" | "oda_por_vencer" | "gaf_licencia" | "licencia_en_control" | "receta_en_control";
+        TipoAlerta: "control_medico" | "vencimiento_licencia" | "plazo_ept" | "plazo_isl" | "consentimiento_pendiente" | "receta_por_renovar" | "oda_por_vencer" | "gaf_licencia" | "licencia_en_control" | "receta_en_control" | "paciente_pendiente_folio";
         /**
          * TipoAlta
          * @description Tipos de alta válidos (§7.1.3, v4 D6).
@@ -5736,6 +5817,26 @@ export interface operations {
             };
         };
     };
+    pendientes_folio_api_v1_pacientes_pendientes_folio_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PacientePendienteRead"][];
+                };
+            };
+        };
+    };
     obtener_paciente_por_id_api_v1_pacientes__paciente_id__get: {
         parameters: {
             query?: never;
@@ -5820,6 +5921,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Vista360"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    descartar_paciente_api_v1_pacientes__paciente_id__descartar_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                paciente_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DescarteIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PacienteRead"];
                 };
             };
             /** @description Validation Error */

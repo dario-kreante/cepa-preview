@@ -92,7 +92,7 @@ export function IngresosListaPage() {
   const { data: results = [], isFetching } = useBuscarPacientes(q);
 
   // Client-side región filter
-  const regions = Array.from(new Set(results.map((p) => p.region))).sort();
+  const regions = Array.from(new Set(results.map((p) => p.region).filter((r): r is string => !!r))).sort();
   const filtered =
     regionFilter === "Todas"
       ? results

@@ -65,9 +65,9 @@ type EdicionForm = z.infer<typeof edicionSchema>;
 function valoresIniciales(paciente: PacienteRead, ingreso: IngresoRead): EdicionForm {
   return {
     nombre: paciente.nombre,
-    sexo: paciente.sexo as EdicionForm["sexo"],
-    edad: paciente.edad,
-    region: paciente.region,
+    sexo: (paciente.sexo ?? "") as EdicionForm["sexo"],
+    edad: paciente.edad ?? 0,
+    region: paciente.region ?? "",
     comuna: paciente.comuna ?? "",
     telefono: paciente.telefono ?? "",
     correo: paciente.correo ?? "",
