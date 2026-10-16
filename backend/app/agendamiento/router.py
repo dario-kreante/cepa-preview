@@ -3,6 +3,7 @@
 Endpoints:
   POST   /api/v1/disponibilidad-profesional          Administrativo | Coordinacion
   GET    /api/v1/disponibilidad-profesional/{prof_id} Todos los roles
+  DELETE /api/v1/disponibilidad-profesional/{id}     Administrativo | Coordinacion
   POST   /api/v1/propuestas-agenda                   Administrativo | Coordinacion
   GET    /api/v1/propuestas-agenda                   Todos los roles
   GET    /api/v1/propuestas-agenda/{id}              Todos los roles
@@ -15,7 +16,7 @@ Endpoints:
 
 from datetime import date, datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import select, true
 from sqlalchemy.orm import Session
 
@@ -40,6 +41,7 @@ from app.agendamiento.schemas import (
 from app.agendamiento.service import (
     confirmar_citas,
     crear_disponibilidad,
+    dar_de_baja_disponibilidad,
     generar_propuesta,
     obtener_propuesta,
 )
@@ -94,6 +96,29 @@ def listar_disponibilidad(
                DisponibilidadProf.activo == true())
         .order_by(DisponibilidadProf.dia_semana)
     ))
+
+
+@router.delete(
+    "/api/v1/disponibilidad-profesional/{disponibilidad_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[_writer],
+)
+def dar_de_baja_disponibilidad_endpoint(
+    disponibilidad_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+) -> Response:
+    if not dar_de_baja_disponibilidad(
+        db=db,
+        disponibilidad_id=disponibilidad_id,
+        actor=current_user.username,
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Disponibilidad no encontrada",
+        )
+    db.commit()  # persistir: el servicio solo hace flush (bug CEPA-080)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 # ─── Propuestas ────────────────────────────────────────────────────────────────

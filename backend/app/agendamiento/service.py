@@ -61,7 +61,33 @@ def crear_disponibilidad(
     cupo_diario: int,
     actor: str,
 ) -> DisponibilidadProf:
-    """Crea o reemplaza la disponibilidad diaria de un profesional."""
+    """Crea o reemplaza la disponibilidad diaria de un profesional.
+
+    Si ya hay una fila activa para (profesional, día), se actualiza su cupo (UPDATE);
+    si no, se crea (CREATE). Así no quedan dos cupos vigentes para el mismo día.
+    """
+    existente = db.scalars(
+        select(DisponibilidadProf)
+        .where(DisponibilidadProf.profesional_id == profesional_id,
+               DisponibilidadProf.dia_semana == dia_semana,
+               DisponibilidadProf.activo == true())
+        .order_by(DisponibilidadProf.id)
+    ).first()
+    if existente is not None:
+        cupo_anterior = existente.cupo_diario
+        existente.cupo_diario = cupo_diario
+        db.flush()
+        record_audit(
+            db,
+            actor=actor,
+            action="UPDATE",
+            entity="disponibilidad_prof",
+            entity_id=str(existente.id),
+            valor_anterior=str(cupo_anterior),
+            valor_nuevo=str(cupo_diario),
+        )
+        return existente
+
     dp = DisponibilidadProf(
         profesional_id=profesional_id,
         dia_semana=dia_semana,
@@ -78,6 +104,31 @@ def crear_disponibilidad(
         entity_id=str(dp.id),
     )
     return dp
+
+
+def dar_de_baja_disponibilidad(
+    db: Session,
+    disponibilidad_id: int,
+    actor: str,
+) -> bool:
+    """Baja lógica de una disponibilidad activa (activo=False). False si no existe o ya estaba inactiva."""
+    dp = db.scalars(
+        select(DisponibilidadProf)
+        .where(DisponibilidadProf.id == disponibilidad_id,
+               DisponibilidadProf.activo == true())
+    ).first()
+    if dp is None:
+        return False
+    dp.activo = False
+    db.flush()
+    record_audit(
+        db,
+        actor=actor,
+        action="DELETE",
+        entity="disponibilidad_prof",
+        entity_id=str(dp.id),
+    )
+    return True
 
 
 def _cargar_disponibilidad(db: Session, profesional_id: int) -> list[DisponibilidadDia]:

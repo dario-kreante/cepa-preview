@@ -100,3 +100,54 @@ def test_crear_disponibilidad_fin_de_semana_422(as_admin: TestClient):
         "profesional_id": 10, "dia_semana": 6, "cupo_diario": 5
     })
     assert resp.status_code == 422
+
+
+def test_disponibilidad_mismo_dia_reemplaza(as_admin: TestClient):
+    """Dos altas para el mismo profesional y día dejan una sola fila con el último cupo."""
+    primera = as_admin.post("/api/v1/disponibilidad-profesional", json={
+        "profesional_id": 11, "dia_semana": 1, "cupo_diario": 3
+    })
+    assert primera.status_code == 201
+    segunda = as_admin.post("/api/v1/disponibilidad-profesional", json={
+        "profesional_id": 11, "dia_semana": 1, "cupo_diario": 5
+    })
+    assert segunda.status_code == 201
+    assert segunda.json()["id"] == primera.json()["id"]
+
+    listado = as_admin.get("/api/v1/disponibilidad-profesional/11")
+    assert listado.status_code == 200
+    filas = listado.json()
+    assert len(filas) == 1
+    assert filas[0]["cupo_diario"] == 5
+
+
+def test_disponibilidad_delete_la_saca_del_listado(as_admin: TestClient):
+    """DELETE da de baja el día (204) y deja de aparecer en el listado."""
+    alta = as_admin.post("/api/v1/disponibilidad-profesional", json={
+        "profesional_id": 12, "dia_semana": 2, "cupo_diario": 4
+    })
+    assert alta.status_code == 201
+    dp_id = alta.json()["id"]
+
+    resp = as_admin.delete(f"/api/v1/disponibilidad-profesional/{dp_id}")
+    assert resp.status_code == 204
+    assert resp.content == b""
+
+    listado = as_admin.get("/api/v1/disponibilidad-profesional/12")
+    assert listado.status_code == 200
+    assert listado.json() == []
+
+
+def test_disponibilidad_delete_inexistente_404(as_admin: TestClient):
+    resp = as_admin.delete("/api/v1/disponibilidad-profesional/999999")
+    assert resp.status_code == 404
+
+
+def test_disponibilidad_delete_auditor_403(as_admin: TestClient, as_auditor: TestClient):
+    """CA-8: Auditor no puede dar de baja disponibilidad → 403."""
+    alta = as_admin.post("/api/v1/disponibilidad-profesional", json={
+        "profesional_id": 13, "dia_semana": 3, "cupo_diario": 2
+    })
+    dp_id = alta.json()["id"]
+    resp = as_auditor.delete(f"/api/v1/disponibilidad-profesional/{dp_id}")
+    assert resp.status_code == 403
