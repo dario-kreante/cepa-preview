@@ -24,6 +24,8 @@ class TipoAlerta(str, Enum):
     RECETA_EN_CONTROL = "receta_en_control"
     # Paciente borrador creado por el sync: una persona atendida en SALUTEM sin folio en el SIGE.
     PACIENTE_PENDIENTE_FOLIO = "paciente_pendiente_folio"
+    # Fase 2 (cita desde SALUTEM): inasistencia a una cita agendada en SALUTEM.
+    INASISTENCIA = "inasistencia"
 
 
 class EstadoAlerta(str, Enum):

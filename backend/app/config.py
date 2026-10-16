@@ -114,6 +114,11 @@ class Settings(BaseSettings):
     # Fecha ISO (AAAA-MM-DD): las personas atendidas en SALUTEM desde ese día y sin paciente
     # en el SIGE reciben un paciente borrador pendiente de folio. Vacía = no se crean.
     salutem_borradores_desde: str = ""
+    # Fase 2 (cita desde SALUTEM): fecha ISO desde la que se sincronizan las citas de SALUTEM.
+    citas_salutem_desde: str = "2026-01-01"
+    # Especialidades de SALUTEM que entran a los reportes de citas, separadas por coma (sin
+    # distinguir mayúsculas). Vacía = todas.
+    citas_especialidades_reportes: str = ""
 
     # --- IMED feature flag (CEPA-122, P2, PA5) ---
     imed_enabled: bool = False
@@ -145,6 +150,23 @@ class Settings(BaseSettings):
             raise ValueError(
                 f"SALUTEM_BORRADORES_DESDE inválida: {self.salutem_borradores_desde!r} (se espera AAAA-MM-DD)"
             ) from None
+
+    @property
+    def citas_salutem_desde_fecha(self) -> date:
+        """La fecha de corte de citas SALUTEM. ValueError si no es AAAA-MM-DD."""
+        valor = self.citas_salutem_desde.strip()
+        try:
+            return date.fromisoformat(valor)
+        except ValueError:
+            raise ValueError(
+                f"CITAS_SALUTEM_DESDE inválida: {self.citas_salutem_desde!r} (se espera AAAA-MM-DD)"
+            ) from None
+
+    @property
+    def citas_especialidades_reportes_set(self) -> frozenset[str]:
+        return frozenset(
+            x.strip().casefold() for x in self.citas_especialidades_reportes.split(",") if x.strip()
+        )
 
     @property
     def cors_origins_list(self) -> list[str]:

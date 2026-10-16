@@ -38,5 +38,16 @@ class Cita(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, nullable=False
     )
+    # Fase 2 (cita desde SALUTEM): espejo de la cita de SALUTEM cuando el origen es SALUTEM.
+    # Único cuando no es nulo; las citas creadas en el SIGE quedan con NULL.
+    salutem_cita_id: Mapped[int | None] = mapped_column(BigInteger, unique=True, nullable=True)
+    origen: Mapped[str] = mapped_column(
+        String(10), nullable=False, default="SIGE", server_default="SIGE"
+    )
+    especialidad: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    profesional_nombre: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    profesional_id: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("profesional.id"), nullable=True
+    )
 
     ingreso: Mapped["Ingreso"] = relationship()  # noqa: F821
