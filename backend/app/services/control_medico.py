@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 
 from app.models.control_medico import ControlMedico
 from app.models.ingreso import Ingreso
+from app.models.profesional import Profesional
 from app.schemas.control_medico import (
     ControlMedicoCreate,
     EvaluacionUpdate,
@@ -58,12 +59,23 @@ def crear_control(db: Session, data: ControlMedicoCreate) -> ControlMedico:
             detail=str(exc),
         ) from exc
 
+    medico = (data.medico_tratante or "").strip()
+    if data.profesional_id is not None:
+        profesional = db.get(Profesional, data.profesional_id)
+        if profesional is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"No existe un profesional con id={data.profesional_id}.",
+            )
+        medico = medico or profesional.nombre
+
     control = ControlMedico(
         ingreso_id=data.ingreso_id,
         fecha_control=data.fecha_control,
         semana_control=semana,
-        medico_tratante=data.medico_tratante,
+        medico_tratante=medico,
         region_derivacion=data.region_derivacion,
+        profesional_id=data.profesional_id,
     )
     db.add(control)
     db.flush()

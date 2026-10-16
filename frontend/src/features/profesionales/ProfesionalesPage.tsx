@@ -7,6 +7,7 @@
  */
 import { useState } from "react";
 import { toast } from "sonner";
+import { Link } from "react-router-dom";
 import { DownloadCloud, Pencil, Plus, ShieldCheck, UserCheck, UserX } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,15 +21,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { fmtDate, fmtRelativo } from "@/lib/utils";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { puedeEscribir, type Rol } from "@/lib/rbac";
 import {
+  useActividadProfesional,
   useActualizarProfesional,
   useCrearProfesional,
   useImportarDesdeSalutem,
   useProfesionales,
 } from "./hooks";
-import type { ProfesionalRead } from "./api";
+import type { ImportacionSalutem, ProfesionalRead } from "./api";
 
 function Th({ children }: { children: React.ReactNode }) {
   return (
@@ -146,6 +149,143 @@ function ProfesionalForm({
   );
 }
 
+function Dato({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="rounded-md border bg-muted/20 px-3 py-2">
+      <p className="text-[10.5px] uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p className="text-[15px] font-semibold mt-0.5">{value}</p>
+    </div>
+  );
+}
+
+function DetalleProfesionalDialog({
+  profesional,
+  onClose,
+}: {
+  profesional: ProfesionalRead | null;
+  onClose: () => void;
+}) {
+  const { data, isLoading, isError } = useActividadProfesional(profesional?.id ?? null);
+  return (
+    <Dialog open={profesional !== null} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="sm:max-w-[640px] max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{profesional?.nombre}</DialogTitle>
+          <p className="text-[12.5px] text-muted-foreground">
+            {profesional?.especialidades?.length
+              ? profesional.especialidades.join(" · ")
+              : (profesional?.especialidad ?? "Sin especialidad registrada")}
+            {profesional?.sucursales?.length
+              ? ` — ${profesional.sucursales.join(", ")}`
+              : ""}
+          </p>
+        </DialogHeader>
+        {isLoading && <p className="text-[13px] text-muted-foreground">Cargando actividad…</p>}
+        {isError && (
+          <p className="text-[13px] text-destructive">No se pudo cargar la actividad.</p>
+        )}
+        {data && (
+          <div className="space-y-4" data-testid="detalle-actividad">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <Dato label="Atenciones" value={data.total_atenciones} />
+              <Dato label="Controles" value={data.total_controles} />
+              <Dato label="Pacientes" value={data.pacientes_distintos} />
+              <Dato
+                label="Última atención"
+                value={data.ultima_atencion ? fmtDate(data.ultima_atencion) : "—"}
+              />
+            </div>
+            {data.primera_atencion && (
+              <p className="text-[12px] text-muted-foreground">
+                Primera atención registrada: {fmtDate(data.primera_atencion)}
+              </p>
+            )}
+            {data.atenciones_por_especialidad.length > 0 && (
+              <div>
+                <h3 className="text-[12.5px] font-semibold mb-2">Atenciones por especialidad</h3>
+                <div className="flex flex-wrap gap-2">
+                  {data.atenciones_por_especialidad.map((a) => (
+                    <Badge key={a.especialidad} variant="info">
+                      {a.especialidad} · {a.total}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div>
+              <h3 className="text-[12.5px] font-semibold mb-2">Últimas atenciones</h3>
+              {data.ultimas_atenciones.length === 0 ? (
+                <p className="text-[13px] text-muted-foreground">
+                  Aún no hay atenciones vinculadas a este profesional.
+                </p>
+              ) : (
+                <ul className="divide-y rounded-md border">
+                  {data.ultimas_atenciones.map((a) => (
+                    <li
+                      key={a.ficha_id}
+                      className="flex items-center justify-between gap-3 px-3 py-2 text-[12.5px]"
+                    >
+                      <span className="text-muted-foreground w-[84px] shrink-0">
+                        {a.fecha ? fmtDate(a.fecha) : "—"}
+                      </span>
+                      <span className="flex-1 truncate">
+                        <Link
+                          to={`/ingresos?paciente=${a.paciente_id}`}
+                          className="font-medium underline-offset-2 hover:underline"
+                          data-testid={`link-atencion-${a.ficha_id}`}
+                        >
+                          {a.paciente}
+                        </Link>
+                        <span className="text-muted-foreground"> · folio {a.folio}</span>
+                      </span>
+                      <span className="text-muted-foreground">{a.especialidad ?? "—"}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function ResultadoImportacion({
+  resultado,
+  onCerrar,
+}: {
+  resultado: ImportacionSalutem;
+  onCerrar: () => void;
+}) {
+  return (
+    <Card className="p-4 space-y-2" data-testid="resultado-importacion">
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-[13px]">
+          <span className="font-semibold">Importación desde SALUTEM:</span>{" "}
+          {resultado.creados} creados · {resultado.actualizados} actualizados ·{" "}
+          {resultado.adoptados} adoptados · {resultado.vinculados} vinculados
+        </p>
+        <Button size="sm" variant="ghost" className="h-6 px-2 text-[11.5px]" onClick={onCerrar}>
+          Cerrar
+        </Button>
+      </div>
+      {resultado.errores.length > 0 && (
+        <div>
+          <p className="text-[12.5px] font-medium text-destructive">
+            {resultado.errores.length} error(es) durante la importación
+          </p>
+          <ul className="list-disc pl-5 text-[12px] text-destructive mt-1 space-y-0.5">
+            {resultado.errores.map((e, i) => (
+              <li key={i}>{e}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </Card>
+  );
+}
+
 export function ProfesionalesPage() {
   const { rol } = useAuth();
   const canWrite = puedeEscribir(rol as Rol);
@@ -155,6 +295,8 @@ export function ProfesionalesPage() {
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editando, setEditando] = useState<ProfesionalRead | undefined>(undefined);
+  const [detalle, setDetalle] = useState<ProfesionalRead | null>(null);
+  const [resultado, setResultado] = useState<ImportacionSalutem | null>(null);
 
   if (!canWrite) {
     return (
@@ -183,12 +325,16 @@ export function ProfesionalesPage() {
 
   async function onImportar() {
     try {
-      const { creados } = await importar.mutateAsync();
-      toast.success(
-        creados === 0
-          ? "No hay profesionales nuevos en SALUTEM"
-          : `${creados} profesional(es) importado(s) desde SALUTEM`,
-      );
+      const r = await importar.mutateAsync();
+      setResultado(r);
+      const cambios = r.creados + r.actualizados + r.adoptados + r.vinculados;
+      if (r.errores.length > 0) toast.warning("Importación terminada con errores");
+      else
+        toast.success(
+          cambios === 0
+            ? "Todo al día: no hay cambios en SALUTEM"
+            : "Importación desde SALUTEM completada",
+        );
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Error al importar");
     }
@@ -220,6 +366,10 @@ export function ProfesionalesPage() {
         </div>
       </div>
 
+      {resultado && (
+        <ResultadoImportacion resultado={resultado} onCerrar={() => setResultado(null)} />
+      )}
+
       {isError && (
         <p className="text-[13px] text-destructive px-1">
           {error instanceof Error ? error.message : "Error al cargar profesionales"}
@@ -241,23 +391,38 @@ export function ProfesionalesPage() {
               <thead>
                 <tr className="bg-muted/30 border-b">
                   <Th>Nombre</Th>
-                  <Th>Especialidad</Th>
+                  <Th>Especialidades</Th>
                   <Th>Origen</Th>
+                  <Th>Última atención</Th>
+                  <Th>Sincronizado</Th>
                   <Th>Estado</Th>
                   <Th> </Th>
                 </tr>
               </thead>
               <tbody>
                 {profesionales.map((p) => (
-                  <tr key={p.id} className="border-b" data-testid={`row-prof-${p.id}`}>
+                  <tr
+                    key={p.id}
+                    className="border-b cursor-pointer hover:bg-muted/30"
+                    onClick={() => setDetalle(p)}
+                    data-testid={`row-prof-${p.id}`}
+                  >
                     <td className="px-4 py-3 text-[13px]">{p.nombre}</td>
                     <td className="px-4 py-3 text-[12.5px] text-muted-foreground">
-                      {p.especialidad ?? "—"}
+                      {p.especialidades?.length
+                        ? p.especialidades.join(", ")
+                        : (p.especialidad ?? "—")}
                     </td>
                     <td className="px-4 py-3">
                       <Badge variant={p.origen === "SALUTEM" ? "info" : "neutral"}>
                         {p.origen}
                       </Badge>
+                    </td>
+                    <td className="px-4 py-3 text-[12.5px] text-muted-foreground">
+                      {p.ultima_atencion ? fmtDate(p.ultima_atencion) : "—"}
+                    </td>
+                    <td className="px-4 py-3 text-[12.5px] text-muted-foreground">
+                      {fmtRelativo(p.sincronizado_en)}
                     </td>
                     <td className="px-4 py-3">
                       <Badge variant={p.activo ? "success" : "neutral"}>
@@ -270,7 +435,10 @@ export function ProfesionalesPage() {
                           size="sm"
                           variant="outline"
                           className="h-7 text-[11.5px] px-2"
-                          onClick={() => abrir(p)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            abrir(p);
+                          }}
                           data-testid={`btn-editar-prof-${p.id}`}
                         >
                           <Pencil className="size-3 mr-1" /> Editar
@@ -280,7 +448,10 @@ export function ProfesionalesPage() {
                           variant="outline"
                           className="h-7 text-[11.5px] px-2"
                           disabled={actualizar.isPending}
-                          onClick={() => toggleActivo(p)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleActivo(p);
+                          }}
                           data-testid={`btn-toggle-prof-${p.id}`}
                         >
                           {p.activo ? (
@@ -303,6 +474,7 @@ export function ProfesionalesPage() {
         </Card>
       )}
 
+      <DetalleProfesionalDialog profesional={detalle} onClose={() => setDetalle(null)} />
       <ProfesionalDialog open={dialogOpen} onOpenChange={setDialogOpen} profesional={editando} />
     </div>
   );

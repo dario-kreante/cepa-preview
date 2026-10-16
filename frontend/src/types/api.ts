@@ -1764,6 +1764,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/profesionales/{profesional_id}/actividad": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Actividad */
+        get: operations["actividad_api_v1_profesionales__profesional_id__actividad_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/profesionales/{profesional_id}": {
         parameters: {
             query?: never;
@@ -2260,6 +2277,28 @@ export interface components {
             token_type: string;
         };
         /**
+         * ActividadProfesionalRead
+         * @description Actividad del profesional según las fichas y controles vinculados a él.
+         */
+        ActividadProfesionalRead: {
+            /** Profesional Id */
+            profesional_id: number;
+            /** Total Atenciones */
+            total_atenciones: number;
+            /** Atenciones Por Especialidad */
+            atenciones_por_especialidad: components["schemas"]["AtencionPorEspecialidad"][];
+            /** Total Controles */
+            total_controles: number;
+            /** Pacientes Distintos */
+            pacientes_distintos: number;
+            /** Primera Atencion */
+            primera_atencion: string | null;
+            /** Ultima Atencion */
+            ultima_atencion: string | null;
+            /** Ultimas Atenciones */
+            ultimas_atenciones: components["schemas"]["AtencionProfesionalRead"][];
+        };
+        /**
          * AcumuladoRead
          * @description Respuesta del endpoint de acumulado de días por paciente (CEPA-071, EPIC-12).
          */
@@ -2344,6 +2383,30 @@ export interface components {
             tipo: string | null;
             /** Fecha Creacion */
             fecha_creacion: string | null;
+        };
+        /** AtencionPorEspecialidad */
+        AtencionPorEspecialidad: {
+            /** Especialidad */
+            especialidad: string;
+            /** Total */
+            total: number;
+        };
+        /** AtencionProfesionalRead */
+        AtencionProfesionalRead: {
+            /** Ficha Id */
+            ficha_id: number;
+            /** Fecha */
+            fecha: string | null;
+            /** Especialidad */
+            especialidad: string | null;
+            /** Folio */
+            folio: string;
+            /** Ingreso Id */
+            ingreso_id: number;
+            /** Paciente Id */
+            paciente_id: number;
+            /** Paciente */
+            paciente: string;
         };
         /** AtencionSalutemRead */
         AtencionSalutemRead: {
@@ -2810,9 +2873,11 @@ export interface components {
              */
             fecha_control: string;
             /** Medico Tratante */
-            medico_tratante: string;
+            medico_tratante?: string | null;
             /** Region Derivacion */
             region_derivacion: string;
+            /** Profesional Id */
+            profesional_id?: number | null;
         };
         /**
          * ControlMedicoRead
@@ -2834,6 +2899,8 @@ export interface components {
             medico_tratante: string;
             /** Region Derivacion */
             region_derivacion: string;
+            /** Profesional Id */
+            profesional_id?: number | null;
             /** Proximo Control */
             proximo_control: string | null;
             /** Proximo Agendado */
@@ -3534,6 +3601,26 @@ export interface components {
         ImportacionSalutemResultado: {
             /** Creados */
             creados: number;
+            /**
+             * Actualizados
+             * @default 0
+             */
+            actualizados: number;
+            /**
+             * Adoptados
+             * @default 0
+             */
+            adoptados: number;
+            /**
+             * Vinculados
+             * @default 0
+             */
+            vinculados: number;
+            /**
+             * Errores
+             * @default []
+             */
+            errores: string[];
         };
         /**
          * IngresoCierre
@@ -4242,6 +4329,18 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /** Salutem Profesional Id */
+            salutem_profesional_id?: number | null;
+            /** Especialidades */
+            especialidades?: string[] | null;
+            /** Sucursales */
+            sucursales?: string[] | null;
+            /** Primera Atencion */
+            primera_atencion?: string | null;
+            /** Ultima Atencion */
+            ultima_atencion?: string | null;
+            /** Sincronizado En */
+            sincronizado_en?: string | null;
         };
         /**
          * ProfesionalUpdate
@@ -8850,6 +8949,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProfesionalRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    actividad_api_v1_profesionales__profesional_id__actividad_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                profesional_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActividadProfesionalRead"];
                 };
             };
             /** @description Validation Error */
