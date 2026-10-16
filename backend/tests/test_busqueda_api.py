@@ -57,7 +57,7 @@ def test_vista_360_consolida(as_admin):
     assert cuerpo["paciente"]["rut"] == "111111111"
     assert len(cuerpo["ingresos"]) == 1
     # Sin datos en los módulos, cada dimensión viene vacía.
-    for dim in ("farmacos", "licencias", "controles", "reintegro"):
+    for dim in ("farmacos", "licencias", "controles", "odas", "reintegro"):
         assert cuerpo[dim] == []
 
 
@@ -143,7 +143,7 @@ def test_vista_360_llena_todas_las_dimensiones(as_admin, db_session):
 # COMP-2609-08: las dimensiones están tipadas en el contrato (no `Any`)
 def test_vista_360_esquema_tipado(client):
     esquema = client.get("/openapi.json").json()["components"]["schemas"]["Vista360"]
-    for dim in ("farmacos", "licencias", "controles", "reintegro"):
+    for dim in ("farmacos", "licencias", "controles", "odas", "reintegro"):
         items = esquema["properties"][dim]["items"]
         assert "$ref" in items, f"{dim} sin esquema tipado: {items}"
 
@@ -204,3 +204,28 @@ def test_sin_id_inexistente_devuelve_lista_vacia(as_admin, db_session):
     r = as_admin.get("/api/v1/pacientes/buscar", params={"q": "sin_id_999"})
     assert r.status_code == 200
     assert r.json() == []
+
+
+# La ficha muestra las ODA del paciente: la vigente primero, solo las de sus ingresos.
+def test_vista_360_trae_odas_del_paciente(as_admin, db_session):
+    from datetime import date
+
+    from app.models.oda import Oda
+
+    creado = as_admin.post("/api/v1/ingresos", json=_payload()).json()
+    otro = as_admin.post(
+        "/api/v1/ingresos", json=_payload(rut="5.126.663-3", nombre="Pedro Pérez")
+    ).json()
+    db_session.add_all([
+        Oda(ingreso_id=creado["id"], identificador="ODA-VIEJA",
+            fecha_vencimiento=date(2026, 5, 1), vigente=False),
+        Oda(ingreso_id=creado["id"], identificador="ODA-ACTUAL",
+            fecha_vencimiento=date(2026, 10, 20), vigente=True),
+        Oda(ingreso_id=otro["id"], identificador="ODA-AJENA",
+            fecha_vencimiento=date(2026, 10, 18), vigente=True),
+    ])
+    db_session.flush()
+
+    cuerpo = as_admin.get(f"/api/v1/pacientes/{creado['paciente_id']}/vista-360").json()
+    assert [o["identificador"] for o in cuerpo["odas"]] == ["ODA-ACTUAL", "ODA-VIEJA"]
+    assert cuerpo["odas"][0]["fecha_vencimiento"] == "2026-10-20"

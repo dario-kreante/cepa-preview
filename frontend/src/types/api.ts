@@ -4823,6 +4823,11 @@ export interface components {
              */
             controles: components["schemas"]["ControlMedicoRead"][];
             /**
+             * Odas
+             * @default []
+             */
+            odas: components["schemas"]["OdaRead"][];
+            /**
              * Reintegro
              * @default []
              */
@@ -4888,6 +4893,8 @@ export interface components {
             resuelta_en: string | null;
             /** Email Enviado */
             email_enviado: boolean;
+            /** Paciente Id */
+            paciente_id?: number | null;
         };
         /** AlertaRead */
         app__schemas__farmacos__AlertaRead: {

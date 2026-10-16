@@ -163,6 +163,11 @@ describe("routeForCaso", () => {
     expect(routeForCaso("ingreso", 1)).toBe("/ingresos");
   });
 
+  it("ODA con paciente abre su ficha directo en la pestaña ODA", () => {
+    expect(routeForCaso("oda", 3, 42)).toBe("/ingresos?paciente=42&tab=odas");
+    expect(routeForCaso("ingreso", 3, 42)).toBe("/ingresos?paciente=42");
+  });
+
   it("tipo desconocido o nulo cae a /ingresos", () => {
     expect(routeForCaso("otro", 1)).toBe("/ingresos");
     expect(routeForCaso(null, null)).toBe("/ingresos");
