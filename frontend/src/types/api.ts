@@ -1348,6 +1348,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/dashboard/operativo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Dashboard Operativo
+         * @description Dashboard de inicio: atenciones de SALUTEM del período (por defecto, últimos
+         *     30 días) y lo que hay que gestionar hoy (licencias, ODAs, alertas, borradores).
+         */
+        get: operations["get_dashboard_operativo_api_v1_dashboard_operativo_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/dashboard": {
         parameters: {
             query?: never;
@@ -2703,6 +2724,13 @@ export interface components {
              */
             created_at: string;
         };
+        /** ConteoEtiqueta */
+        ConteoEtiqueta: {
+            /** Etiqueta */
+            etiqueta: string;
+            /** Total */
+            total: number;
+        };
         /**
          * ControlMedicoCreate
          * @description Alta de un control médico (CEPA-060).
@@ -2792,6 +2820,67 @@ export interface components {
             indicadores_comprometidos?: {
                 [key: string]: unknown;
             } | null;
+        };
+        /**
+         * DashboardOperativo
+         * @description Respuesta de GET /dashboard/operativo: atenciones SALUTEM + pendientes de gestión.
+         *
+         *     Las cifras de atenciones y de ingresos/altas/controles son del período; el resto
+         *     (activos, licencias, ODAs, EPT, borradores, alertas) es el estado a hoy.
+         */
+        DashboardOperativo: {
+            /**
+             * Periodo Desde
+             * Format: date
+             */
+            periodo_desde: string;
+            /**
+             * Periodo Hasta
+             * Format: date
+             */
+            periodo_hasta: string;
+            /** Pacientes Activos */
+            pacientes_activos: number;
+            /** Ingresos Periodo */
+            ingresos_periodo: number;
+            /** Altas Periodo */
+            altas_periodo: number;
+            /** Atenciones */
+            atenciones: number;
+            /** Inasistencias */
+            inasistencias: number;
+            /** Anulaciones */
+            anulaciones: number;
+            /** Tasa Inasistencia */
+            tasa_inasistencia: number | null;
+            /** Agendadas Proximas */
+            agendadas_proximas: number;
+            /** Controles Periodo */
+            controles_periodo: number;
+            /** Licencias Activas */
+            licencias_activas: number;
+            /** Licencias Pendientes Isl */
+            licencias_pendientes_isl: number;
+            /** Odas Vencidas */
+            odas_vencidas: number;
+            /** Odas Por Vencer */
+            odas_por_vencer: number;
+            /** Ept Abiertos */
+            ept_abiertos: number;
+            /** Pacientes Pendientes Folio */
+            pacientes_pendientes_folio: number;
+            /** Alertas Abiertas */
+            alertas_abiertas: number;
+            /** Alertas Por Tipo */
+            alertas_por_tipo: components["schemas"]["ConteoEtiqueta"][];
+            /** Activos Por Programa */
+            activos_por_programa: components["schemas"]["ConteoEtiqueta"][];
+            /** Atenciones Por Especialidad */
+            atenciones_por_especialidad: components["schemas"]["ConteoEtiqueta"][];
+            /** Atenciones Por Profesional */
+            atenciones_por_profesional: components["schemas"]["ConteoEtiqueta"][];
+            /** Tendencia Semanal */
+            tendencia_semanal: components["schemas"]["PuntoTendencia"][];
         };
         /** DescarteIn */
         DescarteIn: {
@@ -4182,6 +4271,18 @@ export interface components {
         PullSalutemRequest: {
             /** Folio */
             folio: string;
+        };
+        /** PuntoTendencia */
+        PuntoTendencia: {
+            /**
+             * Semana
+             * Format: date
+             */
+            semana: string;
+            /** Atendidas */
+            atendidas: number;
+            /** Inasistencias */
+            inasistencias: number;
         };
         /**
          * RecaCreate
@@ -8015,6 +8116,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["IngresosActivos"];
+                };
+            };
+        };
+    };
+    get_dashboard_operativo_api_v1_dashboard_operativo_get: {
+        parameters: {
+            query?: {
+                fecha_desde?: string | null;
+                fecha_hasta?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardOperativo"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
