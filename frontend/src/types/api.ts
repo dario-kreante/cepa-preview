@@ -300,6 +300,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/ingresos/{ingreso_id}/folio": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Cambiar Folio
+         * @description Corrige el folio de un ingreso (y de sus reingresos, fichas e IMED con ese folio).
+         */
+        put: operations["cambiar_folio_api_v1_ingresos__ingreso_id__folio_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/ingresos/{ingreso_id}/seguimiento": {
         parameters: {
             query?: never;
@@ -3207,6 +3227,14 @@ export interface components {
             tipo_denuncia?: string | null;
         };
         /**
+         * FolioUpdate
+         * @description Corrección del folio de un ingreso (solo Administrativo).
+         */
+        FolioUpdate: {
+            /** Folio */
+            folio: string;
+        };
+        /**
          * FormVersionCreate
          * @description Cuerpo de la petición de creación/actualización de borrador.
          */
@@ -5561,6 +5589,41 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["IngresoUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IngresoRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cambiar_folio_api_v1_ingresos__ingreso_id__folio_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ingreso_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FolioUpdate"];
             };
         };
         responses: {

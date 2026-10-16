@@ -11,6 +11,7 @@ import {
   importarDesdeSalutem,
   obtenerLicenciasSugeridas,
   actualizarIngreso,
+  corregirFolio,
   type IngresoCreate,
   type IngresoUpdate,
 } from "./api";
@@ -119,6 +120,20 @@ export function useActualizarIngreso(pacienteId: number) {
       qc.invalidateQueries({ queryKey: ["pacientes", "buscar"] });
       // Un cierre o derivación cambia el conteo de activos del Topbar.
       qc.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+  });
+}
+
+export function useCorregirFolio(pacienteId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ ingresoId, folio }: { ingresoId: number; folio: string }) =>
+      corregirFolio(ingresoId, folio),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["pacientes", pacienteId, "vista360"] });
+      qc.invalidateQueries({ queryKey: ["pacientes", "buscar"] });
+      qc.invalidateQueries({ queryKey: ["fichas-clinicas"] });
+      qc.invalidateQueries({ queryKey: ["licencias", "folio"] });
     },
   });
 }

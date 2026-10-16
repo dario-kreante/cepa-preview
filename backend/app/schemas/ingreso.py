@@ -1,6 +1,6 @@
 from datetime import date
 
-from pydantic import BaseModel, ConfigDict, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.domain.enums import (
     EstadoCaso,
@@ -172,4 +172,18 @@ class IngresoCierre(BaseModel):
     def _solo_cierre_o_derivacion(cls, v: EstadoCaso) -> EstadoCaso:
         if v not in (EstadoCaso.CERRADO, EstadoCaso.DERIVADO):
             raise ValueError("El cierre solo admite estado 'cerrado' o 'derivado'.")
+        return v
+
+
+class FolioUpdate(BaseModel):
+    """Corrección del folio de un ingreso (solo Administrativo)."""
+
+    folio: str = Field(min_length=1, max_length=30)
+
+    @field_validator("folio")
+    @classmethod
+    def _sin_espacios(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("El folio no puede quedar vacío.")
         return v
