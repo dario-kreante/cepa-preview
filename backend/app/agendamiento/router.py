@@ -8,19 +8,29 @@ Endpoints:
   GET    /api/v1/propuestas-agenda/{id}              Todos los roles
   POST   /api/v1/propuestas-agenda/{id}/confirmar    Administrativo | Coordinacion
   GET    /api/v1/propuestas-agenda/{id}/citas        Todos los roles
+  POST   /api/v1/pacientes-por-citar/{paciente_id}/gestiones  Administrativo | Coordinacion
+  GET    /api/v1/pacientes-por-citar/{paciente_id}/gestiones  Todos los roles
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select, true
 from sqlalchemy.orm import Session
 
-from app.agendamiento.models import CitaPropuesta, DisponibilidadProf, PropuestaAgenda
+from app.agendamiento import gestion
+from app.agendamiento.models import (
+    CitaPropuesta,
+    DisponibilidadProf,
+    GestionCitacion,
+    PropuestaAgenda,
+)
 from app.agendamiento.schemas import (
     CitaPropuestaRead,
     ConfirmarCitasRequest,
     DisponibilidadProfCreate,
     DisponibilidadProfRead,
     GenerarPropuestaRequest,
+    GestionCreate,
+    GestionRead,
     PropuestaAgendaRead,
 )
 from app.agendamiento.service import (
@@ -167,3 +177,42 @@ def confirmar_citas_endpoint(
     )
     db.commit()
     return confirmadas
+
+
+# ─── Gestión de contacto ───────────────────────────────────────────────────────
+
+@router.post(
+    "/api/v1/pacientes-por-citar/{paciente_id}/gestiones",
+    response_model=GestionRead,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[_writer],
+)
+def registrar_gestion_endpoint(
+    paciente_id: int,
+    payload: GestionCreate,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+) -> GestionCitacion:
+    g = gestion.registrar_gestion(
+        db,
+        paciente_id=paciente_id,
+        profesional_id=payload.profesional_id,
+        resultado=payload.resultado,
+        nota=payload.nota,
+        actor=current_user.username,
+        rol=current_user.role,
+    )
+    db.commit()
+    db.refresh(g)
+    return g
+
+
+@router.get(
+    "/api/v1/pacientes-por-citar/{paciente_id}/gestiones",
+    response_model=list[GestionRead],
+    dependencies=[_reader],
+)
+def listar_gestiones_endpoint(
+    paciente_id: int, db: Session = Depends(get_db)
+) -> list[GestionCitacion]:
+    return gestion.listar_gestiones(db, paciente_id)

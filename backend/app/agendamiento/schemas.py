@@ -16,6 +16,7 @@ from app.agendamiento.enums import (
     EstadoCita,
     EstadoPropuesta,
     PrioridadCita,
+    ResultadoGestion,
     TipoPropuesta,
 )
 
@@ -119,3 +120,30 @@ class CitaPropuestaRead(BaseModel):
 class ConfirmarCitasRequest(BaseModel):
     """IDs de CitaPropuesta a confirmar (deben pertenecer a la misma propuesta)."""
     cita_ids: list[int] = Field(min_length=1)
+
+
+# ─── Gestión de contacto ───────────────────────────────────────────────────────
+
+class GestionCreate(BaseModel):
+    profesional_id: int
+    resultado: ResultadoGestion
+    nota: str | None = Field(default=None, max_length=300)
+
+    @field_validator("nota")
+    @classmethod
+    def _normalizar_nota(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        return " ".join(v.split()) or None
+
+
+class GestionRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    paciente_id: int
+    profesional_id: int
+    resultado: ResultadoGestion
+    nota: str | None
+    usuario: str
+    created_at: datetime

@@ -5,7 +5,7 @@ Tres tablas portables (D15): disponibilidad_prof, propuesta_agenda, cita_propues
 
 from datetime import date, datetime, timezone
 
-from sqlalchemy import BigInteger, Boolean, Date, DateTime, Identity, Integer, String
+from sqlalchemy import BigInteger, Boolean, Date, DateTime, ForeignKey, Identity, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -76,6 +76,29 @@ class CitaPropuesta(Base):
     razon: Mapped[str] = mapped_column(String(120), nullable=False)
     estado: Mapped[str] = mapped_column(String(15), nullable=False, default="propuesta")
     excluida_por: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+
+
+class GestionCitacion(Base):
+    """Intento de contacto con un paciente por citar (bitácora; nunca se edita).
+
+    resultado: ResultadoGestion.value. profesional_id: el profesional para el que se gestionaba.
+    """
+
+    __tablename__ = "gestion_citacion"
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=False), primary_key=True)
+    paciente_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("paciente.id"), nullable=False, index=True
+    )
+    profesional_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("profesional.id"), nullable=False
+    )
+    resultado: Mapped[str] = mapped_column(String(25), nullable=False)
+    nota: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    usuario: Mapped[str] = mapped_column(String(60), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=_utcnow
     )
