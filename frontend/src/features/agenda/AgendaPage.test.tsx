@@ -99,10 +99,17 @@ beforeEach(() => {
   server.use(
     http.get(`${BASE}/api/v1/profesionales`, () =>
       HttpResponse.json([
-        { id: 5, nombre: "Dra. Pérez", especialidad: "Psiquiatría", activo: true },
+        {
+          id: 5,
+          nombre: "Dra. Pérez",
+          especialidad: "Psiquiatría",
+          activo: true,
+        },
       ]),
     ),
-    http.get(`${BASE}/api/v1/pacientes-por-citar`, () => HttpResponse.json(LISTA)),
+    http.get(`${BASE}/api/v1/pacientes-por-citar`, () =>
+      HttpResponse.json(LISTA),
+    ),
     http.get(`${BASE}/api/v1/disponibilidad-profesional/:id`, () =>
       HttpResponse.json(DISPO),
     ),
@@ -112,7 +119,9 @@ beforeEach(() => {
 async function elegirProfesional() {
   const user = userEvent.setup();
   const select = await screen.findByLabelText("Profesional");
-  await waitFor(() => expect(screen.getByText(/Dra\. Pérez/)).toBeInTheDocument());
+  await waitFor(() =>
+    expect(screen.getByText(/Dra\. Pérez/)).toBeInTheDocument(),
+  );
   await user.selectOptions(select, "5");
   return user;
 }
@@ -129,7 +138,9 @@ describe("AgendaPage", () => {
     expect(
       screen.getByText("Dijo agendada, sin hora en SALUTEM"),
     ).toBeInTheDocument();
-    expect(screen.getByText("No contesta · 15-10 · cvidal")).toBeInTheDocument();
+    expect(
+      screen.getByText("No contesta · 15-10 · cvidal"),
+    ).toBeInTheDocument();
     expect(screen.getByText("Mié 14 · 3/4")).toBeInTheDocument();
   });
 
@@ -167,7 +178,9 @@ describe("AgendaPage", () => {
       ],
     };
     server.use(
-      http.get(`${BASE}/api/v1/pacientes-por-citar`, () => HttpResponse.json(lista)),
+      http.get(`${BASE}/api/v1/pacientes-por-citar`, () =>
+        HttpResponse.json(lista),
+      ),
     );
     renderPage();
     await elegirProfesional();
@@ -219,8 +232,14 @@ describe("AgendaPage", () => {
     await user.click(
       screen.getAllByRole("button", { name: "Registrar contacto" })[0],
     );
-    await user.selectOptions(await screen.findByLabelText("Resultado"), "no_contesta");
-    await user.type(screen.getByLabelText("Nota (opcional)"), "Llamé dos veces");
+    await user.selectOptions(
+      await screen.findByLabelText("Resultado"),
+      "no_contesta",
+    );
+    await user.type(
+      screen.getByLabelText("Nota (opcional)"),
+      "Llamé dos veces",
+    );
     await user.click(screen.getByRole("button", { name: "Guardar" }));
     await waitFor(() =>
       expect(body).toEqual({
@@ -237,14 +256,19 @@ describe("AgendaPage", () => {
   it("quitar disponibilidad hace DELETE del día", async () => {
     let borrado: string | null = null;
     server.use(
-      http.delete(`${BASE}/api/v1/disponibilidad-profesional/:id`, ({ params }) => {
-        borrado = String(params.id);
-        return new HttpResponse(null, { status: 204 });
-      }),
+      http.delete(
+        `${BASE}/api/v1/disponibilidad-profesional/:id`,
+        ({ params }) => {
+          borrado = String(params.id);
+          return new HttpResponse(null, { status: 204 });
+        },
+      ),
     );
     renderPage();
     const user = await elegirProfesional();
-    await user.click(await screen.findByRole("button", { name: /Quitar Lunes/ }));
+    await user.click(
+      await screen.findByRole("button", { name: /Quitar Lunes/ }),
+    );
     await waitFor(() => expect(borrado).toBe("7"));
   });
 
@@ -255,6 +279,8 @@ describe("AgendaPage", () => {
     expect(
       screen.queryByRole("button", { name: "Registrar contacto" }),
     ).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Quitar/ })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Quitar/ }),
+    ).not.toBeInTheDocument();
   });
 });

@@ -68,7 +68,9 @@ function Formulario({
             id="resultado-gestion"
             className={cn(fieldCls, "h-9")}
             value={resultado}
-            onChange={(e) => setResultado(e.target.value as ResultadoGestion | "")}
+            onChange={(e) =>
+              setResultado(e.target.value as ResultadoGestion | "")
+            }
           >
             <option value="">Selecciona un resultado</option>
             {(Object.keys(RESULTADO_LABELS) as ResultadoGestion[]).map((r) => (
@@ -115,7 +117,10 @@ export function RegistrarContactoDialog({
   onClose: () => void;
 }) {
   return (
-    <Dialog open={paciente !== null} onOpenChange={(open) => !open && onClose()}>
+    <Dialog
+      open={paciente !== null}
+      onOpenChange={(open) => !open && onClose()}
+    >
       <DialogContent>
         {paciente && (
           <Formulario

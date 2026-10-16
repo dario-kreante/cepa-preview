@@ -30,10 +30,17 @@ export function rangoFechas(
   if (rango === "dos_semanas") return {};
   const desde = iso(hoy);
   if (rango === "mes") {
-    return { desde, hasta: iso(new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0)) };
+    return {
+      desde,
+      hasta: iso(new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0)),
+    };
   }
   const dow = (hoy.getDay() + 6) % 7; // lunes = 0
-  const viernes = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() - dow + 4);
+  const viernes = new Date(
+    hoy.getFullYear(),
+    hoy.getMonth(),
+    hoy.getDate() - dow + 4,
+  );
   if (viernes < new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate())) {
     viernes.setDate(viernes.getDate() + 7);
   }
@@ -116,7 +123,8 @@ export function useCrearDisponibilidad() {
 export function useQuitarDisponibilidad() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (disponibilidadId: number) => quitarDisponibilidad(disponibilidadId),
+    mutationFn: (disponibilidadId: number) =>
+      quitarDisponibilidad(disponibilidadId),
     onSuccess: () => invalidarDisponibilidad(qc),
   });
 }

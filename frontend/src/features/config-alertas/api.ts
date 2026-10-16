@@ -21,7 +21,11 @@ export const TIPO_LABELS: Record<string, string> = {
 };
 
 /** Alertas del sync de SALUTEM: no tienen plazo, solo se encienden o apagan. */
-export const TIPOS_SIN_DIAS = new Set(["licencia_en_control", "receta_en_control", "inasistencia"]);
+export const TIPOS_SIN_DIAS = new Set([
+  "licencia_en_control",
+  "receta_en_control",
+  "inasistencia",
+]);
 
 /** Tipo cuyo "dias" es el límite superior del tramo de GAF umbral (CEPA-075). */
 export const TIPO_GAF = "gaf_licencia";
@@ -29,15 +33,21 @@ export const TIPO_GAF = "gaf_licencia";
 /** GET /api/v1/config-alertas */
 export async function listarConfig(): Promise<ConfigAlertaRead[]> {
   const { data, error } = await api.GET("/api/v1/config-alertas");
-  if (error || !data) throw new Error("No se pudo cargar la configuración de alertas");
+  if (error || !data)
+    throw new Error("No se pudo cargar la configuración de alertas");
   return data;
 }
 
 /** PUT /api/v1/config-alertas */
-export async function guardarConfig(body: ConfigAlertaItem[]): Promise<ConfigAlertaRead[]> {
-  const { data, error, response } = await api.PUT("/api/v1/config-alertas", { body });
+export async function guardarConfig(
+  body: ConfigAlertaItem[],
+): Promise<ConfigAlertaRead[]> {
+  const { data, error, response } = await api.PUT("/api/v1/config-alertas", {
+    body,
+  });
   if (error || !data) {
-    if (response.status === 422) throw new Error("Datos inválidos: los días van de 0 a 365.");
+    if (response.status === 422)
+      throw new Error("Datos inválidos: los días van de 0 a 365.");
     throw new Error("No se pudo guardar la configuración");
   }
   return data;
@@ -52,10 +62,15 @@ export async function listarFestivos(): Promise<FestivoRead[]> {
 
 /** POST /api/v1/config-alertas/festivos */
 export async function crearFestivo(body: FestivoCreate): Promise<FestivoRead> {
-  const { data, error, response } = await api.POST("/api/v1/config-alertas/festivos", { body });
+  const { data, error, response } = await api.POST(
+    "/api/v1/config-alertas/festivos",
+    { body },
+  );
   if (error || !data) {
-    if (response.status === 409) throw new Error("Ya existe un festivo en esa fecha.");
-    if (response.status === 422) throw new Error("Indica una fecha y una descripción.");
+    if (response.status === 409)
+      throw new Error("Ya existe un festivo en esa fecha.");
+    if (response.status === 422)
+      throw new Error("Indica una fecha y una descripción.");
     throw new Error("No se pudo agregar el festivo");
   }
   return data;
@@ -63,8 +78,11 @@ export async function crearFestivo(body: FestivoCreate): Promise<FestivoRead> {
 
 /** DELETE /api/v1/config-alertas/festivos/{festivo_id} */
 export async function eliminarFestivo(id: number): Promise<void> {
-  const { response } = await api.DELETE("/api/v1/config-alertas/festivos/{festivo_id}", {
-    params: { path: { festivo_id: id } },
-  });
+  const { response } = await api.DELETE(
+    "/api/v1/config-alertas/festivos/{festivo_id}",
+    {
+      params: { path: { festivo_id: id } },
+    },
+  );
   if (!response.ok) throw new Error("No se pudo eliminar el festivo");
 }

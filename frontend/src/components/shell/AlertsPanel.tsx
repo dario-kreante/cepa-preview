@@ -15,9 +15,16 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { puedeEscribir, type Rol } from "@/lib/rbac";
-import { useActualizarAlerta, useAlertas, useTareas } from "@/features/alertas/hooks";
+import {
+  useActualizarAlerta,
+  useAlertas,
+  useTareas,
+} from "@/features/alertas/hooks";
 import type { AlertaRead, TareaItemRead } from "@/features/alertas/api";
-import { DocumentosAlertaDialog, type CasoAlerta } from "./DocumentosAlertaDialog";
+import {
+  DocumentosAlertaDialog,
+  type CasoAlerta,
+} from "./DocumentosAlertaDialog";
 
 // ── visual helpers ────────────────────────────────────────────────────────────
 
@@ -45,8 +52,7 @@ const ICON_MAP = {
 
 const STYLE_MAP: Record<string, string> = {
   criticas: "bg-destructive/10 text-destructive",
-  proximas:
-    "bg-[oklch(0.96_0.08_85)] text-[oklch(0.52_0.16_75)]",
+  proximas: "bg-[oklch(0.96_0.08_85)] text-[oklch(0.52_0.16_75)]",
   info: "bg-[oklch(0.94_0.04_230)] text-[oklch(0.42_0.14_230)]",
   tarea: "bg-[oklch(0.94_0.05_155)] text-[oklch(0.40_0.12_155)]",
 };
@@ -100,7 +106,8 @@ const TITULOS_ATENCION: Record<string, string> = {
 };
 
 export function tituloAlerta(tipo: string, casoTipo?: string | null): string {
-  if (casoTipo === CASO_ATENCION && TITULOS_ATENCION[tipo]) return TITULOS_ATENCION[tipo];
+  if (casoTipo === CASO_ATENCION && TITULOS_ATENCION[tipo])
+    return TITULOS_ATENCION[tipo];
   return TITULOS_ALERTA[tipo] ?? cap(tipo.replace(/_/g, " "));
 }
 
@@ -111,7 +118,10 @@ const ETIQUETAS_CASO: Record<string, string> = {
   paciente: "Paciente",
 };
 
-function subtituloCaso(casoTipo: string | null | undefined, casoId: number | null | undefined): string {
+function subtituloCaso(
+  casoTipo: string | null | undefined,
+  casoId: number | null | undefined,
+): string {
   if (!casoTipo || !casoId) return "—";
   return `${ETIQUETAS_CASO[casoTipo] ?? casoTipo} #${casoId}`;
 }
@@ -120,13 +130,21 @@ function subtituloCaso(casoTipo: string | null | undefined, casoId: number | nul
  * Una alerta es "para mí" si me la asignaron o no tiene dueño. Coordinación ve también las
  * de otros profesionales, pero esas no las lee ella: la leída es de quien la tiene asignada.
  */
-export function esParaMi(a: AlertaRead, usuarioId: number | null | undefined): boolean {
+export function esParaMi(
+  a: AlertaRead,
+  usuarioId: number | null | undefined,
+): boolean {
   return a.usuario_id === null || a.usuario_id === usuarioId;
 }
 
 /** Alertas que la persona todavía no ha visto: el número de la campana. */
-export function alertasSinLeer(alertas: AlertaRead[], usuarioId: number | null | undefined) {
-  return alertas.filter((a) => a.estado === "pendiente" && esParaMi(a, usuarioId));
+export function alertasSinLeer(
+  alertas: AlertaRead[],
+  usuarioId: number | null | undefined,
+) {
+  return alertas.filter(
+    (a) => a.estado === "pendiente" && esParaMi(a, usuarioId),
+  );
 }
 
 /**
@@ -141,7 +159,8 @@ export function routeForCaso(
   casoId: number | null | undefined,
   pacienteId?: number | null,
 ): string {
-  if (pacienteId && casoTipo === "oda") return `/ingresos?paciente=${pacienteId}&tab=odas`;
+  if (pacienteId && casoTipo === "oda")
+    return `/ingresos?paciente=${pacienteId}&tab=odas`;
   if (pacienteId && (casoTipo === "ingreso" || casoTipo === "salutem_cita"))
     return `/ingresos?paciente=${pacienteId}`;
   switch (casoTipo) {
@@ -181,6 +200,26 @@ interface AlertItemProps {
   /** Solo para quien puede gestionar alertas; sin él la alerta es de solo lectura. */
   onResolver?: () => void;
   ocupado?: boolean;
+}
+
+/** Texto de fecha de una alerta según su tipo; sin plazo, cuándo se generó. */
+function metaAlerta(
+  a: {
+    tipo: string;
+    caso_tipo?: string | null;
+    plazo_objetivo?: string | null;
+    generada_en: string;
+  },
+  esDeControl: boolean,
+): string {
+  if (!a.plazo_objetivo) return formatDate(a.generada_en);
+  if (a.tipo === "inasistencia")
+    return `Cita: ${formatDate(a.plazo_objetivo, "UTC")}`;
+  if (esDeControl) {
+    const etiqueta = a.caso_tipo === CASO_ATENCION ? "Atención" : "Control";
+    return `${etiqueta}: ${formatDate(a.plazo_objetivo, "UTC")}`;
+  }
+  return `Plazo: ${formatDate(a.plazo_objetivo)}`;
 }
 
 /** Tiempo que una alerta tiene que estar en pantalla para darla por leída. */
@@ -372,14 +411,21 @@ export function AlertsPanel({ onClose }: AlertsPanelProps = {}) {
   const cambiarEstado = (a: AlertaRead, estado: "leida" | "resuelta") =>
     actualizar.mutate(
       { id: a.id, estado },
-      { onError: () => toast.error("No se pudo actualizar la alerta. Intenta de nuevo.") },
+      {
+        onError: () =>
+          toast.error("No se pudo actualizar la alerta. Intenta de nuevo."),
+      },
     );
 
   const [tab, setTab] = useState<TabKey>("todas");
   const [alertaControl, setAlertaControl] = useState<AlertaRead | null>(null);
   const casoAbierto: CasoAlerta | null =
     alertaControl?.caso_id != null
-      ? { tipo: alertaControl.caso_tipo === CASO_ATENCION ? "atencion" : "control", id: alertaControl.caso_id }
+      ? {
+          tipo:
+            alertaControl.caso_tipo === CASO_ATENCION ? "atencion" : "control",
+          id: alertaControl.caso_id,
+        }
       : null;
 
   // "Todas" son las abiertas (pendientes y leídas); las resueltas tienen su pestaña.
@@ -411,7 +457,10 @@ export function AlertsPanel({ onClose }: AlertsPanelProps = {}) {
 
   const TABS: { key: TabKey; label: string }[] = [
     { key: "todas", label: "Todas" },
-    { key: "sin_leer", label: sinLeer.length ? `Sin leer (${sinLeer.length})` : "Sin leer" },
+    {
+      key: "sin_leer",
+      label: sinLeer.length ? `Sin leer (${sinLeer.length})` : "Sin leer",
+    },
     { key: "resueltas", label: "Resueltas" },
   ];
 
@@ -425,7 +474,9 @@ export function AlertsPanel({ onClose }: AlertsPanelProps = {}) {
         <Bell className="size-4 text-primary" />
         <h3 className="text-sm font-bold">Alertas y tareas</h3>
         {sinLeer.length > 0 && (
-          <span className="text-[11px] text-muted-foreground">· {sinLeer.length} sin leer</span>
+          <span className="text-[11px] text-muted-foreground">
+            · {sinLeer.length} sin leer
+          </span>
         )}
         {onClose && (
           <button
@@ -468,7 +519,9 @@ export function AlertsPanel({ onClose }: AlertsPanelProps = {}) {
       <div className="flex-1 overflow-y-auto">
         {displayAlertas.length === 0 && displayTareas.length === 0 && (
           <div className="px-5 py-8 text-center text-[12px] text-muted-foreground">
-            {tab === "sin_leer" ? "No tienes alertas sin leer" : "Sin alertas en esta categoría"}
+            {tab === "sin_leer"
+              ? "No tienes alertas sin leer"
+              : "Sin alertas en esta categoría"}
           </div>
         )}
 
@@ -478,14 +531,9 @@ export function AlertsPanel({ onClose }: AlertsPanelProps = {}) {
           const subtitle = subtituloCaso(a.caso_tipo, a.caso_id);
           // En licencia/receta de un control, plazo_objetivo es la fecha del control a medianoche
           // UTC: en hora local de Chile caería el día anterior.
-          const esDeControl = a.tipo === "licencia_en_control" || a.tipo === "receta_en_control";
-          const meta = a.plazo_objetivo
-            ? a.tipo === "inasistencia"
-              ? `Cita: ${formatDate(a.plazo_objetivo, "UTC")}`
-            : esDeControl
-              ? `${a.caso_tipo === CASO_ATENCION ? "Atención" : "Control"}: ${formatDate(a.plazo_objetivo, "UTC")}`
-              : `Plazo: ${formatDate(a.plazo_objetivo)}`
-            : formatDate(a.generada_en);
+          const esDeControl =
+            a.tipo === "licencia_en_control" || a.tipo === "receta_en_control";
+          const meta = metaAlerta(a, esDeControl);
 
           return (
             <AlertItem
@@ -500,14 +548,14 @@ export function AlertsPanel({ onClose }: AlertsPanelProps = {}) {
               onVista={
                 // Se marca leída al verla, solo si es de quien la mira o no tiene dueño:
                 // Coordinación ve todas y no debe "leer" las de otra persona.
-                escritor &&
-                a.estado === "pendiente" &&
-                esParaMi(a, usuarioId)
+                escritor && a.estado === "pendiente" && esParaMi(a, usuarioId)
                   ? () => actualizar.mutate({ id: a.id, estado: "leida" })
                   : undefined
               }
               onResolver={
-                escritor && a.estado !== "resuelta" ? () => cambiarEstado(a, "resuelta") : undefined
+                escritor && a.estado !== "resuelta"
+                  ? () => cambiarEstado(a, "resuelta")
+                  : undefined
               }
               ocupado={actualizar.isPending}
             />
@@ -559,14 +607,22 @@ export function AlertsPanel({ onClose }: AlertsPanelProps = {}) {
       </div>
 
       <DocumentosAlertaDialog
-        titulo={alertaControl ? tituloAlerta(alertaControl.tipo, alertaControl.caso_tipo) : ""}
+        titulo={
+          alertaControl
+            ? tituloAlerta(alertaControl.tipo, alertaControl.caso_tipo)
+            : ""
+        }
         caso={casoAbierto}
         onOpenChange={(open) => !open && setAlertaControl(null)}
         alertaId={alertaControl?.id ?? null}
         tipoAlerta={alertaControl?.tipo}
         pendiente={alertaControl ? alertaControl.estado !== "resuelta" : false}
         puedeGestionar={escritor}
-        onResolver={alertaControl ? () => cambiarEstado(alertaControl, "resuelta") : undefined}
+        onResolver={
+          alertaControl
+            ? () => cambiarEstado(alertaControl, "resuelta")
+            : undefined
+        }
         onIr={ir}
       />
     </aside>

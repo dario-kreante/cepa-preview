@@ -12,7 +12,8 @@ export type ResultadoGestion = components["schemas"]["ResultadoGestion"];
 export type GestionCreate = components["schemas"]["GestionCreate"];
 export type GestionRead = components["schemas"]["GestionRead"];
 export type CargaDiaRead = components["schemas"]["CargaDiaRead"];
-export type PacientePorCitarRead = components["schemas"]["PacientePorCitarRead"];
+export type PacientePorCitarRead =
+  components["schemas"]["PacientePorCitarRead"];
 export type PacientesPorCitarRead =
   components["schemas"]["PacientesPorCitarRead"];
 
@@ -113,6 +114,7 @@ export async function listarGestiones(
     "/api/v1/pacientes-por-citar/{paciente_id}/gestiones",
     { params: { path: { paciente_id: pacienteId } } },
   );
-  if (error || !data) throw new Error("No se pudo cargar el historial de contacto");
+  if (error || !data)
+    throw new Error("No se pudo cargar el historial de contacto");
   return data;
 }
