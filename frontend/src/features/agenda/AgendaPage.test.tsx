@@ -51,6 +51,7 @@ const LISTA = {
     { fecha: "2026-10-14", cupo: 4, asignados: 3 },
     { fecha: "2026-10-15", cupo: 4, asignados: 0 },
   ],
+  feriados: [] as string[],
   pacientes: [
     {
       ...PACIENTE_BASE,
@@ -130,6 +131,25 @@ describe("AgendaPage", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("No contesta · 15-10 · cvidal")).toBeInTheDocument();
     expect(screen.getByText("Mié 14 · 3/4")).toBeInTheDocument();
+  });
+
+  it("muestra los feriados en la franja de carga, en orden de fecha", async () => {
+    server.use(
+      http.get(`${BASE}/api/v1/pacientes-por-citar`, () =>
+        HttpResponse.json({ ...LISTA, feriados: ["2026-10-13", "2026-10-16"] }),
+      ),
+    );
+    renderPage();
+    await elegirProfesional();
+    const franja = await screen.findByLabelText("Carga por día");
+    await waitFor(() =>
+      expect(Array.from(franja.children).map((c) => c.textContent)).toEqual([
+        "Mar 13 · Feriado",
+        "Mié 14 · 3/4",
+        "Jue 15 · 0/4",
+        "Vie 16 · Feriado",
+      ]),
+    );
   });
 
   it("muestra el día del último contacto en hora de Santiago, no en UTC", async () => {

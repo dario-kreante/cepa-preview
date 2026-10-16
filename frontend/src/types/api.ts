@@ -3962,6 +3962,8 @@ export interface components {
             hasta: string;
             /** Por Dia */
             por_dia: components["schemas"]["CargaDiaRead"][];
+            /** Feriados */
+            feriados: string[];
             /** Pacientes */
             pacientes: components["schemas"]["PacientePorCitarRead"][];
         };

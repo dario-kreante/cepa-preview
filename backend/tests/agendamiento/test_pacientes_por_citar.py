@@ -302,6 +302,21 @@ def test_lista_rango_por_defecto_hasta_viernes_siguiente(as_admin, db_session, p
     assert [d["fecha"] for d in body["por_dia"]] == ["2026-10-19"]  # lunes: único día con cupo hasta el 23
 
 
+def test_lista_informa_feriados_habiles_del_rango(as_admin, db_session, prof):
+    """Los feriados hábiles del rango llegan en `feriados` (la franja los muestra) y no en por_dia."""
+    _cupo(db_session, prof, 1, 1)
+    _cupo(db_session, prof, 2, 1)
+    db_session.add_all([
+        Festivo(fecha=date(2026, 10, 20), descripcion="Feriado martes"),
+        Festivo(fecha=date(2026, 10, 18), descripcion="Feriado domingo"),
+        Festivo(fecha=date(2026, 10, 27), descripcion="Feriado fuera del rango"),
+    ])
+    db_session.flush()
+    body = _get(as_admin, prof).json()
+    assert body["feriados"] == ["2026-10-20"]
+    assert [d["fecha"] for d in body["por_dia"]] == ["2026-10-19"]
+
+
 def test_lista_orden_por_citar_sin_cupo_en_reposo(as_admin, db_session, prof):
     _cupo(db_session, prof, 1, 1)
     p1 = _candidato(db_session, prof, vencido=True)

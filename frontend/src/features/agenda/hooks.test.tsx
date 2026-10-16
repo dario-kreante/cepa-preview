@@ -23,6 +23,7 @@ const RESPUESTA = {
   desde: "2026-10-14",
   hasta: "2026-10-23",
   por_dia: [],
+  feriados: [],
   pacientes: [],
 };
 

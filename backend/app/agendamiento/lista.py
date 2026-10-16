@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from app.agendamiento import gestion
 from app.agendamiento.enums import ResultadoGestion
 from app.agendamiento.salutem import _lotes, pacientes_con_hora_vigente, pacientes_sin_vinculo
-from app.agendamiento.scheduler import _clave_orden, repartir_carga
+from app.agendamiento.scheduler import _clave_orden, _dias_habiles_en_rango, repartir_carga
 from app.agendamiento.schemas import (
     CargaDiaRead,
     PacientePorCitarRead,
@@ -164,5 +164,6 @@ def calcular_pacientes_por_citar(
         desde=desde,
         hasta=hasta,
         por_dia=[CargaDiaRead(fecha=d.fecha, cupo=d.cupo, asignados=d.asignados) for d in reparto.por_dia],
+        feriados=[d for d in _dias_habiles_en_rango(desde, hasta) if d in festivos],
         pacientes=pacientes,
     )

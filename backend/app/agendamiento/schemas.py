@@ -141,4 +141,5 @@ class PacientesPorCitarRead(BaseModel):
     desde: date
     hasta: date
     por_dia: list[CargaDiaRead]
+    feriados: list[date]  # días hábiles del rango que son feriado: sin cupo, la franja los muestra
     pacientes: list[PacientePorCitarRead]

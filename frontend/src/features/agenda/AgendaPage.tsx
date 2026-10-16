@@ -137,18 +137,25 @@ function Plegable({
 
 // ── Carga por día ───────────────────────────────────────────────────────────────
 
-function FranjaCarga({ dias }: { dias: CargaDiaRead[] }) {
-  if (dias.length === 0) return null;
+function FranjaCarga({ dias, feriados }: { dias: CargaDiaRead[]; feriados: string[] }) {
+  const chips = [
+    ...dias.map((d) => ({ fecha: d.fecha, carga: d })),
+    ...feriados.map((fecha) => ({ fecha, carga: null })),
+  ].sort((a, b) => a.fecha.localeCompare(b.fecha));
+  if (chips.length === 0) return null;
   return (
     <div className="flex flex-wrap gap-2" aria-label="Carga por día">
-      {dias.map((d) => (
-        <Badge
-          key={d.fecha}
-          variant={d.asignados >= d.cupo ? "warning" : "neutral"}
-        >
-          {chipDia(d.fecha)} · {d.asignados}/{d.cupo}
-        </Badge>
-      ))}
+      {chips.map(({ fecha, carga }) =>
+        carga ? (
+          <Badge key={fecha} variant={carga.asignados >= carga.cupo ? "warning" : "neutral"}>
+            {chipDia(fecha)} · {carga.asignados}/{carga.cupo}
+          </Badge>
+        ) : (
+          <Badge key={fecha} variant="info">
+            {chipDia(fecha)} · Feriado
+          </Badge>
+        ),
+      )}
     </div>
   );
 }
@@ -461,7 +468,7 @@ export function AgendaPage() {
             </div>
           )}
 
-          {lista && <FranjaCarga dias={lista.por_dia} />}
+          {lista && <FranjaCarga dias={lista.por_dia} feriados={lista.feriados} />}
 
           {isError ? (
             <p className="text-[13px] text-destructive">
