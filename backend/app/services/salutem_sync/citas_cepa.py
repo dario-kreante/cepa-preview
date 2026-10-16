@@ -22,6 +22,8 @@ from app.models.ingreso import Ingreso
 from app.models.paciente import Paciente
 from app.models.profesional import SIN_PROFESIONAL_SALUTEM, Profesional
 from app.models.salutem_copia import SalutemCita, SalutemPersona
+from app.services.alertas_citas import alertar_inasistencia, resolver_alertas_con_hora
+from app.services.config_alertas import cargar_ventanas
 from app.services.ficha_clinica import _en_ventana_del_ingreso
 from app.services.salutem_sync.filtro import cruce_con_paciente
 from app.services.salutem_sync.incremental import hoy_en_santiago
@@ -186,6 +188,18 @@ def sincronizar_citas(db: Session, *, desde: datetime | None, ahora: datetime) -
             resultado.errores.append(f"cita {cita_id}: {type(e).__name__}: {e}")
         if n % LOTE_COMMIT == 0:
             db.commit()
+    db.commit()
+
+    ventanas = cargar_ventanas(db)
+    for lote in lotes(ids):
+        for cita in db.scalars(
+            select(Cita).where(Cita.salutem_cita_id.in_(lote), Cita.estado == "inasistencia")
+        ):
+            if alertar_inasistencia(
+                db, salutem_cita_id=cita.salutem_cita_id, cita=cita, hoy=hoy, ventanas=ventanas
+            ):
+                resultado.alertas_inasistencia += 1
+    resultado.alertas_resueltas = resolver_alertas_con_hora(db, hoy, ACTOR)
     db.commit()
 
     limite = hoy - timedelta(days=DIAS_AGENDADA_ANTIGUA)

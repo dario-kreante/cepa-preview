@@ -189,7 +189,7 @@ def test_get_config_lectura_por_roles(as_admin: TestClient, as_auditor: TestClie
         resp = cliente.get("/api/v1/config-alertas")
         assert resp.status_code == 200
         tipos = {c["tipo"] for c in resp.json()}
-        assert "vencimiento_licencia" in tipos and len(tipos) == 11
+        assert "vencimiento_licencia" in tipos and len(tipos) == 12
         assert cliente.get("/api/v1/config-alertas/festivos").status_code == 200
 
 
