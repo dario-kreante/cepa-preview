@@ -1,17 +1,16 @@
-"""Servicio de agendamiento: orquesta la carga de BD y llama al scheduler puro.
+"""Servicio de agendamiento: disponibilidad de los profesionales y carga de candidatos desde la BD.
 
-La lógica algorítmica (exclusión por reposo, priorización, cupo) vive en scheduler.py.
-Este módulo solo sabe de modelos SQLAlchemy y del patrón de repositorio.
+El SIGE ya no agenda: las horas se reservan en SALUTEM. Este módulo arma los candidatos de la lista
+"Pacientes por citar" (ver lista.py); el reparto de carga (reposo, prioridad, cupo) vive en
+scheduler.py. Solo sabe de modelos SQLAlchemy y del patrón de repositorio.
 
-Adaptaciones respecto al plan (Deviaciones 5-7):
-  - Tabla real: control_medico (no control). Columnas: ingreso_id, proximo_control,
-    medico_tratante. Sin paciente_id/profesional_id directos — se obtiene vía ingreso.
-  - Tabla real: licencia_medica (no licencia). Columnas: ingreso_id, inicio_reposo,
-    fin_reposo. Sin paciente_id directo — se obtiene vía ingreso.
-  - Tabla real: receta, ligada a reg_farmacologico.ingreso_id. Sin requiere_seguimiento
-    ni gestionada; se usa fecha_revision futura como proxy de seguimiento pendiente.
-  - profesional_id en DisponibilidadProf/PropuestaAgenda es el id del catálogo
-    `profesional` (migración 1340).
+Esquema real que se consulta:
+  - control_medico: ingreso_id, proximo_control, medico_tratante. No tiene paciente_id ni
+    profesional_id directos; el paciente se obtiene vía ingreso.
+  - licencia_medica: ingreso_id, inicio_reposo, fin_reposo. El paciente también sale vía ingreso.
+  - receta, ligada a reg_farmacologico.ingreso_id. No tiene requiere_seguimiento ni gestionada;
+    una fecha_revision futura hace de seguimiento pendiente.
+  - profesional_id en DisponibilidadProf es el id del catálogo `profesional` (migración 1340).
 
 Candidatos por profesional:
   control_medico y reg_farmacologico guardan al médico como texto (medico_tratante), no
@@ -21,31 +20,30 @@ Candidatos por profesional:
     el proximo_control que se está agendando.
   - Recetas (P3): receta no tiene médico; se usa el del registro farmacológico al que
     pertenece (reg_farmacologico.medico_tratante), que es el que la emite y revisa.
-  Un profesional_id que no existe en el catálogo no tiene pacientes: propuesta vacía.
-  proximo_agendado solo se lee: las horas se agendan en SALUTEM y ese campo lo escribe
-  únicamente el sync de SALUTEM.
-
-DD-1 (EPIC-09 rework): confirmar_citas también crea filas en la tabla `cita` (hecho de
-reportes). Para cada CitaPropuesta confirmada se busca el ingreso activo más reciente del
-paciente; si no existe se omite silenciosamente (no bloquea el flujo de agendamiento).
+  Un profesional_id que no existe en el catálogo no tiene pacientes: lista vacía.
+  Solo entran pacientes con ingreso activo. proximo_agendado solo se lee: el SIGE nunca lo
+  escribe, lo escribe únicamente el sync de SALUTEM.
+  Quién deja la lista: un control de origen CEPA con proximo_agendado = TRUE se excluye aquí; en los
+  de origen SALUTEM el flag no manda y el paciente con hora vigente en la copia de SALUTEM
+  (agendamiento.salutem.pacientes_con_hora_vigente) lo saca lista.calcular_pacientes_por_citar.
 """
 
 from datetime import date, timedelta
 
-from sqlalchemy import false, func, select, true
+from sqlalchemy import false, func, or_, select, true
 from sqlalchemy.orm import Session
 
-from app.agendamiento.enums import EstadoCita, EstadoPropuesta, PrioridadCita
-from app.agendamiento.models import CitaPropuesta, DisponibilidadProf, PropuestaAgenda
+from app.agendamiento.enums import PrioridadCita
+from app.agendamiento.models import DisponibilidadProf, PropuestaAgenda
+from app.agendamiento.salutem import _lotes
 from app.agendamiento.scheduler import (
     Candidato,
     DisponibilidadDia,
     ReposoPaciente,
-    proponer_agenda,
-    proponer_agenda_semana,
 )
-from app.agendamiento.schemas import GenerarPropuestaRequest
 from app.audit.service import record_audit
+from app.domain.enums import EstadoCaso
+from app.services.salutem_sync.controles import ORIGEN as ORIGEN_SALUTEM
 
 # ─── Ventana de seguimiento de receta (parametrizable — RN-6) ──────────────────
 VENTANA_SEGUIMIENTO_RECETA_DIAS: int = 30
@@ -60,7 +58,33 @@ def crear_disponibilidad(
     cupo_diario: int,
     actor: str,
 ) -> DisponibilidadProf:
-    """Crea o reemplaza la disponibilidad diaria de un profesional."""
+    """Crea o reemplaza la disponibilidad diaria de un profesional.
+
+    Si ya hay una fila activa para (profesional, día), se actualiza su cupo (UPDATE);
+    si no, se crea (CREATE). Así no quedan dos cupos vigentes para el mismo día.
+    """
+    existente = db.scalars(
+        select(DisponibilidadProf)
+        .where(DisponibilidadProf.profesional_id == profesional_id,
+               DisponibilidadProf.dia_semana == dia_semana,
+               DisponibilidadProf.activo == true())
+        .order_by(DisponibilidadProf.id)
+    ).first()
+    if existente is not None:
+        cupo_anterior = existente.cupo_diario
+        existente.cupo_diario = cupo_diario
+        db.flush()
+        record_audit(
+            db,
+            actor=actor,
+            action="UPDATE",
+            entity="disponibilidad_prof",
+            entity_id=str(existente.id),
+            valor_anterior=str(cupo_anterior),
+            valor_nuevo=str(cupo_diario),
+        )
+        return existente
+
     dp = DisponibilidadProf(
         profesional_id=profesional_id,
         dia_semana=dia_semana,
@@ -79,12 +103,39 @@ def crear_disponibilidad(
     return dp
 
 
+def dar_de_baja_disponibilidad(
+    db: Session,
+    disponibilidad_id: int,
+    actor: str,
+) -> bool:
+    """Baja lógica de una disponibilidad activa (activo=False). False si no existe o ya estaba inactiva."""
+    dp = db.scalars(
+        select(DisponibilidadProf)
+        .where(DisponibilidadProf.id == disponibilidad_id,
+               DisponibilidadProf.activo == true())
+    ).first()
+    if dp is None:
+        return False
+    dp.activo = False
+    db.flush()
+    record_audit(
+        db,
+        actor=actor,
+        action="DELETE",
+        entity="disponibilidad_prof",
+        entity_id=str(dp.id),
+    )
+    return True
+
+
 def _cargar_disponibilidad(db: Session, profesional_id: int) -> list[DisponibilidadDia]:
     rows = db.scalars(
         select(DisponibilidadProf).where(
             DisponibilidadProf.profesional_id == profesional_id,
             DisponibilidadProf.activo == true(),
         )
+        # Con filas duplicadas legadas gana la de menor id, igual que el upsert de crear_disponibilidad.
+        .order_by(DisponibilidadProf.id)
     ).all()
     return [DisponibilidadDia(dia_semana=r.dia_semana, cupo=r.cupo_diario) for r in rows]
 
@@ -111,39 +162,44 @@ def _cargar_reposos_batch(
     if not paciente_ids:
         return {}
 
-    # Core ORM — portable Oracle/Postgres (D15): false() renderiza 0/FALSE según dialecto.
-    stmt = (
-        select(Ingreso.paciente_id, LicenciaMedica.inicio_reposo, LicenciaMedica.fin_reposo)
-        .join(Ingreso, Ingreso.id == LicenciaMedica.ingreso_id)
-        .where(
-            Ingreso.paciente_id.in_(list(paciente_ids)),
-            LicenciaMedica.anulada == false(),
-            LicenciaMedica.inicio_reposo <= fecha_fin,
-            LicenciaMedica.fin_reposo >= fecha_ini,
-        )
-    )
-    rows = db.execute(stmt).fetchall()
-
     resultado: dict[int, list[ReposoPaciente]] = {pid: [] for pid in paciente_ids}
-    for r in rows:
-        resultado[r[0]].append(ReposoPaciente(inicio=r[1], fin=r[2]))
+    # Core ORM — portable Oracle/Postgres (D15): false() renderiza 0/FALSE según dialecto.
+    # IN por lotes: Oracle no admite más de 1000 elementos en una lista IN.
+    for lote in _lotes(paciente_ids):
+        stmt = (
+            select(Ingreso.paciente_id, LicenciaMedica.inicio_reposo, LicenciaMedica.fin_reposo)
+            .join(Ingreso, Ingreso.id == LicenciaMedica.ingreso_id)
+            .where(
+                Ingreso.paciente_id.in_(lote),
+                LicenciaMedica.anulada == false(),
+                LicenciaMedica.inicio_reposo <= fecha_fin,
+                LicenciaMedica.fin_reposo >= fecha_ini,
+            )
+        )
+        for pid, inicio, fin in db.execute(stmt):
+            resultado[pid].append(ReposoPaciente(inicio=inicio, fin=fin))
     return resultado
 
 
 def _cargar_candidatos(
-    db: Session, profesional_id: int, fecha_ini: date, fecha_fin: date
+    db: Session, profesional_id: int, fecha_ini: date, fecha_fin: date, hoy: date
 ) -> list[Candidato]:
     """Construye la lista de candidatos a partir de controles y recetas.
 
-    Adaptación Desviación 5: usa control_medico con join a ingreso para obtener paciente_id.
+    Solo entran pacientes con ingreso activo (EstadoCaso.ACTIVO). Usa control_medico con join a
+    ingreso para obtener paciente_id (Desviación 5):
     - Controles vencidos: el control MÁS RECIENTE por ingreso tiene proximo_control < hoy
-    - Controles próximos: el control MÁS RECIENTE por ingreso tiene proximo_control en ventana
-    - Se excluyen filas con proximo_agendado = TRUE (ya tienen cita programada)
+    - Controles próximos: el control MÁS RECIENTE por ingreso tiene proximo_control entre hoy y
+      el fin del rango + 7 días
+    - En controles de origen CEPA se excluyen las filas con proximo_agendado = TRUE (ya tienen
+      cita programada). En los de origen SALUTEM ese flag no manda: no se filtra aquí y la hora
+      vigente se verifica contra la copia de SALUTEM en lista.calcular_pacientes_por_citar, donde
+      el paciente con hora vigente sale de la lista. El SIGE nunca escribe SALUTEM.
     - Recetas: hoy ≤ fecha_revision ≤ hoy + VENTANA_SEGUIMIENTO_RECETA_DIAS
                y fecha_envio IS NULL (proxy de receta no gestionada — RN-6)
 
     Solo se usa el último control_medico por ingreso (subquery MAX fecha_control) para
-    evitar que controles históricos desencadenen propuestas duplicadas.
+    evitar que controles históricos dupliquen candidatos.
 
     Solo entran los pacientes del profesional pedido (ver docstring del módulo): el
     médico del último control para P1/P2 y el del registro farmacológico para P3.
@@ -156,8 +212,6 @@ def _cargar_candidatos(
     nombre_prof = db.scalar(select(Profesional.nombre).where(Profesional.id == profesional_id))
     if nombre_prof is None:
         return []
-
-    hoy = date.today()
 
     vistos: dict[int, Candidato] = {}
 
@@ -180,6 +234,7 @@ def _cargar_candidatos(
             _cm.proximo_control,
             _cm.proximo_agendado,
             _cm.medico_tratante,
+            _cm.origen,
         )
         .join(
             _max_fc_sub,
@@ -194,9 +249,11 @@ def _cargar_candidatos(
         select(Ingreso.paciente_id, _latest_ctrl.c.proximo_control)
         .join(Ingreso, Ingreso.id == _latest_ctrl.c.ingreso_id)
         .where(
+            Ingreso.estado == EstadoCaso.ACTIVO.value,
             _latest_ctrl.c.proximo_control.isnot(None),
             _latest_ctrl.c.proximo_control < hoy,
-            _latest_ctrl.c.proximo_agendado == false(),
+            # En controles de SALUTEM el flag no manda: la hora se verifica contra la copia.
+            or_(_latest_ctrl.c.origen == ORIGEN_SALUTEM, _latest_ctrl.c.proximo_agendado == false()),
             func.trim(_latest_ctrl.c.medico_tratante) == nombre_prof,
         )
     )
@@ -212,10 +269,12 @@ def _cargar_candidatos(
         select(Ingreso.paciente_id, _latest_ctrl.c.proximo_control)
         .join(Ingreso, Ingreso.id == _latest_ctrl.c.ingreso_id)
         .where(
+            Ingreso.estado == EstadoCaso.ACTIVO.value,
             _latest_ctrl.c.proximo_control.isnot(None),
             _latest_ctrl.c.proximo_control >= hoy,
             _latest_ctrl.c.proximo_control <= horizonte,
-            _latest_ctrl.c.proximo_agendado == false(),
+            # En controles de SALUTEM el flag no manda: la hora se verifica contra la copia.
+            or_(_latest_ctrl.c.origen == ORIGEN_SALUTEM, _latest_ctrl.c.proximo_agendado == false()),
             func.trim(_latest_ctrl.c.medico_tratante) == nombre_prof,
         )
     )
@@ -234,6 +293,7 @@ def _cargar_candidatos(
         .join(RegistroFarmacologico, RegistroFarmacologico.ingreso_id == Ingreso.id)
         .join(Receta, Receta.registro_id == RegistroFarmacologico.id)
         .where(
+            Ingreso.estado == EstadoCaso.ACTIVO.value,
             Receta.fecha_revision >= hoy,
             Receta.fecha_revision <= limite_revision,
             Receta.fecha_envio.is_(None),  # RN-6: excluir recetas ya gestionadas
@@ -285,147 +345,7 @@ def _cargar_candidatos(
     return list(vistos.values())
 
 
-# ─── Generación de propuesta ────────────────────────────────────────────────────
-
-def generar_propuesta(
-    db: Session,
-    req: GenerarPropuestaRequest,
-    actor: str,
-) -> PropuestaAgenda:
-    """Genera y persiste una PropuestaAgenda con sus CitaPropuesta.
-
-    Registra auditoría (RN-9). No hace commit — el caller (router) es responsable.
-    """
-    disponibilidad = _cargar_disponibilidad(db, req.profesional_id)
-    candidatos = _cargar_candidatos(db, req.profesional_id, req.fecha_inicio, req.fecha_fin)
-
-    propuesta = PropuestaAgenda(
-        profesional_id=req.profesional_id,
-        tipo=req.tipo.value,
-        fecha_inicio=req.fecha_inicio,
-        fecha_fin=req.fecha_fin,
-        estado=EstadoPropuesta.BORRADOR.value,
-        generado_por=actor,
-    )
-    db.add(propuesta)
-    db.flush()
-
-    if req.tipo.value == "diaria":
-        resultados = proponer_agenda(
-            candidatos=candidatos,
-            fecha=req.fecha_inicio,
-            disponibilidad=disponibilidad,
-        )
-    else:
-        resultados = proponer_agenda_semana(
-            candidatos=candidatos,
-            semana_inicio=req.fecha_inicio,
-            semana_fin=req.fecha_fin,
-            disponibilidad=disponibilidad,
-        )
-
-    for r in resultados:
-        cita = CitaPropuesta(
-            propuesta_id=propuesta.id,
-            paciente_id=r.paciente_id,
-            fecha_candidata=r.fecha_candidata,
-            prioridad=r.prioridad.value,
-            razon=r.razon,
-            estado=EstadoCita.PROPUESTA.value,
-            excluida_por=r.excluida_por,
-        )
-        db.add(cita)
-
-    record_audit(
-        db,
-        actor=actor,
-        action="CREATE",
-        entity="propuesta_agenda",
-        entity_id=str(propuesta.id),
-    )
-    db.flush()
-    return propuesta
-
-
 # ─── Consulta ──────────────────────────────────────────────────────────────────
 
 def obtener_propuesta(db: Session, propuesta_id: int) -> PropuestaAgenda | None:
     return db.get(PropuestaAgenda, propuesta_id)
-
-
-# ─── Confirmación de citas (CA-7, RN-8, RN-9) ─────────────────────────────────
-
-def _ingreso_activo_para_paciente(db: Session, paciente_id: int) -> int | None:
-    """Devuelve el ingreso_id activo más reciente de un paciente, o None.
-
-    DD-1: se usa para materializar Cita en la tabla de hechos al confirmar
-    una CitaPropuesta (que solo tiene paciente_id, no ingreso_id).
-    """
-    from app.domain.enums import EstadoCaso
-    from app.models.ingreso import Ingreso
-
-    row = db.execute(
-        select(Ingreso.id)
-        .where(
-            Ingreso.paciente_id == paciente_id,
-            Ingreso.estado == EstadoCaso.ACTIVO.value,
-        )
-        .order_by(Ingreso.fecha_ingreso.desc())
-        .limit(1)
-    ).scalar_one_or_none()
-    return row
-
-
-def confirmar_citas(
-    db: Session,
-    propuesta_id: int,
-    cita_ids: list[int],
-    actor: str,
-) -> list[CitaPropuesta]:
-    """Confirma las citas indicadas y actualiza el estado de la propuesta.
-
-    Las citas confirmadas cuentan como 'citas agendadas' en el denominador de adherencia
-    (RN-8). El cambio de estado se graba en auditoría (RN-9).
-
-    DD-1 (EPIC-09 rework): también crea una fila en `cita` (estado='agendada') para
-    cada CitaPropuesta confirmada, alimentando los reportes operativos.
-    """
-    from app.models.cita import Cita
-
-    propuesta = db.get(PropuestaAgenda, propuesta_id)
-    if propuesta is None:
-        return []
-
-    confirmadas: list[CitaPropuesta] = []
-    for cita_id in cita_ids:
-        cita = db.get(CitaPropuesta, cita_id)
-        if cita is None or cita.propuesta_id != propuesta_id:
-            continue
-        # RN-1: excluida_por != None significa que la cita fue descartada (ej. reposo vigente)
-        # — aunque su estado sea 'propuesta', no debe ser confirmable.
-        if cita.estado == EstadoCita.PROPUESTA.value and cita.excluida_por is None:
-            cita.estado = EstadoCita.CONFIRMADA.value
-            confirmadas.append(cita)
-
-            # DD-1: materializar en tabla de hechos `cita`
-            ingreso_id = _ingreso_activo_para_paciente(db, cita.paciente_id)
-            if ingreso_id is not None:
-                fila_cita = Cita(
-                    ingreso_id=ingreso_id,
-                    estado="agendada",
-                    fecha=cita.fecha_candidata,
-                )
-                db.add(fila_cita)
-
-    if confirmadas:
-        propuesta.estado = EstadoPropuesta.CONFIRMADA.value
-        record_audit(
-            db,
-            actor=actor,
-            action="UPDATE",
-            entity="propuesta_agenda",
-            entity_id=str(propuesta_id),
-        )
-
-    db.flush()
-    return confirmadas

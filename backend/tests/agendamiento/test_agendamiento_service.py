@@ -14,20 +14,14 @@ from datetime import date, timedelta
 
 import pytest
 
-from app.agendamiento.enums import EstadoCita, EstadoPropuesta, PrioridadCita, TipoPropuesta
-from app.agendamiento.models import CitaPropuesta, DisponibilidadProf
-from app.agendamiento.schemas import GenerarPropuestaRequest
-from app.agendamiento.service import (
-    confirmar_citas,
-    crear_disponibilidad,
-    generar_propuesta,
-    obtener_propuesta,
-)
+from app.agendamiento.enums import PrioridadCita
+from app.agendamiento.models import DisponibilidadProf
+from app.agendamiento.scheduler import _cupo_para_dia
+from app.agendamiento.service import _cargar_disponibilidad, crear_disponibilidad, obtener_propuesta
 
 HOY = date(2026, 7, 7)  # martes
 PROF_ID = 101
 PROF_NOMBRE = "Dr Test"
-PACIENTE_ID = 201
 
 
 @pytest.fixture(autouse=True)
@@ -36,14 +30,6 @@ def _profesional(db_session):
     from app.models.profesional import Profesional
     db_session.add(Profesional(id=PROF_ID, nombre=PROF_NOMBRE, origen="SIGE", activo=True))
     db_session.flush()
-
-
-def _insertar_disponibilidad_completa(db):
-    for dia in range(1, 6):
-        db.add(DisponibilidadProf(
-            profesional_id=PROF_ID, dia_semana=dia, cupo_diario=8, activo=True,
-        ))
-    db.flush()
 
 
 def _crear_paciente_e_ingreso(db, rut: str = "11222333-9"):
@@ -101,139 +87,21 @@ def test_crear_disponibilidad(db_session):
     assert dp.activo is True
 
 
-def test_generar_propuesta_diaria_sin_candidatos(db_session):
-    _insertar_disponibilidad_completa(db_session)
-    req = GenerarPropuestaRequest(
-        profesional_id=PROF_ID,
-        tipo=TipoPropuesta.DIARIA,
-        fecha_inicio=HOY,
-    )
-    propuesta = generar_propuesta(
-        db=db_session,
-        req=req,
-        actor="admin_test",
-    )
-    assert propuesta.id is not None
-    assert propuesta.tipo == TipoPropuesta.DIARIA.value
-    assert propuesta.estado == EstadoPropuesta.BORRADOR.value
-    # Sin candidatos, la propuesta queda vacía
-    citas = db_session.query(CitaPropuesta).filter_by(propuesta_id=propuesta.id).all()
-    assert len(citas) == 0
-
-
-def test_generar_propuesta_diaria_con_candidatos(db_session):
-    """Integración: genera propuesta con candidatos de control próximo."""
-    _insertar_disponibilidad_completa(db_session)
-    # Pre-poblar control próximo via control_medico (Desviación 5)
-    _, ingreso = _crear_paciente_e_ingreso(db_session, rut="11222333-9")
-    _insertar_control_proximo(db_session, ingreso.id, HOY + timedelta(days=2))
-
-    req = GenerarPropuestaRequest(
-        profesional_id=PROF_ID,
-        tipo=TipoPropuesta.DIARIA,
-        fecha_inicio=HOY,
-    )
-    propuesta = generar_propuesta(db=db_session, req=req, actor="admin_test")
-    citas = db_session.query(CitaPropuesta).filter_by(propuesta_id=propuesta.id).all()
-    assert len(citas) >= 1
-    assert citas[0].estado == EstadoCita.PROPUESTA.value
-
-
-def test_confirmar_citas_cambia_estado(db_session):
-    """CA-7: confirmar citas propuestas las marca como confirmadas."""
-    _insertar_disponibilidad_completa(db_session)
-    req = GenerarPropuestaRequest(
-        profesional_id=PROF_ID,
-        tipo=TipoPropuesta.DIARIA,
-        fecha_inicio=HOY,
-    )
-    propuesta = generar_propuesta(db=db_session, req=req, actor="admin_test")
-    # Insertar manualmente una cita propuesta para confirmar
-    cita = CitaPropuesta(
-        propuesta_id=propuesta.id,
-        paciente_id=PACIENTE_ID,
-        fecha_candidata=HOY,
-        prioridad=PrioridadCita.CONTROL_PROXIMO.value,
-        razon="control próximo",
-        estado=EstadoCita.PROPUESTA.value,
-    )
-    db_session.add(cita)
-    db_session.flush()
-
-    confirmadas = confirmar_citas(
-        db=db_session,
-        propuesta_id=propuesta.id,
-        cita_ids=[cita.id],
-        actor="admin_test",
-    )
-    assert len(confirmadas) == 1
-    assert confirmadas[0].estado == EstadoCita.CONFIRMADA.value
-
-
-def test_confirmar_citas_estado_propuesta_pasa_a_confirmada(db_session):
-    """CA-7: cuando al menos una cita se confirma, la propuesta cambia a 'confirmada'."""
-    _insertar_disponibilidad_completa(db_session)
-    req = GenerarPropuestaRequest(
-        profesional_id=PROF_ID,
-        tipo=TipoPropuesta.DIARIA,
-        fecha_inicio=HOY,
-    )
-    propuesta = generar_propuesta(db=db_session, req=req, actor="admin_test")
-    cita = CitaPropuesta(
-        propuesta_id=propuesta.id,
-        paciente_id=PACIENTE_ID,
-        fecha_candidata=HOY,
-        prioridad=PrioridadCita.CONTROL_PROXIMO.value,
-        razon="control próximo",
-        estado=EstadoCita.PROPUESTA.value,
-    )
-    db_session.add(cita)
-    db_session.flush()
-
-    confirmar_citas(db=db_session, propuesta_id=propuesta.id, cita_ids=[cita.id], actor="admin_test")
-    db_session.refresh(propuesta)
-    assert propuesta.estado == EstadoPropuesta.CONFIRMADA.value
+def test_disponibilidad_duplicada_usa_la_fila_de_menor_id(db_session):
+    """Con filas activas duplicadas para el mismo día gana la de menor id (como el upsert)."""
+    # Se inserta primero la de id MAYOR: sin ORDER BY el scan devolvería esa antes que la de menor id.
+    base = 900_000_000
+    for id_, cupo in ((base + 2, 5), (base + 1, 1)):
+        db_session.add(DisponibilidadProf(
+            id=id_, profesional_id=PROF_ID, dia_semana=1, cupo_diario=cupo, activo=True,
+        ))
+        db_session.flush()
+    dias = _cargar_disponibilidad(db_session, PROF_ID)
+    assert _cupo_para_dia(dias, date(2026, 10, 19)) == 1  # lunes
 
 
 def test_obtener_propuesta_inexistente_retorna_none(db_session):
     assert obtener_propuesta(db=db_session, propuesta_id=99999) is None
-
-
-# ─── Fix 1: citas excluidas no confirmables (RN-1) ────────────────────────────
-
-def test_confirmar_cita_excluida_no_cambia_estado(db_session):
-    """RN-1: una cita con excluida_por != None no puede ser confirmada,
-    aunque su estado sea 'propuesta'."""
-    _insertar_disponibilidad_completa(db_session)
-    req = GenerarPropuestaRequest(
-        profesional_id=PROF_ID,
-        tipo=TipoPropuesta.DIARIA,
-        fecha_inicio=HOY,
-    )
-    propuesta = generar_propuesta(db=db_session, req=req, actor="admin_test")
-
-    cita_excluida = CitaPropuesta(
-        propuesta_id=propuesta.id,
-        paciente_id=PACIENTE_ID,
-        fecha_candidata=HOY,
-        prioridad=PrioridadCita.CONTROL_PROXIMO.value,
-        razon="control próximo",
-        estado=EstadoCita.PROPUESTA.value,
-        excluida_por="reposo vigente hasta 2026-07-20",
-    )
-    db_session.add(cita_excluida)
-    db_session.flush()
-
-    confirmadas = confirmar_citas(
-        db=db_session,
-        propuesta_id=propuesta.id,
-        cita_ids=[cita_excluida.id],
-        actor="admin_test",
-    )
-    # La cita excluida NO debe aparecer como confirmada
-    assert confirmadas == []
-    db_session.refresh(cita_excluida)
-    assert cita_excluida.estado == EstadoCita.PROPUESTA.value
 
 
 # ─── Fix 2: último control por ingreso + proximo_agendado (Desviación 5) ──────
@@ -293,6 +161,7 @@ def test_control_stale_no_genera_candidato_si_hay_control_futuro(db_session):
         profesional_id=PROF_ID,
         fecha_ini=hoy_real,
         fecha_fin=hoy_real + timedelta(days=6),
+        hoy=hoy_real,
     )
     pids_vencidos = [
         c.paciente_id for c in candidatos
@@ -325,6 +194,7 @@ def test_control_proximo_agendado_no_genera_candidato(db_session):
         profesional_id=PROF_ID,
         fecha_ini=hoy_real,
         fecha_fin=hoy_real + timedelta(days=6),
+        hoy=hoy_real,
     )
     pids = [c.paciente_id for c in candidatos if c.paciente_id == ingreso.paciente_id]
     assert pids == [], "proximo_agendado=True no debe generar candidato"
@@ -378,6 +248,7 @@ def test_receta_fuera_de_ventana_no_genera_candidato(db_session):
         profesional_id=PROF_ID,
         fecha_ini=hoy_real,
         fecha_fin=hoy_real + timedelta(days=6),
+        hoy=hoy_real,
     )
     pids = [
         c.paciente_id for c in candidatos
@@ -408,6 +279,7 @@ def test_receta_gestionada_no_genera_candidato(db_session):
         profesional_id=PROF_ID,
         fecha_ini=hoy_real,
         fecha_fin=hoy_real + timedelta(days=6),
+        hoy=hoy_real,
     )
     pids = [
         c.paciente_id for c in candidatos
@@ -438,6 +310,7 @@ def test_receta_dentro_de_ventana_genera_candidato(db_session):
         profesional_id=PROF_ID,
         fecha_ini=hoy_real,
         fecha_fin=hoy_real + timedelta(days=6),
+        hoy=hoy_real,
     )
     pids = [
         c.paciente_id for c in candidatos
@@ -455,6 +328,7 @@ def _candidatos_hoy(db, profesional_id: int = PROF_ID):
     return _cargar_candidatos(
         db, profesional_id=profesional_id,
         fecha_ini=hoy_real, fecha_fin=hoy_real + timedelta(days=6),
+        hoy=hoy_real,
     )
 
 
@@ -536,36 +410,3 @@ def test_profesional_inexistente_no_tiene_candidatos(db_session):
     _insertar_control_proximo(db_session, ingreso.id, hoy_real + timedelta(days=2))
 
     assert _candidatos_hoy(db_session, profesional_id=987654) == []
-
-
-def test_confirmar_cita_no_escribe_proximo_agendado(db_session):
-    """proximo_agendado lo escribe solo el sync de SALUTEM, donde se agendan las horas."""
-    hoy_real = date.today()
-    _, ingreso = _crear_paciente_e_ingreso(db_session, rut="99900001-1")
-    ctrl = _insertar_control_medico(
-        db_session, ingreso.id, fecha_control=hoy_real - timedelta(days=5),
-        proximo_control=hoy_real + timedelta(days=2),
-    )
-    _insertar_disponibilidad_completa(db_session)
-    propuesta = generar_propuesta(
-        db=db_session,
-        req=GenerarPropuestaRequest(
-            profesional_id=PROF_ID, tipo=TipoPropuesta.DIARIA, fecha_inicio=HOY,
-        ),
-        actor="admin_test",
-    )
-    cita = CitaPropuesta(
-        propuesta_id=propuesta.id,
-        paciente_id=ingreso.paciente_id,
-        fecha_candidata=HOY,
-        prioridad=PrioridadCita.CONTROL_PROXIMO.value,
-        razon="test",
-        estado=EstadoCita.PROPUESTA.value,
-    )
-    db_session.add(cita)
-    db_session.flush()
-
-    assert len(confirmar_citas(db_session, propuesta.id, [cita.id], actor="admin_test")) == 1
-
-    db_session.refresh(ctrl)
-    assert ctrl.proximo_agendado is False

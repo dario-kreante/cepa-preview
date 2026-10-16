@@ -2,14 +2,14 @@
 
 Todas las funciones son puras: reciben datos en memoria y devuelven resultados.
 Sin sesiones de BD, sin side effects. Esto facilita los tests exhaustivos
-y permite que el service llame al scheduler con datos ya cargados.
+y permite que la lista de pacientes por citar llame al reparto con datos ya cargados.
 
 Reglas de negocio implementadas:
   RN-1: reposo prevalece sobre cualquier criterio de inclusión.
   RN-2: prioridad (1) control_vencido > (2) control_proximo > (3) seguimiento_receta;
          a igual prioridad, más antiguo primero (fecha_ctrl más lejana en el pasado).
-  RN-3: nunca se supera el cupo del profesional para el día; el exceso se difiere.
-  RN-4: solo días hábiles (isoweekday 1–5); fines de semana retornan lista vacía.
+  RN-3: nunca se supera el cupo del profesional para el día; el exceso queda sin cupo.
+  RN-4: solo días hábiles (isoweekday 1–5) y no feriados.
   RN-5: el reposo se evalúa contra la fecha candidata, no contra la fecha de hoy.
 """
 
@@ -93,63 +93,6 @@ def _reposo_vigente_hasta(reposos: list[ReposoPaciente], fecha: date) -> date | 
     return None
 
 
-# ─── Propuesta diaria ──────────────────────────────────────────────────────────
-
-def proponer_agenda(
-    candidatos: list[Candidato],
-    fecha: date,
-    disponibilidad: list[DisponibilidadDia],
-) -> list[ResultadoCandidato]:
-    """Genera propuesta para un día concreto.
-
-    Retorna lista de ResultadoCandidato. Los candidatos excluidos aparecen en la lista
-    con excluida_por != None (para que el llamador pueda reportar el motivo — CA-4).
-    Los candidatos propuestos tienen excluida_por == None.
-
-    Si la fecha es fin de semana o el profesional no tiene disponibilidad, devuelve [].
-    """
-    if fecha.isoweekday() > 5:
-        return []
-
-    cupo = _cupo_para_dia(disponibilidad, fecha)
-    if cupo == 0:
-        return []
-
-    candidatos_ordenados = sorted(candidatos, key=_clave_orden)
-    resultado: list[ResultadoCandidato] = []
-    propuestos = 0
-
-    for c in candidatos_ordenados:
-        fin_reposo = _reposo_vigente_hasta(c.reposos, fecha)
-        if fin_reposo is not None:
-            resultado.append(ResultadoCandidato(
-                paciente_id=c.paciente_id,
-                fecha_candidata=fecha,
-                prioridad=c.prioridad,
-                razon=c.razon,
-                excluida_por=f"reposo vigente hasta {fin_reposo.isoformat()}",
-            ))
-            continue
-
-        if propuestos >= cupo:
-            # Cupo agotado: el candidato se omite de este día
-            # (será recogido por proponer_agenda_semana para el día siguiente)
-            continue
-
-        resultado.append(ResultadoCandidato(
-            paciente_id=c.paciente_id,
-            fecha_candidata=fecha,
-            prioridad=c.prioridad,
-            razon=c.razon,
-            excluida_por=None,
-        ))
-        propuestos += 1
-
-    return resultado
-
-
-# ─── Propuesta semanal/mensual ─────────────────────────────────────────────────
-
 def _dias_habiles_en_rango(inicio: date, fin: date) -> list[date]:
     """Retorna la lista de días hábiles (lun–vie) entre inicio y fin, inclusive."""
     dias: list[date] = []
@@ -161,50 +104,60 @@ def _dias_habiles_en_rango(inicio: date, fin: date) -> list[date]:
     return dias
 
 
-def proponer_agenda_semana(
+# ─── Reparto de carga (feriados y sin cupo) ────────────────────────────────────
+
+@dataclass
+class CargaDia:
+    """Cupo de un día hábil y cuántos pacientes se asignaron en él."""
+    fecha: date
+    cupo: int
+    asignados: int
+
+
+@dataclass
+class Reparto:
+    """Resultado de repartir candidatos sobre un rango de días."""
+    asignados: list[ResultadoCandidato]   # excluida_por es None; fecha_candidata = día sugerido
+    en_reposo: list[ResultadoCandidato]   # excluida_por = "reposo vigente hasta AAAA-MM-DD"
+    sin_cupo: list[Candidato]             # no cupieron en ningún día hábil del rango
+    por_dia: list[CargaDia]               # solo días hábiles no feriados con cupo > 0, en orden
+
+
+def repartir_carga(
     candidatos: list[Candidato],
-    semana_inicio: date,
-    semana_fin: date,
+    desde: date,
+    hasta: date,
     disponibilidad: list[DisponibilidadDia],
-) -> list[ResultadoCandidato]:
-    """Distribuye candidatos a lo largo de los días hábiles del rango (semanal o mensual).
+    festivos: frozenset[date] = frozenset(),
+) -> Reparto:
+    """Reparte candidatos sobre los días hábiles no feriados del rango.
 
-    Algoritmo:
-    1. Ordenar candidatos por RN-2 (prioridad + antigüedad).
-    2. Para cada candidato, asignar el primer día hábil donde:
-       a. El profesional tiene disponibilidad.
-       b. El paciente no tiene reposo vigente ese día (RN-5).
-       c. El cupo de ese día no está agotado (RN-3).
-    3. Si el candidato tiene reposo en todos los días del rango, queda excluido
-       con el motivo del primer reposo encontrado.
-    4. El exceso de candidatos que no caben en ningún día del rango queda sin proponer
-       (no se incluyen en el resultado — se diferirán a la siguiente semana/mes si el
-       caller llama de nuevo con el rango extendido).
-
-    Retorna la lista plana de ResultadoCandidato de todos los días del rango,
-    incluyendo los excluidos por reposo.
+    Por cada candidato (orden RN-2) se asigna el primer día con cupo restante y sin reposo
+    vigente (RN-5). Si no se asignó y hubo reposo en algún día con cupo, va a en_reposo; en otro
+    caso, a sin_cupo.
+    Los días en festivos no tienen cupo.
     """
-    dias = _dias_habiles_en_rango(semana_inicio, semana_fin)
-    if not dias:
-        return []
+    dias = [d for d in _dias_habiles_en_rango(desde, hasta) if d not in festivos]
 
-    # Cupo disponible por día
-    cupo_restante: dict[date, int] = {}
+    cargas: dict[date, CargaDia] = {}
     for d in dias:
-        c = _cupo_para_dia(disponibilidad, d)
-        if c > 0:
-            cupo_restante[d] = c
+        cupo = _cupo_para_dia(disponibilidad, d)
+        if cupo > 0:
+            cargas[d] = CargaDia(fecha=d, cupo=cupo, asignados=0)
 
-    candidatos_ordenados = sorted(candidatos, key=_clave_orden)
-    resultado: list[ResultadoCandidato] = []
+    asignados: list[ResultadoCandidato] = []
+    en_reposo: list[ResultadoCandidato] = []
+    sin_cupo: list[Candidato] = []
 
-    for c in candidatos_ordenados:
+    primer_dia_con_cupo = next(iter(cargas), None)
+
+    for c in sorted(candidatos, key=_clave_orden):
         asignado = False
         primer_reposo_fin: date | None = None
 
-        for d in dias:
-            if d not in cupo_restante:
-                continue  # sin disponibilidad ese día o cupo agotado
+        for d, carga in cargas.items():
+            if carga.asignados >= carga.cupo:
+                continue  # cupo agotado
 
             fin_reposo = _reposo_vigente_hasta(c.reposos, d)
             if fin_reposo is not None:
@@ -212,31 +165,34 @@ def proponer_agenda_semana(
                     primer_reposo_fin = fin_reposo
                 continue  # buscar otro día
 
-            # Disponibilidad + sin reposo + cupo
-            resultado.append(ResultadoCandidato(
+            asignados.append(ResultadoCandidato(
                 paciente_id=c.paciente_id,
                 fecha_candidata=d,
                 prioridad=c.prioridad,
                 razon=c.razon,
                 excluida_por=None,
             ))
-            cupo_restante[d] -= 1
-            if cupo_restante[d] == 0:
-                del cupo_restante[d]
+            carga.asignados += 1
             asignado = True
             break
 
-        if not asignado and primer_reposo_fin is not None:
-            # Excluido por reposo en todos los días del rango donde había disponibilidad
-            primer_dia_con_disp = next(
-                (d for d in dias if _cupo_para_dia(disponibilidad, d) > 0), dias[0]
-            )
-            resultado.append(ResultadoCandidato(
+        if asignado:
+            continue
+
+        if primer_reposo_fin is not None and primer_dia_con_cupo is not None:
+            en_reposo.append(ResultadoCandidato(
                 paciente_id=c.paciente_id,
-                fecha_candidata=primer_dia_con_disp,
+                fecha_candidata=primer_dia_con_cupo,
                 prioridad=c.prioridad,
                 razon=c.razon,
                 excluida_por=f"reposo vigente hasta {primer_reposo_fin.isoformat()}",
             ))
+        else:
+            sin_cupo.append(c)
 
-    return resultado
+    return Reparto(
+        asignados=asignados,
+        en_reposo=en_reposo,
+        sin_cupo=sin_cupo,
+        por_dia=list(cargas.values()),
+    )

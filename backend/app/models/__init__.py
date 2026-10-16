@@ -19,7 +19,12 @@ from app.models.reintegro import CasoReintegro, Reca  # noqa: F401
 from app.models.control_medico import ControlMedico  # noqa: F401
 from app.models.licencia import LicenciaMedica  # noqa: F401
 from app.models.alerta_licencia import AlertaLicencia  # noqa: F401
-from app.agendamiento.models import CitaPropuesta, DisponibilidadProf, PropuestaAgenda  # noqa: F401
+from app.agendamiento.models import (  # noqa: F401
+    CitaPropuesta,
+    DisponibilidadProf,
+    GestionCitacion,
+    PropuestaAgenda,
+)
 from app.models.cita import Cita  # noqa: F401
 from app.models.plan_tratamiento import PlanTratamiento  # noqa: F401
 from app.models.ventana_proceso import ConfigVentanaProceso  # noqa: F401

@@ -1258,6 +1258,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/disponibilidad-profesional/{disponibilidad_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Dar De Baja Disponibilidad Endpoint */
+        delete: operations["dar_de_baja_disponibilidad_endpoint_api_v1_disponibilidad_profesional__disponibilidad_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/propuestas-agenda": {
         parameters: {
             query?: never;
@@ -1268,8 +1285,7 @@ export interface paths {
         /** Listar Propuestas */
         get: operations["listar_propuestas_api_v1_propuestas_agenda_get"];
         put?: never;
-        /** Crear Propuesta */
-        post: operations["crear_propuesta_api_v1_propuestas_agenda_post"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1310,17 +1326,35 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/propuestas-agenda/{propuesta_id}/confirmar": {
+    "/api/v1/pacientes-por-citar/{paciente_id}/gestiones": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** Listar Gestiones Endpoint */
+        get: operations["listar_gestiones_endpoint_api_v1_pacientes_por_citar__paciente_id__gestiones_get"];
         put?: never;
-        /** Confirmar Citas Endpoint */
-        post: operations["confirmar_citas_endpoint_api_v1_propuestas_agenda__propuesta_id__confirmar_post"];
+        /** Registrar Gestion Endpoint */
+        post: operations["registrar_gestion_endpoint_api_v1_pacientes_por_citar__paciente_id__gestiones_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pacientes-por-citar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Pacientes Por Citar Endpoint */
+        get: operations["pacientes_por_citar_endpoint_api_v1_pacientes_por_citar_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2412,6 +2446,18 @@ export interface components {
             /** Code */
             code: string;
         };
+        /** CargaDiaRead */
+        CargaDiaRead: {
+            /**
+             * Fecha
+             * Format: date
+             */
+            fecha: string;
+            /** Cupo */
+            cupo: number;
+            /** Asignados */
+            asignados: number;
+        };
         /** CargaProfesionalItem */
         CargaProfesionalItem: {
             /** Profesional Id */
@@ -2729,14 +2775,6 @@ export interface components {
             activo: boolean;
             /** Actualizado Por */
             actualizado_por?: string | null;
-        };
-        /**
-         * ConfirmarCitasRequest
-         * @description IDs de CitaPropuesta a confirmar (deben pertenecer a la misma propuesta).
-         */
-        ConfirmarCitasRequest: {
-            /** Cita Ids */
-            cita_ids: number[];
         };
         /** ConsentimientoAlerta */
         ConsentimientoAlerta: {
@@ -3448,30 +3486,32 @@ export interface components {
             /** Provisorio */
             provisorio: boolean;
         };
-        /**
-         * GenerarPropuestaRequest
-         * @description Parámetros de generación de una propuesta de agenda.
-         *
-         *     fecha_inicio debe ser un día hábil (lun–vie).
-         *     fecha_fin se calcula automáticamente según el tipo:
-         *       - diaria: misma fecha que fecha_inicio
-         *       - semanal: viernes de la semana de fecha_inicio
-         *       - mensual: último día del mes de fecha_inicio
-         */
-        GenerarPropuestaRequest: {
+        /** GestionCreate */
+        GestionCreate: {
             /** Profesional Id */
             profesional_id: number;
-            tipo: components["schemas"]["TipoPropuesta"];
+            resultado: components["schemas"]["ResultadoGestion"];
+            /** Nota */
+            nota?: string | null;
+        };
+        /** GestionRead */
+        GestionRead: {
+            /** Id */
+            id: number;
+            /** Paciente Id */
+            paciente_id: number;
+            /** Profesional Id */
+            profesional_id: number;
+            resultado: components["schemas"]["ResultadoGestion"];
+            /** Nota */
+            nota: string | null;
+            /** Usuario */
+            usuario: string;
             /**
-             * Fecha Inicio
-             * Format: date
+             * Created At
+             * Format: date-time
              */
-            fecha_inicio: string;
-            /**
-             * Fecha Fin
-             * Format: date
-             */
-            fecha_fin?: string;
+            created_at: string;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -3973,6 +4013,34 @@ export interface components {
             /** Especialidades */
             especialidades: string[];
         };
+        /** PacientePorCitarRead */
+        PacientePorCitarRead: {
+            /** Paciente Id */
+            paciente_id: number;
+            /** Nombre */
+            nombre: string;
+            /** Folio */
+            folio: string | null;
+            prioridad: components["schemas"]["PrioridadCita"];
+            /** Razon */
+            razon: string;
+            /** Fecha Objetivo */
+            fecha_objetivo: string | null;
+            /** Dia Sugerido */
+            dia_sugerido: string | null;
+            /**
+             * Seccion
+             * @enum {string}
+             */
+            seccion: "por_citar" | "sin_cupo" | "en_reposo";
+            /** Reposo Hasta */
+            reposo_hasta: string | null;
+            /** Sin Vinculo Salutem */
+            sin_vinculo_salutem: boolean;
+            /** Dijo Agendada Sin Hora */
+            dijo_agendada_sin_hora: boolean;
+            ultima_gestion: components["schemas"]["UltimaGestionRead"] | null;
+        };
         /** PacienteRead */
         PacienteRead: {
             /** Id */
@@ -4017,6 +4085,27 @@ export interface components {
             telefono?: string | null;
             /** Correo */
             correo?: string | null;
+        };
+        /** PacientesPorCitarRead */
+        PacientesPorCitarRead: {
+            /** Profesional Id */
+            profesional_id: number;
+            /**
+             * Desde
+             * Format: date
+             */
+            desde: string;
+            /**
+             * Hasta
+             * Format: date
+             */
+            hasta: string;
+            /** Por Dia */
+            por_dia: components["schemas"]["CargaDiaRead"][];
+            /** Feriados */
+            feriados: string[];
+            /** Pacientes */
+            pacientes: components["schemas"]["PacientePorCitarRead"][];
         };
         /**
          * PdfConfirmPayload
@@ -4616,6 +4705,12 @@ export interface components {
             };
         };
         /**
+         * ResultadoGestion
+         * @description Resultado de un intento de contacto con un paciente por citar.
+         * @enum {string}
+         */
+        ResultadoGestion: "agendada_en_salutem" | "no_contesta" | "rechaza" | "otro";
+        /**
          * ResumenDashboard
          * @description Respuesta del endpoint GET /dashboard.
          */
@@ -4935,6 +5030,19 @@ export interface components {
              * @default bearer
              */
             token_type: string;
+        };
+        /** UltimaGestionRead */
+        UltimaGestionRead: {
+            /**
+             * Fecha
+             * Format: date-time
+             */
+            fecha: string;
+            resultado: components["schemas"]["ResultadoGestion"];
+            /** Usuario */
+            usuario: string;
+            /** Nota */
+            nota: string | null;
         };
         /** UsuarioCreate */
         UsuarioCreate: {
@@ -7977,6 +8085,35 @@ export interface operations {
             };
         };
     };
+    dar_de_baja_disponibilidad_endpoint_api_v1_disponibilidad_profesional__disponibilidad_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                disponibilidad_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     listar_propuestas_api_v1_propuestas_agenda_get: {
         parameters: {
             query?: {
@@ -7995,39 +8132,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PropuestaAgendaRead"][];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    crear_propuesta_api_v1_propuestas_agenda_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["GenerarPropuestaRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PropuestaAgendaRead"];
                 };
             };
             /** @description Validation Error */
@@ -8103,20 +8207,16 @@ export interface operations {
             };
         };
     };
-    confirmar_citas_endpoint_api_v1_propuestas_agenda__propuesta_id__confirmar_post: {
+    listar_gestiones_endpoint_api_v1_pacientes_por_citar__paciente_id__gestiones_get: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                propuesta_id: number;
+                paciente_id: number;
             };
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ConfirmarCitasRequest"];
-            };
-        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {
@@ -8124,7 +8224,75 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CitaPropuestaRead"][];
+                    "application/json": components["schemas"]["GestionRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    registrar_gestion_endpoint_api_v1_pacientes_por_citar__paciente_id__gestiones_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                paciente_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GestionCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GestionRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    pacientes_por_citar_endpoint_api_v1_pacientes_por_citar_get: {
+        parameters: {
+            query: {
+                profesional_id: number;
+                desde?: string | null;
+                hasta?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PacientesPorCitarRead"];
                 };
             };
             /** @description Validation Error */
