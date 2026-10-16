@@ -278,7 +278,7 @@ function CargaTab() {
         <Tabla
           headers={["Profesional", "Especialidad", "Casos", "Atenciones"]}
           rows={m.data.items.map((it) => [
-            it.nombre_profesional ?? `N° ${it.profesional_id}`,
+            it.nombre_profesional ?? "Sin profesional informado",
             it.especialidad ?? "—",
             it.total_casos,
             it.total_atenciones,
@@ -439,6 +439,9 @@ function AdherenciaTab() {
             </p>
             <p className="text-[11.5px] text-muted-foreground">
               {d.citas_realizadas}/{d.citas_agendadas} citas
+            </p>
+            <p className="mt-1 text-[11.5px] text-muted-foreground" data-testid="ayuda-adherencia">
+              Atendidas sobre el total de citas atendidas más inasistencias. Las anuladas y las futuras no cuentan.
             </p>
           </Card>
           <Card className="p-4">

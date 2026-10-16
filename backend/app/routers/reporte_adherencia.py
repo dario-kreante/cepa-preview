@@ -16,6 +16,7 @@ from app.models.ingreso import Ingreso
 from app.models.plan_tratamiento import PlanTratamiento
 from app.schemas.reportes import AdherenciaPaciente
 from app.services.adherencia import calcular_pct_adherencia, calcular_pct_avance
+from app.services.reportes_filtros import condicion_citas_reportables
 
 router = APIRouter(prefix="/api/v1/reportes", tags=["reportes"])
 
@@ -35,17 +36,19 @@ def get_adherencia_folio(
     if ingreso is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Folio no encontrado")
 
-    # Citas agendadas: todas las citas del folio (en cualquier estado)
-    citas_agendadas = db.execute(
-        select(func.count()).select_from(Cita).where(Cita.ingreso_id == folio_id)
-    ).scalar_one()
-
-    citas_realizadas = db.execute(
+    # Denominador (decisión 10): solo citas ya resueltas, realizada o inasistencia.
+    # Las anuladas y las agendadas futuras no castigan la adherencia. El campo del schema
+    # sigue llamándose citas_agendadas por compatibilidad con el contrato.
+    base = (
         select(func.count())
         .select_from(Cita)
         .where(Cita.ingreso_id == folio_id)
-        .where(Cita.estado == "realizada")
+        .where(condicion_citas_reportables())
+    )
+    citas_agendadas = db.execute(
+        base.where(Cita.estado.in_(("realizada", "inasistencia")))
     ).scalar_one()
+    citas_realizadas = db.execute(base.where(Cita.estado == "realizada")).scalar_one()
 
     # Plan de tratamiento (puede no existir)
     plan = db.scalars(

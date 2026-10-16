@@ -81,7 +81,8 @@ def _alertas_licencia(db: Session, lm: LicenciaMedica) -> int:
 
 def test_migracion_siembra_umbrales_actuales(db_session: Session):
     filas = {c.tipo: c for c in db_session.scalars(select(ConfigAlerta))}
-    assert len(filas) == 8  # 7 de COMP-2609-07 + gaf_licencia (1300, desactivada)
+    # 7 de COMP-2609-07 + gaf_licencia (1300, desactivada) + inasistencia (1360, activa)
+    assert len(filas) == 9
     assert (filas["vencimiento_licencia"].dias, filas["vencimiento_licencia"].habiles) == (3, True)
     assert (filas["oda_por_vencer"].dias, filas["oda_por_vencer"].habiles) == (7, False)
     assert filas["consentimiento_pendiente"].dias == 30
@@ -188,7 +189,7 @@ def test_get_config_lectura_por_roles(as_admin: TestClient, as_auditor: TestClie
         resp = cliente.get("/api/v1/config-alertas")
         assert resp.status_code == 200
         tipos = {c["tipo"] for c in resp.json()}
-        assert "vencimiento_licencia" in tipos and len(tipos) == 11
+        assert "vencimiento_licencia" in tipos and len(tipos) == 12
         assert cliente.get("/api/v1/config-alertas/festivos").status_code == 200
 
 

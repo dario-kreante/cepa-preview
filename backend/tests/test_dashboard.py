@@ -44,9 +44,9 @@ def datos_dashboard(db_session):
     db_session.add_all([ing_a, ing_b])
     db_session.flush()
 
-    cita1 = Cita(ingreso_id=ing_a.id, estado="realizada", fecha=date(2026, 1, 20))
-    cita2 = Cita(ingreso_id=ing_a.id, estado="inasistencia", fecha=date(2026, 1, 27))
-    cita3 = Cita(ingreso_id=ing_b.id, estado="anulada", fecha=date(2026, 2, 25))
+    cita1 = Cita(origen="SALUTEM", ingreso_id=ing_a.id, estado="realizada", fecha=date(2026, 1, 20))
+    cita2 = Cita(origen="SALUTEM", ingreso_id=ing_a.id, estado="inasistencia", fecha=date(2026, 1, 27))
+    cita3 = Cita(origen="SALUTEM", ingreso_id=ing_b.id, estado="anulada", fecha=date(2026, 2, 25))
     db_session.add_all([cita1, cita2, cita3])
     db_session.commit()
     return {"ingresos": [ing_a, ing_b], "citas": [cita1, cita2, cita3]}

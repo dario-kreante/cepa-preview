@@ -39,7 +39,7 @@ import logging
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 
-from sqlalchemy import false, or_, select
+from sqlalchemy import false, func, or_, select
 from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
@@ -192,6 +192,8 @@ VENTANAS_DEFAULT: dict[str, dict] = {
     TipoAlerta.LICENCIA_EN_CONTROL.value: {"dias": 0, "habiles": False},
     TipoAlerta.RECETA_EN_CONTROL.value: {"dias": 0, "habiles": False},
     TipoAlerta.PACIENTE_PENDIENTE_FOLIO.value: {"dias": 0, "habiles": False},
+    # Sin plazo: la crea el sync de citas; aquí solo se enciende o apaga.
+    TipoAlerta.INASISTENCIA.value: {"dias": 0, "habiles": False},
 }
 
 
@@ -379,43 +381,72 @@ def _construir_hitos_consentimiento(db: Session, ventanas: dict[str, dict] | Non
     return hitos
 
 
-def _construir_hitos_control_medico(db: Session, ventanas: dict[str, dict] | None = None) -> list[HitoPlazos]:
+def _construir_hitos_control_medico(
+    db: Session, ventanas: dict[str, dict] | None = None, hoy: date | None = None
+) -> list[HitoPlazos]:
     """Construye HitoPlazos para controles médicos próximos sin agendar (EPIC-06) via ORM.
 
-    Filtra: proximo_control IS NOT NULL AND proximo_agendado = False.
-    F5: toma solo el control más reciente por ingreso (latest-per-ingreso en Python).
-    F6: caso_tipo="control_medico" (caso_id=control.id).
-    Destinatario: Ingreso.profesional_id, o None (PA).
+    Toma el último control de cada ingreso activo (mayor fecha_control; el id desempata) y
+    exige proximo_control. Misma regla que la lista de trabajo de agendamiento:
+      - en controles de origen CEPA, proximo_agendado = TRUE excluye (el flag lo mantiene
+        la encargada);
+      - en los de origen SALUTEM el flag no manda;
+      - se excluye a todo paciente con hora vigente en SALUTEM, sea cual sea el origen.
+    caso_tipo="control_medico" (caso_id=control.id). Destinatario: Ingreso.profesional_id o None (PA).
     """
+    from app.agendamiento.salutem import pacientes_con_hora_vigente  # local import
+    from app.domain.enums import EstadoCaso
     from app.models.control_medico import ControlMedico  # local import
+    from app.models.ingreso import Ingreso  # local import
+    from app.services.salutem_sync.controles import ORIGEN as ORIGEN_SALUTEM  # local import
 
     ventana = (ventanas or VENTANAS_DEFAULT)[TipoAlerta.CONTROL_MEDICO.value]
     if not ventana.get("activo", True):
         return []
-    filas = db.scalars(
-        select(ControlMedico).where(
-            ControlMedico.proximo_control.isnot(None),
-            ControlMedico.proximo_agendado == False,  # noqa: E712
+    hoy = hoy or date.today()
+
+    # Último control por ingreso activo, portable (sin DISTINCT ON): MAX(fecha_control) y
+    # desempate por id en Python.
+    ultima = (
+        select(ControlMedico.ingreso_id, func.max(ControlMedico.fecha_control).label("max_fc"))
+        .group_by(ControlMedico.ingreso_id)
+        .subquery("ultima")
+    )
+    filas = db.execute(
+        select(ControlMedico, Ingreso.paciente_id)
+        .join(
+            ultima,
+            (ControlMedico.ingreso_id == ultima.c.ingreso_id)
+            & (ControlMedico.fecha_control == ultima.c.max_fc),
         )
+        .join(Ingreso, Ingreso.id == ControlMedico.ingreso_id)
+        .where(Ingreso.estado == EstadoCaso.ACTIVO.value)
     ).all()
 
-    # F5: latest-per-ingreso — conservar solo el control con proximo_control más reciente
-    # por ingreso_id (group in Python para portabilidad).
-    latest_by_ingreso: dict[int, ControlMedico] = {}
-    for cm in filas:
+    latest_by_ingreso: dict[int, tuple[ControlMedico, int]] = {}
+    for cm, paciente_id in filas:
         existing = latest_by_ingreso.get(cm.ingreso_id)
-        if existing is None or cm.proximo_control > existing.proximo_control:
-            latest_by_ingreso[cm.ingreso_id] = cm
+        if existing is None or cm.id > existing[0].id:
+            latest_by_ingreso[cm.ingreso_id] = (cm, paciente_id)
+
+    candidatos = [
+        (cm, pid)
+        for cm, pid in latest_by_ingreso.values()
+        if cm.proximo_control is not None
+        and (cm.origen == ORIGEN_SALUTEM or not cm.proximo_agendado)
+    ]
+    con_hora = pacientes_con_hora_vigente(db, {pid for _, pid in candidatos}, hoy)
 
     hitos = []
-    for cm in latest_by_ingreso.values():
-        usuario_id = _resolver_usuario(cm.ingreso_id, db)
+    for cm, pid in candidatos:
+        if pid in con_hora:
+            continue
         hitos.append(
             HitoPlazos(
                 tipo=TipoAlerta.CONTROL_MEDICO.value,
                 caso_id=cm.id,
                 caso_tipo="control_medico",  # F6: tipo correcto
-                usuario_id=usuario_id,
+                usuario_id=_resolver_usuario(cm.ingreso_id, db),
                 plazo_objetivo=cm.proximo_control,
                 ventana_dias=ventana["dias"],
                 usar_dias_habiles=ventana["habiles"],
@@ -530,12 +561,16 @@ def ejecutar_job_alertas(
     ventanas = cargar_ventanas(db)
     festivos = cargar_festivos(db)
 
+    from app.services.alertas_citas import resolver_alertas_con_hora
+
+    resueltas = resolver_alertas_con_hora(db, hoy, actor)
+
     hitos: list[HitoPlazos] = []
     hitos.extend(_construir_hitos_oda(db, ventanas))
     hitos.extend(_construir_hitos_licencias(db, ventanas))
     hitos.extend(_construir_hitos_ept(db, ventanas))
     hitos.extend(_construir_hitos_consentimiento(db, ventanas))
-    hitos.extend(_construir_hitos_control_medico(db, ventanas))
+    hitos.extend(_construir_hitos_control_medico(db, ventanas, hoy))
     hitos.extend(_construir_hitos_receta(db, ventanas))
 
     alertas_activas = _cargar_alertas_activas(db)
@@ -568,6 +603,8 @@ def ejecutar_job_alertas(
             entity="alerta_notif",
             entity_id=f"job:{len(resultados)}",
         )
+    if resultados or resueltas:
+        # Las resoluciones por hora vigente solo se flushean: sin alertas nuevas igual hay que persistirlas.
         db.commit()
 
     return len(resultados)

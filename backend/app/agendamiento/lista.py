@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.agendamiento import gestion
 from app.agendamiento.enums import ResultadoGestion
-from app.agendamiento.salutem import _lotes, pacientes_con_hora_vigente, pacientes_sin_vinculo
+from app.agendamiento.salutem import lotes, pacientes_con_hora_vigente, pacientes_sin_vinculo
 from app.agendamiento.scheduler import _clave_orden, _dias_habiles_en_rango, repartir_carga
 from app.agendamiento.schemas import (
     CargaDiaRead,
@@ -58,7 +58,7 @@ def _a_utc(valor: datetime) -> datetime:
 
 def _nombres(db: Session, paciente_ids: list[int]) -> dict[int, str]:
     nombres: dict[int, str] = {}
-    for lote in _lotes(paciente_ids):
+    for lote in lotes(paciente_ids):
         nombres.update({pid: nombre for pid, nombre in db.execute(
             select(Paciente.id, Paciente.nombre).where(Paciente.id.in_(lote))
         )})
@@ -68,7 +68,7 @@ def _nombres(db: Session, paciente_ids: list[int]) -> dict[int, str]:
 def _folios(db: Session, paciente_ids: list[int]) -> dict[int, str]:
     """Folio del ingreso activo con fecha_ingreso más reciente de cada paciente (el id desempata)."""
     mejor: dict[int, tuple[date, int, str]] = {}
-    for lote in _lotes(paciente_ids):
+    for lote in lotes(paciente_ids):
         filas = db.execute(
             select(Ingreso.paciente_id, Ingreso.fecha_ingreso, Ingreso.id, Ingreso.folio).where(
                 Ingreso.paciente_id.in_(lote), Ingreso.estado == EstadoCaso.ACTIVO.value
