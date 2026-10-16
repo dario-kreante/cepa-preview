@@ -22,12 +22,12 @@ Candidatos por profesional:
   - Recetas (P3): receta no tiene médico; se usa el del registro farmacológico al que
     pertenece (reg_farmacologico.medico_tratante), que es el que la emite y revisa.
   Un profesional_id que no existe en el catálogo no tiene pacientes: propuesta vacía.
+  proximo_agendado solo se lee: las horas se agendan en SALUTEM y ese campo lo escribe
+  únicamente el sync de SALUTEM.
 
 DD-1 (EPIC-09 rework): confirmar_citas también crea filas en la tabla `cita` (hecho de
 reportes). Para cada CitaPropuesta confirmada se busca el ingreso activo más reciente del
 paciente; si no existe se omite silenciosamente (no bloquea el flujo de agendamiento).
-Si la cita es de control (P1/P2), además marca proximo_agendado en el último control de
-ese ingreso, para que el paciente no vuelva a proponerse.
 """
 
 from datetime import date, timedelta
@@ -376,34 +376,6 @@ def _ingreso_activo_para_paciente(db: Session, paciente_id: int) -> int | None:
     return row
 
 
-_PRIORIDADES_CONTROL = (PrioridadCita.CONTROL_VENCIDO.value, PrioridadCita.CONTROL_PROXIMO.value)
-
-
-def _marcar_proximo_agendado(db: Session, ingreso_id: int) -> None:
-    """Marca proximo_agendado en el último control del ingreso.
-
-    "Último" con el mismo criterio que _cargar_candidatos (MAX fecha_control); si hay
-    empate en la fecha se marcan todos, porque todos cuentan como último allá.
-    """
-    from app.models.control_medico import ControlMedico
-
-    max_fc = db.scalar(
-        select(func.max(ControlMedico.fecha_control)).where(
-            ControlMedico.ingreso_id == ingreso_id
-        )
-    )
-    if max_fc is None:
-        return
-    controles = db.scalars(
-        select(ControlMedico).where(
-            ControlMedico.ingreso_id == ingreso_id,
-            ControlMedico.fecha_control == max_fc,
-        )
-    ).all()
-    for ctrl in controles:
-        ctrl.proximo_agendado = True
-
-
 def confirmar_citas(
     db: Session,
     propuesta_id: int,
@@ -417,10 +389,6 @@ def confirmar_citas(
 
     DD-1 (EPIC-09 rework): también crea una fila en `cita` (estado='agendada') para
     cada CitaPropuesta confirmada, alimentando los reportes operativos.
-
-    Las citas de control (P1/P2) marcan proximo_agendado en el último control del
-    ingreso: el paciente ya tiene hora y no debe reproponerse. Las de receta (P3) no lo
-    marcan: no agendan el próximo control, y marcarlo ocultaría ese control más adelante.
     """
     from app.models.cita import Cita
 
@@ -448,8 +416,6 @@ def confirmar_citas(
                     fecha=cita.fecha_candidata,
                 )
                 db.add(fila_cita)
-                if cita.prioridad in _PRIORIDADES_CONTROL:
-                    _marcar_proximo_agendado(db, ingreso_id)
 
     if confirmadas:
         propuesta.estado = EstadoPropuesta.CONFIRMADA.value

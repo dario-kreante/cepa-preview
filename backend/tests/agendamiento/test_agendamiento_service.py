@@ -538,12 +538,17 @@ def test_profesional_inexistente_no_tiene_candidatos(db_session):
     assert _candidatos_hoy(db_session, profesional_id=987654) == []
 
 
-# ─── Confirmar marca proximo_agendado ──────────────────────────────────────────
-
-def _propuesta_con_cita(db, paciente_id: int, prioridad: PrioridadCita):
-    _insertar_disponibilidad_completa(db)
+def test_confirmar_cita_no_escribe_proximo_agendado(db_session):
+    """proximo_agendado lo escribe solo el sync de SALUTEM, donde se agendan las horas."""
+    hoy_real = date.today()
+    _, ingreso = _crear_paciente_e_ingreso(db_session, rut="99900001-1")
+    ctrl = _insertar_control_medico(
+        db_session, ingreso.id, fecha_control=hoy_real - timedelta(days=5),
+        proximo_control=hoy_real + timedelta(days=2),
+    )
+    _insertar_disponibilidad_completa(db_session)
     propuesta = generar_propuesta(
-        db=db,
+        db=db_session,
         req=GenerarPropuestaRequest(
             profesional_id=PROF_ID, tipo=TipoPropuesta.DIARIA, fecha_inicio=HOY,
         ),
@@ -551,74 +556,16 @@ def _propuesta_con_cita(db, paciente_id: int, prioridad: PrioridadCita):
     )
     cita = CitaPropuesta(
         propuesta_id=propuesta.id,
-        paciente_id=paciente_id,
+        paciente_id=ingreso.paciente_id,
         fecha_candidata=HOY,
-        prioridad=prioridad.value,
+        prioridad=PrioridadCita.CONTROL_PROXIMO.value,
         razon="test",
         estado=EstadoCita.PROPUESTA.value,
     )
-    db.add(cita)
-    db.flush()
-    return propuesta, cita
-
-
-def test_confirmar_cita_de_control_marca_proximo_agendado_del_ultimo_control(db_session):
-    hoy_real = date.today()
-    _, ingreso = _crear_paciente_e_ingreso(db_session, rut="99900001-1")
-    viejo = _insertar_control_medico(
-        db_session, ingreso.id, fecha_control=hoy_real - timedelta(days=60),
-        proximo_control=hoy_real - timedelta(days=30),
-    )
-    ultimo = _insertar_control_medico(
-        db_session, ingreso.id, fecha_control=hoy_real - timedelta(days=5),
-        proximo_control=hoy_real + timedelta(days=2),
-    )
-    assert [c.paciente_id for c in _candidatos_hoy(db_session)] == [ingreso.paciente_id]
-
-    propuesta, cita = _propuesta_con_cita(
-        db_session, ingreso.paciente_id, PrioridadCita.CONTROL_PROXIMO
-    )
-    confirmar_citas(db_session, propuesta.id, [cita.id], actor="admin_test")
-
-    db_session.refresh(ultimo)
-    db_session.refresh(viejo)
-    assert ultimo.proximo_agendado is True
-    assert viejo.proximo_agendado is False
-    # Ya no se vuelve a proponer.
-    assert _candidatos_hoy(db_session) == []
-
-
-def test_confirmar_cita_de_receta_no_marca_proximo_agendado(db_session):
-    hoy_real = date.today()
-    _, ingreso = _crear_paciente_e_ingreso(db_session, rut="99900002-2")
-    ctrl = _insertar_control_medico(
-        db_session, ingreso.id, fecha_control=hoy_real - timedelta(days=5),
-        proximo_control=hoy_real + timedelta(days=60),
-    )
-
-    propuesta, cita = _propuesta_con_cita(
-        db_session, ingreso.paciente_id, PrioridadCita.SEGUIMIENTO_RECETA
-    )
-    confirmar_citas(db_session, propuesta.id, [cita.id], actor="admin_test")
-
-    db_session.refresh(ctrl)
-    assert ctrl.proximo_agendado is False
-
-
-def test_confirmar_cita_excluida_no_marca_proximo_agendado(db_session):
-    hoy_real = date.today()
-    _, ingreso = _crear_paciente_e_ingreso(db_session, rut="99900003-3")
-    ctrl = _insertar_control_medico(
-        db_session, ingreso.id, fecha_control=hoy_real - timedelta(days=5),
-        proximo_control=hoy_real + timedelta(days=2),
-    )
-    propuesta, cita = _propuesta_con_cita(
-        db_session, ingreso.paciente_id, PrioridadCita.CONTROL_PROXIMO
-    )
-    cita.excluida_por = "reposo vigente"
+    db_session.add(cita)
     db_session.flush()
 
-    confirmar_citas(db_session, propuesta.id, [cita.id], actor="admin_test")
+    assert len(confirmar_citas(db_session, propuesta.id, [cita.id], actor="admin_test")) == 1
 
     db_session.refresh(ctrl)
     assert ctrl.proximo_agendado is False
