@@ -200,3 +200,29 @@ def test_sugiere_la_licencia_del_campo_indicacion_de_reposo_con_su_tipo_de_repos
 
     assert (s["tipo_lm"], s["cantidad_dias"], s["fecha_inicio"]) == ("6", 15, "2024-09-30")
     assert (s["fecha_termino"], s["tipo_reposo"]) == ("2024-10-14", "total")
+
+
+def test_sugiere_el_reposo_aunque_no_diga_licencia(as_admin, folio):
+    """Caso real de QA (15-10-2026): el médico escribe "Reposo por 15 días desde el …"."""
+    r = as_admin.post(
+        "/api/v1/fichas-clinicas",
+        json={
+            "folio": folio,
+            "origen": "SALUTEM",
+            "contenido": {
+                "citaId": 78,
+                "citaFecha": "2026-10-15",
+                "especialidadNombre": "Médico/a",
+                "antecedentes": [
+                    {"nombre": "Indicación de reposo", "registro": "Reposo por 15 días desde el 15/10/2026"},
+                    {"nombre": "Tipo de reposo", "registro": ["Total"]},
+                ],
+            },
+        },
+    )
+    assert r.status_code == 201, r.text
+
+    [s] = as_admin.get(f"/api/v1/fichas-clinicas/{folio}/licencias-sugeridas").json()
+
+    assert (s["cantidad_dias"], s["fecha_inicio"], s["fecha_termino"]) == (15, "2026-10-15", "2026-10-29")
+    assert s["tipo_reposo"] == "total"

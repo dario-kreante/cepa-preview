@@ -9,6 +9,7 @@ export type ProximoControlUpdate = components["schemas"]["ProximoControlUpdate"]
 export type LicenciaUpdate = components["schemas"]["LicenciaUpdate"];
 export type EvaluacionUpdate = components["schemas"]["EvaluacionUpdate"];
 export type ArchivoControlRead = components["schemas"]["ArchivoControlRead"];
+export type AtencionSalutemRead = components["schemas"]["AtencionSalutemRead"];
 
 // Calificación RECA: mismo catálogo que la RECA del reintegro (D20).
 export type EstadoReca = components["schemas"]["TipoReca"];
@@ -123,6 +124,24 @@ export async function archivosDeControl(controlId: number): Promise<ArchivoContr
 }
 
 /** El navegador no dejó abrir la pestaña nueva (bloqueador de ventanas emergentes). */
+/** GET /api/v1/salutem/atenciones/{cita_id} — atención médica que no es control. */
+export async function obtenerAtencionSalutem(citaId: number): Promise<AtencionSalutemRead> {
+  const { data, error } = await api.GET("/api/v1/salutem/atenciones/{cita_id}", {
+    params: { path: { cita_id: citaId } },
+  });
+  if (error || !data) throw new Error("No se encontró la atención");
+  return data;
+}
+
+/** GET /api/v1/salutem/atenciones/{cita_id}/archivos */
+export async function archivosDeAtencion(citaId: number): Promise<ArchivoControlRead[]> {
+  const { data, error } = await api.GET("/api/v1/salutem/atenciones/{cita_id}/archivos", {
+    params: { path: { cita_id: citaId } },
+  });
+  if (error || !data) throw new Error("No se pudieron cargar los documentos de SALUTEM");
+  return data;
+}
+
 export class PestanaBloqueadaError extends Error {
   constructor() {
     super("El navegador bloqueó la pestaña nueva.");
@@ -142,9 +161,30 @@ const REVOCAR_URL_MS = 5 * 60_000;
  * La pestaña se abre de forma síncrona en el clic y recién después se pide el contenido:
  * un `window.open` tras un `await` lo bloquean los navegadores sin avisar.
  */
-export async function abrirArchivoDeControl(
-  controlId: number,
-  archivoId: number,
+export function abrirArchivoDeControl(controlId: number, archivoId: number, nombre: string) {
+  return abrirArchivo(
+    () =>
+      api.GET("/api/v1/controles-medicos/{control_id}/archivos/{archivo_id}/contenido", {
+        params: { path: { control_id: controlId, archivo_id: archivoId } },
+        parseAs: "blob",
+      }),
+    nombre,
+  );
+}
+
+export function abrirArchivoDeAtencion(citaId: number, archivoId: number, nombre: string) {
+  return abrirArchivo(
+    () =>
+      api.GET("/api/v1/salutem/atenciones/{cita_id}/archivos/{archivo_id}/contenido", {
+        params: { path: { cita_id: citaId, archivo_id: archivoId } },
+        parseAs: "blob",
+      }),
+    nombre,
+  );
+}
+
+async function abrirArchivo(
+  pedir: () => Promise<{ data?: unknown; error?: unknown }>,
   nombre: string,
 ): Promise<void> {
   const pestana = window.open("", "_blank");
@@ -157,10 +197,7 @@ export async function abrirArchivoDeControl(
     // La pestaña es solo un contenedor: el texto de espera es cosmético.
   }
   try {
-    const { data, error } = await api.GET(
-      "/api/v1/controles-medicos/{control_id}/archivos/{archivo_id}/contenido",
-      { params: { path: { control_id: controlId, archivo_id: archivoId } }, parseAs: "blob" },
-    );
+    const { data, error } = await pedir();
     if (error || !data) throw new Error("No se pudo abrir el documento");
     const blob = data as Blob;
     const tipo = blob.type.split(";")[0].trim().toLowerCase();

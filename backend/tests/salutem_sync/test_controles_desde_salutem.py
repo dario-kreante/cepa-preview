@@ -133,6 +133,26 @@ def test_el_gaf_por_tramo_y_el_tipo_de_reposo_vienen_de_los_campos_de_salutem(db
     assert (c.tipo_licencia, c.total_dias_lm, c.tipo_reposo) == ("6", 30, "parcial")
 
 
+def test_indicacion_de_reposo_sin_la_palabra_licencia_es_licencia(db_session):
+    """Caso real de QA (15-10-2026): "Reposo por 15 días" en Indicación de reposo."""
+    _paciente_e_ingreso(db_session)
+    _persona(db_session)
+    _atencion(
+        db_session, 5030, "2024-05-07",
+        antecedentes=[
+            {"nombre": "Indicación de reposo", "registro": "Reposo por 15 días desde el 07/05/2024"},
+            {"nombre": "Tipo de reposo", "registro": {"1": "Total"}},
+        ],
+    )
+
+    vincular(db_session, AHORA)
+
+    [c] = _controles(db_session)
+    assert c.tiene_licencia is True
+    assert (c.total_dias_lm, c.tipo_reposo) == (15, "total")
+    assert c.resumen_termino_lm == "Reposo por 15 días desde el 07/05/2024"
+
+
 def test_sin_licencia_el_tipo_de_reposo_no_se_guarda(db_session):
     """El control solo guarda tipo de reposo cuando hay licencia (RN-1 de CEPA-062)."""
     _paciente_e_ingreso(db_session)

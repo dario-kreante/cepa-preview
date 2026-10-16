@@ -19,6 +19,8 @@ import type { LicenciaReadSlim } from "./api";
 import { AltaLicenciaDialog } from "./AltaLicenciaDialog";
 import { AnularLicenciaDialog } from "./AnularLicenciaDialog";
 import { IslLicenciaDialog } from "./IslLicenciaDialog";
+import { useBuscarPacientes, useVista360 } from "@/features/ingresos/hooks";
+import type { PacienteRead } from "@/features/ingresos/api";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -205,8 +207,10 @@ export function LicenciasPage() {
   const { rol } = useAuth();
   const puedeCrear = puedeEscribir(rol as Rol);
 
-  const [inputFolio, setInputFolio] = useState("");
-  const [folio, setFolio] = useState("");
+  // Mismo buscador que el resto del sistema: RUT, folio, nombre o ID SALUTEM.
+  const [inputQ, setInputQ] = useState("");
+  const [q, setQ] = useState("");
+  const [seleccionado, setSeleccionado] = useState<PacienteRead | null>(null);
 
   // Dialog state
   const [altaOpen, setAltaOpen] = useState(false);
@@ -221,13 +225,24 @@ export function LicenciasPage() {
   // Row selection — only used by writers; Set of licencia ids
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
-  // 400ms debounce on folio input
   useEffect(() => {
-    const t = setTimeout(() => setFolio(inputFolio.trim()), 400);
+    const t = setTimeout(() => {
+      setQ(inputQ.trim());
+      setSeleccionado(null);
+      setSelectedIds(new Set());
+    }, 300);
     return () => clearTimeout(t);
-  }, [inputFolio]);
+  }, [inputQ]);
 
-  const { data: licenciasResp, isFetching } = useLicenciasPorFolio(folio);
+  const { data: pacientes = [], isFetching: buscando } = useBuscarPacientes(q);
+  // Con un solo resultado (p. ej. al buscar por folio o RUT) se abre directo.
+  const paciente = seleccionado ?? (pacientes.length === 1 ? pacientes[0] : null);
+  const { data: vista, isLoading: vistaCargando } = useVista360(paciente?.id ?? null);
+  // Las licencias se listan por el folio del ingreso principal del paciente.
+  const folio = vista?.ingresos?.[0]?.folio ?? "";
+
+  const { data: licenciasResp, isFetching: cargandoLicencias } = useLicenciasPorFolio(folio);
+  const isFetching = buscando || vistaCargando || cargandoLicencias;
 
   const historial: LicenciaReadSlim[] = licenciasResp?.historial ?? [];
   const diasAcumulados = licenciasResp?.dias_acumulados ?? 0;
@@ -340,6 +355,7 @@ export function LicenciasPage() {
   }
 
   const hasSearched = folio.length > 0;
+  const sinIngreso = paciente !== null && !vistaCargando && vista !== undefined && !folio;
 
   return (
     <div className="space-y-5">
@@ -350,7 +366,9 @@ export function LicenciasPage() {
           <p className="text-[13px] text-muted-foreground mt-1">
             {hasSearched && !isFetching && licenciasResp
               ? `${historial.length} licencia${historial.length !== 1 ? "s" : ""} · ${diasAcumulados} días acumulados`
-              : "Busca por folio para ver el historial de licencias."}
+              : paciente
+              ? `${paciente.nombre}${vistaCargando ? " · cargando…" : ""}`
+              : "Busca un paciente para ver el historial de licencias."}
           </p>
         </div>
         {puedeCrear && (
@@ -391,15 +409,15 @@ export function LicenciasPage() {
 
       {/* Filters bar */}
       <div className="flex flex-wrap items-center gap-2">
-        {/* Folio search */}
-        <div className="relative w-[240px]">
+        {/* Buscador de pacientes */}
+        <div className="relative w-[300px]">
           <Search className="absolute left-2.5 top-2.5 size-3.5 text-muted-foreground pointer-events-none" />
           <Input
-            value={inputFolio}
-            onChange={(e) => setInputFolio(e.target.value)}
-            placeholder="Buscar por folio"
+            value={inputQ}
+            onChange={(e) => setInputQ(e.target.value)}
+            placeholder="Buscar por RUT, folio, nombre o ID SALUTEM"
             className="h-9 pl-8 text-[13px]"
-            aria-label="Buscar por folio"
+            aria-label="Buscar pacientes"
           />
         </div>
 
@@ -462,11 +480,11 @@ export function LicenciasPage() {
       </div>
 
       {/* States */}
-      {!hasSearched && !isFetching && (
+      {!q && !isFetching && (
         <div className="rounded-lg border border-dashed border-border bg-muted/20 px-6 py-12 text-center">
           <Search className="mx-auto mb-3 size-8 text-muted-foreground/50" />
           <p className="text-[13.5px] text-muted-foreground">
-            Ingresa un folio para ver sus licencias.
+            Escribe un RUT, folio, nombre o ID SALUTEM para ver las licencias del paciente.
           </p>
         </div>
       )}
@@ -475,10 +493,61 @@ export function LicenciasPage() {
         <p className="text-[13px] text-muted-foreground px-1">Buscando…</p>
       )}
 
+      {q && !buscando && pacientes.length === 0 && (
+        <div className="rounded-lg border border-dashed border-border bg-muted/20 px-6 py-12 text-center">
+          <p className="text-[13.5px] text-muted-foreground">Sin resultados.</p>
+        </div>
+      )}
+
+      {/* Varios pacientes: se elige uno */}
+      {!buscando && pacientes.length > 1 && (
+        <Card className="overflow-hidden p-0">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-muted/30 border-b text-[11px] font-semibold text-muted-foreground">
+                  <Th>Paciente</Th>
+                  <Th>RUT</Th>
+                  <Th>Región</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {pacientes.map((p) => (
+                  <tr
+                    key={p.id}
+                    onClick={() => {
+                      setSeleccionado(p);
+                      setSelectedIds(new Set());
+                    }}
+                    className={cn(
+                      "border-b cursor-pointer transition-colors",
+                      paciente?.id === p.id ? "bg-primary/5 hover:bg-primary/10" : "hover:bg-muted/40",
+                    )}
+                    aria-selected={paciente?.id === p.id}
+                  >
+                    <td className="px-4 py-3 font-semibold text-[13px]">{p.nombre}</td>
+                    <td className="px-4 py-3 font-mono text-[12px]">{p.rut ?? "—"}</td>
+                    <td className="px-4 py-3 text-[12.5px]">{p.region ?? "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
+
+      {sinIngreso && (
+        <div className="rounded-lg border border-dashed border-border bg-muted/20 px-6 py-8 text-center">
+          <p className="text-[13.5px] text-muted-foreground">
+            Este paciente no tiene ingresos registrados.
+          </p>
+        </div>
+      )}
+
       {hasSearched && !isFetching && historial.length === 0 && (
         <div className="rounded-lg border border-dashed border-border bg-muted/20 px-6 py-12 text-center">
           <p className="text-[13.5px] text-muted-foreground">
-            Sin licencias para este folio.
+            Sin licencias para este paciente.
           </p>
         </div>
       )}
@@ -486,7 +555,7 @@ export function LicenciasPage() {
       {/* Alta de licencia dialog — writers only */}
       {puedeCrear && (
         <AltaLicenciaDialog
-          folio={folio || inputFolio.trim()}
+          folio={folio}
           ingresoId={ingresoId}
           open={altaOpen}
           onOpenChange={setAltaOpen}

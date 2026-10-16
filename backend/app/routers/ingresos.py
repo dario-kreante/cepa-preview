@@ -8,18 +8,26 @@ from app.db.session import get_db
 from app.models.ingreso import Ingreso
 from app.models.plan_tratamiento import PlanTratamiento
 from app.schemas.consentimiento import ConsentimientoRead, ConsentimientoUpdate
-from app.schemas.ingreso import IngresoCierre, IngresoCreate, IngresoRead, IngresoUpdate
+from app.schemas.ingreso import (
+    FolioUpdate,
+    IngresoCierre,
+    IngresoCreate,
+    IngresoRead,
+    IngresoUpdate,
+)
 from app.schemas.plan_tratamiento import PlanTratamientoRead, PlanTratamientoUpsert
 from app.schemas.seguimiento import SeguimientoRead, SeguimientoUpdate, ValidacionPlazo
 from app.services.cierre import cerrar_ingreso
 from app.services.consentimiento import iniciar_tratamiento, upsert_consentimiento
-from app.services.ingreso import actualizar_ingreso, crear_ingreso
+from app.services.ingreso import actualizar_ingreso, corregir_folio, crear_ingreso
 from app.services.seguimiento import upsert_seguimiento, validar_plazo
 
 router = APIRouter(prefix="/api/v1/ingresos", tags=["ingresos"])
 
 _writer = require_role("Administrativo", "Coordinacion")
 _reader = require_role("Administrativo", "Coordinacion", "Auditor")
+# El folio lo corrige solo la Administrativa: Coordinación y Auditor lo ven.
+_folio = require_role("Administrativo")
 
 
 @router.get("", response_model=list[IngresoRead], dependencies=[Depends(_reader)])
@@ -64,6 +72,24 @@ def editar(
     record_audit(
         db, actor=current_user.username, action="UPDATE", entity="ingreso", entity_id=str(ingreso.id)
     )
+    db.commit()
+    db.refresh(ingreso)
+    return ingreso
+
+
+@router.put(
+    "/{ingreso_id}/folio",
+    response_model=IngresoRead,
+    dependencies=[Depends(_folio)],
+)
+def cambiar_folio(
+    ingreso_id: int,
+    payload: FolioUpdate,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+) -> IngresoRead:
+    """Corrige el folio de un ingreso (y de sus reingresos, fichas e IMED con ese folio)."""
+    ingreso = corregir_folio(db, ingreso_id, payload.folio, actor=current_user.username)
     db.commit()
     db.refresh(ingreso)
     return ingreso

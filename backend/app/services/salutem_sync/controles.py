@@ -14,8 +14,8 @@ cualquier sección de la atención. Correspondencia con el control:
 - proximo_control    ← la siguiente cita vigente de la persona en la copia de SALUTEM; sin
                        cita, el campo "Próximo control" ("15 días", "1 mes") contado
                        desde la atención, con proximo_agendado en False
-- licencia           ← la indicación o el campo "Indicación de reposo" que menciona la
-                       licencia (extractor de licencias)
+- licencia           ← la indicación que menciona la licencia, o el campo "Indicación
+                       de reposo" aunque no diga "licencia" ("Reposo por 15 días")
 - tipo_reposo        ← el campo "Tipo de reposo" (Total/Parcial); si falta, lo que diga
                        el texto de la licencia. Solo se guarda si hay licencia (RN-1)
 - gaf_tramo          ← el campo "GAF", que SALUTEM registra por tramo ("51-60")
@@ -40,12 +40,23 @@ from app.audit.service import record_audit
 from app.config import get_settings
 from app.domain.enums_controles import TipoLicencia, TipoReposo
 from app.integrations.salutem.campos import campo, tramo_gaf
-from app.integrations.salutem.licencias import ClaseMencion, MencionLicencia, extraer_licencia
+from app.integrations.salutem.licencias import (
+    ClaseMencion,
+    MencionLicencia,
+    extraer_indicacion_reposo,
+    extraer_licencia,
+)
 from app.integrations.salutem.models import EstadoCitaSalutem
 from app.models.control_medico import ControlMedico
 from app.models.ingreso import Ingreso
 from app.models.salutem_copia import SalutemAtencion, SalutemCita
-from app.services.salutem_sync.alertas_control import ACTOR, alertar_control, resolver_alertas_control
+from app.services.salutem_sync.alertas_control import (
+    ACTOR,
+    CASO_ATENCION,
+    alertar_atencion,
+    alertar_control,
+    resolver_alertas_control,
+)
 
 ORIGEN = "SALUTEM"
 ATENDIDO = int(EstadoCitaSalutem.ATENDIDO)
@@ -91,6 +102,9 @@ def sincronizar_control(
         return
     campos = _campos(db, atencion, ingreso)
     creado = control is None
+    # Un control que pasa a tener licencia (p. ej. porque el extractor ahora la reconoce)
+    # también alerta, aunque la atención no haya cambiado en SALUTEM.
+    gano_licencia = not creado and campos["tiene_licencia"] and not control.tiene_licencia
     if control is None:
         control = ControlMedico(ingreso_id=ingreso.id, origen=ORIGEN, salutem_cita_id=atencion.cita_id, **campos)
         db.add(control)
@@ -101,8 +115,37 @@ def sincronizar_control(
             setattr(control, k, v)
         db.flush()
         record_audit(db, actor=ACTOR, action="UPDATE", entity="control_medico", entity_id=str(control.id))
-    if creado or cambio:
+    if creado or cambio or gano_licencia:
         alertar_control(db, control, atencion.contenido, hoy)
+
+
+def es_atencion_medica_sin_control(atencion: SalutemAtencion) -> bool:
+    """Atendida, de una especialidad médica que alerta (SALUTEM_ESPECIALIDADES_ALERTA)
+    y que no es control."""
+    c = atencion.contenido
+    return (
+        atencion.desaparecida_en is None
+        and atencion.fecha_cita is not None
+        and c.get("estadoCitaId") == ATENDIDO
+        and str(c.get("especialidadNombre") or "").strip().casefold()
+        in get_settings().salutem_especialidades_alerta_set
+        and not es_control(atencion)
+    )
+
+
+def sincronizar_alerta_atencion(db: Session, atencion: SalutemAtencion, ingreso: Ingreso, *, hoy: date) -> None:
+    """Alerta la licencia o receta de una atención médica que no es control.
+
+    Una vez por atención y tipo: si ya se alertó (aunque esté resuelta) no se repite. Si la
+    atención se anula o desaparece, sus alertas abiertas quedan resueltas.
+    """
+    if not es_atencion_medica_sin_control(atencion):
+        resolver_alertas_control(db, atencion.cita_id, CASO_ATENCION)
+        return
+    hay_licencia = licencia_de_atencion(atencion.contenido, atencion.fecha_cita) is not None
+    alertar_atencion(
+        db, atencion.cita_id, ingreso.id, atencion.fecha_cita, hay_licencia, atencion.contenido, hoy
+    )
 
 
 def _campos(db: Session, atencion: SalutemAtencion, ingreso: Ingreso) -> dict[str, Any]:
@@ -112,7 +155,7 @@ def _campos(db: Session, atencion: SalutemAtencion, ingreso: Ingreso) -> dict[st
     agendado = proximo is not None
     if proximo is None:
         proximo = _plazo(campo(c, "Próximo control"), fecha)
-    licencia = _licencia(c, fecha)
+    licencia = licencia_de_atencion(c, fecha)
     reposo = (campo(c, "Tipo de reposo") or "").casefold()
     if reposo not in {e.value for e in TipoReposo}:
         reposo = licencia.tipo_reposo if licencia else None
@@ -177,10 +220,12 @@ def _registros(contenido: dict[str, Any], seccion: str) -> list[Any]:
     return [v.get("registro") if isinstance(v, dict) else v for v in valor]
 
 
-def _licencia(contenido: dict[str, Any], fecha: date) -> MencionLicencia | None:
-    textos = [*_registros(contenido, "indicaciones"), campo(contenido, "Indicación de reposo")]
-    for registro in textos:
-        mencion = extraer_licencia(registro, fecha_atencion=fecha)
+def licencia_de_atencion(contenido: dict[str, Any], fecha: date) -> MencionLicencia | None:
+    menciones = [
+        *(extraer_licencia(r, fecha_atencion=fecha) for r in _registros(contenido, "indicaciones")),
+        extraer_indicacion_reposo(campo(contenido, "Indicación de reposo"), fecha_atencion=fecha),
+    ]
+    for mencion in menciones:
         if mencion is not None and mencion.clase == ClaseMencion.LICENCIA:
             return mencion
     return None
