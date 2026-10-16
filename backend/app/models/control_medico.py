@@ -36,7 +36,10 @@ class ControlMedico(Base):
     """
 
     __tablename__ = "control_medico"
-    __table_args__ = (Index("ix_ctrl_med_sal_cita", "salutem_cita_id"),)
+    __table_args__ = (
+        Index("ix_ctrl_med_sal_cita", "salutem_cita_id"),
+        Index("ix_ctrl_med_profesional", "profesional_id"),
+    )
 
     # ── Clave primaria ────────────────────────────────────────────────────────
     id: Mapped[int] = mapped_column(BigInteger, Identity(always=False), primary_key=True)
@@ -83,6 +86,12 @@ class ControlMedico(Base):
     # clave compuesta con NULL choca con los controles manuales del mismo ingreso).
     origen: Mapped[str] = mapped_column(String(20), nullable=False, default="CEPA", server_default="CEPA")
     salutem_cita_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+
+    # ── Profesional del catálogo (migración 1350) ────────────────────────────
+    # El sync lo llena desde ``profesionalId``; en controles manuales, el selector.
+    profesional_id: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("profesional.id"), nullable=True
+    )
 
     # ── Metadatos ─────────────────────────────────────────────────────────────
     created_at: Mapped[datetime] = mapped_column(
