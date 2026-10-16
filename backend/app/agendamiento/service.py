@@ -10,18 +10,24 @@ Adaptaciones respecto al plan (Deviaciones 5-7):
     fin_reposo. Sin paciente_id directo — se obtiene vía ingreso.
   - Tabla real: receta, ligada a reg_farmacologico.ingreso_id. Sin requiere_seguimiento
     ni gestionada; se usa fecha_revision futura como proxy de seguimiento pendiente.
-  - profesional_id en DisponibilidadProf es un ID interno del módulo de agendamiento.
-    Las queries a control_medico retornan todos los controles próximos sin filtrar por
-    profesional_id (ya que control_medico no tiene ese campo entero).
+  - profesional_id en DisponibilidadProf/PropuestaAgenda es el id del catálogo
+    `profesional` (migración 1340).
 
-Limitación conocida — pool único de candidatos:
-  Los candidatos son clínica-wide (no hay filtro por profesional en control_medico, ya que
-  esa tabla carece de profesional_id). El mapeo por-profesional vía medico_tratante está
-  planificado antes del despliegue multi-profesional.
+Candidatos por profesional:
+  control_medico y reg_farmacologico guardan al médico como texto (medico_tratante), no
+  como id. Se cruzan por nombre: profesional.nombre = TRIM(medico_tratante), el mismo
+  criterio con que el catálogo se siembra desde SALUTEM.
+  - Controles (P1/P2): cuenta el médico del ÚLTIMO control del ingreso, que es quien fijó
+    el proximo_control que se está agendando.
+  - Recetas (P3): receta no tiene médico; se usa el del registro farmacológico al que
+    pertenece (reg_farmacologico.medico_tratante), que es el que la emite y revisa.
+  Un profesional_id que no existe en el catálogo no tiene pacientes: propuesta vacía.
 
 DD-1 (EPIC-09 rework): confirmar_citas también crea filas en la tabla `cita` (hecho de
 reportes). Para cada CitaPropuesta confirmada se busca el ingreso activo más reciente del
 paciente; si no existe se omite silenciosamente (no bloquea el flujo de agendamiento).
+Si la cita es de control (P1/P2), además marca proximo_agendado en el último control de
+ese ingreso, para que el paciente no vuelva a proponerse.
 """
 
 from datetime import date, timedelta
@@ -139,12 +145,17 @@ def _cargar_candidatos(
     Solo se usa el último control_medico por ingreso (subquery MAX fecha_control) para
     evitar que controles históricos desencadenen propuestas duplicadas.
 
-    profesional_id no se usa como filtro en control_medico (no existe ese campo entero
-    en la tabla real). La selección por profesional se hace via DisponibilidadProf.
+    Solo entran los pacientes del profesional pedido (ver docstring del módulo): el
+    médico del último control para P1/P2 y el del registro farmacológico para P3.
     """
     from app.models.control_medico import ControlMedico
     from app.models.farmacos import Receta, RegistroFarmacologico
     from app.models.ingreso import Ingreso
+    from app.models.profesional import Profesional
+
+    nombre_prof = db.scalar(select(Profesional.nombre).where(Profesional.id == profesional_id))
+    if nombre_prof is None:
+        return []
 
     hoy = date.today()
 
@@ -168,6 +179,7 @@ def _cargar_candidatos(
             _cm.ingreso_id,
             _cm.proximo_control,
             _cm.proximo_agendado,
+            _cm.medico_tratante,
         )
         .join(
             _max_fc_sub,
@@ -185,6 +197,7 @@ def _cargar_candidatos(
             _latest_ctrl.c.proximo_control.isnot(None),
             _latest_ctrl.c.proximo_control < hoy,
             _latest_ctrl.c.proximo_agendado == false(),
+            func.trim(_latest_ctrl.c.medico_tratante) == nombre_prof,
         )
     )
     ctrl_vencidos = db.execute(stmt_vencidos).fetchall()
@@ -203,6 +216,7 @@ def _cargar_candidatos(
             _latest_ctrl.c.proximo_control >= hoy,
             _latest_ctrl.c.proximo_control <= horizonte,
             _latest_ctrl.c.proximo_agendado == false(),
+            func.trim(_latest_ctrl.c.medico_tratante) == nombre_prof,
         )
     )
     ctrl_proximos = db.execute(stmt_proximos).fetchall()
@@ -223,6 +237,7 @@ def _cargar_candidatos(
             Receta.fecha_revision >= hoy,
             Receta.fecha_revision <= limite_revision,
             Receta.fecha_envio.is_(None),  # RN-6: excluir recetas ya gestionadas
+            func.trim(RegistroFarmacologico.medico_tratante) == nombre_prof,
         )
     )
     recetas = db.execute(stmt_recetas).fetchall()
@@ -361,6 +376,34 @@ def _ingreso_activo_para_paciente(db: Session, paciente_id: int) -> int | None:
     return row
 
 
+_PRIORIDADES_CONTROL = (PrioridadCita.CONTROL_VENCIDO.value, PrioridadCita.CONTROL_PROXIMO.value)
+
+
+def _marcar_proximo_agendado(db: Session, ingreso_id: int) -> None:
+    """Marca proximo_agendado en el último control del ingreso.
+
+    "Último" con el mismo criterio que _cargar_candidatos (MAX fecha_control); si hay
+    empate en la fecha se marcan todos, porque todos cuentan como último allá.
+    """
+    from app.models.control_medico import ControlMedico
+
+    max_fc = db.scalar(
+        select(func.max(ControlMedico.fecha_control)).where(
+            ControlMedico.ingreso_id == ingreso_id
+        )
+    )
+    if max_fc is None:
+        return
+    controles = db.scalars(
+        select(ControlMedico).where(
+            ControlMedico.ingreso_id == ingreso_id,
+            ControlMedico.fecha_control == max_fc,
+        )
+    ).all()
+    for ctrl in controles:
+        ctrl.proximo_agendado = True
+
+
 def confirmar_citas(
     db: Session,
     propuesta_id: int,
@@ -374,6 +417,10 @@ def confirmar_citas(
 
     DD-1 (EPIC-09 rework): también crea una fila en `cita` (estado='agendada') para
     cada CitaPropuesta confirmada, alimentando los reportes operativos.
+
+    Las citas de control (P1/P2) marcan proximo_agendado en el último control del
+    ingreso: el paciente ya tiene hora y no debe reproponerse. Las de receta (P3) no lo
+    marcan: no agendan el próximo control, y marcarlo ocultaría ese control más adelante.
     """
     from app.models.cita import Cita
 
@@ -401,6 +448,8 @@ def confirmar_citas(
                     fecha=cita.fecha_candidata,
                 )
                 db.add(fila_cita)
+                if cita.prioridad in _PRIORIDADES_CONTROL:
+                    _marcar_proximo_agendado(db, ingreso_id)
 
     if confirmadas:
         propuesta.estado = EstadoPropuesta.CONFIRMADA.value
