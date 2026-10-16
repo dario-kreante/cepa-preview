@@ -1,19 +1,25 @@
 /**
- * AgendaPage — Agendamiento inteligente (EPIC-08, CEPA-080).
+ * AgendaPage — Pacientes por citar.
  *
- * Profesional-driven: se elige un profesional del catálogo → se gestiona su
- * disponibilidad (días hábiles + cupo), se genera una propuesta automática
- * (diaria/semanal/mensual) y se revisan/confirman las citas candidatas
- * priorizadas (control vencido > próximo > seguimiento receta).
+ * El SIGE ya no agenda: las horas se agendan en SALUTEM y un paciente sale de la lista
+ * cuando SALUTEM tiene una hora vigente. Esta pantalla es la lista de trabajo del
+ * profesional elegido: quién falta citar, con qué prioridad, en qué día sugerido, y el
+ * registro de cada intento de contacto.
  *
  * RBAC: escritura = Administrativo + Coordinacion (puedeEscribir). Auditor lee.
  */
 import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
-import { Calendar, Plus, CheckCircle2, UserRound } from "lucide-react";
+import {
+  Calendar,
+  ChevronDown,
+  ChevronRight,
+  Phone,
+  Plus,
+  UserRound,
+  X,
+} from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -24,19 +30,22 @@ import { useAuth } from "@/lib/auth/AuthContext";
 import { puedeEscribir, type Rol } from "@/lib/rbac";
 import { useProfesionales } from "@/features/profesionales/hooks";
 import {
-  useCitas,
-  useConfirmarCitas,
   useCrearDisponibilidad,
   useDisponibilidad,
-  useGenerarPropuesta,
-  usePropuestas,
+  usePacientesPorCitar,
+  useQuitarDisponibilidad,
+  type RangoAgenda,
 } from "./hooks";
-import { propuestaSchema, type PropuestaForm } from "./propuestaSchema";
-import type {
-  CitaPropuestaRead,
-  PrioridadCita,
-  PropuestaAgendaRead,
+import {
+  RESULTADO_LABELS,
+  type CargaDiaRead,
+  type PacientePorCitarRead,
+  type PrioridadCita,
 } from "./api";
+import {
+  RegistrarContactoDialog,
+  type PacienteContacto,
+} from "./RegistrarContactoDialog";
 
 const DIA_LABELS: Record<number, string> = {
   1: "Lunes",
@@ -46,10 +55,18 @@ const DIA_LABELS: Record<number, string> = {
   5: "Viernes",
 };
 
+const DIA_CORTO = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+
 const PRIORIDAD_LABELS: Record<PrioridadCita, string> = {
   control_vencido: "Control vencido",
   control_proximo: "Control próximo",
   seguimiento_receta: "Seguimiento receta",
+};
+
+const RANGO_LABELS: Record<RangoAgenda, string> = {
+  semana: "Esta semana",
+  dos_semanas: "Dos semanas",
+  mes: "Este mes",
 };
 
 function prioridadVariant(
@@ -60,11 +77,16 @@ function prioridadVariant(
   return "info";
 }
 
-const ESTADO_PROP_VARIANT: Record<string, "info" | "success" | "neutral"> = {
-  borrador: "info",
-  confirmada: "success",
-  descartada: "neutral",
-};
+/** "2026-10-14" -> "Mié 14" (sin pasar por zona horaria). */
+function chipDia(fecha: string): string {
+  const [y, m, d] = fecha.split("-").map(Number);
+  return `${DIA_CORTO[new Date(y, m - 1, d).getDay()]} ${d}`;
+}
+
+/** Fecha/hora ISO -> "15-10" (día-mes). */
+function diaMes(iso: string): string {
+  return `${iso.slice(8, 10)}-${iso.slice(5, 7)}`;
+}
 
 function Th({ children }: { children: React.ReactNode }) {
   return (
@@ -77,6 +99,150 @@ function Th({ children }: { children: React.ReactNode }) {
 const selectCls =
   "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-[13px] shadow-sm transition-colors focus:outline-none focus:ring-1 focus:ring-ring";
 
+function Plegable({
+  titulo,
+  defaultOpen = false,
+  children,
+}: {
+  titulo: string;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}) {
+  const [abierto, setAbierto] = useState(defaultOpen);
+  const Icono = abierto ? ChevronDown : ChevronRight;
+  return (
+    <div className="space-y-2">
+      <button
+        type="button"
+        onClick={() => setAbierto((v) => !v)}
+        aria-expanded={abierto}
+        className="flex items-center gap-1.5 px-0.5 text-[14px] font-semibold"
+      >
+        <Icono className="size-4 text-muted-foreground" />
+        {titulo}
+      </button>
+      {abierto && children}
+    </div>
+  );
+}
+
+// ── Carga por día ───────────────────────────────────────────────────────────────
+
+function FranjaCarga({ dias }: { dias: CargaDiaRead[] }) {
+  if (dias.length === 0) return null;
+  return (
+    <div className="flex flex-wrap gap-2" aria-label="Carga por día">
+      {dias.map((d) => (
+        <Badge
+          key={d.fecha}
+          variant={d.asignados >= d.cupo ? "warning" : "neutral"}
+        >
+          {chipDia(d.fecha)} · {d.asignados}/{d.cupo}
+        </Badge>
+      ))}
+    </div>
+  );
+}
+
+// ── Tabla de pacientes ──────────────────────────────────────────────────────────
+
+function TablaPacientes({
+  pacientes,
+  canWrite,
+  onContactar,
+  vacio,
+}: {
+  pacientes: PacientePorCitarRead[];
+  canWrite: boolean;
+  onContactar: (p: PacienteContacto) => void;
+  vacio: string;
+}) {
+  if (pacientes.length === 0) {
+    return <p className="text-[13px] text-muted-foreground px-1">{vacio}</p>;
+  }
+  return (
+    <Card className="overflow-hidden p-0">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="bg-muted/30 border-b">
+            <Th>Paciente</Th>
+            <Th>Prioridad</Th>
+            <Th>Fecha objetivo</Th>
+            <Th>Día sugerido</Th>
+            <Th>Último contacto</Th>
+            {canWrite && <Th>Acción</Th>}
+          </tr>
+        </thead>
+        <tbody>
+          {pacientes.map((p) => (
+            <tr
+              key={p.paciente_id}
+              className="border-b"
+              data-testid={`row-paciente-${p.paciente_id}`}
+            >
+              <td className="px-4 py-3">
+                <div className="font-semibold text-[13px]">{p.nombre}</div>
+                {p.folio && (
+                  <div className="font-mono text-[11.5px] text-muted-foreground">
+                    {p.folio}
+                  </div>
+                )}
+                <div className="mt-1 flex flex-wrap gap-1">
+                  {p.sin_vinculo_salutem && (
+                    <Badge variant="warning">Sin vínculo SALUTEM</Badge>
+                  )}
+                  {p.dijo_agendada_sin_hora && (
+                    <Badge variant="purple">
+                      Dijo agendada, sin hora en SALUTEM
+                    </Badge>
+                  )}
+                  {p.reposo_hasta && (
+                    <Badge variant="info">
+                      En reposo hasta {fmtDate(p.reposo_hasta)}
+                    </Badge>
+                  )}
+                </div>
+              </td>
+              <td className="px-4 py-3">
+                <Badge variant={prioridadVariant(p.prioridad)}>
+                  {PRIORIDAD_LABELS[p.prioridad]}
+                </Badge>
+                <div className="mt-1 text-[12px] text-muted-foreground">
+                  {p.razon}
+                </div>
+              </td>
+              <td className="px-4 py-3 font-mono text-[12px]">
+                {p.fecha_objetivo ? fmtDate(p.fecha_objetivo) : "—"}
+              </td>
+              <td className="px-4 py-3 font-mono text-[12px]">
+                {p.dia_sugerido ? fmtDate(p.dia_sugerido) : "—"}
+              </td>
+              <td className="px-4 py-3 text-[12.5px]">
+                {p.ultima_gestion
+                  ? `${RESULTADO_LABELS[p.ultima_gestion.resultado]} · ${diaMes(p.ultima_gestion.fecha)} · ${p.ultima_gestion.usuario}`
+                  : "—"}
+              </td>
+              {canWrite && (
+                <td className="px-4 py-3">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() =>
+                      onContactar({ paciente_id: p.paciente_id, nombre: p.nombre })
+                    }
+                  >
+                    <Phone className="size-3.5" /> Registrar contacto
+                  </Button>
+                </td>
+              )}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </Card>
+  );
+}
+
 // ── Disponibilidad ────────────────────────────────────────────────────────────
 
 function DisponibilidadCard({
@@ -88,6 +254,7 @@ function DisponibilidadCard({
 }) {
   const { data: dispo = [], isLoading } = useDisponibilidad(profesionalId);
   const crear = useCrearDisponibilidad();
+  const quitar = useQuitarDisponibilidad();
   const [dia, setDia] = useState("1");
   const [cupo, setCupo] = useState("4");
 
@@ -98,184 +265,92 @@ function DisponibilidadCard({
         dia_semana: parseInt(dia, 10) as 1 | 2 | 3 | 4 | 5,
         cupo_diario: parseInt(cupo, 10),
       });
-      toast.success("Disponibilidad agregada");
+      toast.success("Disponibilidad guardada");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Error");
+    }
+  }
+
+  async function quitarDia(id: number) {
+    try {
+      await quitar.mutateAsync(id);
+      toast.success("Disponibilidad quitada");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Error");
     }
   }
 
   return (
-    <Card className="p-5 space-y-3">
-      <h3 className="text-[14px] font-semibold">Disponibilidad semanal</h3>
-      {isLoading ? (
-        <p className="text-[13px] text-muted-foreground">Cargando…</p>
-      ) : dispo.length === 0 ? (
-        <p className="text-[13px] text-muted-foreground">
-          Sin disponibilidad registrada para este profesional.
-        </p>
-      ) : (
-        <div className="flex flex-wrap gap-2">
-          {dispo.map((d) => (
-            <Badge key={d.id} variant="neutral">
-              {DIA_LABELS[d.dia_semana]} · {d.cupo_diario} cupos
-            </Badge>
-          ))}
-        </div>
-      )}
-
-      {canWrite && (
-        <div className="flex flex-wrap items-end gap-2 pt-1">
-          <div>
-            <Label htmlFor="dia">Día</Label>
-            <select
-              id="dia"
-              className={cn(selectCls, "w-[130px]")}
-              value={dia}
-              onChange={(e) => setDia(e.target.value)}
-            >
-              {[1, 2, 3, 4, 5].map((n) => (
-                <option key={n} value={n}>
-                  {DIA_LABELS[n]}
-                </option>
-              ))}
-            </select>
+    <Plegable titulo="Disponibilidad semanal" defaultOpen>
+      <Card className="p-5 space-y-3">
+        {isLoading ? (
+          <p className="text-[13px] text-muted-foreground">Cargando…</p>
+        ) : dispo.length === 0 ? (
+          <p className="text-[13px] text-muted-foreground">
+            Sin disponibilidad registrada para este profesional.
+          </p>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {dispo.map((d) => (
+              <Badge key={d.id} variant="neutral" className="gap-1.5">
+                {DIA_LABELS[d.dia_semana]} · {d.cupo_diario} cupos
+                {canWrite && (
+                  <button
+                    type="button"
+                    aria-label={`Quitar ${DIA_LABELS[d.dia_semana]}`}
+                    onClick={() => quitarDia(d.id)}
+                    disabled={quitar.isPending}
+                    className="rounded-sm hover:text-destructive"
+                  >
+                    <X className="size-3" />
+                  </button>
+                )}
+              </Badge>
+            ))}
           </div>
-          <div>
-            <Label htmlFor="cupo">Cupo diario</Label>
-            <Input
-              id="cupo"
-              type="number"
-              min={1}
-              value={cupo}
-              onChange={(e) => setCupo(e.target.value)}
-              className="h-9 w-[110px]"
-            />
-          </div>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={add}
-            disabled={crear.isPending}
-            data-testid="btn-add-dispo"
-          >
-            <Plus className="size-3.5" /> Agregar
-          </Button>
-        </div>
-      )}
-    </Card>
-  );
-}
-
-// ── Citas de una propuesta ──────────────────────────────────────────────────────
-
-function CitasPanel({
-  propuesta,
-  canWrite,
-}: {
-  propuesta: PropuestaAgendaRead;
-  canWrite: boolean;
-}) {
-  const { data: citas = [], isLoading } = useCitas(propuesta.id);
-  const confirmar = useConfirmarCitas();
-  const [seleccion, setSeleccion] = useState<Set<number>>(new Set());
-
-  function toggle(id: number) {
-    setSeleccion((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }
-
-  async function onConfirmar() {
-    if (seleccion.size === 0) return;
-    try {
-      await confirmar.mutateAsync({
-        propuestaId: propuesta.id,
-        citaIds: [...seleccion],
-      });
-      toast.success(`${seleccion.size} cita(s) confirmada(s)`);
-      setSeleccion(new Set());
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Error al confirmar");
-    }
-  }
-
-  return (
-    <Card className="p-0 overflow-hidden">
-      <div className="flex items-center justify-between px-5 py-3 border-b">
-        <h3 className="text-[14px] font-semibold">
-          Citas candidatas · Propuesta N° {propuesta.id}
-        </h3>
-        {canWrite && (
-          <Button
-            size="sm"
-            onClick={onConfirmar}
-            disabled={seleccion.size === 0 || confirmar.isPending}
-            data-testid="btn-confirmar-citas"
-          >
-            <CheckCircle2 className="size-3.5" /> Confirmar ({seleccion.size})
-          </Button>
         )}
-      </div>
 
-      {isLoading ? (
-        <p className="text-[13px] text-muted-foreground px-5 py-4">Cargando citas…</p>
-      ) : citas.length === 0 ? (
-        <p className="text-[13px] text-muted-foreground px-5 py-8 text-center">
-          Esta propuesta no generó citas candidatas (sin controles vencidos /
-          próximos ni seguimientos de receta en el rango).
-        </p>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-muted/30 border-b">
-                {canWrite && <Th> </Th>}
-                <Th>Fecha</Th>
-                <Th>Paciente</Th>
-                <Th>Prioridad</Th>
-                <Th>Razón</Th>
-                <Th>Estado</Th>
-              </tr>
-            </thead>
-            <tbody>
-              {citas.map((c: CitaPropuestaRead) => (
-                <tr key={c.id} className="border-b" data-testid={`cita-${c.id}`}>
-                  {canWrite && (
-                    <td className="px-4 py-3">
-                      <input
-                        type="checkbox"
-                        checked={seleccion.has(c.id)}
-                        onChange={() => toggle(c.id)}
-                        disabled={c.estado !== "propuesta"}
-                        aria-label={`Seleccionar cita ${c.id}`}
-                      />
-                    </td>
-                  )}
-                  <td className="px-4 py-3 font-mono text-[12px]">
-                    {fmtDate(c.fecha_candidata)}
-                  </td>
-                  <td className="px-4 py-3 text-[13px]">
-                    Paciente N° {c.paciente_id}
-                  </td>
-                  <td className="px-4 py-3">
-                    <Badge variant={prioridadVariant(c.prioridad)}>
-                      {PRIORIDAD_LABELS[c.prioridad]}
-                    </Badge>
-                  </td>
-                  <td className="px-4 py-3 text-[12.5px]">{c.razon}</td>
-                  <td className="px-4 py-3 text-[12.5px] capitalize">
-                    {c.estado}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </Card>
+        {canWrite && (
+          <div className="flex flex-wrap items-end gap-2 pt-1">
+            <div>
+              <Label htmlFor="dia">Día</Label>
+              <select
+                id="dia"
+                className={cn(selectCls, "w-[130px]")}
+                value={dia}
+                onChange={(e) => setDia(e.target.value)}
+              >
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <option key={n} value={n}>
+                    {DIA_LABELS[n]}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <Label htmlFor="cupo">Cupo diario</Label>
+              <Input
+                id="cupo"
+                type="number"
+                min={1}
+                value={cupo}
+                onChange={(e) => setCupo(e.target.value)}
+                className="h-9 w-[110px]"
+              />
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={add}
+              disabled={crear.isPending}
+              data-testid="btn-add-dispo"
+            >
+              <Plus className="size-3.5" /> Guardar día
+            </Button>
+          </div>
+        )}
+      </Card>
+    </Plegable>
   );
 }
 
@@ -286,63 +361,40 @@ export function AgendaPage() {
   const canWrite = puedeEscribir(rol as Rol);
 
   const [profesionalId, setProfesionalId] = useState<number | null>(null);
+  const [rango, setRango] = useState<RangoAgenda>("dos_semanas");
+  const [contacto, setContacto] = useState<PacienteContacto | null>(null);
+
   const { data: profesionales = [], isLoading: cargandoProfesionales } =
     useProfesionales(true);
-  const [propuestaSel, setPropuestaSel] = useState<PropuestaAgendaRead | null>(
-    null,
-  );
+  const { data: lista, isLoading: cargandoLista, isError } =
+    usePacientesPorCitar(profesionalId, rango);
+  const { data: dispo, isSuccess: dispoCargada } =
+    useDisponibilidad(profesionalId);
 
-  const { data: propuestas = [] } = usePropuestas(profesionalId);
-  const generar = useGenerarPropuesta();
-
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<PropuestaForm>({
-    resolver: zodResolver(propuestaSchema),
-    defaultValues: { tipo: "semanal", fecha_inicio: "" },
-  });
-
-  function elegirProfesional(valor: string) {
-    setProfesionalId(valor ? Number(valor) : null);
-    setPropuestaSel(null);
-  }
-
-  async function onGenerar(v: PropuestaForm) {
-    if (!profesionalId) return;
-    try {
-      const prop = await generar.mutateAsync({
-        profesional_id: profesionalId,
-        tipo: v.tipo,
-        fecha_inicio: v.fecha_inicio,
-        // fecha_fin la calcula el backend
-        fecha_fin: v.fecha_inicio,
-      });
-      toast.success("Propuesta generada");
-      setPropuestaSel(prop);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Error al generar");
-    }
-  }
+  const pacientes = lista?.pacientes ?? [];
+  const porCitar = pacientes.filter((p) => p.seccion === "por_citar");
+  const sinCupo = pacientes.filter((p) => p.seccion === "sin_cupo");
+  const enReposo = pacientes.filter((p) => p.seccion === "en_reposo");
 
   return (
     <div className="space-y-5">
       <div>
         <h1 className="text-[22px] font-semibold tracking-tight">
-          Agendamiento inteligente
+          Pacientes por citar
         </h1>
         <p className="text-[13px] text-muted-foreground mt-1">
-          Propuesta automática de agenda según disponibilidad y prioridad clínica
+          Las horas se agendan en SALUTEM; un paciente sale de la lista cuando
+          SALUTEM tiene una hora vigente.
         </p>
       </div>
 
-      {/* Elegir profesional */}
       <div className="flex flex-wrap items-center gap-2">
         <UserRound className="size-3.5 text-muted-foreground shrink-0" />
         <select
           value={profesionalId ?? ""}
-          onChange={(e) => elegirProfesional(e.target.value)}
+          onChange={(e) =>
+            setProfesionalId(e.target.value ? Number(e.target.value) : null)
+          }
           className={cn(selectCls, "w-[320px]")}
           aria-label="Profesional"
           disabled={cargandoProfesionales}
@@ -354,6 +406,18 @@ export function AgendaPage() {
           {profesionales.map((p) => (
             <option key={p.id} value={p.id}>
               {p.especialidad ? `${p.nombre} · ${p.especialidad}` : p.nombre}
+            </option>
+          ))}
+        </select>
+        <select
+          value={rango}
+          onChange={(e) => setRango(e.target.value as RangoAgenda)}
+          className={cn(selectCls, "w-[160px]")}
+          aria-label="Rango"
+        >
+          {(Object.keys(RANGO_LABELS) as RangoAgenda[]).map((r) => (
+            <option key={r} value={r}>
+              {RANGO_LABELS[r]}
             </option>
           ))}
         </select>
@@ -373,114 +437,70 @@ export function AgendaPage() {
           <p className="text-[13.5px] text-muted-foreground">
             {!cargandoProfesionales && profesionales.length === 0
               ? "No hay profesionales activos en el catálogo."
-              : "Elige un profesional para gestionar su disponibilidad y generar propuestas de agenda."}
+              : "Elige un profesional para ver sus pacientes por citar."}
           </p>
         </div>
       ) : (
         <>
+          {dispoCargada && dispo.length === 0 && (
+            <div
+              role="status"
+              className="rounded-md border border-[oklch(0.85_0.1_85)] bg-[oklch(0.97_0.05_85)] px-4 py-2.5 text-[13px] text-[oklch(0.42_0.14_75)]"
+            >
+              Este profesional no tiene disponibilidad cargada: todos sus pacientes
+              aparecen como sin cupo.
+            </div>
+          )}
+
+          {lista && <FranjaCarga dias={lista.por_dia} />}
+
+          {isError ? (
+            <p className="text-[13px] text-destructive">
+              No se pudo cargar la lista de pacientes por citar.
+            </p>
+          ) : cargandoLista ? (
+            <p className="text-[13px] text-muted-foreground">Cargando…</p>
+          ) : (
+            <>
+              <div className="space-y-2">
+                <h3 className="text-[14px] font-semibold px-0.5">
+                  Por citar ({porCitar.length})
+                </h3>
+                <TablaPacientes
+                  pacientes={porCitar}
+                  canWrite={canWrite}
+                  onContactar={setContacto}
+                  vacio="No hay pacientes por citar en este período."
+                />
+              </div>
+
+              <Plegable titulo={`Sin cupo en el período (${sinCupo.length})`}>
+                <TablaPacientes
+                  pacientes={sinCupo}
+                  canWrite={canWrite}
+                  onContactar={setContacto}
+                  vacio="Ningún paciente quedó sin cupo."
+                />
+              </Plegable>
+
+              <Plegable titulo={`En reposo (${enReposo.length})`}>
+                <TablaPacientes
+                  pacientes={enReposo}
+                  canWrite={canWrite}
+                  onContactar={setContacto}
+                  vacio="Ningún paciente en reposo."
+                />
+              </Plegable>
+            </>
+          )}
+
           <DisponibilidadCard profesionalId={profesionalId} canWrite={canWrite} />
 
-          {/* Generar propuesta */}
-          {canWrite && (
-            <Card className="p-5">
-              <form
-                onSubmit={handleSubmit(onGenerar)}
-                className="flex flex-wrap items-end gap-3"
-              >
-                <div>
-                  <Label htmlFor="tipo">Tipo de propuesta</Label>
-                  <select id="tipo" className={cn(selectCls, "w-40")} {...register("tipo")}>
-                    <option value="diaria">Diaria</option>
-                    <option value="semanal">Semanal</option>
-                    <option value="mensual">Mensual</option>
-                  </select>
-                </div>
-                <div>
-                  <Label htmlFor="fecha_inicio">Fecha inicio (día hábil)</Label>
-                  <Input
-                    id="fecha_inicio"
-                    type="date"
-                    {...register("fecha_inicio")}
-                  />
-                  {errors.fecha_inicio && (
-                    <p className="text-[11.5px] text-destructive mt-1">
-                      {errors.fecha_inicio.message}
-                    </p>
-                  )}
-                </div>
-                <Button
-                  type="submit"
-                  disabled={generar.isPending}
-                  data-testid="btn-generar-propuesta"
-                >
-                  <Calendar className="size-3.5" />
-                  {generar.isPending ? "Generando…" : "Generar propuesta"}
-                </Button>
-              </form>
-            </Card>
-          )}
-
-          {/* Propuestas existentes */}
-          <div className="space-y-2">
-            <h3 className="text-[14px] font-semibold px-0.5">
-              Propuestas del profesional
-            </h3>
-            {propuestas.length === 0 ? (
-              <p className="text-[13px] text-muted-foreground px-1">
-                Sin propuestas generadas aún.
-              </p>
-            ) : (
-              <Card className="overflow-hidden p-0">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="bg-muted/30 border-b">
-                      <Th>N°</Th>
-                      <Th>Tipo</Th>
-                      <Th>Período</Th>
-                      <Th>Estado</Th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {propuestas.map((p) => (
-                      <tr
-                        key={p.id}
-                        onClick={() => setPropuestaSel(p)}
-                        className={cn(
-                          "border-b cursor-pointer transition-colors",
-                          propuestaSel?.id === p.id
-                            ? "bg-primary/5 hover:bg-primary/10"
-                            : "hover:bg-muted/40",
-                        )}
-                        data-testid={`row-propuesta-${p.id}`}
-                      >
-                        <td className="px-4 py-3 font-semibold text-[13px]">
-                          {p.id}
-                        </td>
-                        <td className="px-4 py-3 text-[12.5px] capitalize">
-                          {p.tipo}
-                        </td>
-                        <td className="px-4 py-3 font-mono text-[12px]">
-                          {fmtDate(p.fecha_inicio)} → {fmtDate(p.fecha_fin)}
-                        </td>
-                        <td className="px-4 py-3">
-                          <Badge
-                            variant={ESTADO_PROP_VARIANT[p.estado] ?? "neutral"}
-                            className="capitalize"
-                          >
-                            {p.estado}
-                          </Badge>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </Card>
-            )}
-          </div>
-
-          {propuestaSel && (
-            <CitasPanel propuesta={propuestaSel} canWrite={canWrite} />
-          )}
+          <RegistrarContactoDialog
+            paciente={contacto}
+            profesionalId={profesionalId}
+            onClose={() => setContacto(null)}
+          />
         </>
       )}
     </div>

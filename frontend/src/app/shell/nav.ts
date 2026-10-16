@@ -71,7 +71,7 @@ export const NAV: NavSection[] = [
   {
     label: "Operación",
     items: [
-      { to: "/agenda", label: "Agendamiento", icon: Calendar },
+      { to: "/agenda", label: "Pacientes por citar", icon: Calendar },
       { to: "/reportes", label: "Reportería", icon: BarChart3 },
       {
         to: "/lectura-pdf",
@@ -139,7 +139,7 @@ export const TITLE_MAP: Record<string, string> = {
   "/ept": "Seguimiento EPT",
   "/reintegro": "Seguimiento reintegro",
   "/auditoria": "Auditoría",
-  "/agenda": "Agendamiento",
+  "/agenda": "Pacientes por citar",
   "/reportes": "Reportería",
   "/lectura-pdf": "Lectura de PDF",
   "/usuarios": "Usuarios y roles",
@@ -163,7 +163,7 @@ export const CRUMBS_MAP: Record<string, string> = {
   "/ept": "Inicio · Clínico · Seguimiento EPT",
   "/reintegro": "Inicio · Clínico · Reintegro laboral",
   "/auditoria": "Inicio · Auditoría",
-  "/agenda": "Inicio · Operación · Agendamiento",
+  "/agenda": "Inicio · Operación · Pacientes por citar",
   "/reportes": "Inicio · Operación · Reportería",
   "/lectura-pdf": "Inicio · Operación · Lectura de PDF",
   "/usuarios": "Inicio · Administración · Usuarios y roles",
