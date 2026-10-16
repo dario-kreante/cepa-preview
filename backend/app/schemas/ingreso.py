@@ -113,14 +113,16 @@ class PacienteRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
-    rut: str
+    rut: str | None
     nombre: str
-    sexo: str
-    edad: int
-    region: str
+    sexo: str | None
+    edad: int | None
+    region: str | None
     comuna: str | None
     telefono: str | None
     correo: str | None
+    estado_registro: str
+    origen: str
 
 
 class IngresoRead(BaseModel):

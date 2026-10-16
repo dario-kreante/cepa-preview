@@ -36,6 +36,19 @@ class Sexo(str, Enum):
     OTRO = "otro"
 
 
+class EstadoRegistroPaciente(str, Enum):
+    """Estado del registro del paciente: los borradores de SALUTEM esperan su folio."""
+
+    COMPLETO = "completo"
+    PENDIENTE_FOLIO = "pendiente_folio"
+    DESCARTADO = "descartado"
+
+
+class OrigenPaciente(str, Enum):
+    SIGE = "SIGE"
+    SALUTEM = "SALUTEM"
+
+
 class EstadoCaso(str, Enum):
     """Estados de caso válidos (§7.1.3)."""
 
