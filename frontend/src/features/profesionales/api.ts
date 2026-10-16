@@ -4,6 +4,8 @@ import type { components } from "@/types/api";
 export type ProfesionalRead = components["schemas"]["ProfesionalRead"];
 export type ProfesionalCreate = components["schemas"]["ProfesionalCreate"];
 export type ProfesionalUpdate = components["schemas"]["ProfesionalUpdate"];
+export type ImportacionSalutem = components["schemas"]["ImportacionSalutemResultado"];
+export type ActividadProfesional = components["schemas"]["ActividadProfesionalRead"];
 
 /** GET /api/v1/profesionales?solo_activos= */
 export async function listarProfesionales(
@@ -52,7 +54,7 @@ export async function actualizarProfesional(
 }
 
 /** POST /api/v1/profesionales/importar-salutem */
-export async function importarDesdeSalutem(): Promise<{ creados: number }> {
+export async function importarDesdeSalutem(): Promise<ImportacionSalutem> {
   const { data, response } = await api.POST(
     "/api/v1/profesionales/importar-salutem",
   );
@@ -60,5 +62,15 @@ export async function importarDesdeSalutem(): Promise<{ creados: number }> {
     throw new Error(
       mensajeEscritura(response.status, "No se pudo importar desde SALUTEM"),
     );
+  return data;
+}
+
+/** GET /api/v1/profesionales/{profesional_id}/actividad */
+export async function obtenerActividad(id: number): Promise<ActividadProfesional> {
+  const { data, error } = await api.GET(
+    "/api/v1/profesionales/{profesional_id}/actividad",
+    { params: { path: { profesional_id: id } } },
+  );
+  if (error || !data) throw new Error("No se pudo cargar la actividad del profesional");
   return data;
 }

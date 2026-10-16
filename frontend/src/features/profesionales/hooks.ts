@@ -4,6 +4,7 @@ import {
   crearProfesional,
   importarDesdeSalutem,
   listarProfesionales,
+  obtenerActividad,
   type ProfesionalCreate,
   type ProfesionalUpdate,
 } from "./api";
@@ -40,5 +41,13 @@ export function useImportarDesdeSalutem() {
   return useMutation({
     mutationFn: importarDesdeSalutem,
     onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
+  });
+}
+
+export function useActividadProfesional(id: number | null) {
+  return useQuery({
+    queryKey: [...KEY, "actividad", id],
+    queryFn: () => obtenerActividad(id as number),
+    enabled: id !== null,
   });
 }
