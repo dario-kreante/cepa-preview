@@ -9,7 +9,7 @@ from app.models.licencia import LicenciaMedica
 from app.models.oda import Oda
 from app.models.paciente import Paciente
 from app.models.salutem_copia import SalutemCita
-from app.services.dashboard_operativo import resumen_operativo
+from app.services.dashboard_operativo import PeriodoInvalido, resumen_operativo
 
 HOY = date(2026, 10, 16)  # viernes
 _AHORA = datetime(2026, 10, 16, 12, tzinfo=timezone.utc)
@@ -160,3 +160,27 @@ def test_endpoint_operativo_rango_invalido(as_coordinacion):
 
 def test_endpoint_operativo_sin_token(client):
     assert client.get("/api/v1/dashboard/operativo").status_code == 401
+
+
+def test_desde_futuro_sin_hasta_es_periodo_invertido(db_session):
+    # "hasta" toma hoy por defecto: un "desde" posterior deja el período invertido.
+    with pytest.raises(PeriodoInvalido):
+        resumen_operativo(db_session, fecha_desde=HOY + timedelta(days=10), hoy=HOY)
+
+
+def test_endpoint_desde_futuro_sin_hasta_422(as_coordinacion):
+    resp = as_coordinacion.get("/api/v1/dashboard/operativo", params={"fecha_desde": "2999-01-01"})
+    assert resp.status_code == 422
+    assert "invertido" in resp.json()["detail"]
+
+
+def test_tendencia_cubre_periodos_largos_con_tope(db_session, datos):
+    # 90 días → 14 semanas (del lunes de "desde" al lunes de "hasta").
+    r = resumen_operativo(db_session, HOY - timedelta(days=89), HOY, hoy=HOY)
+    assert len(r.tendencia_semanal) == 14
+    assert r.tendencia_semanal[0].semana == date(2026, 7, 13)
+    assert r.tendencia_semanal[-1].semana == date(2026, 10, 12)
+    # Un año → tope de 26 semanas, las últimas.
+    r = resumen_operativo(db_session, HOY - timedelta(days=365), HOY, hoy=HOY)
+    assert len(r.tendencia_semanal) == 26
+    assert r.tendencia_semanal[-1].semana == date(2026, 10, 12)

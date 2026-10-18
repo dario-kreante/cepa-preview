@@ -9,7 +9,7 @@
  * atenciones salían siempre en 0.
  */
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   AlertTriangle,
   Ban,
@@ -61,6 +61,26 @@ function haceDias(dias: number): { fecha_desde: string; fecha_hasta: string } {
   return { fecha_desde: isoLocal(desde), fecha_hasta: isoLocal(hasta) };
 }
 
+const ISO = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * Período desde la URL (?dias=7 o ?desde=…&hasta=…), para que sobreviva al volver atrás
+ * y se pueda compartir. Sin parámetros válidos: últimos 30 días.
+ */
+function periodoDeUrl(params: URLSearchParams): {
+  periodo: { fecha_desde: string; fecha_hasta: string };
+  preset: number | null;
+} {
+  const desde = params.get("desde") ?? "";
+  const hasta = params.get("hasta") ?? "";
+  if (ISO.test(desde) && ISO.test(hasta) && desde <= hasta) {
+    return { periodo: { fecha_desde: desde, fecha_hasta: hasta }, preset: null };
+  }
+  const dias = Number(params.get("dias"));
+  const preset = PRESETS.some((p) => p.dias === dias) ? dias : 30;
+  return { periodo: haceDias(preset), preset };
+}
+
 /** "2026-10-12" → "12-10-2026" (o "12-10" corto). */
 function fechaCl(iso: string, corta = false): string {
   const [a, m, d] = iso.split("-");
@@ -75,6 +95,7 @@ function Kpi({
   detalle,
   to,
   destacar = false,
+  alertaDetalle = false,
 }: {
   label: string;
   value: number | string;
@@ -83,6 +104,8 @@ function Kpi({
   detalle?: string;
   to?: string;
   destacar?: boolean;
+  /** Resalta solo el detalle (dato secundario), sin teñir todo el tile. */
+  alertaDetalle?: boolean;
 }) {
   const contenido = (
     <Card
@@ -101,7 +124,10 @@ function Kpi({
           {value}
         </p>
         {detalle && (
-          <p className="text-[11px] text-muted-foreground truncate" title={detalle}>
+          <p
+            className={`text-[11px] truncate ${alertaDetalle ? "text-destructive font-medium" : "text-muted-foreground"}`}
+            title={detalle}
+          >
             {detalle}
           </p>
         )}
@@ -149,25 +175,32 @@ function Ranking({ filas, vacio }: { filas: Conteo[]; vacio: string }) {
 }
 
 export function DashboardPage() {
-  const [periodo, setPeriodo] = useState(() => haceDias(30));
-  const [preset, setPreset] = useState<number | null>(30);
+  const [params, setParams] = useSearchParams();
+  const { periodo, preset } = periodoDeUrl(params);
   const [desde, setDesde] = useState(periodo.fecha_desde);
   const [hasta, setHasta] = useState(periodo.fecha_hasta);
+
+  // Si la URL cambia (atrás/adelante, preset), los campos siguen al período vigente.
+  // Ajuste durante el render (no en un efecto): https://react.dev/learn/you-might-not-need-an-effect
+  const claveUrl = `${periodo.fecha_desde}..${periodo.fecha_hasta}`;
+  const [claveVista, setClaveVista] = useState(claveUrl);
+  if (claveVista !== claveUrl) {
+    setClaveVista(claveUrl);
+    setDesde(periodo.fecha_desde);
+    setHasta(periodo.fecha_hasta);
+  }
+
+  const rangoInvalido = Boolean(desde && hasta && desde > hasta);
 
   const { data, isLoading, isError, error } = useDashboardOperativo(periodo);
 
   function elegirPreset(dias: number) {
-    const p = haceDias(dias);
-    setPreset(dias);
-    setDesde(p.fecha_desde);
-    setHasta(p.fecha_hasta);
-    setPeriodo(p);
+    setParams({ dias: String(dias) });
   }
 
   function aplicar() {
-    if (!desde || !hasta || desde > hasta) return;
-    setPreset(null);
-    setPeriodo({ fecha_desde: desde, fecha_hasta: hasta });
+    if (!desde || !hasta || rangoInvalido) return;
+    setParams({ desde, hasta });
   }
 
   const d = data;
@@ -216,9 +249,14 @@ export function DashboardPage() {
             <Label htmlFor="hasta" className="text-[11px]">Hasta</Label>
             <Input id="hasta" type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} className="h-8" />
           </div>
-          <Button size="sm" variant="outline" onClick={aplicar} disabled={!desde || !hasta || desde > hasta} data-testid="btn-aplicar">
+          <Button size="sm" variant="outline" onClick={aplicar} disabled={!desde || !hasta || rangoInvalido} data-testid="btn-aplicar">
             Aplicar
           </Button>
+          {rangoInvalido && (
+            <p role="alert" className="basis-full text-right text-[12px] text-destructive">
+              «Desde» debe ser anterior o igual a «Hasta».
+            </p>
+          )}
         </div>
       </div>
 
@@ -257,8 +295,8 @@ export function DashboardPage() {
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 2xl:grid-cols-6 gap-3">
           <Kpi label="Casos activos" value={n(d?.pacientes_activos)} icon={Users} tone="text-[oklch(0.45_0.13_250)]" to="/ingresos" />
-          <Kpi label="Licencias vigentes" value={n(d?.licencias_activas)} icon={FileText} tone="text-[oklch(0.55_0.15_60)]" detalle={`${n(d?.licencias_pendientes_isl)} sin enviar al ISL`} to="/licencias" destacar={(d?.licencias_pendientes_isl ?? 0) > 0} />
-          <Kpi label="ODA vencidas" value={n(d?.odas_vencidas)} icon={FileClock} tone="text-destructive" detalle={`${n(d?.odas_por_vencer)} vencen en 15 días`} to="/reportes" destacar={(d?.odas_vencidas ?? 0) > 0} />
+          <Kpi label="Licencias vigentes" value={n(d?.licencias_activas)} icon={FileText} tone="text-[oklch(0.55_0.15_60)]" detalle={`${n(d?.licencias_pendientes_isl)} sin enviar al ISL`} to="/licencias" alertaDetalle={(d?.licencias_pendientes_isl ?? 0) > 0} />
+          <Kpi label="ODA vencidas" value={n(d?.odas_vencidas)} icon={FileClock} tone="text-destructive" detalle={`${n(d?.odas_por_vencer)} vencen en 15 días`} to="/reportes?tab=odas" destacar={(d?.odas_vencidas ?? 0) > 0} />
           <Kpi label="Sin folio" value={n(d?.pacientes_pendientes_folio)} icon={UserRoundSearch} tone="text-[oklch(0.5_0.12_220)]" detalle="Atendidos en SALUTEM" to="/pendientes-folio" destacar={(d?.pacientes_pendientes_folio ?? 0) > 0} />
           <Kpi label="EPT abiertos" value={n(d?.ept_abiertos)} icon={BriefcaseBusiness} tone="text-[oklch(0.56_0.10_185)]" to="/ept" />
           <Kpi label="Alertas abiertas" value={n(d?.alertas_abiertas)} icon={AlertTriangle} tone="text-destructive" detalle="Pendientes o leídas" destacar={(d?.alertas_abiertas ?? 0) > 0} />
@@ -267,7 +305,7 @@ export function DashboardPage() {
 
       <div className="grid lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2">
-          <Panel titulo="Atenciones vs. inasistencias" sub="Por semana (lunes a domingo), 8 semanas hasta el fin del período">
+          <Panel titulo="Atenciones vs. inasistencias" sub="Por semana (lunes a domingo) del período; mínimo 8 semanas, máximo 26">
             {hayTendencia ? (
               <AreaTrend
                 data={tendencia}

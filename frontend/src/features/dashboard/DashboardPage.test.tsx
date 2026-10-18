@@ -5,6 +5,9 @@
  *  1. Muestra KPIs del período y pendientes de hoy, con la tasa de inasistencia.
  *  2. Por defecto pide los últimos 30 días; el preset "7 días" vuelve a pedir con otro rango.
  *  3. Etiqueta legible de los tipos de alerta y mensajes vacíos.
+ *  4. El período vive en la URL (?dias=… o ?desde=…&hasta=…).
+ *  5. Rango invertido: "Aplicar" deshabilitado con aviso.
+ *  6. El tile "ODA vencidas" lleva a la pestaña de ODAS de Reportería.
  */
 import { describe, it, expect } from "vitest";
 import { http, HttpResponse } from "msw";
@@ -46,11 +49,11 @@ const RESPUESTA = {
   tendencia_semanal: [],
 };
 
-function renderizar() {
+function renderizar(url = "/") {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={qc}>
-      <MemoryRouter>
+      <MemoryRouter initialEntries={[url]}>
         <DashboardPage />
       </MemoryRouter>
     </QueryClientProvider>,
@@ -93,5 +96,37 @@ describe("DashboardPage", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "7 días" }));
     await waitFor(() => expect(rangos).toEqual([30, 7]));
+  });
+
+  it("toma el período de la URL", async () => {
+    const pedidos: string[] = [];
+    server.use(
+      http.get(`${BASE}/api/v1/dashboard/operativo`, ({ request }) => {
+        const u = new URL(request.url);
+        pedidos.push(`${u.searchParams.get("fecha_desde")}..${u.searchParams.get("fecha_hasta")}`);
+        return HttpResponse.json(RESPUESTA);
+      }),
+    );
+    renderizar("/?desde=2026-10-01&hasta=2026-10-05");
+    await waitFor(() => expect(pedidos).toEqual(["2026-10-01..2026-10-05"]));
+    expect(screen.getByLabelText("Desde")).toHaveValue("2026-10-01");
+    expect(screen.getByLabelText("Hasta")).toHaveValue("2026-10-05");
+  });
+
+  it("con rango invertido deshabilita Aplicar y avisa", async () => {
+    server.use(http.get(`${BASE}/api/v1/dashboard/operativo`, () => HttpResponse.json(RESPUESTA)));
+    renderizar();
+    const desde = screen.getByLabelText("Desde");
+    await userEvent.clear(desde);
+    await userEvent.type(desde, "2999-01-01");
+    expect(screen.getByTestId("btn-aplicar")).toBeDisabled();
+    expect(screen.getByRole("alert")).toHaveTextContent("«Desde» debe ser anterior o igual a «Hasta»");
+  });
+
+  it("el tile de ODA vencidas abre la pestaña de ODAS en Reportería", async () => {
+    server.use(http.get(`${BASE}/api/v1/dashboard/operativo`, () => HttpResponse.json(RESPUESTA)));
+    renderizar();
+    await waitFor(() => expect(screen.getByTestId("kpi-ODA vencidas")).toHaveTextContent("1"));
+    expect(screen.getByTestId("kpi-ODA vencidas").closest("a")).toHaveAttribute("href", "/reportes?tab=odas");
   });
 });

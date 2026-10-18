@@ -4,6 +4,7 @@
  * acumuladas (CEPA-094) y ODAS vencidas (CEPA-097). Solo lectura.
  */
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { BarChart3, FileText } from "lucide-react";
 import { Card } from "@/components/ui/card";
@@ -472,7 +473,12 @@ function AdherenciaTab() {
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export function ReportesPage() {
-  const [tab, setTab] = useState<Tab>("operativo");
+  // ?tab=odas permite llegar directo a una pestaña (p. ej. desde el tile del dashboard).
+  const [params] = useSearchParams();
+  const tabUrl = params.get("tab");
+  const [tab, setTab] = useState<Tab>(
+    TABS.some(([t]) => t === tabUrl) ? (tabUrl as Tab) : "operativo",
+  );
 
   return (
     <div className="space-y-5">

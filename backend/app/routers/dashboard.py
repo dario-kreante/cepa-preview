@@ -18,7 +18,7 @@ from app.models.cita import Cita
 from app.models.ingreso import Ingreso
 from app.domain.enums import EstadoCaso
 from app.schemas.reportes import DashboardOperativo, IngresosActivos, ResumenDashboard
-from app.services.dashboard_operativo import resumen_operativo
+from app.services.dashboard_operativo import PeriodoInvalido, resumen_operativo
 from app.services.reportes_filtros import FiltrosDashboard, aplicar_filtros_ingreso
 
 router = APIRouter(prefix="/api/v1/dashboard", tags=["dashboard"])
@@ -84,9 +84,10 @@ def get_dashboard_operativo(
 ) -> DashboardOperativo:
     """Dashboard de inicio: atenciones de SALUTEM del período (por defecto, últimos
     30 días) y lo que hay que gestionar hoy (licencias, ODAs, alertas, borradores)."""
-    if fecha_desde and fecha_hasta and fecha_desde > fecha_hasta:
-        raise HTTPException(status_code=422, detail="fecha_desde no puede ser posterior a fecha_hasta")
-    return resumen_operativo(db, fecha_desde, fecha_hasta)
+    try:
+        return resumen_operativo(db, fecha_desde, fecha_hasta)
+    except PeriodoInvalido as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 @router.get("", response_model=ResumenDashboard)

@@ -36,13 +36,18 @@ from app.schemas.reportes import ConteoEtiqueta, DashboardOperativo, PuntoTenden
 PERIODO_DEFECTO_DIAS = 30
 DIAS_ODA_POR_VENCER = 15
 DIAS_AGENDA_PROXIMA = 7
-SEMANAS_TENDENCIA = 8
+SEMANAS_TENDENCIA_MIN = 8
+SEMANAS_TENDENCIA_MAX = 26
 TOP_RANKING = 8
 
 _ATENDIDO = int(EstadoCitaSalutem.ATENDIDO)
 _NO_ASISTE = int(EstadoCitaSalutem.NO_ASISTE)
 _ANULADO = int(EstadoCitaSalutem.ANULADO)
 _NO_VIGENTES = (_ANULADO, _NO_ASISTE, _ATENDIDO)
+
+
+class PeriodoInvalido(ValueError):
+    """El período efectivo (con los valores por defecto ya aplicados) quedó invertido."""
 
 
 def _contar(db: Session, stmt) -> int:
@@ -78,9 +83,16 @@ def _lunes(d: date) -> date:
     return d - timedelta(days=d.weekday())
 
 
-def _tendencia(db: Session, hasta: date) -> list[PuntoTendencia]:
-    """Atendidas vs. inasistencias por semana (lunes a domingo), últimas N semanas."""
-    primera = _lunes(hasta) - timedelta(weeks=SEMANAS_TENDENCIA - 1)
+def _tendencia(db: Session, desde: date, hasta: date) -> list[PuntoTendencia]:
+    """Atendidas vs. inasistencias por semana (lunes a domingo).
+
+    Cubre las semanas del período, con un mínimo de 8 (un período corto igual muestra
+    contexto) y un máximo de 26 (las últimas, para períodos largos).
+    """
+    ultima = _lunes(hasta)
+    n = (ultima - _lunes(desde)).days // 7 + 1
+    n = max(SEMANAS_TENDENCIA_MIN, min(SEMANAS_TENDENCIA_MAX, n))
+    primera = ultima - timedelta(weeks=n - 1)
     filas = db.execute(
         select(SalutemCita.fecha_cita, SalutemCita.estado_id).where(
             _citas_vivas(),
@@ -89,7 +101,7 @@ def _tendencia(db: Session, hasta: date) -> list[PuntoTendencia]:
             SalutemCita.fecha_cita <= hasta,
         )
     ).all()
-    semanas = {primera + timedelta(weeks=i): [0, 0] for i in range(SEMANAS_TENDENCIA)}
+    semanas = {primera + timedelta(weeks=i): [0, 0] for i in range(n)}
     for fecha, estado in filas:
         par = semanas.get(_lunes(fecha))
         if par is not None:
@@ -110,6 +122,10 @@ def resumen_operativo(
     hoy = hoy or date.today()
     hasta = fecha_hasta or hoy
     desde = fecha_desde or (hasta - timedelta(days=PERIODO_DEFECTO_DIAS - 1))
+    if desde > hasta:
+        raise PeriodoInvalido(
+            f"El período queda invertido: desde {desde.isoformat()} es posterior a hasta {hasta.isoformat()}"
+        )
 
     # ── Casos ────────────────────────────────────────────────────────────────
     activo = Ingreso.estado == EstadoCaso.ACTIVO.value
@@ -242,5 +258,5 @@ def resumen_operativo(
         activos_por_programa=activos_por_programa,
         atenciones_por_especialidad=_ranking(especialidades),
         atenciones_por_profesional=_ranking(profesionales),
-        tendencia_semanal=_tendencia(db, hasta),
+        tendencia_semanal=_tendencia(db, desde, hasta),
     )
