@@ -23,8 +23,17 @@ class ControlMedicoCreate(BaseModel):
 
     ingreso_id: int
     fecha_control: date
-    medico_tratante: str
+    # Se puede omitir si viene profesional_id: se usa el nombre del catálogo.
+    medico_tratante: str | None = None
     region_derivacion: str
+    # Profesional del catálogo (selector). Opcional: se puede escribir solo el nombre.
+    profesional_id: int | None = None
+
+    @model_validator(mode="after")
+    def _algun_medico(self) -> "ControlMedicoCreate":
+        if not (self.medico_tratante and self.medico_tratante.strip()) and self.profesional_id is None:
+            raise ValueError("Indique medico_tratante o profesional_id")
+        return self
 
 
 class ProximoControlUpdate(BaseModel):
@@ -126,6 +135,8 @@ class ControlMedicoRead(BaseModel):
     semana_control: int
     medico_tratante: str
     region_derivacion: str
+    # Profesional del catálogo; nulo si el médico se escribió a mano y no se pudo emparejar.
+    profesional_id: int | None = None
     # CEPA-061
     proximo_control: date | None
     proximo_agendado: bool
