@@ -45,9 +45,12 @@ def datos_carga(db_session):
 
     # DD-4: citas en Mayo para que aparezcan en el reporte de Mayo
     citas = [
-        Cita(ingreso_id=ingresos[0].id, estado="realizada",    fecha=date(2026, 5, 5)),
-        Cita(ingreso_id=ingresos[1].id, estado="inasistencia", fecha=date(2026, 5, 10)),
-        Cita(ingreso_id=ingresos[2].id, estado="realizada",    fecha=date(2026, 5, 15)),
+        Cita(origen="SALUTEM", ingreso_id=ingresos[0].id, estado="realizada",    fecha=date(2026, 5, 5),
+             profesional_nombre="Prof A", especialidad="psicologia"),
+        Cita(origen="SALUTEM", ingreso_id=ingresos[1].id, estado="inasistencia", fecha=date(2026, 5, 10),
+             profesional_nombre="Prof A", especialidad="psicologia"),
+        Cita(origen="SALUTEM", ingreso_id=ingresos[2].id, estado="realizada",    fecha=date(2026, 5, 15),
+             profesional_nombre="Prof B", especialidad="medicina"),
     ]
     db_session.add_all(citas)
     db_session.commit()
@@ -63,11 +66,12 @@ def test_carga_laboral_correcta_por_profesional(as_coordinacion, datos_carga):
     })
     assert resp.status_code == 200
     body = resp.json()
-    ids = [i["profesional_id"] for i in body["items"]]
-    assert 10 in ids
-    assert 20 in ids
-    prof10 = next(i for i in body["items"] if i["profesional_id"] == 10)
-    assert prof10["total_casos"] == 2  # 2 ingresos del profesional 10 con citas en Mayo
+    nombres = [i["nombre_profesional"] for i in body["items"]]
+    assert "Prof A" in nombres
+    assert "Prof B" in nombres
+    prof_a = next(i for i in body["items"] if i["nombre_profesional"] == "Prof A")
+    assert prof_a["total_casos"] == 2  # 2 ingresos atendidos por Prof A con citas en Mayo
+    assert prof_a["total_atenciones"] == 1
 
 
 # ── TC-093-02: ingreso de enero cuenta en reporte de mayo (DD-4 cross-period) ─

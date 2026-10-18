@@ -24,10 +24,10 @@ def datos_operativos(db_session):
     db_session.flush()
 
     citas = [
-        Cita(ingreso_id=ing.id, estado="realizada",    fecha=date(2026, 3, 5)),
-        Cita(ingreso_id=ing.id, estado="inasistencia", fecha=date(2026, 3, 12)),
-        Cita(ingreso_id=ing.id, estado="anulada",      fecha=date(2026, 3, 19)),
-        Cita(ingreso_id=ing.id, estado="agendada",     fecha=date(2026, 3, 26)),
+        Cita(origen="SALUTEM", ingreso_id=ing.id, estado="realizada",    fecha=date(2026, 3, 5)),
+        Cita(origen="SALUTEM", ingreso_id=ing.id, estado="inasistencia", fecha=date(2026, 3, 12)),
+        Cita(origen="SALUTEM", ingreso_id=ing.id, estado="anulada",      fecha=date(2026, 3, 19)),
+        Cita(origen="SALUTEM", ingreso_id=ing.id, estado="agendada",     fecha=date(2026, 3, 26)),
     ]
     db_session.add_all(citas)
     db_session.commit()

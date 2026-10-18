@@ -67,8 +67,8 @@ def datos_adherencia(db_session):
 
     # 8 realizadas + 2 inasistencias = 10 citas total (agendadas)
     citas = (
-        [Cita(ingreso_id=ing.id, estado="realizada",    fecha=date(2026, 1, d)) for d in range(1, 9)]
-        + [Cita(ingreso_id=ing.id, estado="inasistencia", fecha=date(2026, 2, d)) for d in range(1, 3)]
+        [Cita(origen="SALUTEM", ingreso_id=ing.id, estado="realizada",    fecha=date(2026, 1, d)) for d in range(1, 9)]
+        + [Cita(origen="SALUTEM", ingreso_id=ing.id, estado="inasistencia", fecha=date(2026, 2, d)) for d in range(1, 3)]
     )
     db_session.add_all(citas)
 

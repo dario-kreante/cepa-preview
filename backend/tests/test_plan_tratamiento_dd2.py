@@ -76,6 +76,7 @@ def test_upsert_plan_refleja_adherencia(as_coordinacion, db_session, ingreso_dd2
     # Agregar 8 citas realizadas
     for d in range(1, 9):
         db_session.add(Cita(
+            origen="SALUTEM",
             ingreso_id=ingreso_dd2.id,
             estado="realizada",
             fecha=date(2026, 2, d),

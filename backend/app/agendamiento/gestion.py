@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 
 from app.agendamiento.enums import ResultadoGestion
 from app.agendamiento.models import GestionCitacion
-from app.agendamiento.salutem import _lotes
+from app.agendamiento.salutem import lotes
 from app.audit.service import record_audit
 from app.models.paciente import Paciente
 from app.models.profesional import Profesional
@@ -60,7 +60,7 @@ def listar_gestiones(db: Session, paciente_id: int) -> list[GestionCitacion]:
 def ultimas_gestiones(db: Session, paciente_ids: Collection[int]) -> dict[int, GestionCitacion]:
     """La última gestión de cada paciente (con cualquier profesional). Ante empate, el id mayor."""
     resultado: dict[int, GestionCitacion] = {}
-    for lote in _lotes(paciente_ids):
+    for lote in lotes(paciente_ids):
         maximo = (
             select(
                 GestionCitacion.paciente_id.label("paciente_id"),
@@ -89,7 +89,7 @@ def ocultos_por_agendada(
 ) -> set[int]:
     """Pacientes con una gestión 'agendada_en_salutem' de ese profesional desde `desde`."""
     ocultos: set[int] = set()
-    for lote in _lotes(paciente_ids):
+    for lote in lotes(paciente_ids):
         ocultos.update(db.scalars(
             select(GestionCitacion.paciente_id)
             .where(
@@ -111,7 +111,7 @@ def ultima_gestion_por_profesional(
     Ante empate de created_at gana el id mayor. Portable: máximo por subconsulta, sin DISTINCT ON.
     """
     resultado: dict[int, GestionCitacion] = {}
-    for lote in _lotes(paciente_ids):
+    for lote in lotes(paciente_ids):
         maximo = (
             select(
                 GestionCitacion.paciente_id.label("paciente_id"),

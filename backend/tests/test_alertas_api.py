@@ -205,3 +205,33 @@ def test_listado_trae_paciente_de_la_oda(as_admin: TestClient, db_session: Sessi
     data = {a["id"]: a for a in as_admin.get("/api/v1/alertas").json()}
     assert data[alerta.id]["paciente_id"] == ingreso["paciente_id"]
     assert data[sin_caso.id]["paciente_id"] is None
+
+
+# La alerta de inasistencia cuelga de la cita de SALUTEM: el listado trae el paciente de esa cita.
+def test_listado_trae_paciente_de_la_cita_salutem(as_admin: TestClient, db_session: Session):
+    from datetime import date
+
+    from app.models.cita import Cita
+
+    ingreso = as_admin.post(
+        "/api/v1/ingresos",
+        json={
+            "rut": "11.111.111-1", "nombre": "Ana González", "sexo": "F", "edad": 33,
+            "region": "Maule", "diagnostico": "x", "tipo_derivacion": "DIAT",
+            "tipo_ingreso": "convenio", "modelo_tratamiento": "ambulatorio",
+            "fecha_ingreso": "2026-06-10",
+        },
+    ).json()
+    db_session.add(
+        Cita(ingreso_id=ingreso["id"], estado="inasistencia", fecha=date(2026, 10, 14),
+             origen="SALUTEM", salutem_cita_id=777001)
+    )
+    con_cita = _alerta_en_bd(db_session, usuario_id=None, tipo="inasistencia")
+    con_cita.caso_tipo, con_cita.caso_id = "salutem_cita", 777001
+    huerfana = _alerta_en_bd(db_session, usuario_id=None, tipo="inasistencia")
+    huerfana.caso_tipo, huerfana.caso_id = "salutem_cita", 777002
+    db_session.commit()
+
+    data = {a["id"]: a for a in as_admin.get("/api/v1/alertas").json()}
+    assert data[con_cita.id]["paciente_id"] == ingreso["paciente_id"]
+    assert data[huerfana.id]["paciente_id"] is None

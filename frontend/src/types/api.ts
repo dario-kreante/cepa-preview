@@ -2348,7 +2348,14 @@ export interface components {
             /** Incluye Extra Sistema */
             incluye_extra_sistema: boolean;
         };
-        /** AdherenciaPaciente */
+        /**
+         * AdherenciaPaciente
+         * @description Adherencia y avance de un folio.
+         *
+         *     Criterio (Fase 2, decisión 10): ``citas_agendadas`` es el denominador y cuenta solo las
+         *     citas ya resueltas, ``realizada`` más ``inasistencia``. Las anuladas y las agendadas
+         *     futuras no cuentan. Solo se consideran citas de SALUTEM.
+         */
         AdherenciaPaciente: {
             /** Folio Id */
             folio_id: number;
@@ -2524,7 +2531,7 @@ export interface components {
         /** CargaProfesionalItem */
         CargaProfesionalItem: {
             /** Profesional Id */
-            profesional_id: number;
+            profesional_id: number | null;
             /** Nombre Profesional */
             nombre_profesional: string | null;
             /** Especialidad */
@@ -5085,7 +5092,7 @@ export interface components {
          * @description Tipos de alerta del motor: los 7 de CEPA-100 más el GAF de licencia (CEPA-075).
          * @enum {string}
          */
-        TipoAlerta: "control_medico" | "vencimiento_licencia" | "plazo_ept" | "plazo_isl" | "consentimiento_pendiente" | "receta_por_renovar" | "oda_por_vencer" | "gaf_licencia" | "licencia_en_control" | "receta_en_control" | "paciente_pendiente_folio";
+        TipoAlerta: "control_medico" | "vencimiento_licencia" | "plazo_ept" | "plazo_isl" | "consentimiento_pendiente" | "receta_por_renovar" | "oda_por_vencer" | "gaf_licencia" | "licencia_en_control" | "receta_en_control" | "paciente_pendiente_folio" | "inasistencia";
         /**
          * TipoAlta
          * @description Tipos de alta válidos (§7.1.3, v4 D6).

@@ -14,7 +14,7 @@ from app.services.salutem_sync.vigencia import cita_vigente_desde
 _LOTE = 500  # Oracle limita a 1000 elementos en un IN
 
 
-def _lotes(ids: Collection[int]):
+def lotes(ids: Collection[int]):
     lista = list(ids)
     for i in range(0, len(lista), _LOTE):
         yield lista[i : i + _LOTE]
@@ -23,7 +23,7 @@ def _lotes(ids: Collection[int]):
 def pacientes_con_hora_vigente(db: Session, paciente_ids: Collection[int], hoy: date) -> set[int]:
     """Pacientes con una cita vigente desde `hoy` en SALUTEM (cruce por RUT o persona_id)."""
     encontrados: set[int] = set()
-    for lote in _lotes(paciente_ids):
+    for lote in lotes(paciente_ids):
         encontrados.update(
             db.scalars(
                 select(Paciente.id)
@@ -39,7 +39,7 @@ def pacientes_con_hora_vigente(db: Session, paciente_ids: Collection[int], hoy: 
 def pacientes_sin_vinculo(db: Session, paciente_ids: Collection[int]) -> set[int]:
     """Pacientes sin ninguna persona de SALUTEM que cruce con ellos."""
     con_vinculo: set[int] = set()
-    for lote in _lotes(paciente_ids):
+    for lote in lotes(paciente_ids):
         con_vinculo.update(
             db.scalars(
                 select(Paciente.id)

@@ -23,8 +23,8 @@ def datos_convenio(db_session):
     db_session.add(ing)
     db_session.flush()
     citas = [
-        Cita(ingreso_id=ing.id, estado="realizada",    fecha=date(2026, 4, 5)),
-        Cita(ingreso_id=ing.id, estado="inasistencia", fecha=date(2026, 4, 10)),
+        Cita(origen="SALUTEM", ingreso_id=ing.id, estado="realizada",    fecha=date(2026, 4, 5)),
+        Cita(origen="SALUTEM", ingreso_id=ing.id, estado="inasistencia", fecha=date(2026, 4, 10)),
     ]
     db_session.add_all(citas)
     db_session.commit()

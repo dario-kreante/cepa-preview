@@ -71,6 +71,12 @@ def actualizar_estado_cita(
     if cita is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cita no encontrada")
 
+    if cita.origen == "SALUTEM":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="El estado de esta cita lo informa SALUTEM",
+        )
+
     permitidos = _TRANSICIONES_PERMITIDAS.get(cita.estado, set())
     if nuevo not in permitidos:
         raise HTTPException(
