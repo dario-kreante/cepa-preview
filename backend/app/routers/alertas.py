@@ -27,7 +27,7 @@ _reader = require_role("Administrativo", "Coordinacion", "Auditor")
 
 
 def _visible_para(alerta: AlertaNotif, current_user) -> bool:
-    """Una Administrativa ve (y gestiona) sus alertas y las de ingresos sin profesional asignado."""
+    """Una Administrativa ve (y gestiona) sus alertas y las sin destinatario (panel general)."""
     return current_user.role != "Administrativo" or alerta.usuario_id in (None, current_user.id)
 
 
@@ -63,8 +63,8 @@ def listar_alertas(
 ) -> list[AlertaRead]:
     """Panel de notificaciones in-app: devuelve alertas filtradas por rol y asignación.
 
-    - Administrativo: sus alertas (usuario_id == current_user.id) y las de ingresos sin
-      profesional asignado (usuario_id nulo), que de otro modo solo vería Coordinación.
+    - Administrativo: sus alertas (usuario_id == current_user.id) y las sin destinatario
+      (usuario_id nulo, panel general), que de otro modo solo vería Coordinación.
     - Coordinacion/Auditor: todas las alertas (alcance ampliado, RN-2/RN-3 CEPA-101).
     """
     stmt = select(AlertaNotif)
