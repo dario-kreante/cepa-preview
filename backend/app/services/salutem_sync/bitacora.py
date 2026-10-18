@@ -1,6 +1,6 @@
 """Bitácora de ejecuciones del sync (tabla salutem_sync_ejecucion)."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
@@ -75,6 +75,10 @@ def ultimo_inicio_ok(db: Session) -> datetime | None:
     Los pasos que no deben saltarse un ciclo fallido (citas) parten de aquí y no del
     último `con_errores`, que ya dio el ciclo por consumido.
     """
-    return db.scalar(
+    inicio = db.scalar(
         select(func.max(SalutemSyncEjecucion.inicio)).where(SalutemSyncEjecucion.estado == "ok")
     )
+    # En Oracle la columna es DATE y vuelve naive; se guardó en UTC (a_utc).
+    if inicio is not None and inicio.tzinfo is None:
+        inicio = inicio.replace(tzinfo=timezone.utc)
+    return inicio
