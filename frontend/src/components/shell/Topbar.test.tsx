@@ -6,15 +6,15 @@ import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { Topbar } from "./Topbar";
 
 function Ubicacion() {
-  const { pathname } = useLocation();
-  return <p data-testid="ubicacion">{pathname}</p>;
+  const { pathname, search } = useLocation();
+  return <p data-testid="ubicacion">{pathname + search}</p>;
 }
 
-function renderTopbar(alertasSinLeer = 0) {
+function renderTopbar(alertasSinLeer = 0, ruta = "/") {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={qc}>
-      <MemoryRouter initialEntries={["/"]}>
+      <MemoryRouter initialEntries={[ruta]}>
         <Topbar
           alertsVisible={false}
           onToggleAlerts={() => {}}
@@ -47,11 +47,24 @@ describe("Topbar · campana de alertas", () => {
 });
 
 describe("Topbar · ayuda (COMP-2609-01)", () => {
-  it("el ícono (?) tiene rótulo accesible y lleva a /ayuda", async () => {
-    renderTopbar();
-    const ayuda = screen.getByRole("link", { name: "Ayuda" });
-    expect(ayuda).toHaveAttribute("title", "Ayuda");
+  it("el ícono (?) abre la guía de la pantalla actual", async () => {
+    renderTopbar(0, "/licencias");
+    const ayuda = screen.getByRole("link", { name: "Ayuda sobre esta pantalla" });
+    expect(ayuda).toHaveAttribute("title", "Ayuda sobre esta pantalla");
     await userEvent.click(ayuda);
-    expect(screen.getByTestId("ubicacion")).toHaveTextContent(/^\/ayuda$/);
+    expect(screen.getByTestId("ubicacion")).toHaveTextContent(/^\/ayuda\?guia=%2Flicencias$/);
+  });
+
+  it("en una subruta usa la guía de su pantalla", () => {
+    renderTopbar(0, "/ingresos/nuevo");
+    expect(screen.getByRole("link", { name: "Ayuda sobre esta pantalla" })).toHaveAttribute(
+      "href",
+      "/ayuda?guia=%2Fingresos",
+    );
+  });
+
+  it("dentro de la ayuda el ícono lleva a la portada", () => {
+    renderTopbar(0, "/ayuda");
+    expect(screen.getByRole("link", { name: "Ayuda" })).toHaveAttribute("href", "/ayuda");
   });
 });

@@ -2,6 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 import { Bell, HelpCircle } from "lucide-react";
 import { TITLE_MAP, CRUMBS_MAP } from "@/app/shell/nav";
 import { cn } from "@/lib/utils";
+import { guiaDeRuta } from "@/features/ayuda/contenido";
 
 interface TopbarProps {
   alertsVisible: boolean;
@@ -37,6 +38,10 @@ export function Topbar({
   const crumbsKey = resolvePathKey(CRUMBS_MAP, pathname);
   const crumbs = (crumbsKey && CRUMBS_MAP[crumbsKey]) ?? "Inicio";
 
+  // El (?) abre la guía de la pantalla actual; fuera de una pantalla con guía, la portada.
+  const guia = pathname === "/ayuda" ? undefined : guiaDeRuta(pathname);
+  const ayudaHref = guia ? `/ayuda?guia=${encodeURIComponent(guia)}` : "/ayuda";
+
   return (
     <header className="h-14 bg-card border-b flex items-center px-6 gap-3 sticky top-0 z-20">
       <div>
@@ -49,9 +54,9 @@ export function Topbar({
       <div className="flex-1" />
 
       <Link
-        to="/ayuda"
-        title="Ayuda"
-        aria-label="Ayuda"
+        to={ayudaHref}
+        title={guia ? "Ayuda sobre esta pantalla" : "Ayuda"}
+        aria-label={guia ? "Ayuda sobre esta pantalla" : "Ayuda"}
         className="size-9 rounded-md grid place-items-center hover:bg-muted transition-colors cursor-pointer text-muted-foreground hover:text-foreground"
       >
         <HelpCircle className="size-[18px]" />
