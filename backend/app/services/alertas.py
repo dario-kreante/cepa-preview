@@ -17,12 +17,12 @@ Relación con otras tablas de alertas (DD-F / Decisión de diseño):
     tipos de alerta directamente desde las tablas de dominio, sin duplicar
     los registros de las dos tablas anteriores.
 
-Destinatario de la alerta (PA):
-  El campo ``usuario_id`` se resuelve como ``Ingreso.profesional_id`` cuando
-  está definido; en caso contrario se almacena ``None`` (la alerta queda
-  visible en el panel de Coordinación/global).  Actualmente no existe un
-  administrativo por caso — esta regla se revisará cuando se implemente ese
-  vínculo (nota abierta PA).
+Destinatario de la alerta (PA / P8):
+  Toda alerta se guarda con ``usuario_id = None`` y queda en el panel general.
+  ``Ingreso.profesional_id`` apunta al catálogo de profesionales, no a ``usuario``,
+  así que no sirve como destinatario. La regla vive en ``_resolver_usuario`` y se
+  cambiará cuando el CEPA defina quién recibe cada alerta (P8 del diseño
+  2026-10-16-cita-desde-salutem) y exista un vínculo profesional↔usuario.
 
 Idempotencia (RN-4 / DD-D):
   La clave de idempotencia es ``(caso_id, tipo, plazo_objetivo)`` para que
@@ -218,25 +218,21 @@ def _cargar_alertas_activas(db: Session) -> set[tuple]:
 
 
 def _resolver_usuario(ingreso_id: int | None, db: Session) -> int | None:
-    """Resuelve el usuario_id destinatario a partir del ingreso.
+    """Resuelve el usuario_id destinatario de una alerta del ingreso.
 
-    Regla PA: usa Ingreso.profesional_id cuando está definido; en caso
-    contrario devuelve None (alerta visible al panel global de Coordinación).
+    Hoy siempre devuelve None: la alerta va al panel general. No usar
+    ``Ingreso.profesional_id``: es un id del catálogo ``profesional``, no de
+    ``usuario``, y asignaba la alerta a quien tuviera ese mismo id de usuario.
+    Punto único para la regla de P8 cuando exista un vínculo profesional↔usuario.
     """
-    if ingreso_id is None:
-        return None
-    from app.models.ingreso import Ingreso  # local import para evitar ciclos
-    ingreso = db.get(Ingreso, ingreso_id)
-    if ingreso is None:
-        return None
-    return ingreso.profesional_id  # puede ser None
+    return None
 
 
 def _construir_hitos_oda(db: Session, ventanas: dict[str, dict] | None = None) -> list[HitoPlazos]:
     """Construye HitoPlazos desde la tabla oda (EPIC-01) via ORM.
 
     Filtra por vigente=True y fecha_vencimiento IS NOT NULL.
-    Destinatario: Ingreso.profesional_id, o None si no asignado (PA).
+    Destinatario: ver _resolver_usuario (hoy None, panel general).
     """
     from app.models.oda import Oda  # local import para evitar ciclos
 
@@ -270,7 +266,7 @@ def _construir_hitos_licencias(db: Session, ventanas: dict[str, dict] | None = N
     """Construye HitoPlazos desde la tabla licencia_medica (EPIC-07) via ORM.
 
     Filtra anulada=False y fin_reposo IS NOT NULL.
-    Destinatario: Ingreso.profesional_id, o None (PA).
+    Destinatario: ver _resolver_usuario (hoy None, panel general).
     """
     from app.models.licencia import LicenciaMedica  # local import
 
@@ -306,7 +302,7 @@ def _construir_hitos_ept(db: Session, ventanas: dict[str, dict] | None = None) -
     Genera un hito por cada plazo no nulo:
       - plazo_informe_ept → TipoAlerta.PLAZO_EPT
       - plazo_portal_isl  → TipoAlerta.PLAZO_ISL
-    Destinatario: Ingreso.profesional_id vía CasoEpt.ingreso_id (PA).
+    Destinatario: ver _resolver_usuario, vía CasoEpt.ingreso_id (hoy None).
     """
     from app.models.ept import CasoEpt, PlazoEpt  # local import
 
@@ -348,7 +344,7 @@ def _construir_hitos_consentimiento(db: Session, ventanas: dict[str, dict] | Non
     Un consentimiento con estado != FIRMADO genera alerta permanente hasta
     que se firme.  El plazo_objetivo es la fecha de creación del consentimiento
     (ya vencido → dias_restantes=0 → siempre dentro de la ventana de 30 días).
-    Destinatario: Ingreso.profesional_id, o None (PA).
+    Destinatario: ver _resolver_usuario (hoy None, panel general).
     """
     from app.domain.enums import EstadoConsentimiento
     from app.models.consentimiento import Consentimiento  # local import
@@ -392,7 +388,7 @@ def _construir_hitos_control_medico(
         la encargada);
       - en los de origen SALUTEM el flag no manda;
       - se excluye a todo paciente con hora vigente en SALUTEM, sea cual sea el origen.
-    caso_tipo="control_medico" (caso_id=control.id). Destinatario: Ingreso.profesional_id o None (PA).
+    caso_tipo="control_medico" (caso_id=control.id). Destinatario: ver _resolver_usuario (hoy None).
     """
     from app.agendamiento.salutem import pacientes_con_hora_vigente  # local import
     from app.domain.enums import EstadoCaso
@@ -460,7 +456,7 @@ def _construir_hitos_receta(db: Session, ventanas: dict[str, dict] | None = None
 
     Filtra: fecha_revision IS NOT NULL AND fecha_envio IS NULL.
     El hito representa la receta que necesita ser enviada antes de su fecha de revisión.
-    Destinatario: resuelto vía reg_farmacologico → ingreso_id → profesional_id (PA).
+    Destinatario: ver _resolver_usuario, vía reg_farmacologico → ingreso_id (hoy None).
     """
     from app.models.farmacos import Receta, RegistroFarmacologico  # local import
 
@@ -502,7 +498,7 @@ def _construir_alertas_gaf(
     (``hasta`` del tramo ≤ ``dias`` de la configuración). Si solo tiene el entero anterior a
     D18, se usa el tramo que lo contiene. Una alerta activa por licencia (RN-4): la clave de
     idempotencia usa ``inicio_reposo`` como fecha fija de la licencia.
-    Destinatario: Ingreso.profesional_id, o None (PA).
+    Destinatario: ver _resolver_usuario (hoy None, panel general).
     """
     from app.domain.gaf import tramo_que_contiene
     from app.models.licencia import LicenciaMedica  # local import
