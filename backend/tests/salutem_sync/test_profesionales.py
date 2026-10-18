@@ -18,6 +18,11 @@ from app.services.salutem_sync.profesionales import ResultadoProfesionales, sinc
 from app.services.salutem_sync.vinculacion import vincular
 from tests.salutem_sync.conftest import AHORA
 
+
+def _sin_zona(valor: datetime) -> datetime:
+    """Postgres devuelve aware y Oracle naive (en UTC): compara ambos sin tzinfo."""
+    return valor.astimezone(timezone.utc).replace(tzinfo=None) if valor.tzinfo else valor
+
 ATENDIDO = int(EstadoCitaSalutem.ATENDIDO)
 AGENDADO = int(EstadoCitaSalutem.AGENDADO)
 PERSONA = 8800
@@ -62,7 +67,8 @@ def test_crea_el_profesional_con_los_datos_de_salutem(db_session):
     assert sorted(p.especialidades) == ["Evaluación médica", "Médico/a"]
     assert sorted(p.sucursales) == ["Curicó", "Talca"]
     assert (p.primera_atencion, p.ultima_atencion) == (date(2026, 9, 1), date(2026, 9, 10))
-    assert p.sincronizado_en == AHORA
+    # Oracle devuelve la fecha sin zona (en UTC): se compara sin tzinfo.
+    assert _sin_zona(p.sincronizado_en) == _sin_zona(AHORA)
     # Sin especialidad previa, toma la más frecuente (empate: la primera en orden alfabético).
     assert p.especialidad in {"Médico/a", "Evaluación médica"}
     auditoria = db_session.scalars(select(AuditLog).where(AuditLog.entity == "profesional")).all()
@@ -274,7 +280,7 @@ def test_el_ciclo_corre_el_paso_con_el_inicio_de_la_ultima_ejecucion_exitosa(db_
         correr(modo, db_session, salutem, ritmo, ahora=lambda: AHORA, habilitado=True, dueno="t")
 
     # Incremental en caliente; recorrido completo (desde=None) en backfill.
-    assert llamadas[0][1] == previo
+    assert _sin_zona(llamadas[0][1]) == _sin_zona(previo)
     assert llamadas[1][1] is None
 
 
