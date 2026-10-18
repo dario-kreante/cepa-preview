@@ -6,7 +6,7 @@
 - Siembra ``config_alerta`` con el tipo ``inasistencia`` activo, sin días de margen.
 
 Revision ID: 1360
-Revises: 1350
+Revises: 1355
 """
 
 from datetime import datetime, timezone
@@ -15,7 +15,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision = "1360"
-down_revision = "1350"
+down_revision = "1355"
 branch_labels = None
 depends_on = None
 
