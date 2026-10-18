@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { http, HttpResponse } from "msw";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { MemoryRouter } from "react-router-dom";
 import { server } from "@/test/msw/server";
 import { ReportesPage } from "./ReportesPage";
 
@@ -26,7 +27,9 @@ describe("ReportesPage — pestaña Adherencia", () => {
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     render(
       <QueryClientProvider client={qc}>
-        <ReportesPage />
+        <MemoryRouter>
+          <ReportesPage />
+        </MemoryRouter>
       </QueryClientProvider>,
     );
     fireEvent.click(screen.getByText("Adherencia", { selector: "button *, button" }));
@@ -36,5 +39,19 @@ describe("ReportesPage — pestaña Adherencia", () => {
     expect(screen.getByTestId("ayuda-adherencia").textContent).toBe(
       "Atendidas sobre el total de citas atendidas más inasistencias. Las anuladas y las futuras no cuentan.",
     );
+  });
+});
+
+describe("ReportesPage — pestaña desde la URL", () => {
+  it("?tab=odas abre la pestaña de ODAS vencidas", () => {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={qc}>
+        <MemoryRouter initialEntries={["/reportes?tab=odas"]}>
+          <ReportesPage />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    expect(screen.getByText(/ODAS con fecha de vencimiento pasada a hoy/)).toBeTruthy();
   });
 });

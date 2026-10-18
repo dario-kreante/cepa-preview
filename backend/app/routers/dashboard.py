@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -17,7 +17,8 @@ from app.db.session import get_db
 from app.models.cita import Cita
 from app.models.ingreso import Ingreso
 from app.domain.enums import EstadoCaso
-from app.schemas.reportes import IngresosActivos, ResumenDashboard
+from app.schemas.reportes import DashboardOperativo, IngresosActivos, ResumenDashboard
+from app.services.dashboard_operativo import PeriodoInvalido, resumen_operativo
 from app.services.reportes_filtros import (
     FiltrosDashboard,
     aplicar_filtros_ingreso,
@@ -76,6 +77,21 @@ def get_ingresos_activos(
         Ingreso.estado == EstadoCaso.ACTIVO.value
     )
     return IngresosActivos(total=db.execute(stmt).scalar_one())
+
+
+@router.get("/operativo", response_model=DashboardOperativo)
+def get_dashboard_operativo(
+    fecha_desde: date | None = Query(None),
+    fecha_hasta: date | None = Query(None),
+    db: Session = Depends(get_db),
+    _current_user=Depends(_lector),
+) -> DashboardOperativo:
+    """Dashboard de inicio: atenciones de SALUTEM del período (por defecto, últimos
+    30 días) y lo que hay que gestionar hoy (licencias, ODAs, alertas, borradores)."""
+    try:
+        return resumen_operativo(db, fecha_desde, fecha_hasta)
+    except PeriodoInvalido as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 @router.get("", response_model=ResumenDashboard)
