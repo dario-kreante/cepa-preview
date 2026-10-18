@@ -81,3 +81,27 @@ def test_usuario_desactivado_no_puede_autenticar(db_session: Session):
     _crear(db_session, activo=False)
     with pytest.raises(CredencialesInvalidas):
         autenticar(db_session, "maria", "Clave123!")
+
+
+# En Oracle `bloqueado_hasta` vuelve sin zona horaria (se guardó en UTC). Compararlo con un
+# datetime con zona lanzaba TypeError y el login respondía 500.
+def test_bloqueo_sin_zona_horaria_sigue_bloqueando(db_session: Session):
+    from datetime import datetime, timedelta
+
+    u = _crear(db_session)
+    db_session.flush()
+    u.bloqueado_hasta = datetime.utcnow() + timedelta(minutes=10)  # naive UTC, como Oracle
+    with pytest.raises(CuentaBloqueada):
+        autenticar(db_session, "maria", "Clave123!")
+
+
+def test_bloqueo_sin_zona_horaria_vencido_permite_entrar(db_session: Session):
+    from datetime import datetime, timedelta
+
+    u = _crear(db_session)
+    db_session.flush()
+    u.bloqueado_hasta = datetime.utcnow() - timedelta(minutes=1)  # naive UTC, ya vencido
+    u.intentos_fallidos = 5
+    usuario = autenticar(db_session, "maria", "Clave123!")
+    assert usuario.bloqueado_hasta is None
+    assert usuario.intentos_fallidos == 0

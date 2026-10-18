@@ -21,6 +21,13 @@ def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def _en_utc(valor: datetime | None) -> datetime | None:
+    """En Oracle `bloqueado_hasta` vuelve sin zona horaria; se guardó en UTC."""
+    if valor is not None and valor.tzinfo is None:
+        return valor.replace(tzinfo=timezone.utc)
+    return valor
+
+
 def autenticar(db: Session, username: str, password: str) -> Usuario:
     """Autentica credenciales aplicando bloqueo por intentos fallidos (CEPA-001).
 
@@ -34,11 +41,12 @@ def autenticar(db: Session, username: str, password: str) -> Usuario:
         raise CredencialesInvalidas("Credenciales inválidas")
 
     # Cuenta bloqueada y la ventana aún no expira.
-    if usuario.bloqueado_hasta is not None and usuario.bloqueado_hasta > _utcnow():
+    bloqueado_hasta = _en_utc(usuario.bloqueado_hasta)
+    if bloqueado_hasta is not None and bloqueado_hasta > _utcnow():
         raise CuentaBloqueada("Cuenta temporalmente bloqueada")
 
     # Si el bloqueo expiró, se limpia antes de evaluar credenciales.
-    if usuario.bloqueado_hasta is not None and usuario.bloqueado_hasta <= _utcnow():
+    if bloqueado_hasta is not None:
         usuario.bloqueado_hasta = None
         usuario.intentos_fallidos = 0
 
