@@ -81,6 +81,17 @@ const MOCK_CONTROL: ControlMedicoRead = {
   origen: "CEPA",
 };
 
+const PROFESIONALES = [
+  {
+    id: 5,
+    nombre: "Dra. Ana Ruiz",
+    especialidad: "Psiquiatría",
+    origen: "SALUTEM",
+    activo: true,
+    created_at: "2026-10-16T00:00:00Z",
+  },
+];
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function renderPage(token = WRITER_TOKEN) {
@@ -111,6 +122,9 @@ async function setupPageWithPaciente(
     ),
     http.get(`${BASE}/api/v1/pacientes/:id/vista-360`, () =>
       HttpResponse.json(MOCK_VISTA_360),
+    ),
+    http.get(`${BASE}/api/v1/profesionales`, () =>
+      HttpResponse.json(PROFESIONALES),
     ),
     ...extraHandlers,
   );
@@ -167,7 +181,8 @@ describe("NuevoControlDialog — alta válida", () => {
 
     // Fill the form
     await user.type(screen.getByLabelText(/Fecha del control/i), "2026-06-10");
-    await user.type(screen.getByLabelText(/Médico tratante/i), "Dra. Ana Ruiz");
+    await screen.findByRole("option", { name: /Dra\. Ana Ruiz/ });
+    await user.selectOptions(screen.getByLabelText(/Médico tratante/i), "5");
     await user.type(
       screen.getByLabelText(/Región de derivación/i),
       "Valparaíso",
@@ -189,6 +204,7 @@ describe("NuevoControlDialog — alta válida", () => {
     const sentBody = postSpy.mock.calls[0][0] as Record<string, unknown>;
     expect(sentBody.ingreso_id).toBe(10);
     expect(sentBody.fecha_control).toBe("2026-06-10");
+    expect(sentBody.profesional_id).toBe(5);
     expect(sentBody.medico_tratante).toBe("Dra. Ana Ruiz");
     expect(sentBody.region_derivacion).toBe("Valparaíso");
     // semana_control must NOT be in the body
@@ -202,8 +218,43 @@ describe("NuevoControlDialog — alta válida", () => {
   });
 });
 
+describe("NuevoControlDialog — médico fuera del catálogo", () => {
+  it("'Otro' permite escribir un nombre y envía profesional_id null", async () => {
+    const postSpy = vi.fn();
+    const user = await setupPageWithPaciente(WRITER_TOKEN, [
+      http.get(
+        `${BASE}/api/v1/controles-medicos/por-ingreso/:ingresoId`,
+        () => HttpResponse.json([]),
+      ),
+      http.post(`${BASE}/api/v1/controles-medicos`, async ({ request }) => {
+        postSpy(await request.json());
+        return HttpResponse.json(MOCK_CONTROL, { status: 201 });
+      }),
+    ]);
+
+    const btn = await screen.findByRole("button", { name: /Nuevo control/i });
+    await waitFor(() => expect(btn).not.toBeDisabled(), { timeout: 8000 });
+    await user.click(btn);
+    await screen.findByRole("dialog");
+
+    await user.type(screen.getByLabelText(/Fecha del control/i), "2026-06-10");
+    await screen.findByRole("option", { name: /Dra\. Ana Ruiz/ });
+    await user.selectOptions(screen.getByLabelText(/Médico tratante/i), "otro");
+    await user.type(screen.getByLabelText(/Nombre del médico/i), "Dr. Externo");
+    await user.type(screen.getByLabelText(/Región de derivación/i), "Maule");
+
+    const dialog = screen.getByRole("dialog");
+    await user.click(dialog.querySelector('button[type="submit"]') as HTMLElement);
+
+    await waitFor(() => expect(postSpy).toHaveBeenCalledOnce());
+    const sent = postSpy.mock.calls[0][0] as Record<string, unknown>;
+    expect(sent.profesional_id).toBeNull();
+    expect(sent.medico_tratante).toBe("Dr. Externo");
+  });
+});
+
 describe("NuevoControlDialog — validación", () => {
-  it("medico_tratante vacío bloquea el submit: error visible y POST NO se llama", async () => {
+  it("sin médico seleccionado bloquea el submit: error visible y POST NO se llama", async () => {
     const postSpy = vi.fn();
 
     const user = await setupPageWithPaciente(WRITER_TOKEN, [
@@ -230,7 +281,7 @@ describe("NuevoControlDialog — validación", () => {
 
     // Fill fecha_control and region_derivacion but leave medico_tratante empty
     await user.type(screen.getByLabelText(/Fecha del control/i), "2026-06-10");
-    // medico_tratante intentionally left blank
+    // médico tratante intentionally left unselected
     await user.type(
       screen.getByLabelText(/Región de derivación/i),
       "Metropolitana",

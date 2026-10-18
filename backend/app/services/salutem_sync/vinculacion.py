@@ -21,6 +21,7 @@ from app.models.paciente import Paciente
 from app.services.salutem_sync.controles import sincronizar_alerta_atencion, sincronizar_control
 from app.services.salutem_sync.filtro import cruce_con_paciente
 from app.services.salutem_sync.incremental import hoy_en_santiago
+from app.services.salutem_sync.profesionales import profesional_de_salutem
 from app.models.salutem_copia import SalutemAtencion, SalutemPersona
 from app.services.ficha_clinica import _en_ventana_del_ingreso
 from app.services.salutem_sync.tipos import a_utc
@@ -139,8 +140,11 @@ def _aplicar(
             resultado.fichas_eliminadas += 1
         return
 
+    profesional_id = profesional_de_salutem(db, atencion.contenido)
+
     if ficha is None:
         ficha = FichaClinica(
+            profesional_id=profesional_id,
             ingreso_id=ingreso.id,
             folio=ingreso.folio,
             origen="SALUTEM",
@@ -153,8 +157,11 @@ def _aplicar(
         resultado.fichas_nuevas += 1
         return
 
-    if ficha.contenido != atencion.contenido or ficha.eliminada_en_origen is not None:
+    sin_profesional = profesional_id is not None and ficha.profesional_id != profesional_id
+    if ficha.contenido != atencion.contenido or ficha.eliminada_en_origen is not None or sin_profesional:
         ficha.contenido = atencion.contenido
+        if profesional_id is not None:
+            ficha.profesional_id = profesional_id
         ficha.eliminada_en_origen = None
         db.flush()
         _auditar(db, "UPDATE", ficha)

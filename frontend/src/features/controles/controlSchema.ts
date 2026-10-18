@@ -3,7 +3,8 @@
  *
  * Fields sent to the backend:
  *   - fecha_control       (required, ISO date)
- *   - medico_tratante     (required, non-empty)
+ *   - profesional_id      (id del catálogo, o "otro" para escribir un nombre libre)
+ *   - medico_tratante     (nombre libre; solo obligatorio cuando profesional_id === "otro")
  *   - region_derivacion   (required, non-empty)
  *
  * NOT included:
@@ -16,18 +17,31 @@ const isoDate = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, "Formato de fecha inválido (YYYY-MM-DD)");
 
-export const controlSchema = z.object({
-  fecha_control: isoDate.min(1, "La fecha del control es requerida"),
+export const PROFESIONAL_OTRO = "otro";
 
-  medico_tratante: z
-    .string()
-    .trim()
-    .min(1, "El médico tratante es requerido"),
+export const controlSchema = z
+  .object({
+    fecha_control: isoDate.min(1, "La fecha del control es requerida"),
 
-  region_derivacion: z
-    .string()
-    .trim()
-    .min(1, "La región de derivación es requerida"),
-});
+    profesional_id: z.string(),
+
+    medico_tratante: z.string().trim(),
+
+    region_derivacion: z
+      .string()
+      .trim()
+      .min(1, "La región de derivación es requerida"),
+  })
+  .superRefine((v, ctx) => {
+    const sinSeleccion = v.profesional_id === "";
+    const otroSinNombre = v.profesional_id === PROFESIONAL_OTRO && v.medico_tratante === "";
+    if (sinSeleccion || otroSinNombre) {
+      ctx.addIssue({
+        code: "custom",
+        path: [sinSeleccion ? "profesional_id" : "medico_tratante"],
+        message: "El médico tratante es requerido",
+      });
+    }
+  });
 
 export type ControlForm = z.infer<typeof controlSchema>;

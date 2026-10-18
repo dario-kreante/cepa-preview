@@ -19,7 +19,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { controlSchema, type ControlForm } from "./controlSchema";
+import { useProfesionales } from "@/features/profesionales/hooks";
+import { controlSchema, PROFESIONAL_OTRO, type ControlForm } from "./controlSchema";
 import { useCrearControl } from "./hooks";
 
 interface Props {
@@ -30,26 +31,32 @@ interface Props {
 
 export function NuevoControlDialog({ ingresoId, open, onOpenChange }: Props) {
   const crearMutation = useCrearControl();
+  const { data: profesionales = [], isLoading: cargandoProfesionales } =
+    useProfesionales(true);
 
   const {
     register,
     handleSubmit,
     reset,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<ControlForm>({
     resolver: zodResolver(controlSchema),
     defaultValues: {
       fecha_control: "",
+      profesional_id: "",
       medico_tratante: "",
       region_derivacion: "",
     },
   });
+  const profesionalSel = watch("profesional_id");
 
   // Reset form when dialog closes
   useEffect(() => {
     if (!open) {
       reset({
         fecha_control: "",
+        profesional_id: "",
         medico_tratante: "",
         region_derivacion: "",
       });
@@ -58,10 +65,15 @@ export function NuevoControlDialog({ ingresoId, open, onOpenChange }: Props) {
 
   async function onSubmit(values: ControlForm) {
     try {
+      const esOtro = values.profesional_id === PROFESIONAL_OTRO;
+      const elegido = esOtro
+        ? undefined
+        : profesionales.find((p) => String(p.id) === values.profesional_id);
       await crearMutation.mutateAsync({
         ingreso_id: ingresoId,
         fecha_control: values.fecha_control,
-        medico_tratante: values.medico_tratante.trim(),
+        profesional_id: elegido ? elegido.id : null,
+        medico_tratante: elegido ? elegido.nombre : values.medico_tratante.trim(),
         region_derivacion: values.region_derivacion.trim(),
       });
       toast.success("Control médico registrado");
@@ -101,17 +113,43 @@ export function NuevoControlDialog({ ingresoId, open, onOpenChange }: Props) {
 
           {/* Médico tratante */}
           <div>
-            <Label htmlFor="medico_tratante">Médico tratante</Label>
-            <Input
-              id="medico_tratante"
-              type="text"
-              placeholder="Ej. Dr. Juan Martínez"
-              {...register("medico_tratante")}
-            />
-            {errors.medico_tratante && (
+            <Label htmlFor="profesional_id">Médico tratante</Label>
+            <select
+              id="profesional_id"
+              disabled={cargandoProfesionales}
+              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus:outline-none focus:ring-1 focus:ring-ring"
+              {...register("profesional_id")}
+            >
+              <option value="">
+                {cargandoProfesionales ? "Cargando profesionales…" : "Selecciona un profesional"}
+              </option>
+              {profesionales.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.especialidad ? `${p.nombre} · ${p.especialidad}` : p.nombre}
+                </option>
+              ))}
+              <option value={PROFESIONAL_OTRO}>Otro (no está en el catálogo)</option>
+            </select>
+            {errors.profesional_id && (
               <p className="text-[11.5px] text-destructive mt-1">
-                {errors.medico_tratante.message}
+                {errors.profesional_id.message}
               </p>
+            )}
+            {profesionalSel === PROFESIONAL_OTRO && (
+              <div className="mt-2">
+                <Label htmlFor="medico_tratante">Nombre del médico</Label>
+                <Input
+                  id="medico_tratante"
+                  type="text"
+                  placeholder="Ej. Dr. Juan Martínez"
+                  {...register("medico_tratante")}
+                />
+                {errors.medico_tratante && (
+                  <p className="text-[11.5px] text-destructive mt-1">
+                    {errors.medico_tratante.message}
+                  </p>
+                )}
+              </div>
             )}
           </div>
 

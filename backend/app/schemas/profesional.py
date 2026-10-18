@@ -1,6 +1,6 @@
 """Schemas del catálogo de profesionales (agendamiento)."""
 
-from datetime import datetime
+from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -59,7 +59,46 @@ class ProfesionalRead(BaseModel):
     origen: str
     activo: bool
     created_at: datetime
+    # Lo que arma el sync desde SALUTEM; nulos en los profesionales cargados a mano.
+    salutem_profesional_id: int | None = None
+    especialidades: list[str] | None = None
+    sucursales: list[str] | None = None
+    primera_atencion: date | None = None
+    ultima_atencion: date | None = None
+    sincronizado_en: datetime | None = None
 
 
 class ImportacionSalutemResultado(BaseModel):
     creados: int
+    actualizados: int = 0
+    adoptados: int = 0
+    vinculados: int = 0
+    errores: list[str] = []
+
+
+class AtencionPorEspecialidad(BaseModel):
+    especialidad: str
+    total: int
+
+
+class AtencionProfesionalRead(BaseModel):
+    ficha_id: int
+    fecha: date | None
+    especialidad: str | None
+    folio: str
+    ingreso_id: int
+    paciente_id: int
+    paciente: str
+
+
+class ActividadProfesionalRead(BaseModel):
+    """Actividad del profesional según las fichas y controles vinculados a él."""
+
+    profesional_id: int
+    total_atenciones: int
+    atenciones_por_especialidad: list[AtencionPorEspecialidad]
+    total_controles: int
+    pacientes_distintos: int
+    primera_atencion: date | None
+    ultima_atencion: date | None
+    ultimas_atenciones: list[AtencionProfesionalRead]

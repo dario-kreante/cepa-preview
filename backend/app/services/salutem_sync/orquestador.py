@@ -38,6 +38,7 @@ from app.services.salutem_sync.incremental import (
     ventana_tibia,
 )
 from app.services.salutem_sync.lease import soltar_lease, tomar_lease
+from app.services.salutem_sync.profesionales import sincronizar_profesionales
 from app.services.salutem_sync.ritmo import Ritmo
 from app.services.salutem_sync.tipos import MODOS, Contadores
 from app.services.salutem_sync.vinculacion import vincular
@@ -112,6 +113,21 @@ def correr(
             al_avanzar=renovar,
         )
         errores = errores + vinculacion.errores
+        try:
+            # Los modos que vinculan todo (fría, backfill, vincular --todo) recorren toda la copia.
+            completo = modo in _VINCULAN_TODO or (modo == "vincular" and opciones.vincular_todo)
+            profesionales = sincronizar_profesionales(db, ahora(), None if completo else ingresos_desde)
+            errores = errores + profesionales.errores
+            if profesionales.creados or profesionales.actualizados:
+                log.info(
+                    "Profesionales: %d creados, %d actualizados, %d adoptados, %d vinculados",
+                    profesionales.creados, profesionales.actualizados,
+                    profesionales.adoptados, profesionales.vinculados,
+                )
+        except Exception as e:  # noqa: BLE001 — un fallo de este paso no debe perder el resto del ciclo
+            log.exception("Modo %s: falló la sincronización de profesionales", modo)
+            db.rollback()
+            errores = errores + [f"profesionales: {type(e).__name__}: {e}"]
         try:
             desde = get_settings().salutem_borradores_desde_fecha
         except ValueError as e:

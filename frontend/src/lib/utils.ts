@@ -60,3 +60,26 @@ export function fmtDate(d: string): string {
   // Fallback: return unchanged
   return d;
 }
+
+/**
+ * Tiempo transcurrido en español ("hace 5 min", "hace 3 días").
+ * Acepta un ISO con o sin zona; sin zona se asume UTC (el backend guarda en UTC).
+ */
+export function fmtRelativo(iso: string | null | undefined, ahora: Date = new Date()): string {
+  if (!iso) return "—";
+  const conZona = /(Z|[+-]\d{2}:?\d{2})$/.test(iso) ? iso : `${iso}Z`;
+  const t = new Date(conZona).getTime();
+  if (Number.isNaN(t)) return "—";
+  const seg = Math.max(0, Math.round((ahora.getTime() - t) / 1000));
+  if (seg < 60) return "hace un momento";
+  const min = Math.floor(seg / 60);
+  if (min < 60) return `hace ${min} min`;
+  const h = Math.floor(min / 60);
+  if (h < 24) return h === 1 ? "hace 1 hora" : `hace ${h} horas`;
+  const d = Math.floor(h / 24);
+  if (d < 30) return d === 1 ? "hace 1 día" : `hace ${d} días`;
+  const m = Math.floor(d / 30);
+  if (m < 12) return m === 1 ? "hace 1 mes" : `hace ${m} meses`;
+  const a = Math.floor(d / 365);
+  return a <= 1 ? "hace 1 año" : `hace ${a} años`;
+}
