@@ -289,5 +289,6 @@ def test_citas_no_avanza_su_desde_tras_una_ejecucion_con_errores(db_session, sal
 
     assert _correr(db_session, salutem, ritmo) == 0
 
-    assert recibidos == [previa.inicio]
+    # Contra el valor conocido: en Oracle `previa.inicio` se recarga naive (columna DATE).
+    assert recibidos == [AHORA - timedelta(hours=3)]
     assert ultimo_inicio_ok(db_session) == AHORA  # la corrida limpia sí lo adelanta
