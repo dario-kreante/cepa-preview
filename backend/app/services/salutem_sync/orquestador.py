@@ -23,8 +23,14 @@ from app.integrations.salutem.protocol import SalutemClientProtocol
 from app.models.salutem_sync import SalutemSyncEjecucion
 from app.services.salutem_sync.archivos import refrescar_archivos
 from app.services.salutem_sync.backfill import DIAS_FUTURO, ejecutar_backfill
-from app.services.salutem_sync.bitacora import abrir_ejecucion, cerrar_ejecucion, registrar_omitida
+from app.services.salutem_sync.bitacora import (
+    abrir_ejecucion,
+    cerrar_ejecucion,
+    registrar_omitida,
+    ultimo_inicio_ok,
+)
 from app.services.salutem_sync.borradores import crear_borradores
+from app.services.salutem_sync.citas_cepa import sincronizar_citas
 from app.services.salutem_sync.incremental import (
     hoy_en_santiago,
     ventana_caliente,
@@ -32,6 +38,7 @@ from app.services.salutem_sync.incremental import (
     ventana_tibia,
 )
 from app.services.salutem_sync.lease import soltar_lease, tomar_lease
+from app.services.salutem_sync.profesionales import sincronizar_profesionales
 from app.services.salutem_sync.ritmo import Ritmo
 from app.services.salutem_sync.tipos import MODOS, Contadores
 from app.services.salutem_sync.vinculacion import vincular
@@ -93,6 +100,9 @@ def correr(
     ejecucion = None
     try:
         ingresos_desde = _ultimo_inicio_exitoso(db)
+        # Las citas solo avanzan tras una ejecución limpia: si el paso falló, el siguiente
+        # ciclo lo reintenta desde el mismo punto.
+        citas_desde = ultimo_inicio_ok(db)
         ejecucion = abrir_ejecucion(db, modo, inicio)
         contadores, errores = _ejecutar_modo(modo, db, cliente, ritmo, inicio, opciones, renovar)
         vinculacion = vincular(
@@ -103,6 +113,21 @@ def correr(
             al_avanzar=renovar,
         )
         errores = errores + vinculacion.errores
+        try:
+            # Los modos que vinculan todo (fría, backfill, vincular --todo) recorren toda la copia.
+            completo = modo in _VINCULAN_TODO or (modo == "vincular" and opciones.vincular_todo)
+            profesionales = sincronizar_profesionales(db, ahora(), None if completo else ingresos_desde)
+            errores = errores + profesionales.errores
+            if profesionales.creados or profesionales.actualizados:
+                log.info(
+                    "Profesionales: %d creados, %d actualizados, %d adoptados, %d vinculados",
+                    profesionales.creados, profesionales.actualizados,
+                    profesionales.adoptados, profesionales.vinculados,
+                )
+        except Exception as e:  # noqa: BLE001 — un fallo de este paso no debe perder el resto del ciclo
+            log.exception("Modo %s: falló la sincronización de profesionales", modo)
+            db.rollback()
+            errores = errores + [f"profesionales: {type(e).__name__}: {e}"]
         try:
             desde = get_settings().salutem_borradores_desde_fecha
         except ValueError as e:
@@ -117,6 +142,26 @@ def correr(
             log.exception("Modo %s: falló la creación de borradores", modo)
             db.rollback()
             errores = errores + [f"borradores: {type(e).__name__}: {e}"]
+        try:
+            citas = sincronizar_citas(
+                db,
+                desde=None if modo in _VINCULAN_TODO else citas_desde,
+                ahora=ahora(),
+                al_avanzar=renovar,
+            )
+            errores = errores + citas.errores
+            log.info(
+                "Citas SALUTEM: %d creadas, %d actualizadas, %d eliminadas, %d con estado desconocido, "
+                "%d sin ingreso, %d ambiguas, %d agendadas antiguas, %d alertas de inasistencia, "
+                "%d alertas resueltas",
+                citas.creadas, citas.actualizadas, citas.eliminadas, citas.estado_desconocido,
+                citas.sin_ingreso, citas.ambiguas, citas.agendadas_antiguas,
+                citas.alertas_inasistencia, citas.alertas_resueltas,
+            )
+        except Exception as e:  # noqa: BLE001 — un fallo de este paso no debe perder el resto del ciclo
+            log.exception("Modo %s: falló la sincronización de citas", modo)
+            db.rollback()
+            errores = errores + [f"citas: {type(e).__name__}: {e}"]
         if modo == "caliente":
             archivos = refrescar_archivos(db, cliente, ritmo, ahora(), al_avanzar=renovar)
             errores = errores + archivos.errores

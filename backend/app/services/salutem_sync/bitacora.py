@@ -1,8 +1,8 @@
 """Bitácora de ejecuciones del sync (tabla salutem_sync_ejecucion)."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 
-from sqlalchemy import update
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from app.models.salutem_sync import SalutemSyncEjecucion
@@ -67,3 +67,18 @@ def registrar_omitida(db: Session, modo: str, ahora: datetime) -> SalutemSyncEje
     db.add(ejecucion)
     db.commit()
     return ejecucion
+
+
+def ultimo_inicio_ok(db: Session) -> datetime | None:
+    """Inicio de la última ejecución `ok` (sin errores); None si nunca hubo una.
+
+    Los pasos que no deben saltarse un ciclo fallido (citas) parten de aquí y no del
+    último `con_errores`, que ya dio el ciclo por consumido.
+    """
+    inicio = db.scalar(
+        select(func.max(SalutemSyncEjecucion.inicio)).where(SalutemSyncEjecucion.estado == "ok")
+    )
+    # En Oracle la columna es DATE y vuelve naive; se guardó en UTC (a_utc).
+    if inicio is not None and inicio.tzinfo is None:
+        inicio = inicio.replace(tzinfo=timezone.utc)
+    return inicio

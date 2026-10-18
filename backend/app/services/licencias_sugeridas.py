@@ -13,7 +13,7 @@ from sqlalchemy import false, select
 from sqlalchemy.orm import Session
 
 from app.domain.enums_licencia import OrigenLicencia, TipoLicencia, TipoReposo
-from app.integrations.salutem.campos import campo
+from app.integrations.salutem.campos import campo, tramo_gaf
 from app.integrations.salutem.licencias import (
     ClaseMencion,
     MencionLicencia,
@@ -124,6 +124,7 @@ def sugerir_licencias(db: Session, folio: str) -> list[LicenciaSugeridaRead]:
             sugerencias.append(
                 LicenciaSugeridaRead(
                     ficha_clinica_id=ficha.id,
+                    cita_id=contenido.get("citaId") if isinstance(contenido.get("citaId"), int) else None,
                     cita_fecha=fecha,
                     texto=mencion.texto,
                     tipo_lm=TipoLicencia(tipo) if tipo else None,
@@ -137,6 +138,7 @@ def sugerir_licencias(db: Session, folio: str) -> list[LicenciaSugeridaRead]:
                     fecha_termino=mencion.fecha_termino,
                     termino_calculado=mencion.termino_calculado,
                     cantidad_dias=mencion.dias,
+                    eeag_gaf_tramo=tramo_gaf(campo(contenido, "GAF")),
                     avisos=avisos,
                     ya_registrada=_ya_registrada(mencion, registradas),
                 )

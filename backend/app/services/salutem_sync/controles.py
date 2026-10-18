@@ -10,6 +10,8 @@ cualquier sección de la atención. Correspondencia con el control:
 - fecha_control      ← citaFecha
 - semana_control     ← semanas desde fecha_ingreso (la semana 1 parte el día del ingreso)
 - medico_tratante    ← profesionalNombre
+- profesional_id     ← el profesional del catálogo con ese profesionalId (si aún no está, lo
+                       llena el paso de profesionales del ciclo)
 - region_derivacion  ← región del paciente en SIGE (SALUTEM no la informa)
 - proximo_control    ← la siguiente cita vigente de la persona en la copia de SALUTEM; sin
                        cita, el campo "Próximo control" ("15 días", "1 mes") contado
@@ -50,6 +52,7 @@ from app.integrations.salutem.models import EstadoCitaSalutem
 from app.models.control_medico import ControlMedico
 from app.models.ingreso import Ingreso
 from app.models.salutem_copia import SalutemAtencion, SalutemCita
+from app.services.salutem_sync.profesionales import profesional_de_salutem
 from app.services.salutem_sync.alertas_control import (
     ACTOR,
     CASO_ATENCION,
@@ -57,11 +60,10 @@ from app.services.salutem_sync.alertas_control import (
     alertar_control,
     resolver_alertas_control,
 )
+from app.services.salutem_sync.vigencia import cita_vigente
 
 ORIGEN = "SALUTEM"
 ATENDIDO = int(EstadoCitaSalutem.ATENDIDO)
-# Una cita anulada o a la que no asistió no es un próximo control.
-_NO_VIGENTES = (int(EstadoCitaSalutem.ANULADO), int(EstadoCitaSalutem.NO_ASISTE))
 _RE_GAF = re.compile(r"\bGAF\s*:?\s*(\d{1,3})\b", re.IGNORECASE)
 _RE_BR = re.compile(r"<br\s*/?>", re.IGNORECASE)
 _RE_TAG = re.compile(r"<[^>]+>")
@@ -101,6 +103,10 @@ def sincronizar_control(
             db.flush()
         return
     campos = _campos(db, atencion, ingreso)
+    # Sin profesional en el catálogo no se pisa el vínculo que ya tuviera el control.
+    profesional_id = profesional_de_salutem(db, atencion.contenido)
+    if profesional_id is not None:
+        campos["profesional_id"] = profesional_id
     creado = control is None
     # Un control que pasa a tener licencia (p. ej. porque el extractor ahora la reconoce)
     # también alerta, aunque la atención no haya cambiado en SALUTEM.
@@ -190,8 +196,7 @@ def _proxima_cita(db: Session, persona_id: int, fecha: date) -> date | None:
         .where(
             SalutemCita.persona_id == persona_id,
             SalutemCita.fecha_cita > fecha,
-            SalutemCita.desaparecida_en.is_(None),
-            SalutemCita.estado_id.not_in(_NO_VIGENTES),
+            cita_vigente(),
         )
         .order_by(SalutemCita.fecha_cita)
         .limit(1)

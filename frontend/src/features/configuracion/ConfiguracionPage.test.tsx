@@ -18,7 +18,7 @@ function renderComo(rol: keyof typeof TOKENS) {
 }
 
 describe("ConfiguracionPage (COMP-2609-02)", () => {
-  it("Coordinación ve usuarios, formularios, ventanas de proceso y umbrales de alerta", () => {
+  it("Coordinación ve usuarios, formularios, ventanas, profesionales y umbrales de alerta", () => {
     renderComo("Coordinacion");
     expect(screen.getByRole("link", { name: /Umbrales de alerta/i })).toHaveAttribute(
       "href",
@@ -33,9 +33,21 @@ describe("ConfiguracionPage (COMP-2609-02)", () => {
       "href",
       "/ventanas-proceso",
     );
+    expect(screen.getByRole("link", { name: /Profesionales/i })).toHaveAttribute(
+      "href",
+      "/profesionales",
+    );
   });
 
-  it.each(["Administrativo", "Auditor"] as const)(
+  it("Administrativo ve ventanas de proceso y profesionales", () => {
+    renderComo("Administrativo");
+    expect(screen.getByRole("link", { name: /Ventanas de proceso/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Profesionales/i })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Usuarios y roles/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Umbrales de alerta/i })).not.toBeInTheDocument();
+  });
+
+  it.each(["Auditor"] as const)(
     "%s solo ve ventanas de proceso",
     (rol) => {
       renderComo(rol);
@@ -43,6 +55,7 @@ describe("ConfiguracionPage (COMP-2609-02)", () => {
       expect(screen.queryByRole("link", { name: /Usuarios y roles/i })).not.toBeInTheDocument();
       expect(screen.queryByRole("link", { name: /Formularios dinámicos/i })).not.toBeInTheDocument();
       expect(screen.queryByRole("link", { name: /Umbrales de alerta/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole("link", { name: /Profesionales/i })).not.toBeInTheDocument();
     },
   );
 });

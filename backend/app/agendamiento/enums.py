@@ -41,3 +41,11 @@ class DiaSemana(int, Enum):
     MIERCOLES = 3
     JUEVES = 4
     VIERNES = 5
+
+
+class ResultadoGestion(str, Enum):
+    """Resultado de un intento de contacto con un paciente por citar."""
+    AGENDADA_EN_SALUTEM = "agendada_en_salutem"
+    NO_CONTESTA = "no_contesta"
+    RECHAZA = "rechaza"
+    OTRO = "otro"

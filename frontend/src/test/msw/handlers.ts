@@ -12,8 +12,12 @@ export const GAF_TRAMOS = Array.from({ length: 10 }, (_, i) => ({
 }));
 
 export const handlers = [
+  // Catálogo de profesionales vacío por defecto (lo monta NuevoControlDialog); cada test lo sobrescribe.
+  http.get(`${BASE}/api/v1/profesionales`, () => HttpResponse.json([])),
   http.get(`${BASE}/api/v1/gaf-tramos`, () => HttpResponse.json(GAF_TRAMOS)),
   http.get(`${BASE}/api/v1/pacientes/buscar`, () => HttpResponse.json([])),
+  // Contexto de una alerta (panel): sin paciente por defecto, el diálogo no ofrece gestión.
+  http.get(`${BASE}/api/v1/alertas/:id/contexto`, () => HttpResponse.json({})),
   // Default handler for the esquema endpoint — returns empty list.
   // Individual tests can override via server.use().
   http.get(

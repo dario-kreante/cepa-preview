@@ -18,7 +18,10 @@ from datetime import date
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, model_validator
-from sqlalchemy import Select
+from sqlalchemy import ColumnElement, Select, func
+
+from app.config import get_settings
+from app.models.cita import Cita
 
 # Tramos etarios canónicos (DD-3). Derivados de paciente.edad al momento de la consulta.
 # 18-29 | 30-44 | 45-59 | 60+
@@ -138,3 +141,22 @@ def aplicar_filtros_ingreso(
             stmt = stmt.where(_tramo_case(pac) == f.tramo_etario)
 
     return stmt
+
+
+def condicion_citas_reportables() -> ColumnElement[bool]:
+    """Condición común de los reportes que leen ``cita`` (Fase 2, decisiones 4 y 8).
+
+    Solo cuentan las citas espejadas desde SALUTEM (``origen='SALUTEM'``) y, si hay
+    especialidades configuradas (``CITAS_ESPECIALIDADES_REPORTES``), solo esas. Las filas
+    ``origen='SIGE'`` son anteriores al espejo y duplicarían lo que ya trae SALUTEM.
+
+    Usa solo columnas de ``Cita``: no necesita join. La comparación es con
+    ``lower(trim(...))`` contra un set en casefold; Python casefold y SQL lower pueden
+    diferir en algunos caracteres Unicode (por ejemplo "ß"), pero las especialidades son
+    nombres en español, donde lower() es equivalente.
+    """
+    condicion: ColumnElement[bool] = Cita.origen == "SALUTEM"
+    especialidades = get_settings().citas_especialidades_reportes_set
+    if especialidades:
+        condicion = condicion & func.lower(func.trim(Cita.especialidad)).in_(sorted(especialidades))
+    return condicion

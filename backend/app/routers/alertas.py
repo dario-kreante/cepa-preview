@@ -6,15 +6,18 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
+from app.agendamiento.salutem import lotes
 from app.audit.service import record_audit
 from app.auth.deps import get_current_user, require_role
 from app.db.session import get_db
 from app.domain.enums_alertas import EstadoAlerta
 from app.models.alertas import AlertaNotif
+from app.models.cita import Cita
 from app.models.ingreso import Ingreso
 from app.models.oda import Oda
 from app.schemas.alertas import AlertaRead, AlertaUpdate, JobResultado
 from app.services.alertas import ejecutar_job_alertas
+from app.services.alertas_contexto import AlertaContextoRead, contexto_de_alerta
 
 router = APIRouter(prefix="/api/v1/alertas", tags=["alertas"])
 
@@ -81,7 +84,7 @@ def listar_alertas(
 
 
 def _pacientes_de_casos(db: Session, alertas: list[AlertaNotif]) -> dict[tuple[str, int], int]:
-    """Paciente de cada caso que cuelga de un ingreso (ODA, ingreso): una consulta por tipo."""
+    """Paciente de cada caso que cuelga de un ingreso (ODA, ingreso, cita de SALUTEM): una consulta por tipo."""
     odas = {a.caso_id for a in alertas if a.caso_tipo == "oda"}
     ingresos = {a.caso_id for a in alertas if a.caso_tipo == "ingreso"}
     pacientes: dict[tuple[str, int], int] = {}
@@ -95,7 +98,30 @@ def _pacientes_de_casos(db: Session, alertas: list[AlertaNotif]) -> dict[tuple[s
     if ingresos:
         filas = db.execute(select(Ingreso.id, Ingreso.paciente_id).where(Ingreso.id.in_(ingresos)))
         pacientes.update({("ingreso", ing_id): pid for ing_id, pid in filas})
+    citas_salutem = {a.caso_id for a in alertas if a.caso_tipo == "salutem_cita"}
+    for lote in lotes(citas_salutem):
+        filas = db.execute(
+            select(Cita.salutem_cita_id, Ingreso.paciente_id)
+            .join(Ingreso, Ingreso.id == Cita.ingreso_id)
+            .where(Cita.salutem_cita_id.in_(lote))
+        )
+        pacientes.update({("salutem_cita", cita_id): pid for cita_id, pid in filas})
     return pacientes
+
+
+@router.get(
+    "/{alerta_id}/contexto", response_model=AlertaContextoRead, dependencies=[Depends(_reader)]
+)
+def contexto_alerta(
+    alerta_id: int,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> AlertaContextoRead:
+    """Paciente, ingreso y cita de SALUTEM de la alerta, para gestionarla desde el panel."""
+    alerta = db.get(AlertaNotif, alerta_id)
+    if alerta is None or not _visible_para(alerta, current_user):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Alerta no encontrada")
+    return contexto_de_alerta(db, alerta)
 
 
 @router.patch("/{alerta_id}", response_model=AlertaRead, dependencies=[Depends(_writer)])

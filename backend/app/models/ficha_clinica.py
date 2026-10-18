@@ -40,7 +40,10 @@ class FichaClinica(Base):
     # El pull manual no toma el lease del sync, así que un pull y una corrida
     # simultáneos aún podrían duplicar en una ventana estrecha; aceptado en la fase 1
     # (las licencias sugeridas ya colapsan menciones repetidas).
-    __table_args__ = (Index("ix_ficha_clin_sal_cita", "salutem_cita_id"),)
+    __table_args__ = (
+        Index("ix_ficha_clin_sal_cita", "salutem_cita_id"),
+        Index("ix_ficha_clin_profesional", "profesional_id"),
+    )
 
     id: Mapped[int] = mapped_column(BigInteger, Identity(always=False), primary_key=True)
     ingreso_id: Mapped[int] = mapped_column(
@@ -54,6 +57,10 @@ class FichaClinica(Base):
     )
     # Id de la cita en SALUTEM cuando origen = SALUTEM; clave de deduplicación del sync.
     salutem_cita_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    # Profesional del catálogo (migración 1350), según el ``profesionalId`` de la atención.
+    profesional_id: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("profesional.id"), nullable=True
+    )
     # La atención dejó de existir en SALUTEM. La ficha se conserva, marcada.
     eliminada_en_origen: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True

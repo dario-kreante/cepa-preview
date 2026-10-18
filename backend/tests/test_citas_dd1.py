@@ -1,10 +1,10 @@
-"""Tests DD-1 (EPIC-09 rework): citas reales desde confirmar_citas + PATCH estado.
+"""Tests DD-1 (EPIC-09 rework): citas reales en la tabla de hechos + PATCH estado.
 
 Cubre:
-  TC-DD1-01: confirmar una propuesta crea filas Cita(estado=agendada) en la tabla de hechos.
   TC-DD1-02: PATCH /citas/{id}/estado transiciona agendada → realizada correctamente.
   TC-DD1-03: PATCH transición inválida devuelve 409.
-  TC-DD1-04: integración end-to-end propuesta → confirmar → PATCH realizada → reporte operativo.
+  TC-DD1-04: integración Cita agendada → PATCH realizada → reporte operativo.
+  (TC-DD1-01, confirmar una propuesta crea la Cita, se retiró con la confirmación de propuestas.)
 """
 import pytest
 from datetime import date
@@ -45,60 +45,10 @@ def paciente_con_ingreso(db_session):
 def cita_agendada(db_session, paciente_con_ingreso):
     """Cita en estado 'agendada' directamente en tabla de hechos."""
     ing = paciente_con_ingreso["ingreso"]
-    c = Cita(ingreso_id=ing.id, estado="agendada", fecha=date(2026, 3, 10))
+    c = Cita(origen="SIGE", ingreso_id=ing.id, estado="agendada", fecha=date(2026, 3, 10))
     db_session.add(c)
     db_session.commit()
     return c
-
-
-# ── TC-DD1-01: confirmar_citas crea Cita en tabla de hechos ──────────────────
-
-def test_confirmar_citas_crea_cita_en_tabla_hechos(db_session, paciente_con_ingreso):
-    """Al confirmar una CitaPropuesta se debe crear una Cita(estado=agendada)."""
-    from app.agendamiento.models import CitaPropuesta, PropuestaAgenda
-    from app.agendamiento.service import confirmar_citas
-    from sqlalchemy import select
-
-    pac = paciente_con_ingreso["paciente"]
-
-    # Crear PropuestaAgenda y CitaPropuesta manualmente
-    propuesta = PropuestaAgenda(
-        profesional_id=1,
-        tipo="diaria",
-        fecha_inicio=date(2026, 3, 15),
-        fecha_fin=date(2026, 3, 15),
-        estado="borrador",
-        generado_por="test",
-    )
-    db_session.add(propuesta)
-    db_session.flush()
-
-    cita_p = CitaPropuesta(
-        propuesta_id=propuesta.id,
-        paciente_id=pac.id,
-        fecha_candidata=date(2026, 3, 15),
-        prioridad="control_vencido",
-        razon="test",
-        estado="propuesta",
-    )
-    db_session.add(cita_p)
-    db_session.flush()
-
-    antes = db_session.execute(
-        select(Cita).where(Cita.ingreso_id == paciente_con_ingreso["ingreso"].id)
-    ).scalars().all()
-
-    confirmar_citas(db_session, propuesta.id, [cita_p.id], actor="test")
-    db_session.flush()
-
-    despues = db_session.execute(
-        select(Cita).where(Cita.ingreso_id == paciente_con_ingreso["ingreso"].id)
-    ).scalars().all()
-
-    assert len(despues) == len(antes) + 1
-    nueva = despues[-1]
-    assert nueva.estado == "agendada"
-    assert nueva.fecha == date(2026, 3, 15)
 
 
 # ── TC-DD1-02: PATCH estado agendada → realizada ─────────────────────────────
@@ -131,64 +81,43 @@ def test_patch_estado_transicion_invalida_409(as_coordinacion, cita_agendada):
     assert resp.status_code == 409
 
 
-# ── TC-DD1-04: integración end-to-end propuesta→confirmar→PATCH→reporte ──────
-
-def test_integracion_propuesta_confirmar_realizada_reporte(
-    as_coordinacion, db_session, paciente_con_ingreso
-):
-    """
-    Crea una Cita via confirmar_citas, la transiciona a 'realizada' vía PATCH,
-    y verifica que el reporte operativo la contabiliza.
-    """
-    from app.agendamiento.models import CitaPropuesta, PropuestaAgenda
-    from app.agendamiento.service import confirmar_citas
-
-    pac = paciente_con_ingreso["paciente"]
-    ing = paciente_con_ingreso["ingreso"]
-
-    propuesta = PropuestaAgenda(
-        profesional_id=2,
-        tipo="diaria",
-        fecha_inicio=date(2026, 3, 20),
-        fecha_fin=date(2026, 3, 20),
-        estado="borrador",
-        generado_por="integ",
-    )
-    db_session.add(propuesta)
-    db_session.flush()
-
-    cita_p = CitaPropuesta(
-        propuesta_id=propuesta.id,
-        paciente_id=pac.id,
-        fecha_candidata=date(2026, 3, 20),
-        prioridad="control_vencido",
-        razon="integ test",
-        estado="propuesta",
-    )
-    db_session.add(cita_p)
-    db_session.flush()
-
-    confirmadas = confirmar_citas(db_session, propuesta.id, [cita_p.id], actor="integ")
+def test_patch_estado_cita_salutem_409(as_coordinacion, cita_agendada, db_session):
+    cita_agendada.origen = "SALUTEM"
     db_session.commit()
-
-    assert len(confirmadas) == 1
-
-    # Buscar la Cita creada
-    from sqlalchemy import select
-    citas_hecho = db_session.execute(
-        select(Cita).where(Cita.ingreso_id == ing.id).where(Cita.estado == "agendada")
-    ).scalars().all()
-    assert len(citas_hecho) >= 1
-    cita_id = citas_hecho[-1].id
-
-    # PATCH a realizada
     resp = as_coordinacion.patch(
-        f"/api/v1/citas/{cita_id}/estado",
+        f"/api/v1/citas/{cita_agendada.id}/estado", json={"estado": "realizada"}
+    )
+    assert resp.status_code == 409
+    assert resp.json()["detail"] == "El estado de esta cita lo informa SALUTEM"
+    db_session.refresh(cita_agendada)
+    assert cita_agendada.estado == "agendada"
+
+
+def test_patch_estado_cita_sige_200(as_coordinacion, cita_agendada):
+    assert cita_agendada.origen == "SIGE"
+    resp = as_coordinacion.patch(
+        f"/api/v1/citas/{cita_agendada.id}/estado", json={"estado": "anulada"}
+    )
+    assert resp.status_code == 200
+    assert resp.json()["estado"] == "anulada"
+
+
+# ── TC-DD1-04: integración Cita agendada→PATCH→reporte ───────────────────────
+
+def test_integracion_cita_realizada_reporte(as_coordinacion, cita_agendada, db_session):
+    """Transiciona una Cita agendada a 'realizada' vía PATCH y verifica que el reporte operativo
+    la contabiliza."""
+    resp = as_coordinacion.patch(
+        f"/api/v1/citas/{cita_agendada.id}/estado",
         json={"estado": "realizada"},
     )
     assert resp.status_code == 200
 
-    # Reporte operativo: debe contar esa cita
+    # Los reportes solo cuentan citas SALUTEM: la cita pasa a ser de ese origen.
+    db_session.get(Cita, cita_agendada.id).origen = "SALUTEM"
+    db_session.commit()
+
+    # Reporte operativo: debe contar esa cita (fecha 2026-03-10)
     resp_rep = as_coordinacion.get("/api/v1/reportes/operativo", params={
         "fecha_desde": "2026-03-01",
         "fecha_hasta": "2026-03-31",

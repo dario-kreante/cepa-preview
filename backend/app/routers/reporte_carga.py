@@ -1,7 +1,8 @@
 """CEPA-093 — Reporte de carga laboral por profesional.
 
 RN-4: el profesional es un dato de referencia en el registro (no un usuario del sistema — D1).
-La carga se computa por profesional_id sobre casos/atenciones del período.
+La carga se agrupa por cita.profesional_nombre (quien atendió) y cita.especialidad,
+sobre casos/atenciones del período de citas SALUTEM.
 
 DD-4 (EPIC-09 rework): el período fecha_desde/hasta se aplica sobre Cita.fecha (tabla
 de hechos), NO sobre Ingreso.fecha_ingreso. Total_casos = ingresos distintos con al menos
@@ -22,8 +23,13 @@ from app.auth.deps import require_role
 from app.db.session import get_db
 from app.models.cita import Cita
 from app.models.ingreso import Ingreso
+from app.models.profesional import SIN_PROFESIONAL_SALUTEM
 from app.schemas.reportes import CargaProfesionalItem, ReporteCargaLaboralResponse
-from app.services.reportes_filtros import FiltrosDashboard, aplicar_filtros_ingreso
+from app.services.reportes_filtros import (
+    FiltrosDashboard,
+    aplicar_filtros_ingreso,
+    condicion_citas_reportables,
+)
 
 router = APIRouter(prefix="/api/v1/reportes", tags=["reportes"])
 
@@ -52,50 +58,71 @@ def get_carga_laboral(
         programa=programa,
     )
 
-    # Total de casos (ingresos distintos) por profesional — citas en el período
-    stmt_casos = (
+    # Decisión 11: la carga se atribuye a quien atendió (cita.profesional_nombre), no a
+    # ingreso.profesional_id. Las citas sin nombre se agrupan como "Sin profesional informado".
+    # nullif cubre el nombre en blanco (en Oracle '' ya es NULL), así se agrupa con los nulos.
+    # La expresión lleva un parámetro ligado: repetida en SELECT y GROUP BY, Oracle la ve como
+    # dos expresiones distintas (ORA-00979). Se calcula una vez en una subconsulta y se agrupa
+    # por su columna.
+    nombre_expr = func.coalesce(
+        func.nullif(func.trim(Cita.profesional_nombre), ""), SIN_PROFESIONAL_SALUTEM
+    )
+    base = (
         select(
-            Ingreso.profesional_id,
-            Ingreso.especialidad,
-            func.count(Ingreso.id.distinct()).label("total_casos"),
+            nombre_expr.label("nombre"),
+            Cita.profesional_id.label("profesional_id"),
+            Cita.especialidad.label("especialidad"),
+            Cita.id.label("cita_id"),
+            Cita.estado.label("estado"),
+            Cita.ingreso_id.label("ingreso_id"),
         )
-        .select_from(Cita)
-        .join(Ingreso, Cita.ingreso_id == Ingreso.id)
+        .where(condicion_citas_reportables())
         .where(Cita.fecha >= fecha_desde)
         .where(Cita.fecha <= fecha_hasta)
-        .where(Ingreso.profesional_id.is_not(None))
-        .group_by(Ingreso.profesional_id, Ingreso.especialidad)
+        .subquery("c")
+    )
+
+    # Total de casos (ingresos distintos) por profesional — citas en el período.
+    # max(profesional_id): con homónimos elige uno cualquiera; es solo informativo.
+    stmt_casos = (
+        select(
+            base.c.nombre,
+            func.max(base.c.profesional_id).label("profesional_id"),
+            base.c.especialidad,
+            func.count(Ingreso.id.distinct()).label("total_casos"),
+        )
+        .select_from(base)
+        .join(Ingreso, base.c.ingreso_id == Ingreso.id)
+        .group_by(base.c.nombre, base.c.especialidad)
     )
     stmt_casos = aplicar_filtros_ingreso(stmt_casos, Ingreso, filtros)
     rows = db.execute(stmt_casos).all()
 
-    # Total de atenciones realizadas por profesional en el período
+    # Total de atenciones realizadas por profesional y especialidad en el período
     stmt_atenciones = (
         select(
-            Ingreso.profesional_id,
-            func.count(Cita.id).label("total_atenciones"),
+            base.c.nombre,
+            base.c.especialidad,
+            func.count(base.c.cita_id).label("total_atenciones"),
         )
-        .select_from(Cita)
-        .join(Ingreso, Cita.ingreso_id == Ingreso.id)
-        .where(Cita.estado == "realizada")
-        .where(Cita.fecha >= fecha_desde)
-        .where(Cita.fecha <= fecha_hasta)
-        .where(Ingreso.profesional_id.is_not(None))
-        .group_by(Ingreso.profesional_id)
+        .select_from(base)
+        .join(Ingreso, base.c.ingreso_id == Ingreso.id)
+        .where(base.c.estado == "realizada")
+        .group_by(base.c.nombre, base.c.especialidad)
     )
     stmt_atenciones = aplicar_filtros_ingreso(stmt_atenciones, Ingreso, filtros)
-    atenciones_map: dict[int | None, int] = {
-        r.profesional_id: r.total_atenciones
+    atenciones_map: dict[tuple[str | None, str | None], int] = {
+        (r.nombre, r.especialidad): r.total_atenciones
         for r in db.execute(stmt_atenciones).all()
     }
 
     items = [
         CargaProfesionalItem(
             profesional_id=r.profesional_id,
-            nombre_profesional=None,  # D1: el profesional no es usuario
+            nombre_profesional=r.nombre,
             especialidad=r.especialidad,
             total_casos=r.total_casos,
-            total_atenciones=atenciones_map.get(r.profesional_id, 0),
+            total_atenciones=atenciones_map.get((r.nombre, r.especialidad), 0),
         )
         for r in rows
     ]

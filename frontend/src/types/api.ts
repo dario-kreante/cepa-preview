@@ -1258,6 +1258,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/disponibilidad-profesional/{disponibilidad_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Dar De Baja Disponibilidad Endpoint */
+        delete: operations["dar_de_baja_disponibilidad_endpoint_api_v1_disponibilidad_profesional__disponibilidad_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/propuestas-agenda": {
         parameters: {
             query?: never;
@@ -1268,8 +1285,7 @@ export interface paths {
         /** Listar Propuestas */
         get: operations["listar_propuestas_api_v1_propuestas_agenda_get"];
         put?: never;
-        /** Crear Propuesta */
-        post: operations["crear_propuesta_api_v1_propuestas_agenda_post"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1310,17 +1326,35 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/propuestas-agenda/{propuesta_id}/confirmar": {
+    "/api/v1/pacientes-por-citar/{paciente_id}/gestiones": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** Listar Gestiones Endpoint */
+        get: operations["listar_gestiones_endpoint_api_v1_pacientes_por_citar__paciente_id__gestiones_get"];
         put?: never;
-        /** Confirmar Citas Endpoint */
-        post: operations["confirmar_citas_endpoint_api_v1_propuestas_agenda__propuesta_id__confirmar_post"];
+        /** Registrar Gestion Endpoint */
+        post: operations["registrar_gestion_endpoint_api_v1_pacientes_por_citar__paciente_id__gestiones_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pacientes-por-citar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Pacientes Por Citar Endpoint */
+        get: operations["pacientes_por_citar_endpoint_api_v1_pacientes_por_citar_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1616,6 +1650,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/alertas/{alerta_id}/contexto": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Contexto Alerta
+         * @description Paciente, ingreso y cita de SALUTEM de la alerta, para gestionarla desde el panel.
+         */
+        get: operations["contexto_alerta_api_v1_alertas__alerta_id__contexto_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/alertas/{alerta_id}": {
         parameters: {
             query?: never;
@@ -1741,6 +1795,75 @@ export interface paths {
         get: operations["listar_api_v1_gaf_tramos_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/profesionales": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Listar */
+        get: operations["listar_api_v1_profesionales_get"];
+        put?: never;
+        /** Crear */
+        post: operations["crear_api_v1_profesionales_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/profesionales/{profesional_id}/actividad": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Actividad */
+        get: operations["actividad_api_v1_profesionales__profesional_id__actividad_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/profesionales/{profesional_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Actualizar */
+        patch: operations["actualizar_api_v1_profesionales__profesional_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/profesionales/importar-salutem": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Importar Salutem */
+        post: operations["importar_salutem_api_v1_profesionales_importar_salutem_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2209,6 +2332,28 @@ export interface components {
             token_type: string;
         };
         /**
+         * ActividadProfesionalRead
+         * @description Actividad del profesional según las fichas y controles vinculados a él.
+         */
+        ActividadProfesionalRead: {
+            /** Profesional Id */
+            profesional_id: number;
+            /** Total Atenciones */
+            total_atenciones: number;
+            /** Atenciones Por Especialidad */
+            atenciones_por_especialidad: components["schemas"]["AtencionPorEspecialidad"][];
+            /** Total Controles */
+            total_controles: number;
+            /** Pacientes Distintos */
+            pacientes_distintos: number;
+            /** Primera Atencion */
+            primera_atencion: string | null;
+            /** Ultima Atencion */
+            ultima_atencion: string | null;
+            /** Ultimas Atenciones */
+            ultimas_atenciones: components["schemas"]["AtencionProfesionalRead"][];
+        };
+        /**
          * AcumuladoRead
          * @description Respuesta del endpoint de acumulado de días por paciente (CEPA-071, EPIC-12).
          */
@@ -2224,7 +2369,14 @@ export interface components {
             /** Incluye Extra Sistema */
             incluye_extra_sistema: boolean;
         };
-        /** AdherenciaPaciente */
+        /**
+         * AdherenciaPaciente
+         * @description Adherencia y avance de un folio.
+         *
+         *     Criterio (Fase 2, decisión 10): ``citas_agendadas`` es el denominador y cuenta solo las
+         *     citas ya resueltas, ``realizada`` más ``inasistencia``. Las anuladas y las agendadas
+         *     futuras no cuentan. Solo se consideran citas de SALUTEM.
+         */
         AdherenciaPaciente: {
             /** Folio Id */
             folio_id: number;
@@ -2242,6 +2394,21 @@ export interface components {
             aumentos_isl: number;
             /** Pct Avance */
             pct_avance: number | null;
+        };
+        /** AlertaContextoRead */
+        AlertaContextoRead: {
+            /** Paciente Id */
+            paciente_id?: number | null;
+            /** Paciente Nombre */
+            paciente_nombre?: string | null;
+            /** Ingreso Id */
+            ingreso_id?: number | null;
+            /** Folio */
+            folio?: string | null;
+            /** Cita Id */
+            cita_id?: number | null;
+            /** Fecha */
+            fecha?: string | null;
         };
         /** AlertaLicenciaRead */
         AlertaLicenciaRead: {
@@ -2279,6 +2446,30 @@ export interface components {
             /** Fecha Creacion */
             fecha_creacion: string | null;
         };
+        /** AtencionPorEspecialidad */
+        AtencionPorEspecialidad: {
+            /** Especialidad */
+            especialidad: string;
+            /** Total */
+            total: number;
+        };
+        /** AtencionProfesionalRead */
+        AtencionProfesionalRead: {
+            /** Ficha Id */
+            ficha_id: number;
+            /** Fecha */
+            fecha: string | null;
+            /** Especialidad */
+            especialidad: string | null;
+            /** Folio */
+            folio: string;
+            /** Ingreso Id */
+            ingreso_id: number;
+            /** Paciente Id */
+            paciente_id: number;
+            /** Paciente */
+            paciente: string;
+        };
         /** AtencionSalutemRead */
         AtencionSalutemRead: {
             /** Cita Id */
@@ -2291,6 +2482,10 @@ export interface components {
             profesional: string | null;
             /** Indicacion Licencia */
             indicacion_licencia: string | null;
+            /** Tipo Reposo */
+            tipo_reposo?: string | null;
+            /** Gaf Tramo */
+            gaf_tramo?: string | null;
         };
         /** AuditLogRead */
         AuditLogRead: {
@@ -2342,10 +2537,22 @@ export interface components {
             /** Code */
             code: string;
         };
+        /** CargaDiaRead */
+        CargaDiaRead: {
+            /**
+             * Fecha
+             * Format: date
+             */
+            fecha: string;
+            /** Cupo */
+            cupo: number;
+            /** Asignados */
+            asignados: number;
+        };
         /** CargaProfesionalItem */
         CargaProfesionalItem: {
             /** Profesional Id */
-            profesional_id: number;
+            profesional_id: number | null;
             /** Nombre Profesional */
             nombre_profesional: string | null;
             /** Especialidad */
@@ -2660,14 +2867,6 @@ export interface components {
             /** Actualizado Por */
             actualizado_por?: string | null;
         };
-        /**
-         * ConfirmarCitasRequest
-         * @description IDs de CitaPropuesta a confirmar (deben pertenecer a la misma propuesta).
-         */
-        ConfirmarCitasRequest: {
-            /** Cita Ids */
-            cita_ids: number[];
-        };
         /** ConsentimientoAlerta */
         ConsentimientoAlerta: {
             /** Id */
@@ -2747,9 +2946,11 @@ export interface components {
              */
             fecha_control: string;
             /** Medico Tratante */
-            medico_tratante: string;
+            medico_tratante?: string | null;
             /** Region Derivacion */
             region_derivacion: string;
+            /** Profesional Id */
+            profesional_id?: number | null;
         };
         /**
          * ControlMedicoRead
@@ -2771,6 +2972,8 @@ export interface components {
             medico_tratante: string;
             /** Region Derivacion */
             region_derivacion: string;
+            /** Profesional Id */
+            profesional_id?: number | null;
             /** Proximo Control */
             proximo_control: string | null;
             /** Proximo Agendado */
@@ -3446,30 +3649,32 @@ export interface components {
             /** Provisorio */
             provisorio: boolean;
         };
-        /**
-         * GenerarPropuestaRequest
-         * @description Parámetros de generación de una propuesta de agenda.
-         *
-         *     fecha_inicio debe ser un día hábil (lun–vie).
-         *     fecha_fin se calcula automáticamente según el tipo:
-         *       - diaria: misma fecha que fecha_inicio
-         *       - semanal: viernes de la semana de fecha_inicio
-         *       - mensual: último día del mes de fecha_inicio
-         */
-        GenerarPropuestaRequest: {
+        /** GestionCreate */
+        GestionCreate: {
             /** Profesional Id */
             profesional_id: number;
-            tipo: components["schemas"]["TipoPropuesta"];
+            resultado: components["schemas"]["ResultadoGestion"];
+            /** Nota */
+            nota?: string | null;
+        };
+        /** GestionRead */
+        GestionRead: {
+            /** Id */
+            id: number;
+            /** Paciente Id */
+            paciente_id: number;
+            /** Profesional Id */
+            profesional_id: number;
+            resultado: components["schemas"]["ResultadoGestion"];
+            /** Nota */
+            nota: string | null;
+            /** Usuario */
+            usuario: string;
             /**
-             * Fecha Inicio
-             * Format: date
+             * Created At
+             * Format: date-time
              */
-            fecha_inicio: string;
-            /**
-             * Fecha Fin
-             * Format: date
-             */
-            fecha_fin?: string;
+            created_at: string;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -3527,6 +3732,31 @@ export interface components {
             datos: {
                 [key: string]: unknown;
             };
+        };
+        /** ImportacionSalutemResultado */
+        ImportacionSalutemResultado: {
+            /** Creados */
+            creados: number;
+            /**
+             * Actualizados
+             * @default 0
+             */
+            actualizados: number;
+            /**
+             * Adoptados
+             * @default 0
+             */
+            adoptados: number;
+            /**
+             * Vinculados
+             * @default 0
+             */
+            vinculados: number;
+            /**
+             * Errores
+             * @default []
+             */
+            errores: string[];
         };
         /**
          * IngresoCierre
@@ -3765,6 +3995,8 @@ export interface components {
             diagnostico: string;
             /** @default sistema */
             origen: components["schemas"]["OrigenLicencia"];
+            /** Eeag Gaf Tramo */
+            eeag_gaf_tramo?: string | null;
         };
         /**
          * LicenciaISLUpdate
@@ -3791,6 +4023,8 @@ export interface components {
         LicenciaSugeridaRead: {
             /** Ficha Clinica Id */
             ficha_clinica_id: number;
+            /** Cita Id */
+            cita_id?: number | null;
             /**
              * Cita Fecha
              * Format: date
@@ -3809,6 +4043,8 @@ export interface components {
             termino_calculado: boolean;
             /** Cantidad Dias */
             cantidad_dias: number | null;
+            /** Eeag Gaf Tramo */
+            eeag_gaf_tramo?: string | null;
             /** Avisos */
             avisos: string[];
             /** Ya Registrada */
@@ -3960,6 +4196,34 @@ export interface components {
             /** Especialidades */
             especialidades: string[];
         };
+        /** PacientePorCitarRead */
+        PacientePorCitarRead: {
+            /** Paciente Id */
+            paciente_id: number;
+            /** Nombre */
+            nombre: string;
+            /** Folio */
+            folio: string | null;
+            prioridad: components["schemas"]["PrioridadCita"];
+            /** Razon */
+            razon: string;
+            /** Fecha Objetivo */
+            fecha_objetivo: string | null;
+            /** Dia Sugerido */
+            dia_sugerido: string | null;
+            /**
+             * Seccion
+             * @enum {string}
+             */
+            seccion: "por_citar" | "sin_cupo" | "en_reposo";
+            /** Reposo Hasta */
+            reposo_hasta: string | null;
+            /** Sin Vinculo Salutem */
+            sin_vinculo_salutem: boolean;
+            /** Dijo Agendada Sin Hora */
+            dijo_agendada_sin_hora: boolean;
+            ultima_gestion: components["schemas"]["UltimaGestionRead"] | null;
+        };
         /** PacienteRead */
         PacienteRead: {
             /** Id */
@@ -4004,6 +4268,27 @@ export interface components {
             telefono?: string | null;
             /** Correo */
             correo?: string | null;
+        };
+        /** PacientesPorCitarRead */
+        PacientesPorCitarRead: {
+            /** Profesional Id */
+            profesional_id: number;
+            /**
+             * Desde
+             * Format: date
+             */
+            desde: string;
+            /**
+             * Hasta
+             * Format: date
+             */
+            hasta: string;
+            /** Por Dia */
+            por_dia: components["schemas"]["CargaDiaRead"][];
+            /** Feriados */
+            feriados: string[];
+            /** Pacientes */
+            pacientes: components["schemas"]["PacientePorCitarRead"][];
         };
         /**
          * PdfConfirmPayload
@@ -4204,6 +4489,55 @@ export interface components {
             doc_incumplimiento?: string | null;
             /** Observaciones */
             observaciones?: string | null;
+        };
+        /** ProfesionalCreate */
+        ProfesionalCreate: {
+            /** Nombre */
+            nombre: string;
+            /** Especialidad */
+            especialidad?: string | null;
+        };
+        /** ProfesionalRead */
+        ProfesionalRead: {
+            /** Id */
+            id: number;
+            /** Nombre */
+            nombre: string;
+            /** Especialidad */
+            especialidad: string | null;
+            /** Origen */
+            origen: string;
+            /** Activo */
+            activo: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Salutem Profesional Id */
+            salutem_profesional_id?: number | null;
+            /** Especialidades */
+            especialidades?: string[] | null;
+            /** Sucursales */
+            sucursales?: string[] | null;
+            /** Primera Atencion */
+            primera_atencion?: string | null;
+            /** Ultima Atencion */
+            ultima_atencion?: string | null;
+            /** Sincronizado En */
+            sincronizado_en?: string | null;
+        };
+        /**
+         * ProfesionalUpdate
+         * @description Campos opcionales: solo se cambia lo que viene.
+         */
+        ProfesionalUpdate: {
+            /** Nombre */
+            nombre?: string | null;
+            /** Especialidad */
+            especialidad?: string | null;
+            /** Activo */
+            activo?: boolean | null;
         };
         /** PropuestaAgendaRead */
         PropuestaAgendaRead: {
@@ -4578,6 +4912,12 @@ export interface components {
             };
         };
         /**
+         * ResultadoGestion
+         * @description Resultado de un intento de contacto con un paciente por citar.
+         * @enum {string}
+         */
+        ResultadoGestion: "agendada_en_salutem" | "no_contesta" | "rechaza" | "otro";
+        /**
          * ResumenDashboard
          * @description Respuesta del endpoint GET /dashboard.
          */
@@ -4853,7 +5193,7 @@ export interface components {
          * @description Tipos de alerta del motor: los 7 de CEPA-100 más el GAF de licencia (CEPA-075).
          * @enum {string}
          */
-        TipoAlerta: "control_medico" | "vencimiento_licencia" | "plazo_ept" | "plazo_isl" | "consentimiento_pendiente" | "receta_por_renovar" | "oda_por_vencer" | "gaf_licencia" | "licencia_en_control" | "receta_en_control" | "paciente_pendiente_folio";
+        TipoAlerta: "control_medico" | "vencimiento_licencia" | "plazo_ept" | "plazo_isl" | "consentimiento_pendiente" | "receta_por_renovar" | "oda_por_vencer" | "gaf_licencia" | "licencia_en_control" | "receta_en_control" | "paciente_pendiente_folio" | "inasistencia";
         /**
          * TipoAlta
          * @description Tipos de alta válidos (§7.1.3, v4 D6).
@@ -4897,6 +5237,19 @@ export interface components {
              * @default bearer
              */
             token_type: string;
+        };
+        /** UltimaGestionRead */
+        UltimaGestionRead: {
+            /**
+             * Fecha
+             * Format: date-time
+             */
+            fecha: string;
+            resultado: components["schemas"]["ResultadoGestion"];
+            /** Usuario */
+            usuario: string;
+            /** Nota */
+            nota: string | null;
         };
         /** UsuarioCreate */
         UsuarioCreate: {
@@ -7939,6 +8292,35 @@ export interface operations {
             };
         };
     };
+    dar_de_baja_disponibilidad_endpoint_api_v1_disponibilidad_profesional__disponibilidad_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                disponibilidad_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     listar_propuestas_api_v1_propuestas_agenda_get: {
         parameters: {
             query?: {
@@ -7957,39 +8339,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PropuestaAgendaRead"][];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    crear_propuesta_api_v1_propuestas_agenda_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["GenerarPropuestaRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PropuestaAgendaRead"];
                 };
             };
             /** @description Validation Error */
@@ -8065,20 +8414,16 @@ export interface operations {
             };
         };
     };
-    confirmar_citas_endpoint_api_v1_propuestas_agenda__propuesta_id__confirmar_post: {
+    listar_gestiones_endpoint_api_v1_pacientes_por_citar__paciente_id__gestiones_get: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                propuesta_id: number;
+                paciente_id: number;
             };
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ConfirmarCitasRequest"];
-            };
-        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {
@@ -8086,7 +8431,75 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CitaPropuestaRead"][];
+                    "application/json": components["schemas"]["GestionRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    registrar_gestion_endpoint_api_v1_pacientes_por_citar__paciente_id__gestiones_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                paciente_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GestionCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GestionRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    pacientes_por_citar_endpoint_api_v1_pacientes_por_citar_get: {
+        parameters: {
+            query: {
+                profesional_id: number;
+                desde?: string | null;
+                hasta?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PacientesPorCitarRead"];
                 };
             };
             /** @description Validation Error */
@@ -8552,6 +8965,37 @@ export interface operations {
             };
         };
     };
+    contexto_alerta_api_v1_alertas__alerta_id__contexto_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                alerta_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlertaContextoRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     actualizar_estado_alerta_api_v1_alertas__alerta_id__patch: {
         parameters: {
             query?: never;
@@ -8758,6 +9202,156 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["GafTramoRead"][];
+                };
+            };
+        };
+    };
+    listar_api_v1_profesionales_get: {
+        parameters: {
+            query?: {
+                solo_activos?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfesionalRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    crear_api_v1_profesionales_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProfesionalCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfesionalRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    actividad_api_v1_profesionales__profesional_id__actividad_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                profesional_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActividadProfesionalRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    actualizar_api_v1_profesionales__profesional_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                profesional_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProfesionalUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfesionalRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    importar_salutem_api_v1_profesionales_importar_salutem_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportacionSalutemResultado"];
                 };
             };
         };

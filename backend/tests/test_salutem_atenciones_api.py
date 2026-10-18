@@ -28,7 +28,11 @@ def _archivo(db, archivo_id, creado):
 EVALUACION = {
     "especialidadNombre": "Evaluación médica",
     "profesionalNombre": "DRA. PAULA ROJAS",
-    "antecedentes": [{"nombre": "Indicación de reposo", "registro": "Reposo por 15 días desde el 15/10/2026"}],
+    "antecedentes": [
+        {"agrupacion": "Conclusiones", "nombre": "GAF", "registro": {"3": "51-60"}},
+        {"agrupacion": "Conclusiones", "nombre": "Indicación de reposo", "registro": "Reposo por 15 días desde el 15/10/2026"},
+        {"agrupacion": "Conclusiones", "nombre": "Tipo de reposo", "registro": {"5": "Total"}},
+    ],
 }
 
 
@@ -44,6 +48,8 @@ def test_muestra_la_atencion_con_la_indicacion_de_licencia(as_admin, db_session)
         "especialidad": "Evaluación médica",
         "profesional": "DRA. PAULA ROJAS",
         "indicacion_licencia": "Reposo por 15 días desde el 15/10/2026",
+        "tipo_reposo": "Total",
+        "gaf_tramo": "51-60",
     }
 
 

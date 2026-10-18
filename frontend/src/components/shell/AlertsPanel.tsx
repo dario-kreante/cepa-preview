@@ -85,6 +85,7 @@ export const TITULOS_ALERTA: Record<string, string> = {
   licencia_en_control: "Licencia emitida en control",
   receta_en_control: "Receta emitida en control",
   paciente_pendiente_folio: "Paciente nuevo pendiente de folio",
+  inasistencia: "Inasistencia a cita",
 };
 
 /** Alertas de un control médico: al hacer clic abren sus documentos en un diálogo. */
@@ -106,6 +107,7 @@ export function tituloAlerta(tipo: string, casoTipo?: string | null): string {
 const ETIQUETAS_CASO: Record<string, string> = {
   control_medico: "Control",
   [CASO_ATENCION]: "Atención SALUTEM",
+  salutem_cita: "Cita SALUTEM",
   paciente: "Paciente",
 };
 
@@ -140,12 +142,15 @@ export function routeForCaso(
   pacienteId?: number | null,
 ): string {
   if (pacienteId && casoTipo === "oda") return `/ingresos?paciente=${pacienteId}&tab=odas`;
-  if (pacienteId && casoTipo === "ingreso") return `/ingresos?paciente=${pacienteId}`;
+  if (pacienteId && (casoTipo === "ingreso" || casoTipo === "salutem_cita"))
+    return `/ingresos?paciente=${pacienteId}`;
   switch (casoTipo) {
     case "ept":
       return casoId ? `/ept?caso=${casoId}` : "/ept";
     case "control_medico":
       return "/controles";
+    case "salutem_cita":
+      return "/ingresos";
     case "receta":
       return "/farmacos";
     case "licencia":
@@ -176,6 +181,25 @@ interface AlertItemProps {
   /** Solo para quien puede gestionar alertas; sin él la alerta es de solo lectura. */
   onResolver?: () => void;
   ocupado?: boolean;
+}
+
+/** Texto de fecha de una alerta según su tipo; sin plazo, cuándo se generó. */
+function metaAlerta(
+  a: {
+    tipo: string;
+    caso_tipo?: string | null;
+    plazo_objetivo?: string | null;
+    generada_en: string;
+  },
+  esDeControl: boolean,
+): string {
+  if (!a.plazo_objetivo) return formatDate(a.generada_en);
+  if (a.tipo === "inasistencia") return `Cita: ${formatDate(a.plazo_objetivo, "UTC")}`;
+  if (esDeControl) {
+    const etiqueta = a.caso_tipo === CASO_ATENCION ? "Atención" : "Control";
+    return `${etiqueta}: ${formatDate(a.plazo_objetivo, "UTC")}`;
+  }
+  return `Plazo: ${formatDate(a.plazo_objetivo)}`;
 }
 
 /** Tiempo que una alerta tiene que estar en pantalla para darla por leída. */
@@ -474,11 +498,7 @@ export function AlertsPanel({ onClose }: AlertsPanelProps = {}) {
           // En licencia/receta de un control, plazo_objetivo es la fecha del control a medianoche
           // UTC: en hora local de Chile caería el día anterior.
           const esDeControl = a.tipo === "licencia_en_control" || a.tipo === "receta_en_control";
-          const meta = a.plazo_objetivo
-            ? esDeControl
-              ? `${a.caso_tipo === CASO_ATENCION ? "Atención" : "Control"}: ${formatDate(a.plazo_objetivo, "UTC")}`
-              : `Plazo: ${formatDate(a.plazo_objetivo)}`
-            : formatDate(a.generada_en);
+          const meta = metaAlerta(a, esDeControl);
 
           return (
             <AlertItem
@@ -555,6 +575,12 @@ export function AlertsPanel({ onClose }: AlertsPanelProps = {}) {
         titulo={alertaControl ? tituloAlerta(alertaControl.tipo, alertaControl.caso_tipo) : ""}
         caso={casoAbierto}
         onOpenChange={(open) => !open && setAlertaControl(null)}
+        alertaId={alertaControl?.id ?? null}
+        tipoAlerta={alertaControl?.tipo}
+        pendiente={alertaControl ? alertaControl.estado !== "resuelta" : false}
+        puedeGestionar={escritor}
+        onResolver={alertaControl ? () => cambiarEstado(alertaControl, "resuelta") : undefined}
+        onIr={ir}
       />
     </aside>
   );

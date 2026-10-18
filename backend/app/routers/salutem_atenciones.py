@@ -20,6 +20,7 @@ from app.audit.service import record_audit
 from app.auth.deps import get_current_user, require_role
 from app.db.session import get_db
 from app.integrations.salutem.client import get_salutem_client
+from app.integrations.salutem.campos import campo, tramo_gaf
 from app.integrations.salutem.errors import SalutemError
 from app.models.salutem_copia import SalutemAtencion
 from app.schemas.control_medico import ArchivoControlRead
@@ -38,6 +39,9 @@ class AtencionSalutemRead(BaseModel):
     profesional: str | None
     # Lo que el médico indicó sobre la licencia, si lo hay.
     indicacion_licencia: str | None
+    # Campos del ítem "Indicación de reposo": tipo (Total/Parcial) y GAF por tramo.
+    tipo_reposo: str | None = None
+    gaf_tramo: str | None = None
 
 
 def _texto(v: object) -> str | None:
@@ -62,6 +66,8 @@ def obtener_atencion(cita_id: int, db: Session = Depends(get_db)) -> AtencionSal
         especialidad=_texto(c.get("especialidadNombre")),
         profesional=_texto(c.get("profesionalNombre")),
         indicacion_licencia=licencia.texto[:500] if licencia else None,
+        tipo_reposo=campo(c, "Tipo de reposo"),
+        gaf_tramo=tramo_gaf(campo(c, "GAF")),
     )
 
 

@@ -15,6 +15,7 @@ import {
   FileScan,
   BellRing,
   UserRoundSearch,
+  Contact,
   type LucideIcon,
 } from "lucide-react";
 import type { Rol } from "@/lib/rbac";
@@ -70,7 +71,7 @@ export const NAV: NavSection[] = [
   {
     label: "Operación",
     items: [
-      { to: "/agenda", label: "Agendamiento", icon: Calendar },
+      { to: "/agenda", label: "Pacientes por citar", icon: Calendar },
       { to: "/reportes", label: "Reportería", icon: BarChart3 },
       {
         to: "/lectura-pdf",
@@ -99,6 +100,12 @@ export const NAV: NavSection[] = [
         to: "/ventanas-proceso",
         label: "Ventanas de proceso",
         icon: LayoutGrid,
+      },
+      {
+        to: "/profesionales",
+        label: "Profesionales",
+        icon: Contact,
+        roles: ["Coordinacion", "Administrativo"],
       },
       {
         to: "/config-alertas",
@@ -132,12 +139,13 @@ export const TITLE_MAP: Record<string, string> = {
   "/ept": "Seguimiento EPT",
   "/reintegro": "Seguimiento reintegro",
   "/auditoria": "Auditoría",
-  "/agenda": "Agendamiento",
+  "/agenda": "Pacientes por citar",
   "/reportes": "Reportería",
   "/lectura-pdf": "Lectura de PDF",
   "/usuarios": "Usuarios y roles",
   "/config-formularios": "Formularios dinámicos",
   "/ventanas-proceso": "Ventanas de proceso",
+  "/profesionales": "Profesionales",
   "/config-alertas": "Umbrales de alerta",
   "/configuracion": "Configuración",
   "/ayuda": "Ayuda y soporte",
@@ -155,12 +163,13 @@ export const CRUMBS_MAP: Record<string, string> = {
   "/ept": "Inicio · Clínico · Seguimiento EPT",
   "/reintegro": "Inicio · Clínico · Reintegro laboral",
   "/auditoria": "Inicio · Auditoría",
-  "/agenda": "Inicio · Operación · Agendamiento",
+  "/agenda": "Inicio · Operación · Pacientes por citar",
   "/reportes": "Inicio · Operación · Reportería",
   "/lectura-pdf": "Inicio · Operación · Lectura de PDF",
   "/usuarios": "Inicio · Administración · Usuarios y roles",
   "/config-formularios": "Inicio · Administración · Formularios dinámicos",
   "/ventanas-proceso": "Inicio · Administración · Ventanas de proceso",
+  "/profesionales": "Inicio · Administración · Profesionales",
   "/config-alertas": "Inicio · Administración · Umbrales de alerta",
   "/configuracion": "Inicio · Configuración",
   "/ayuda": "Inicio · Ayuda y soporte",

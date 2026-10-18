@@ -19,7 +19,11 @@ from app.models.ingreso import Ingreso
 from app.domain.enums import EstadoCaso
 from app.schemas.reportes import DashboardOperativo, IngresosActivos, ResumenDashboard
 from app.services.dashboard_operativo import PeriodoInvalido, resumen_operativo
-from app.services.reportes_filtros import FiltrosDashboard, aplicar_filtros_ingreso
+from app.services.reportes_filtros import (
+    FiltrosDashboard,
+    aplicar_filtros_ingreso,
+    condicion_citas_reportables,
+)
 
 router = APIRouter(prefix="/api/v1/dashboard", tags=["dashboard"])
 
@@ -133,6 +137,7 @@ def get_dashboard(
             select(func.count())
             .select_from(Cita)
             .join(Ingreso, Cita.ingreso_id == Ingreso.id)
+            .where(condicion_citas_reportables())
             .where(Cita.estado == estado)
         )
         stmt = aplicar_filtros_ingreso(stmt, Ingreso, filtros)
@@ -170,6 +175,7 @@ def get_dashboard(
         select(Ingreso.tipo_convenio, func.count(Cita.id).label("total"))
         .select_from(Cita)
         .join(Ingreso, Cita.ingreso_id == Ingreso.id)
+        .where(condicion_citas_reportables())
         .where(Cita.estado == "realizada")
         .group_by(Ingreso.tipo_convenio)
     )

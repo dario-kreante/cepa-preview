@@ -119,7 +119,8 @@ class ReporteCumplimientoResponse(BaseModel):
 # ── Carga laboral (CEPA-093) ──────────────────────────────────────────────────
 
 class CargaProfesionalItem(BaseModel):
-    profesional_id: int
+    # None cuando quien atendió no está en el catálogo de profesionales.
+    profesional_id: int | None
     nombre_profesional: str | None
     especialidad: str | None
     total_casos: int
@@ -151,10 +152,17 @@ class ReporteLicenciasResponse(BaseModel):
 # ── Adherencia y avance (CEPA-095) ───────────────────────────────────────────
 
 class AdherenciaPaciente(BaseModel):
+    """Adherencia y avance de un folio.
+
+    Criterio (Fase 2, decisión 10): ``citas_agendadas`` es el denominador y cuenta solo las
+    citas ya resueltas, ``realizada`` más ``inasistencia``. Las anuladas y las agendadas
+    futuras no cuentan. Solo se consideran citas de SALUTEM.
+    """
+
     folio_id: int
-    citas_agendadas: int
+    citas_agendadas: int  # denominador: realizadas + inasistencias
     citas_realizadas: int
-    pct_adherencia: float | None  # None si citas_agendadas == 0
+    pct_adherencia: float | None  # None si el denominador es 0
     sesiones_realizadas: int
     sesiones_plan: int | None
     aumentos_isl: int
