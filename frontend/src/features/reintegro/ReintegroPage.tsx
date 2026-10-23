@@ -9,7 +9,7 @@
  *
  * RBAC: escritura = Coordinacion + Administrativo (puedeEscribir). Auditor lee.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Search, Plus, RefreshCw, AlertCircle, Hash, Pencil } from "lucide-react";
 import { Card } from "@/components/ui/card";
@@ -25,7 +25,11 @@ import { NuevoCasoReintegroDialog } from "./NuevoCasoReintegroDialog";
 import { NuevaRecaDialog } from "./NuevaRecaDialog";
 import { CierreDialog } from "./CierreDialog";
 import { ESTADO_REINTEGRO_LABELS } from "./cierreSchema";
-import type { CasoReintegroForm } from "./casoReintegroSchema";
+import {
+  SEXO_VALUES,
+  TIPO_DERIVACION_VALUES,
+  type CasoReintegroForm,
+} from "./casoReintegroSchema";
 import type { RecaForm } from "./recaSchema";
 import type { CasoReintegroRead, EstadoReintegro } from "./api";
 import type { components } from "@/types/api";
@@ -176,7 +180,7 @@ function CasoPanel({
   if (!caso) return null;
 
   const initialValues: CasoReintegroForm = {
-    rut: caso.rut,
+    rut: caso.rut ?? "",
     nombre: caso.nombre,
     tipo_derivacion: caso.tipo_derivacion,
     fecha_caso: caso.fecha_caso,
@@ -317,6 +321,23 @@ export function ReintegroPage() {
   const ingresoId: number | undefined = vista?.ingresos?.[0]?.id;
   const { data: casosIngreso = [] } = useCasosPorIngreso(ingresoId ?? null);
 
+  // Precarga del alta con los datos del paciente y de su ingreso principal.
+  const prefillCaso = useMemo<Partial<CasoReintegroForm> | undefined>(() => {
+    if (!vista) return undefined;
+    const p = vista.paciente;
+    const ing = vista.ingresos?.[0];
+    const prefill: Partial<CasoReintegroForm> = { rut: p.rut ?? "", nombre: p.nombre };
+    if (p.sexo && (SEXO_VALUES as readonly string[]).includes(p.sexo)) {
+      prefill.sexo = p.sexo as CasoReintegroForm["sexo"];
+    }
+    if (p.edad) prefill.edad = p.edad;
+    if (p.region) prefill.region = p.region;
+    if (ing && (TIPO_DERIVACION_VALUES as readonly string[]).includes(ing.tipo_derivacion)) {
+      prefill.tipo_derivacion = ing.tipo_derivacion as CasoReintegroForm["tipo_derivacion"];
+    }
+    return prefill;
+  }, [vista]);
+
   const [casoIdInput, setCasoIdInput] = useState("");
   const [casoId, setCasoId] = useState<number | null>(() => {
     const param = searchParams.get("caso");
@@ -373,6 +394,7 @@ export function ReintegroPage() {
             {ingresoId && (
               <NuevoCasoReintegroDialog
                 ingresoId={ingresoId}
+                prefill={prefillCaso}
                 open={nuevaOpen}
                 onOpenChange={setNuevaOpen}
                 onSaved={(caso) => {

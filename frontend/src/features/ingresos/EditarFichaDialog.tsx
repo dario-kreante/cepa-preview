@@ -30,6 +30,7 @@ const TIPOS_DERIVACION = [
   "PAPT a flujo AT",
   "Reingreso FUMP",
   "Reingreso SUSESO",
+  "Reingreso ISL",
   "Convenio U.Clinica",
   "Proyecto",
   "Particular",

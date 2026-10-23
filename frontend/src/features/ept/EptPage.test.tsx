@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { http, HttpResponse } from "msw";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -90,8 +90,12 @@ const MOCK_CASO: import("./api").CasoEptRead = {
 
 // ── Helper: set up paciente search + vista360 + POST mocks ───────────────────
 
-function setupPacienteHandlers(captureBody?: (b: unknown) => void) {
+function setupPacienteHandlers(
+  captureBody?: (b: unknown) => void,
+  casosPaciente: import("./api").CasoEptRead[] = [],
+) {
   server.use(
+    http.get(`${BASE}/api/v1/casos-ept`, () => HttpResponse.json(casosPaciente)),
     http.get(`${BASE}/api/v1/pacientes/buscar`, ({ request }) => {
       const url = new URL(request.url);
       if (url.searchParams.get("q")) return HttpResponse.json([MOCK_PACIENTE]);
@@ -279,7 +283,8 @@ describe("EptPage", () => {
       ),
       http.get(`${BASE}/api/v1/pacientes/:pacienteId/vista-360`, () =>
         HttpResponse.json({ paciente: MOCK_PACIENTE, ingresos: [] })
-      )
+      ),
+      http.get(`${BASE}/api/v1/casos-ept`, () => HttpResponse.json([]))
     );
 
     renderPage(ADMIN_TOKEN);
@@ -301,5 +306,57 @@ describe("EptPage", () => {
         ).toBeInTheDocument(),
       { timeout: 8000 }
     );
+  });
+
+  // ── QA Pilar 22-10 QA-003: casos del paciente y borrado ───────────────────
+
+  it("al seleccionar un paciente lista sus casos EPT y permite abrir uno", async () => {
+    const otro = { ...MOCK_CASO, id: 56, fecha_ingreso_ept: "2026-02-01" };
+    setupPacienteHandlers(undefined, [otro, MOCK_CASO]);
+    renderPage(ADMIN_TOKEN);
+
+    await userEvent.type(
+      screen.getByPlaceholderText("Buscar por RUT, folio, nombre o ID SALUTEM"),
+      "Juan"
+    );
+    await userEvent.click(await screen.findByText("Juan Pérez", {}, { timeout: 8000 }));
+
+    const tabla = await screen.findByTestId("casos-ept-paciente", {}, { timeout: 8000 });
+    expect(tabla).toHaveTextContent("Casos EPT de Juan Pérez (2)");
+
+    await userEvent.click(screen.getByRole("button", { name: "Abrir caso 55" }));
+    expect(await screen.findByText("Caso N° 55", {}, { timeout: 8000 })).toBeInTheDocument();
+  });
+
+  it("Administrativo elimina un caso tras confirmar y el detalle se cierra", async () => {
+    const deleteSpy = vi.fn();
+    server.use(
+      http.get(`${BASE}/api/v1/casos-ept/:casoId`, () => HttpResponse.json(MOCK_CASO)),
+      http.delete(`${BASE}/api/v1/casos-ept/:casoId`, ({ params }) => {
+        deleteSpy(params.casoId);
+        return new HttpResponse(null, { status: 204 });
+      })
+    );
+    renderPage(ADMIN_TOKEN);
+
+    await userEvent.type(screen.getByPlaceholderText("Cargar caso N°"), "55");
+    await userEvent.click(screen.getByTestId("btn-cargar-caso"));
+    await userEvent.click(await screen.findByTestId("btn-eliminar-caso", {}, { timeout: 8000 }));
+    await userEvent.click(await screen.findByTestId("btn-confirmar-eliminar"));
+
+    await waitFor(() => expect(deleteSpy).toHaveBeenCalledWith("55"));
+    await waitFor(() => expect(screen.queryByText("Caso N° 55")).not.toBeInTheDocument());
+  });
+
+  it("Coordinacion NO ve el botón Eliminar", async () => {
+    server.use(
+      http.get(`${BASE}/api/v1/casos-ept/:casoId`, () => HttpResponse.json(MOCK_CASO))
+    );
+    renderPage(COORD_TOKEN);
+
+    await userEvent.type(screen.getByPlaceholderText("Cargar caso N°"), "55");
+    await userEvent.click(screen.getByTestId("btn-cargar-caso"));
+    await screen.findByText("Caso N° 55", {}, { timeout: 8000 });
+    expect(screen.queryByTestId("btn-eliminar-caso")).not.toBeInTheDocument();
   });
 });

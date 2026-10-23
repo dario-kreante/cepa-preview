@@ -21,7 +21,8 @@ class CasoReintegroCreate(BaseModel):
     """Alta de caso de reintegro. Campos obligatorios según D5/D6."""
 
     ingreso_id: int
-    rut: str
+    # Si no se indica, se toma el del paciente del ingreso (puede no tenerlo).
+    rut: str | None = None
     nombre: str
     tipo_derivacion: TipoDerivacion
     fecha_caso: date
@@ -34,7 +35,9 @@ class CasoReintegroCreate(BaseModel):
 
     @field_validator("rut")
     @classmethod
-    def _rut_valido(cls, v: str) -> str:
+    def _rut_valido(cls, v: str | None) -> str | None:
+        if v is None or not v.strip():
+            return None
         try:
             return normalizar_rut(v)
         except RutInvalidoError as exc:
@@ -66,7 +69,7 @@ class CasoReintegroRead(BaseModel):
 
     id: int
     ingreso_id: int
-    rut: str
+    rut: str | None
     nombre: str
     tipo_derivacion: TipoDerivacion
     fecha_caso: date

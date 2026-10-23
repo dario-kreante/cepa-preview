@@ -151,3 +151,17 @@ def test_auditor_no_puede_hacer_push(as_auditor, ingreso_existente):
         json={"folio": folio, "origen": "SAM", "contenido": {}},
     )
     assert r.status_code == 403
+
+
+def test_pull_fichas_ordenadas_de_la_mas_reciente_a_la_mas_antigua(as_admin, ingreso_existente):
+    """QA Pilar 23-10: las atenciones SALUTEM se listan por citaFecha descendente."""
+    folio = ingreso_existente["folio"]
+    for fecha in ("2025-03-01T10:00:00", "2026-10-20T09:00:00", "2022-01-05T08:00:00", None):
+        contenido = {"nota": "x"} if fecha is None else {"citaFecha": fecha}
+        as_admin.post(
+            "/api/v1/fichas-clinicas",
+            json={"folio": folio, "origen": "SALUTEM", "contenido": contenido},
+        )
+    r = as_admin.get(f"/api/v1/fichas-clinicas/{folio}")
+    fechas = [f["contenido"].get("citaFecha") for f in r.json()]
+    assert fechas == ["2026-10-20T09:00:00", "2025-03-01T10:00:00", "2022-01-05T08:00:00", None]

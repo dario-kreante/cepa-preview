@@ -717,7 +717,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * Listar Por Paciente
+         * @description Casos EPT de todos los ingresos del paciente (búsqueda por RUT/nombre en la UI).
+         */
+        get: operations["listar_por_paciente_api_v1_casos_ept_get"];
         put?: never;
         /** Crear */
         post: operations["crear_api_v1_casos_ept_post"];
@@ -738,7 +742,11 @@ export interface paths {
         get: operations["obtener_api_v1_casos_ept__caso_id__get"];
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Eliminar
+         * @description Elimina un caso EPT creado por error (p. ej. duplicado). Queda en la auditoría.
+         */
+        delete: operations["eliminar_api_v1_casos_ept__caso_id__delete"];
         options?: never;
         head?: never;
         /** Actualizar */
@@ -1165,8 +1173,12 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Búsqueda de casos por RUT o folio
-         * @description Busca casos por RUT, folio o número de siniestro. Retorna lista de vistas consolidadas.
+         * Búsqueda de casos por texto libre (RUT, nombre, folio o siniestro)
+         * @description Busca casos por texto libre (``q``) o por RUT, folio o número de siniestro exactos.
+         *     Retorna lista de vistas consolidadas.
+         *
+         *     ``q`` reutiliza la búsqueda de pacientes (RUT normalizado, nombre parcial, folio,
+         *     identidad SALUTEM) y además matchea el número de siniestro.
          *
          *     Cada siniestro bajo el mismo RUT es un caso diferenciado (CA-2, RN-3, D2).
          */
@@ -1637,8 +1649,8 @@ export interface paths {
          * Listar Alertas
          * @description Panel de notificaciones in-app: devuelve alertas filtradas por rol y asignación.
          *
-         *     - Administrativo: sus alertas (usuario_id == current_user.id) y las de ingresos sin
-         *       profesional asignado (usuario_id nulo), que de otro modo solo vería Coordinación.
+         *     - Administrativo: sus alertas (usuario_id == current_user.id) y las sin destinatario
+         *       (usuario_id nulo, panel general), que de otro modo solo vería Coordinación.
          *     - Coordinacion/Auditor: todas las alertas (alcance ampliado, RN-2/RN-3 CEPA-101).
          */
         get: operations["listar_alertas_api_v1_alertas_get"];
@@ -2683,7 +2695,7 @@ export interface components {
             /** Ingreso Id */
             ingreso_id: number;
             /** Rut */
-            rut: string;
+            rut?: string | null;
             /** Nombre */
             nombre: string;
             tipo_derivacion: components["schemas"]["TipoDerivacion"];
@@ -2710,7 +2722,7 @@ export interface components {
             /** Ingreso Id */
             ingreso_id: number;
             /** Rut */
-            rut: string;
+            rut: string | null;
             /** Nombre */
             nombre: string;
             tipo_derivacion: components["schemas"]["TipoDerivacion"];
@@ -2951,6 +2963,8 @@ export interface components {
             region_derivacion: string;
             /** Profesional Id */
             profesional_id?: number | null;
+            /** Observaciones */
+            observaciones?: string | null;
         };
         /**
          * ControlMedicoRead
@@ -5205,7 +5219,7 @@ export interface components {
          * @description Tipos de derivación permitidos (v4 D4). 'SOCORRO' ya no es válido.
          * @enum {string}
          */
-        TipoDerivacion: "DIEP" | "DIAT" | "PAPT a flujo AT" | "Reingreso FUMP" | "Reingreso SUSESO" | "Convenio U.Clinica" | "Proyecto" | "Particular" | "PAPT";
+        TipoDerivacion: "DIEP" | "DIAT" | "PAPT a flujo AT" | "Reingreso FUMP" | "Reingreso SUSESO" | "Reingreso ISL" | "Convenio U.Clinica" | "Proyecto" | "Particular" | "PAPT";
         /**
          * TipoIngreso
          * @description Tipo de ingreso (v4 D6 / dashboard D5).
@@ -7014,6 +7028,38 @@ export interface operations {
             };
         };
     };
+    listar_por_paciente_api_v1_casos_ept_get: {
+        parameters: {
+            query: {
+                /** @description Paciente cuyos casos EPT se listan */
+                paciente_id: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CasoEptRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     crear_api_v1_casos_ept_post: {
         parameters: {
             query?: never;
@@ -7066,6 +7112,35 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["CasoEptRead"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    eliminar_api_v1_casos_ept__caso_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                caso_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -8129,6 +8204,8 @@ export interface operations {
     buscar_casos_api_v1_auditoria_casos_get: {
         parameters: {
             query?: {
+                /** @description Texto libre: RUT (con o sin formato), nombre parcial, folio o N° de siniestro */
+                q?: string | null;
                 /** @description RUT normalizado del paciente */
                 rut?: string | null;
                 /** @description Folio del ingreso */

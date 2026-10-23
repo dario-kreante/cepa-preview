@@ -1,16 +1,14 @@
 /**
  * EptPage — caso-céntrico workspace for Seguimiento EPT.
  *
- * ARCHITECTURAL NOTE:
- * The EPT backend exposes NO list, no search, and no por-ingreso endpoint.
- * Vista360 also does NOT include EPT casos. The ONLY way to reach a caso is:
- *   GET /api/v1/casos-ept/{caso_id}
- *
- * Navigation to a caso is therefore caso-céntrico via two paths:
- *   1. Alta paciente-driven: search paciente → resolve ingreso_id via Vista360
- *      → create caso with "Nueva EPT" → active caso detail appears.
+ * Navigation to a caso:
+ *   1. Paciente-driven: search paciente (RUT, nombre, folio, ID SALUTEM) → list
+ *      his casos EPT (GET /api/v1/casos-ept?paciente_id=) → "Abrir" one, or
+ *      resolve ingreso_id via Vista360 and create a new one with "Nueva EPT".
  *   2. Cargar por caso_id: type a known caso_id in the numeric input (or pass
  *      ?caso=<id> in the URL) → GET /api/v1/casos-ept/{caso_id} → detail renders.
+ *
+ * A caso created by mistake (e.g. a duplicate) can be deleted by Administrativo.
  *
  * RBAC: EPT write = Administrativo ONLY (puedeEscribirEpt). Coordinacion can
  * read but NOT write — this is intentionally stricter than other modules.
@@ -24,16 +22,26 @@ import {
   AlertCircle,
   Hash,
   Pencil,
+  Trash2,
 } from "lucide-react";
+import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { cn, fmtDate } from "@/lib/utils";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { puedeEscribirEpt, type Rol } from "@/lib/rbac";
 import { useBuscarPacientes, useVista360 } from "@/features/ingresos/hooks";
-import { useCaso } from "./hooks";
+import { useCaso, useCasosPorPaciente, useEliminarCaso } from "./hooks";
 import { NuevoCasoEptDialog } from "./NuevoCasoEptDialog";
 import { ProcesoEptPanel } from "./ProcesoEptPanel";
 import { PlazosEptPanel } from "./PlazosEptPanel";
@@ -76,9 +84,10 @@ interface CasoDetailProps {
   caso: CasoEptRead;
   canWrite: boolean;
   onEdit: () => void;
+  onDelete: () => void;
 }
 
-function CasoDetail({ caso, canWrite, onEdit }: CasoDetailProps) {
+function CasoDetail({ caso, canWrite, onEdit, onDelete }: CasoDetailProps) {
   return (
     <Card className="p-5 space-y-4">
       {/* Header row */}
@@ -107,6 +116,19 @@ function CasoDetail({ caso, canWrite, onEdit }: CasoDetailProps) {
             >
               <Pencil className="size-3 mr-1" />
               Editar caso
+            </Button>
+          )}
+          {canWrite && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 text-[11.5px] px-2 text-destructive hover:text-destructive"
+              aria-label="Eliminar caso"
+              data-testid="btn-eliminar-caso"
+              onClick={onDelete}
+            >
+              <Trash2 className="size-3 mr-1" />
+              Eliminar
             </Button>
           )}
         </div>
@@ -176,17 +198,77 @@ function CasoDetail({ caso, canWrite, onEdit }: CasoDetailProps) {
   );
 }
 
+// ── Confirmación de borrado ─────────────────────────────────────────────────
+
+interface EliminarCasoDialogProps {
+  caso: CasoEptRead;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onDeleted: () => void;
+}
+
+function EliminarCasoDialog({ caso, open, onOpenChange, onDeleted }: EliminarCasoDialogProps) {
+  const eliminar = useEliminarCaso();
+
+  async function handleEliminar() {
+    try {
+      await eliminar.mutateAsync(caso.id);
+      toast.success(`Caso EPT N° ${caso.id} eliminado`);
+      onOpenChange(false);
+      onDeleted();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "No se pudo eliminar el caso EPT");
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>¿Eliminar el caso EPT N° {caso.id}?</DialogTitle>
+          <DialogDescription>
+            Se eliminan también su proceso, plazos y contactos. Úsalo solo para casos
+            registrados por error (por ejemplo, duplicados). La eliminación queda en la
+            auditoría y no se puede deshacer.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter className="pt-2">
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => onOpenChange(false)}
+            disabled={eliminar.isPending}
+          >
+            Cancelar
+          </Button>
+          <Button
+            type="button"
+            variant="destructive"
+            onClick={handleEliminar}
+            disabled={eliminar.isPending}
+            data-testid="btn-confirmar-eliminar"
+          >
+            {eliminar.isPending ? "Eliminando…" : "Eliminar caso"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ── Loaded caso panel ────────────────────────────────────────────────────────
 
 interface CasoPanelProps {
   casoId: number;
   canWrite: boolean;
   onCasoUpdated: (caso: CasoEptRead) => void;
+  onCasoDeleted: () => void;
 }
 
-function CasoPanel({ casoId, canWrite, onCasoUpdated }: CasoPanelProps) {
+function CasoPanel({ casoId, canWrite, onCasoUpdated, onCasoDeleted }: CasoPanelProps) {
   const { data: caso, isLoading, isError, error } = useCaso(casoId);
   const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -233,6 +315,7 @@ function CasoPanel({ casoId, canWrite, onCasoUpdated }: CasoPanelProps) {
         caso={caso}
         canWrite={canWrite}
         onEdit={() => setEditOpen(true)}
+        onDelete={() => setDeleteOpen(true)}
       />
       <ProcesoEptPanel casoId={casoId} canWrite={canWrite} />
       <PlazosEptPanel casoId={casoId} canWrite={canWrite} />
@@ -248,6 +331,14 @@ function CasoPanel({ casoId, canWrite, onCasoUpdated }: CasoPanelProps) {
           }}
           initialValues={initialValues}
           casoId={caso.id}
+        />
+      )}
+      {canWrite && (
+        <EliminarCasoDialog
+          caso={caso}
+          open={deleteOpen}
+          onOpenChange={setDeleteOpen}
+          onDeleted={onCasoDeleted}
         />
       )}
     </>
@@ -283,6 +374,9 @@ export function EptPage() {
     selectedPaciente?.id ?? null
   );
   const ingresoId: number | undefined = vista?.ingresos?.[0]?.id;
+  const { data: casosPaciente = [], isLoading: casosLoading } = useCasosPorPaciente(
+    selectedPaciente?.id ?? null
+  );
 
   // ── Cargar por caso_id ──────────────────────────────────────────────────
   const [casoIdInput, setCasoIdInput] = useState("");
@@ -386,6 +480,7 @@ export function EptPage() {
             casoId={casoId}
             canWrite={canWrite}
             onCasoUpdated={(updated) => setCasoId(updated.id)}
+            onCasoDeleted={() => setCasoId(null)}
           />
         </div>
       )}
@@ -410,8 +505,8 @@ export function EptPage() {
           <div className="rounded-lg border border-dashed border-border bg-muted/20 px-6 py-12 text-center">
             <Briefcase className="mx-auto mb-3 size-8 text-muted-foreground/50" />
             <p className="text-[13.5px] text-muted-foreground">
-              Busca un paciente para crear un caso EPT, o carga un caso existente
-              por su número.
+              Busca un paciente para ver sus casos EPT o crear uno nuevo, o carga
+              un caso existente por su número.
             </p>
           </div>
         )}
@@ -474,9 +569,74 @@ export function EptPage() {
           </Card>
         )}
 
-        {/* Paciente selected — vista loading / no ingreso / ready to create */}
+        {/* Paciente selected — his casos EPT, then vista loading / no ingreso / ready to create */}
         {selectedPaciente && (
           <div className="space-y-3">
+            {casosLoading && (
+              <p className="text-[13px] text-muted-foreground px-1">
+                Cargando casos EPT de {selectedPaciente.nombre}…
+              </p>
+            )}
+
+            {!casosLoading && casosPaciente.length > 0 && (
+              <Card className="overflow-hidden p-0" data-testid="casos-ept-paciente">
+                <div className="px-4 py-3 border-b">
+                  <h2 className="text-[13.5px] font-semibold">
+                    Casos EPT de {selectedPaciente.nombre} ({casosPaciente.length})
+                  </h2>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-muted/30 border-b">
+                        <Th>Caso N°</Th>
+                        <Th>Ingreso EPT</Th>
+                        <Th>Factor de riesgo</Th>
+                        <Th>Estado</Th>
+                        <Th>{""}</Th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {casosPaciente.map((c) => (
+                        <tr
+                          key={c.id}
+                          className={cn(
+                            "border-b transition-colors",
+                            casoId === c.id ? "bg-primary/5" : "hover:bg-muted/40"
+                          )}
+                        >
+                          <td className="px-4 py-3 font-mono text-[12px]">{c.id}</td>
+                          <td className="px-4 py-3 font-mono text-[12px]">
+                            {fmtDate(c.fecha_ingreso_ept)}
+                          </td>
+                          <td className="px-4 py-3 text-[12.5px]">
+                            {FACTOR_RIESGO_LABELS[c.factor_riesgo as FactorRiesgo] ??
+                              c.factor_riesgo}
+                          </td>
+                          <td className="px-4 py-3">
+                            <Badge variant={estadoVariant(c.estado)}>
+                              {ESTADO_EPT_LABELS[c.estado]}
+                            </Badge>
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 text-[11.5px] px-2"
+                              onClick={() => setCasoId(c.id)}
+                              aria-label={`Abrir caso ${c.id}`}
+                            >
+                              Abrir
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
+            )}
+
             {vistaLoading && (
               <p className="text-[13px] text-muted-foreground px-1">
                 Cargando ingreso de {selectedPaciente.nombre}…

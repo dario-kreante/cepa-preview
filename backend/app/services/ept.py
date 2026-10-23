@@ -9,13 +9,16 @@ Reglas de negocio clave:
 - RN-3 (CEPA-032): fecha_entrega_isl no puede ser anterior a fecha_ingreso_ept ni a plazo_informe_ept.
 """
 
-from datetime import date
+from datetime import date, datetime, timezone
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.domain.enums_alertas import EstadoAlerta
 from app.domain.enums_ept import EstadoCumplimiento, EstadoEpt
+from app.models.alertas import AlertaNotif
+from app.models.ingreso import Ingreso
 from app.models.ept import CasoEpt, ContactoEpt, PlazoEpt, ProcesoEpt
 from app.schemas.ept import (
     CasoEptCreate,
@@ -72,6 +75,39 @@ def actualizar_caso_ept(db: Session, caso: CasoEpt, data: CasoEptUpdate) -> Caso
         caso.estado = EstadoEpt.NO_CORRESPONDE.value
     db.flush()
     return caso
+
+
+def listar_casos_ept_por_paciente(db: Session, paciente_id: int) -> list[CasoEpt]:
+    """Casos EPT de todos los ingresos del paciente, del más reciente al más antiguo."""
+    return list(
+        db.scalars(
+            select(CasoEpt)
+            .join(Ingreso, CasoEpt.ingreso_id == Ingreso.id)
+            .where(Ingreso.paciente_id == paciente_id)
+            .order_by(CasoEpt.fecha_ingreso_ept.desc(), CasoEpt.id.desc())
+        )
+    )
+
+
+def eliminar_caso_ept(db: Session, caso: CasoEpt) -> None:
+    """Elimina un caso EPT registrado por error, con su contacto, proceso y plazos.
+
+    Las alertas abiertas de sus plazos (caso_tipo 'ept', caso_id = plazo_ept.id) quedan
+    resueltas: ya no hay plazo que vigilar.
+    """
+    if caso.plazo is not None:
+        abiertas = db.scalars(
+            select(AlertaNotif).where(
+                AlertaNotif.caso_tipo == "ept",
+                AlertaNotif.caso_id == caso.plazo.id,
+                AlertaNotif.estado != EstadoAlerta.RESUELTA.value,
+            )
+        )
+        for alerta in abiertas:
+            alerta.estado = EstadoAlerta.RESUELTA.value
+            alerta.resuelta_en = datetime.now(timezone.utc)
+    db.delete(caso)
+    db.flush()
 
 
 def obtener_caso_ept_o_404(db: Session, caso_id: int) -> CasoEpt:

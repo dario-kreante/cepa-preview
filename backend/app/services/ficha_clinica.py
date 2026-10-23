@@ -48,11 +48,16 @@ def crear_ficha(
 
 
 def listar_fichas(db: Session, folio: str) -> list[FichaClinica]:
-    """Pull: devuelve todas las fichas clínicas del dominio CEPA para el folio."""
+    """Pull: devuelve todas las fichas clínicas del dominio CEPA para el folio, de la
+    atención más reciente a la más antigua (las sin ``citaFecha`` al final)."""
     _obtener_ingreso_por_folio(db, folio)
-    return list(
-        db.scalars(select(FichaClinica).where(FichaClinica.folio == folio)).all()
+    fichas = list(
+        db.scalars(
+            select(FichaClinica).where(FichaClinica.folio == folio).order_by(FichaClinica.id.desc())
+        ).all()
     )
+    # citaFecha es ISO ("2026-10-15T09:00:00"): el orden de texto es el cronológico.
+    return sorted(fichas, key=lambda f: str((f.contenido or {}).get("citaFecha") or ""), reverse=True)
 
 
 def _en_ventana_del_ingreso(fecha, ingreso: Ingreso) -> bool:

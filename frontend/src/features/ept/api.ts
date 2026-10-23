@@ -39,6 +39,29 @@ export async function crearCaso(body: CasoEptCreate): Promise<CasoEptRead> {
   return data;
 }
 
+/** GET /api/v1/casos-ept?paciente_id= — casos EPT de todos los ingresos del paciente. */
+export async function listarCasosPorPaciente(
+  pacienteId: number,
+): Promise<CasoEptRead[]> {
+  const { data, error } = await api.GET("/api/v1/casos-ept", {
+    params: { query: { paciente_id: pacienteId } },
+  });
+  if (error || !data) throw new Error("No se pudieron listar los casos EPT");
+  return data;
+}
+
+/** DELETE /api/v1/casos-ept/{caso_id} — elimina un caso creado por error. */
+export async function eliminarCaso(casoId: number): Promise<void> {
+  const { error, response } = await api.DELETE("/api/v1/casos-ept/{caso_id}", {
+    params: { path: { caso_id: casoId } },
+  });
+  if (error || !response.ok) {
+    if (response.status === 403)
+      throw new Error("No tienes permisos para eliminar casos EPT.");
+    throw new Error("No se pudo eliminar el caso EPT");
+  }
+}
+
 /** GET /api/v1/casos-ept/{caso_id} */
 export async function obtenerCaso(casoId: number): Promise<CasoEptRead> {
   const { data, error } = await api.GET("/api/v1/casos-ept/{caso_id}", {

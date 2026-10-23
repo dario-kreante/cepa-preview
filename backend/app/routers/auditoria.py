@@ -15,7 +15,7 @@ import io
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.audit.service import record_audit
@@ -29,6 +29,7 @@ from app.schemas.auditoria import (
     ReporteAuditoriaRead,
 )
 from app.services.auditoria import generar_reporte, get_caso_consolidado
+from app.services.busqueda import buscar_pacientes
 
 router = APIRouter(prefix="/api/v1/auditoria", tags=["auditoria"])
 
@@ -82,9 +83,13 @@ def ver_caso_consolidado(
 @router.get(
     "/casos",
     response_model=list[CasoConsolidadoRead],
-    summary="Búsqueda de casos por RUT o folio",
+    summary="Búsqueda de casos por texto libre (RUT, nombre, folio o siniestro)",
 )
 def buscar_casos(
+    q: str | None = Query(
+        default=None,
+        description="Texto libre: RUT (con o sin formato), nombre parcial, folio o N° de siniestro",
+    ),
     rut: str | None = Query(default=None, description="RUT normalizado del paciente"),
     folio: str | None = Query(default=None, description="Folio del ingreso"),
     numero_siniestro: str | None = Query(default=None, description="Número de siniestro"),
@@ -92,7 +97,11 @@ def buscar_casos(
     _: None = _reader,
     db: Session = Depends(get_db),
 ) -> list[CasoConsolidadoRead]:
-    """Busca casos por RUT, folio o número de siniestro. Retorna lista de vistas consolidadas.
+    """Busca casos por texto libre (``q``) o por RUT, folio o número de siniestro exactos.
+    Retorna lista de vistas consolidadas.
+
+    ``q`` reutiliza la búsqueda de pacientes (RUT normalizado, nombre parcial, folio,
+    identidad SALUTEM) y además matchea el número de siniestro.
 
     Cada siniestro bajo el mismo RUT es un caso diferenciado (CA-2, RN-3, D2).
     """
@@ -101,6 +110,12 @@ def buscar_casos(
         .join(Paciente, Ingreso.paciente_id == Paciente.id)
         .order_by(Ingreso.fecha_ingreso.desc(), Ingreso.id.desc())
     )
+    if q and q.strip():
+        termino = q.strip()
+        pacientes = [p.id for p in buscar_pacientes(db, termino)]
+        stmt = stmt.where(
+            or_(Ingreso.paciente_id.in_(pacientes), Ingreso.numero_siniestro == termino)
+        )
     if rut:
         stmt = stmt.where(Paciente.rut == rut)
     if folio:
@@ -115,7 +130,12 @@ def buscar_casos(
         actor=current_user.username,
         action="READ",
         entity="auditoria_busqueda",
-        entity_id=f"rut={rut}&folio={folio}&siniestro={numero_siniestro}",
+        # entity_id es String(60): solo los criterios usados, recortado.
+        entity_id="&".join(
+            f"{k}={v}"
+            for k, v in (("q", q), ("rut", rut), ("folio", folio), ("siniestro", numero_siniestro))
+            if v
+        )[:60],
     )
     db.commit()  # C1: persistir la traza READ
 

@@ -11,6 +11,8 @@ export type ReporteAuditoriaRead =
 export type FilaReporteRead = components["schemas"]["FilaReporteRead"];
 
 export interface BuscarCasosParams {
+  /** Texto libre: RUT, nombre, folio o N° de siniestro. */
+  q?: string;
   rut?: string;
   folio?: string;
   numero_siniestro?: string;
@@ -36,11 +38,12 @@ export async function obtenerConsolidado(
   return data;
 }
 
-/** GET /api/v1/auditoria/casos?rut=&folio=&numero_siniestro= */
+/** GET /api/v1/auditoria/casos?q=&rut=&folio=&numero_siniestro= */
 export async function buscarCasos(
   params: BuscarCasosParams,
 ): Promise<CasoConsolidadoRead[]> {
   const query: Record<string, string> = {};
+  if (params.q) query.q = params.q;
   if (params.rut) query.rut = params.rut;
   if (params.folio) query.folio = params.folio;
   if (params.numero_siniestro) query.numero_siniestro = params.numero_siniestro;

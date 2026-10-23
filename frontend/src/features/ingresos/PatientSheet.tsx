@@ -316,7 +316,7 @@ export function PatientSheet({
     isError: vistaError,
   } = useVista360(pacienteId);
 
-  // Primary ingreso = first in list (most recently created / most relevant)
+  // Primary ingreso = first in list (the backend sorts by fecha_ingreso desc)
   const primaryIngreso = vista?.ingresos?.[0];
   const primaryIngresoId = primaryIngreso?.id;
 

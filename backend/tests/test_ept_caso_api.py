@@ -95,3 +95,73 @@ def test_coordinacion_puede_leer(as_admin, as_coordinacion, ingreso_fixture):
     ).json()["id"]
     r = as_coordinacion.get(f"/api/v1/casos-ept/{caso_id}")
     assert r.status_code == 200
+
+
+# ── QA Pilar 22-10 QA-003: listar EPT del paciente y borrar las creadas por error ──
+
+def test_listar_casos_ept_por_paciente(as_admin, ingreso_fixture):
+    viejo = as_admin.post(
+        "/api/v1/casos-ept", json=_payload(ingreso_fixture.id, fecha_ingreso_ept="2026-01-10")
+    ).json()
+    nuevo = as_admin.post(
+        "/api/v1/casos-ept", json=_payload(ingreso_fixture.id, fecha_ingreso_ept="2026-05-01")
+    ).json()
+    r = as_admin.get("/api/v1/casos-ept", params={"paciente_id": ingreso_fixture.paciente_id})
+    assert r.status_code == 200, r.text
+    assert [c["id"] for c in r.json()] == [nuevo["id"], viejo["id"]]
+
+
+def test_listar_casos_ept_paciente_sin_casos(as_auditor, ingreso_fixture):
+    r = as_auditor.get("/api/v1/casos-ept", params={"paciente_id": ingreso_fixture.paciente_id})
+    assert r.status_code == 200
+    assert r.json() == []
+
+
+def test_eliminar_caso_ept_borra_dependientes_y_resuelve_alertas(
+    as_admin, db_session, ingreso_fixture
+):
+    from datetime import datetime, timezone
+
+    from sqlalchemy import select
+
+    from app.models.alertas import AlertaNotif
+    from app.models.audit_log import AuditLog
+    from app.models.ept import ContactoEpt, PlazoEpt
+
+    caso_id = as_admin.post("/api/v1/casos-ept", json=_payload(ingreso_fixture.id)).json()["id"]
+    as_admin.post(f"/api/v1/casos-ept/{caso_id}/contactos", json={"correo": "a@b.cl"})
+    plazo = as_admin.post(
+        f"/api/v1/casos-ept/{caso_id}/plazos",
+        json={"caso_ept_id": caso_id, "plazo_informe_ept": "2026-12-31"},
+    ).json()
+    alerta = AlertaNotif(
+        tipo="plazo_ept",
+        estado="pendiente",
+        caso_id=plazo["id"],
+        caso_tipo="ept",
+        plazo_objetivo=datetime(2026, 12, 31, tzinfo=timezone.utc),
+        ventana_dias=5,
+    )
+    db_session.add(alerta)
+    db_session.commit()
+
+    r = as_admin.delete(f"/api/v1/casos-ept/{caso_id}")
+    assert r.status_code == 204, r.text
+    assert as_admin.get(f"/api/v1/casos-ept/{caso_id}").status_code == 404
+    assert db_session.scalars(select(ContactoEpt).where(ContactoEpt.caso_ept_id == caso_id)).all() == []
+    assert db_session.scalars(select(PlazoEpt).where(PlazoEpt.caso_ept_id == caso_id)).all() == []
+    db_session.refresh(alerta)
+    assert alerta.estado == "resuelta"
+    traza = db_session.scalars(
+        select(AuditLog).where(AuditLog.entity == "caso_ept", AuditLog.action == "DELETE")
+    ).one()
+    assert traza.entity_id == str(caso_id)
+
+
+def test_auditor_no_puede_eliminar_caso_ept(as_admin, as_auditor, ingreso_fixture):
+    caso_id = as_admin.post("/api/v1/casos-ept", json=_payload(ingreso_fixture.id)).json()["id"]
+    assert as_auditor.delete(f"/api/v1/casos-ept/{caso_id}").status_code == 403
+
+
+def test_eliminar_caso_ept_inexistente_404(as_admin):
+    assert as_admin.delete("/api/v1/casos-ept/999999").status_code == 404

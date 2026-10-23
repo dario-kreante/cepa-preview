@@ -6,6 +6,7 @@
  *   - profesional_id      (id del catálogo, o "otro" para escribir un nombre libre)
  *   - medico_tratante     (nombre libre; solo obligatorio cuando profesional_id === "otro")
  *   - region_derivacion   (required, non-empty)
+ *   - observaciones       (optional free-text comment, e.g. "próximo a alta médica")
  *
  * NOT included:
  *   - semana_control  → auto-calculated by the backend
@@ -31,6 +32,8 @@ export const controlSchema = z
       .string()
       .trim()
       .min(1, "La región de derivación es requerida"),
+
+    observaciones: z.string().trim().optional(),
   })
   .superRefine((v, ctx) => {
     const sinSeleccion = v.profesional_id === "";

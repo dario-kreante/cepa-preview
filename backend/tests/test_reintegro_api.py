@@ -141,3 +141,41 @@ def test_operacion_create_no_falla_sin_auditoria_error(as_admin):
     ingreso_id = _ingreso_fixture(as_admin)
     r = as_admin.post("/api/v1/reintegros", json=_payload_caso(ingreso_id))
     assert r.status_code == 201
+
+
+# QA Pilar 22-10 QA-008: sin RUT en el formulario se usa el del paciente del ingreso
+def test_sin_rut_toma_el_del_paciente(as_admin):
+    ingreso_id = _ingreso_fixture(as_admin)
+    datos = _payload_caso(ingreso_id)
+    del datos["rut"]
+    r = as_admin.post("/api/v1/reintegros", json=datos)
+    assert r.status_code == 201, r.text
+    assert r.json()["rut"] == "123456785"
+
+
+# QA Pilar 22-10 QA-008: paciente de SALUTEM sin RUT → el caso se crea igual
+def test_paciente_sin_rut_permite_crear_caso(as_admin, db_session):
+    from datetime import date
+
+    from app.models.ingreso import Ingreso
+    from app.models.paciente import Paciente
+
+    paciente = Paciente(rut=None, nombre="Paciente Sin Rut", sexo="F", edad=30, region="Maule")
+    db_session.add(paciente)
+    db_session.flush()
+    ingreso = Ingreso(
+        paciente_id=paciente.id,
+        folio="SR-0001",
+        fecha_ingreso=date(2026, 10, 1),
+        tipo_derivacion="DIAT",
+        tipo_ingreso="convenio",
+        modelo_tratamiento="ambulatorio",
+        diagnostico="x",
+        estado="activo",
+    )
+    db_session.add(ingreso)
+    db_session.commit()
+    datos = _payload_caso(ingreso.id, rut="", nombre="Paciente Sin Rut", sexo="F")
+    r = as_admin.post("/api/v1/reintegros", json=datos)
+    assert r.status_code == 201, r.text
+    assert r.json()["rut"] is None

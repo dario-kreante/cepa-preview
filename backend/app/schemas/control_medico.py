@@ -28,6 +28,8 @@ class ControlMedicoCreate(BaseModel):
     region_derivacion: str
     # Profesional del catálogo (selector). Opcional: se puede escribir solo el nombre.
     profesional_id: int | None = None
+    # Comentario libre del control (p. ej. "próximo a alta médica").
+    observaciones: str | None = None
 
     @model_validator(mode="after")
     def _algun_medico(self) -> "ControlMedicoCreate":

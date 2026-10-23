@@ -17,6 +17,7 @@ def test_tipos_de_derivacion_son_la_lista_cerrada_v4_d4():
         "PAPT a flujo AT",
         "Reingreso FUMP",
         "Reingreso SUSESO",
+        "Reingreso ISL",
         "Convenio U.Clinica",
         "Proyecto",
         "Particular",
