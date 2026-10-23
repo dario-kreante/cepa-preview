@@ -76,6 +76,7 @@ def crear_control(db: Session, data: ControlMedicoCreate) -> ControlMedico:
         medico_tratante=medico,
         region_derivacion=data.region_derivacion,
         profesional_id=data.profesional_id,
+        observaciones=(data.observaciones or "").strip() or None,
     )
     db.add(control)
     db.flush()

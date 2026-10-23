@@ -174,3 +174,15 @@ def test_auditor_puede_listar_recetas(as_auditor, as_admin):
     )
     r = as_auditor.get(f"/api/v1/registro-farmacologico/{ingreso_id}/recetas")
     assert r.status_code == 200
+
+
+# QA Pilar 23-10: recetas de la más reciente a la más antigua
+def test_listar_recetas_por_fecha_de_emision_descendente(as_admin):
+    ingreso_id, _ = _setup_registro(as_admin, rut="44.444.444-4")
+    for emision in ("2024-03-01", "2026-09-01", "2025-05-01"):
+        as_admin.post(
+            f"/api/v1/registro-farmacologico/{ingreso_id}/recetas",
+            json={"fecha_emision": emision, "fecha_revision": emision, "marca_medicamento": "X"},
+        )
+    r = as_admin.get(f"/api/v1/registro-farmacologico/{ingreso_id}/recetas")
+    assert [x["fecha_emision"] for x in r.json()] == ["2026-09-01", "2025-05-01", "2024-03-01"]

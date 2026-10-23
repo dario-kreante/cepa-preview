@@ -6,7 +6,7 @@ RBAC:
   - lectura: Administrativo, Coordinacion, Auditor.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -36,6 +36,8 @@ from app.services.ept import (
     crear_caso_ept,
     crear_plazo_ept,
     crear_proceso_ept,
+    eliminar_caso_ept,
+    listar_casos_ept_por_paciente,
     obtener_caso_ept_o_404,
 )
 
@@ -74,6 +76,19 @@ def crear(
 
 
 @router.get(
+    "",
+    response_model=list[CasoEptRead],
+    dependencies=[Depends(_reader)],
+)
+def listar_por_paciente(
+    paciente_id: int = Query(..., description="Paciente cuyos casos EPT se listan"),
+    db: Session = Depends(get_db),
+) -> list[CasoEptRead]:
+    """Casos EPT de todos los ingresos del paciente (búsqueda por RUT/nombre en la UI)."""
+    return listar_casos_ept_por_paciente(db, paciente_id)
+
+
+@router.get(
     "/{caso_id}",
     response_model=CasoEptRead,
     dependencies=[Depends(_reader)],
@@ -105,6 +120,34 @@ def actualizar(
     db.commit()
     db.refresh(caso)
     return caso
+
+
+@router.delete(
+    "/{caso_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(_writer)],
+)
+def eliminar(
+    caso_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+) -> None:
+    """Elimina un caso EPT creado por error (p. ej. duplicado). Queda en la auditoría."""
+    caso = obtener_caso_ept_o_404(db, caso_id)
+    resumen = (
+        f"ingreso_id={caso.ingreso_id}; trabajador={caso.nombre_trabajador}; "
+        f"fecha_ingreso_ept={caso.fecha_ingreso_ept}; estado={caso.estado}"
+    )
+    eliminar_caso_ept(db, caso)
+    record_audit(
+        db,
+        actor=current_user.username,
+        action="DELETE",
+        entity="caso_ept",
+        entity_id=str(caso_id),
+        valor_anterior=resumen,
+    )
+    db.commit()
 
 
 # ──────────────────────────────

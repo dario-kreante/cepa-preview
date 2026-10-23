@@ -13,6 +13,7 @@ export const TIPO_DERIVACION_VALUES = [
   "PAPT a flujo AT",
   "Reingreso FUMP",
   "Reingreso SUSESO",
+  "Reingreso ISL",
   "Convenio U.Clinica",
   "Proyecto",
   "Particular",
@@ -31,7 +32,9 @@ const isoDate = z
   .regex(/^\d{4}-\d{2}-\d{2}$/, "Formato de fecha inválido (YYYY-MM-DD)");
 
 export const casoReintegroSchema = z.object({
-  rut: z.string().trim().min(1, "El RUT es requerido"),
+  // Opcional: si el paciente no tiene RUT (p. ej. viene de SALUTEM) el backend usa el del
+  // paciente del ingreso o lo deja vacío.
+  rut: z.string().trim().optional(),
   nombre: z.string().trim().min(1, "El nombre es requerido"),
   tipo_derivacion: z.enum(TIPO_DERIVACION_VALUES, {
     required_error: "El tipo de derivación es requerido",

@@ -229,3 +229,12 @@ def test_vista_360_trae_odas_del_paciente(as_admin, db_session):
     cuerpo = as_admin.get(f"/api/v1/pacientes/{creado['paciente_id']}/vista-360").json()
     assert [o["identificador"] for o in cuerpo["odas"]] == ["ODA-ACTUAL", "ODA-VIEJA"]
     assert cuerpo["odas"][0]["fecha_vencimiento"] == "2026-10-20"
+
+
+# QA Pilar 23-10: el ingreso principal (el primero de la vista 360) es el más reciente
+def test_vista_360_ingresos_del_mas_reciente_al_mas_antiguo(as_admin):
+    antiguo = as_admin.post("/api/v1/ingresos", json=_payload(fecha_ingreso="2025-01-10")).json()
+    reciente = as_admin.post("/api/v1/ingresos", json=_payload(fecha_ingreso="2026-06-10")).json()
+    assert antiguo["paciente_id"] == reciente["paciente_id"]
+    r = as_admin.get(f"/api/v1/pacientes/{reciente['paciente_id']}/vista-360")
+    assert [i["id"] for i in r.json()["ingresos"]] == [reciente["id"], antiguo["id"]]

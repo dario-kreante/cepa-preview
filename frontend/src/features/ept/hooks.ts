@@ -7,6 +7,8 @@ import {
   crearCaso,
   crearPlazos,
   crearProceso,
+  eliminarCaso,
+  listarCasosPorPaciente,
   obtenerCaso,
   obtenerPlazos,
   obtenerProceso,
@@ -29,6 +31,14 @@ export function useCaso(casoId: number) {
   });
 }
 
+export function useCasosPorPaciente(pacienteId: number | null) {
+  return useQuery({
+    queryKey: ["ept", "paciente", pacienteId],
+    queryFn: () => listarCasosPorPaciente(pacienteId!),
+    enabled: !!pacienteId,
+  });
+}
+
 export function useProceso(casoId: number) {
   return useQuery({
     queryKey: ["ept", casoId, "proceso"],
@@ -47,10 +57,24 @@ export function usePlazos(casoId: number) {
 
 // ── Mutation hooks ───────────────────────────────────────────────────────────
 
-/** Crea un caso EPT nuevo; no hay casoId previo → no invalida nada. */
+/** Crea un caso EPT nuevo; refresca el listado del paciente. */
 export function useCrearCaso() {
+  const qc = useQueryClient();
   return useMutation({
     mutationFn: (body: CasoEptCreate) => crearCaso(body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["ept", "paciente"] }),
+  });
+}
+
+/** Elimina un caso EPT (creado por error); refresca el listado del paciente. */
+export function useEliminarCaso() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (casoId: number) => eliminarCaso(casoId),
+    onSuccess: (_data, casoId) => {
+      qc.removeQueries({ queryKey: ["ept", casoId] });
+      return qc.invalidateQueries({ queryKey: ["ept", "paciente"] });
+    },
   });
 }
 

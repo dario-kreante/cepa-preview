@@ -20,7 +20,7 @@ export const ingresoSchema = z.object({
   ),
   region: z.string().min(1, "Requerido"),
   diagnostico: z.string().min(1, "Requerido"),
-  tipo_derivacion: z.enum(["DIEP", "DIAT", "PAPT a flujo AT", "Reingreso FUMP", "Reingreso SUSESO", "Convenio U.Clinica", "Proyecto", "Particular", "PAPT"]),
+  tipo_derivacion: z.enum(["DIEP", "DIAT", "PAPT a flujo AT", "Reingreso FUMP", "Reingreso SUSESO", "Reingreso ISL", "Convenio U.Clinica", "Proyecto", "Particular", "PAPT"]),
   tipo_ingreso: z.enum(["consulta_espontanea", "convenio", "proyecto", "particular"]),
   modelo_tratamiento: z.string().min(1, "Requerido"),
   fecha_ingreso: z.string().min(1, "Requerido"),

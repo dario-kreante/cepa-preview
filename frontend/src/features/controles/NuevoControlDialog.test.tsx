@@ -187,6 +187,7 @@ describe("NuevoControlDialog — alta válida", () => {
       screen.getByLabelText(/Región de derivación/i),
       "Valparaíso",
     );
+    await user.type(screen.getByLabelText(/Comentarios/i), "Próximo a alta médica");
 
     // Submit
     const dialog = screen.getByRole("dialog");
@@ -207,6 +208,7 @@ describe("NuevoControlDialog — alta válida", () => {
     expect(sentBody.profesional_id).toBe(5);
     expect(sentBody.medico_tratante).toBe("Dra. Ana Ruiz");
     expect(sentBody.region_derivacion).toBe("Valparaíso");
+    expect(sentBody.observaciones).toBe("Próximo a alta médica");
     // semana_control must NOT be in the body
     expect(sentBody).not.toHaveProperty("semana_control");
 
@@ -250,6 +252,7 @@ describe("NuevoControlDialog — médico fuera del catálogo", () => {
     const sent = postSpy.mock.calls[0][0] as Record<string, unknown>;
     expect(sent.profesional_id).toBeNull();
     expect(sent.medico_tratante).toBe("Dr. Externo");
+    expect(sent.observaciones).toBeNull();
   });
 });
 

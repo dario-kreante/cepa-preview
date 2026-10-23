@@ -159,3 +159,21 @@ def test_ingreso_sin_registro_farmacologico_lista_vacia(as_admin, recurso):
 @pytest.mark.parametrize("recurso", ["recetas", "esquema", "seguimiento"])
 def test_un_ingreso_inexistente_sigue_siendo_404(as_admin, recurso):
     assert as_admin.get(f"/api/v1/registro-farmacologico/999999/{recurso}").status_code == 404
+
+
+# QA Pilar 23-10: el esquema muestra primero las vigentes y la más reciente arriba
+def test_esquema_vigentes_primero_y_mas_reciente_arriba(as_admin, db_session):
+    from app.models.farmacos import EsquemaIndicacion
+
+    ingreso_id, _ = _setup(as_admin)
+    ids = []
+    for med in ("Sertralina", "Clonazepam", "Quetiapina"):
+        r = as_admin.post(
+            f"/api/v1/registro-farmacologico/{ingreso_id}/esquema",
+            json={"medicamento": med, "dosis": "50 mg", "frecuencia": "c/24h"},
+        )
+        ids.append(r.json()["id"])
+    db_session.get(EsquemaIndicacion, ids[2]).vigente = False
+    db_session.commit()
+    r = as_admin.get(f"/api/v1/registro-farmacologico/{ingreso_id}/esquema")
+    assert [i["medicamento"] for i in r.json()] == ["Clonazepam", "Sertralina", "Quetiapina"]

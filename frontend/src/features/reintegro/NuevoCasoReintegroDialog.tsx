@@ -2,6 +2,7 @@
  * NuevoCasoReintegroDialog — alta / edición de un caso de reintegro (CEPA-040).
  * Gate (caller): ingresoId definido + puedeEscribir(rol).
  * Con `initialValues` + `casoId` opera en modo edición (PATCH).
+ * En alta, `prefill` precarga los datos del paciente seleccionado.
  */
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
@@ -35,6 +36,8 @@ interface Props {
   /** Cuando se provee junto con casoId, el diálogo edita (PATCH). */
   initialValues?: CasoReintegroForm;
   casoId?: number;
+  /** Alta: datos del paciente/ingreso seleccionado para precargar el formulario. */
+  prefill?: Partial<CasoReintegroForm>;
 }
 
 const DEFAULT_VALUES: CasoReintegroForm = {
@@ -59,6 +62,7 @@ export function NuevoCasoReintegroDialog({
   onSaved,
   initialValues,
   casoId,
+  prefill,
 }: Props) {
   const isEdit = !!initialValues && !!casoId;
   const crearMutation = useCrearCaso();
@@ -71,12 +75,12 @@ export function NuevoCasoReintegroDialog({
     formState: { errors, isSubmitting },
   } = useForm<CasoReintegroForm>({
     resolver: zodResolver(casoReintegroSchema),
-    defaultValues: initialValues ?? DEFAULT_VALUES,
+    defaultValues: initialValues ?? { ...DEFAULT_VALUES, ...prefill },
   });
 
   useEffect(() => {
-    reset(open ? (initialValues ?? DEFAULT_VALUES) : DEFAULT_VALUES);
-  }, [open, initialValues, reset]);
+    reset(open ? (initialValues ?? { ...DEFAULT_VALUES, ...prefill }) : DEFAULT_VALUES);
+  }, [open, initialValues, prefill, reset]);
 
   async function onSubmit(values: CasoReintegroForm) {
     try {
@@ -99,7 +103,7 @@ export function NuevoCasoReintegroDialog({
       } else {
         caso = await crearMutation.mutateAsync({
           ingreso_id: ingresoId,
-          rut: values.rut,
+          rut: values.rut || null,
           nombre: values.nombre,
           tipo_derivacion: values.tipo_derivacion,
           fecha_caso: values.fecha_caso,
@@ -136,7 +140,7 @@ export function NuevoCasoReintegroDialog({
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 py-2">
           <div>
-            <Label htmlFor="rut">RUT</Label>
+            <Label htmlFor="rut">RUT (opcional)</Label>
             <Input
               id="rut"
               placeholder="Ej. 12.345.678-9"

@@ -407,3 +407,29 @@ class TestPacienteSinRut:
         r = as_auditor.post("/api/v1/auditoria/reportes/descargar", json=self._FILTROS)
         assert r.status_code == 200
         assert "2026-0777" in r.text
+
+
+# ── QA Pilar 22-10 QA-004: búsqueda por texto libre ───────────────────────
+
+class TestBusquedaTextoLibre:
+
+    @pytest.mark.parametrize(
+        "termino", ["12.345.678-5", "123456785", "gonzález", "Ana", "2026-0123", "SIN-2026-001"]
+    )
+    def test_q_encuentra_por_rut_nombre_folio_o_siniestro(
+        self, as_auditor: TestClient, caso_completo: dict, termino: str
+    ):
+        r = as_auditor.get("/api/v1/auditoria/casos", params={"q": termino})
+        assert r.status_code == 200, r.text
+        assert [c["ingreso_id"] for c in r.json()] == [caso_completo["ingreso_id"]]
+
+    def test_q_sin_coincidencias_devuelve_lista_vacia(
+        self, as_auditor: TestClient, caso_completo: dict
+    ):
+        r = as_auditor.get("/api/v1/auditoria/casos", params={"q": "Nadie Inexistente"})
+        assert r.status_code == 200
+        assert r.json() == []
+
+    def test_q_largo_no_rompe_la_traza(self, as_auditor: TestClient, caso_completo: dict):
+        r = as_auditor.get("/api/v1/auditoria/casos", params={"q": "x" * 200})
+        assert r.status_code == 200

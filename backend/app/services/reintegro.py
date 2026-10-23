@@ -12,6 +12,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.domain.reintegro_enums import EstadoReintegro
+from app.models.ingreso import Ingreso
+from app.models.paciente import Paciente
 from app.models.reintegro import CasoReintegro, Reca
 from app.schemas.reintegro import (
     CasoReintegroCreate,
@@ -133,10 +135,18 @@ def validar_coherencia_cierre(
 # ── Operaciones con sesión ────────────────────────────────────────────────
 
 def crear_caso_reintegro(db: Session, data: CasoReintegroCreate) -> CasoReintegro:
-    """Crea el caso de reintegro vinculado al ingreso (CEPA-040)."""
+    """Crea el caso de reintegro vinculado al ingreso (CEPA-040).
+
+    Sin RUT en el payload se usa el del paciente del ingreso (puede no tenerlo).
+    """
+    rut = data.rut
+    if rut is None:
+        ingreso = db.get(Ingreso, data.ingreso_id)
+        paciente = db.get(Paciente, ingreso.paciente_id) if ingreso is not None else None
+        rut = paciente.rut if paciente is not None else None
     caso = CasoReintegro(
         ingreso_id=data.ingreso_id,
-        rut=data.rut,
+        rut=rut,
         nombre=data.nombre,
         tipo_derivacion=data.tipo_derivacion.value,
         fecha_caso=data.fecha_caso,

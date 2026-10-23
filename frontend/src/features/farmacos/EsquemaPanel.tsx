@@ -2,7 +2,8 @@
  * EsquemaPanel — displays the medication scheme (indicaciones) for a given ingreso.
  *
  * Shows a list/table of `EsquemaIndicacionRead` items with: medicamento, dosis,
- * frecuencia (friendly Spanish label), and badges for extra_sistema / vigente.
+ * frecuencia (friendly Spanish label), the date it was added, and badges for
+ * extra_sistema / vigente. The backend lists vigentes first, newest on top.
  *
  * Hosts the "Agregar indicación" action in its header, delegating to
  * AgregarIndicacionDialog. The add button is hidden when:
@@ -14,6 +15,7 @@ import { Plus, Pill } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { fmtDate } from "@/lib/utils";
 import { useIndicaciones } from "./hooks";
 import { AgregarIndicacionDialog } from "./AgregarIndicacionDialog";
 import { FRECUENCIA_LABELS } from "./indicacionSchema";
@@ -46,6 +48,10 @@ function IndicacionRow({ ind }: { ind: EsquemaIndicacionRead }) {
       <td className="px-4 py-3 text-[12.5px] text-muted-foreground">{ind.dosis}</td>
       {/* Frecuencia */}
       <td className="px-4 py-3 text-[12.5px]">{frecuenciaLabel}</td>
+      {/* Desde */}
+      <td className="px-4 py-3 text-[12.5px] text-muted-foreground">
+        {fmtDate(ind.created_at)}
+      </td>
       {/* Badges */}
       <td className="px-4 py-3">
         <div className="flex flex-wrap gap-1.5">
@@ -127,6 +133,7 @@ export function EsquemaPanel({ ingresoId, registro, canWrite }: Props) {
                   <Th>Medicamento</Th>
                   <Th>Dosis</Th>
                   <Th>Frecuencia</Th>
+                  <Th>Desde</Th>
                   <Th>Estado</Th>
                 </tr>
               </thead>

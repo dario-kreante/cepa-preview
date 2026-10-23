@@ -1,7 +1,7 @@
 """CEPA-092 — Reporte de cumplimiento por convenio (OI2: generación < 5 min).
 
 Tipos de convenio válidos (D4): DIEP, DIAT, PAPT a flujo AT, Reingreso FUMP,
-Reingreso SUSESO, Convenio U.Clínica, Proyecto, Particular, PAPT.
+Reingreso SUSESO, Reingreso ISL, Convenio U.Clínica, Proyecto, Particular, PAPT.
 """
 
 from __future__ import annotations

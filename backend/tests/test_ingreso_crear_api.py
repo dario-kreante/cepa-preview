@@ -95,3 +95,10 @@ def test_folio_manual_colision_otro_paciente(as_admin):
         json=_payload(rut="7.876.543-7", nombre="Otra Persona", folio="F-100"),
     )
     assert r.status_code == 409
+
+
+# QA Pilar 22-10 QA-005: "Reingreso ISL" es un tipo de derivación válido
+def test_tipo_derivacion_reingreso_isl(as_admin):
+    r = as_admin.post("/api/v1/ingresos", json=_payload(tipo_derivacion="Reingreso ISL"))
+    assert r.status_code == 201, r.text
+    assert r.json()["tipo_derivacion"] == "Reingreso ISL"

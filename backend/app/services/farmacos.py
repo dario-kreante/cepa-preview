@@ -140,7 +140,8 @@ def listar_indicaciones(db, registro_id: int) -> list[EsquemaIndicacion]:
         db.scalars(
             select(EsquemaIndicacion)
             .where(EsquemaIndicacion.registro_id == registro_id)
-            .order_by(EsquemaIndicacion.id)
+            # Vigentes primero, y dentro de cada grupo la más reciente arriba.
+            .order_by(EsquemaIndicacion.vigente.desc(), EsquemaIndicacion.id.desc())
         )
     )
 
@@ -168,7 +169,7 @@ def listar_recetas(db, registro_id: int) -> list[Receta]:
         db.scalars(
             select(Receta)
             .where(Receta.registro_id == registro_id)
-            .order_by(Receta.id)
+            .order_by(Receta.fecha_emision.desc(), Receta.id.desc())
         )
     )
 

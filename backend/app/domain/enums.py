@@ -15,6 +15,7 @@ class TipoDerivacion(str, Enum):
     PAPT_FLUJO_AT = "PAPT a flujo AT"
     REINGRESO_FUMP = "Reingreso FUMP"
     REINGRESO_SUSESO = "Reingreso SUSESO"
+    REINGRESO_ISL = "Reingreso ISL"
     CONVENIO_U_CLINICA = "Convenio U.Clinica"
     PROYECTO = "Proyecto"
     PARTICULAR = "Particular"

@@ -47,6 +47,7 @@ export function NuevoControlDialog({ ingresoId, open, onOpenChange }: Props) {
       profesional_id: "",
       medico_tratante: "",
       region_derivacion: "",
+      observaciones: "",
     },
   });
   const profesionalSel = watch("profesional_id");
@@ -59,6 +60,7 @@ export function NuevoControlDialog({ ingresoId, open, onOpenChange }: Props) {
         profesional_id: "",
         medico_tratante: "",
         region_derivacion: "",
+        observaciones: "",
       });
     }
   }, [open, reset]);
@@ -75,6 +77,7 @@ export function NuevoControlDialog({ ingresoId, open, onOpenChange }: Props) {
         profesional_id: elegido ? elegido.id : null,
         medico_tratante: elegido ? elegido.nombre : values.medico_tratante.trim(),
         region_derivacion: values.region_derivacion.trim(),
+        observaciones: values.observaciones?.trim() || null,
       });
       toast.success("Control médico registrado");
       onOpenChange(false);
@@ -167,6 +170,21 @@ export function NuevoControlDialog({ ingresoId, open, onOpenChange }: Props) {
                 {errors.region_derivacion.message}
               </p>
             )}
+          </div>
+
+          {/* Comentarios */}
+          <div>
+            <Label htmlFor="observaciones">
+              Comentarios{" "}
+              <span className="text-muted-foreground font-normal">(opcional)</span>
+            </Label>
+            <textarea
+              id="observaciones"
+              rows={3}
+              placeholder="Ej. Paciente próximo a alta médica"
+              {...register("observaciones")}
+              className="mt-1 w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-[13px] ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            />
           </div>
 
           <DialogFooter className="pt-2">

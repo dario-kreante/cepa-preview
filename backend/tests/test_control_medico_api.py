@@ -435,3 +435,19 @@ def test_auditor_no_puede_editar_la_evaluacion(as_auditor, as_admin, db_session)
         json={"tiempo_estimado_tratamiento": "3 meses"},
     )
     assert r.status_code == 403
+
+
+# QA Pilar 22-10 QA-007: el alta de control acepta un comentario libre
+def test_crear_control_con_observaciones(as_admin, db_session):
+    ing = _crear_ingreso(db_session, folio="F-OBS-0001", fecha_ingreso=date(2026, 1, 5))
+    payload = {**_payload_control(ing.id), "observaciones": "  Próximo a alta médica  "}
+    r = as_admin.post("/api/v1/controles-medicos", json=payload)
+    assert r.status_code == 201, r.text
+    assert r.json()["observaciones"] == "Próximo a alta médica"
+
+
+def test_crear_control_sin_observaciones_queda_nulo(as_admin, db_session):
+    ing = _crear_ingreso(db_session, folio="F-OBS-0002", fecha_ingreso=date(2026, 1, 5))
+    r = as_admin.post("/api/v1/controles-medicos", json=_payload_control(ing.id))
+    assert r.status_code == 201, r.text
+    assert r.json()["observaciones"] is None

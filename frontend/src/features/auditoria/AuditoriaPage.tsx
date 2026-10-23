@@ -17,7 +17,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import { normalizarRut } from "@/lib/rut";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { type Rol } from "@/lib/rbac";
 import { useBuscarCasos, useGenerarReporte } from "./hooks";
@@ -39,15 +38,8 @@ function Th({ children }: { children: React.ReactNode }) {
 // ── Vista de caso (CEPA-050) ──────────────────────────────────────────────────
 
 function VistaCaso() {
-  const [campo, setCampo] = useState<"rut" | "folio" | "numero_siniestro">(
-    "rut",
-  );
   const [valor, setValor] = useState("");
-  const [query, setQuery] = useState<{
-    rut?: string;
-    folio?: string;
-    numero_siniestro?: string;
-  } | null>(null);
+  const [query, setQuery] = useState<{ q: string } | null>(null);
   const [seleccionado, setSeleccionado] = useState<CasoConsolidadoRead | null>(
     null,
   );
@@ -61,29 +53,17 @@ function VistaCaso() {
     const v = valor.trim();
     if (!v) return;
     setSeleccionado(null);
-    // El backend hace match exacto sobre el RUT normalizado (sin puntos/guion).
-    setQuery({ [campo]: campo === "rut" ? normalizarRut(v) : v });
+    // Texto libre: el backend normaliza el RUT y busca también por nombre,
+    // folio y N° de siniestro.
+    setQuery({ q: v });
   }
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-end gap-2">
-        <div>
-          <Label htmlFor="campo">Buscar por</Label>
-          <select
-            id="campo"
-            value={campo}
-            onChange={(e) => setCampo(e.target.value as typeof campo)}
-            className="flex h-9 w-[160px] rounded-md border border-input bg-transparent px-3 py-1 text-[13px] shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
-          >
-            <option value="rut">RUT</option>
-            <option value="folio">Folio</option>
-            <option value="numero_siniestro">N° siniestro</option>
-          </select>
-        </div>
-        <div className="relative w-[260px]">
+        <div className="relative w-full max-w-[420px]">
           <Search className="absolute left-2.5 top-[30px] size-3.5 text-muted-foreground pointer-events-none" />
-          <Label htmlFor="valor">Valor</Label>
+          <Label htmlFor="valor">Buscar caso</Label>
           <Input
             id="valor"
             value={valor}
@@ -91,7 +71,7 @@ function VistaCaso() {
             onKeyDown={(e) => {
               if (e.key === "Enter") handleBuscar();
             }}
-            placeholder="Ej. 12.345.678-9"
+            placeholder="RUT, nombre, folio o N° de siniestro"
             className="h-9 pl-8 text-[13px]"
             aria-label="Valor de búsqueda"
             data-testid="input-buscar"

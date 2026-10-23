@@ -43,7 +43,8 @@ class CasoReintegro(Base):
         BigInteger, ForeignKey("ingreso.id"), nullable=False, index=True
     )
     # Datos del caso (CEPA-040) ────────────────────────────────────────────
-    rut: Mapped[str] = mapped_column(String(12), nullable=False, index=True)
+    # Nullable desde 1370: el paciente puede venir de SALUTEM sin RUT.
+    rut: Mapped[str | None] = mapped_column(String(12), nullable=True, index=True)
     nombre: Mapped[str] = mapped_column(String(160), nullable=False)
     tipo_derivacion: Mapped[str] = mapped_column(String(40), nullable=False)
     fecha_caso: Mapped[date] = mapped_column(Date, nullable=False)

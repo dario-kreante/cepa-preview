@@ -100,7 +100,10 @@ def vista_360(db, paciente: Paciente) -> dict:
     """
     ingresos = list(
         db.execute(
-            select(Ingreso).where(Ingreso.paciente_id == paciente.id).order_by(Ingreso.id)
+            select(Ingreso)
+            .where(Ingreso.paciente_id == paciente.id)
+            # El frontend toma el primero como ingreso principal: el más reciente.
+            .order_by(Ingreso.fecha_ingreso.desc(), Ingreso.id.desc())
         ).scalars()
     )
     vacio = {"farmacos": [], "licencias": [], "controles": [], "odas": [], "reintegro": []}
