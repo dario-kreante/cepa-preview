@@ -12,7 +12,7 @@ import { useControlesPorIngreso } from "./hooks";
 import { NuevoControlDialog } from "./NuevoControlDialog";
 import { ProximoControlDialog } from "./ProximoControlDialog";
 import { EvaluacionControlDialog } from "./EvaluacionControlDialog";
-import { DocumentosSalutem } from "./DocumentosSalutem";
+import { DocumentosSalutemPaciente } from "./DocumentosSalutem";
 import { EVALUACION_LABELS } from "./evaluacionControlSchema";
 import {
   LicenciaControlDialog,
@@ -224,11 +224,6 @@ function ControlRow({ control, ingresoId, canWrite, columnas }: ControlRowProps)
               <div className="sm:col-span-3">
                 <Dato label="Observaciones" valor={control.observaciones} />
               </div>
-              {control.origen === "SALUTEM" && (
-                <div className="sm:col-span-3">
-                  <DocumentosSalutem controlId={control.id} />
-                </div>
-              )}
             </dl>
           </td>
         </tr>
@@ -613,6 +608,13 @@ export function ControlesPage() {
               </h2>
               <ControlesPanel ingresoId={ingresoId} canWrite={canWrite} />
             </div>
+          )}
+          {/* La biblioteca de SALUTEM es del paciente, no de un control: va fuera de la tabla. */}
+          {ingresoId && selectedPaciente && (
+            <DocumentosSalutemPaciente
+              pacienteId={selectedPaciente.id}
+              titulo="Documentos del paciente en SALUTEM"
+            />
           )}
         </div>
       )}

@@ -13,6 +13,7 @@ import { useBuscarPacientes, usePaciente, useVista360 } from "@/features/ingreso
 import { useRegistro, useRecetas, useGenerarAlertasRevision } from "./hooks";
 import { EsquemaPanel } from "./EsquemaPanel";
 import { FarmacosSugeridosPanel } from "./FarmacosSugeridosPanel";
+import { DocumentosSalutemPaciente } from "@/features/controles/DocumentosSalutem";
 import { SeguimientoPanel } from "./SeguimientoPanel";
 import { CrearRegistroDialog } from "./CrearRegistroDialog";
 import { NuevaRecetaDialog } from "./NuevaRecetaDialog";
@@ -547,6 +548,13 @@ export function FarmacosPage() {
                 <h2 className="text-[14px] font-semibold px-0.5">Recetas</h2>
                 <RecetasPanel ingresoId={ingresoId} />
               </div>
+              {selectedPaciente && (
+                <DocumentosSalutemPaciente
+                  pacienteId={selectedPaciente.id}
+                  relacion="receta"
+                  titulo="Recetas en SALUTEM"
+                />
+              )}
               <SeguimientoPanel
                 ingresoId={ingresoId}
                 registro={registroForPage}

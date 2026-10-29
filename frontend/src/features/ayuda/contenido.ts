@@ -199,7 +199,7 @@ export const GUIAS: Guia[] = [
         titulo: "Completar un control",
         pasos: [
           "Usa los botones de la fila: «Próximo control», «Licencia/RECA» o «Evaluación».",
-          "Despliega la flecha junto a la fecha para ver el detalle clínico y los «Documentos en SALUTEM».",
+          "Despliega la flecha junto a la fecha para ver el detalle clínico. Bajo la tabla están los «Documentos del paciente en SALUTEM»; las licencias y recetas también se ven en sus módulos.",
         ],
       },
     ],

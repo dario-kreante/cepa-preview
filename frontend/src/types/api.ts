@@ -2210,6 +2210,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/pacientes/{paciente_id}/documentos-salutem": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Listar Documentos */
+        get: operations["listar_documentos_api_v1_pacientes__paciente_id__documentos_salutem_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pacientes/{paciente_id}/documentos-salutem/{archivo_id}/contenido": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Contenido Documento
+         * @description Pide el archivo a SALUTEM y lo entrega sin guardarlo (ni en BD ni en disco).
+         */
+        get: operations["contenido_documento_api_v1_pacientes__paciente_id__documentos_salutem__archivo_id__contenido_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/licencias/folio/{folio}": {
         parameters: {
             query?: never;
@@ -3135,6 +3172,30 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+        };
+        /**
+         * DocumentoSalutemRead
+         * @description Un documento de la biblioteca de SALUTEM del paciente.
+         *
+         *     `licencia` y `receta` NO son la carpeta de SALUTEM (la API no la entrega): dicen si
+         *     el archivo se subió el día de una atención que indicó licencia o receta, o en los
+         *     días siguientes (tope de 7). `fecha_atencion` es esa atención.
+         */
+        DocumentoSalutemRead: {
+            /** Archivo Id */
+            archivo_id: number;
+            /** Nombre */
+            nombre: string;
+            /** Tipo */
+            tipo: string | null;
+            /** Fecha Creacion */
+            fecha_creacion: string | null;
+            /** Licencia */
+            licencia: boolean;
+            /** Receta */
+            receta: boolean;
+            /** Fecha Atencion */
+            fecha_atencion: string | null;
         };
         /** EjecucionRead */
         EjecucionRead: {
@@ -9935,6 +9996,70 @@ export interface operations {
             header?: never;
             path: {
                 cita_id: number;
+                archivo_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    listar_documentos_api_v1_pacientes__paciente_id__documentos_salutem_get: {
+        parameters: {
+            query?: {
+                /** @description Solo los relacionados con una atención que indicó licencia o receta */
+                relacion?: ("licencia" | "receta") | null;
+            };
+            header?: never;
+            path: {
+                paciente_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentoSalutemRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    contenido_documento_api_v1_pacientes__paciente_id__documentos_salutem__archivo_id__contenido_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                paciente_id: number;
                 archivo_id: number;
             };
             cookie?: never;
