@@ -222,12 +222,12 @@ def _get_control_o_404(db: Session, control_id: int) -> ControlMedico:
 
 
 def obtener_controles_por_ingreso(db: Session, ingreso_id: int) -> list[ControlMedico]:
-    """Lista todos los controles asociados a un ingreso/folio."""
+    """Lista todos los controles asociados a un ingreso/folio, del más reciente al más antiguo."""
     return list(
         db.execute(
             select(ControlMedico)
             .where(ControlMedico.ingreso_id == ingreso_id)
-            .order_by(ControlMedico.fecha_control)
+            .order_by(ControlMedico.fecha_control.desc(), ControlMedico.id.desc())
         ).scalars()
     )
 

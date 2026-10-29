@@ -434,6 +434,7 @@ def test_la_lectura_del_control_trae_la_especialidad_de_salutem(db_session):
 
     leidos = leer_controles(db_session, obtener_controles_por_ingreso(db_session, ingreso.id))
 
+    # Del más reciente al más antiguo.
     assert [(c.salutem_cita_id, c.especialidad) for c in leidos] == [
-        (5400, "Médico/a"), (5401, "Primera consulta médica AT"), (None, None),
+        (None, None), (5401, "Primera consulta médica AT"), (5400, "Médico/a"),
     ]
