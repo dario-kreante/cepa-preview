@@ -148,3 +148,35 @@ def test_crear_lm_con_tramo_fuera_del_catalogo_422(as_admin):
     ing_id = _payload_ingreso(as_admin)
     r = as_admin.post("/api/v1/licencias", json=_payload_lm(ing_id, eeag_gaf_tramo="41-55"))
     assert r.status_code == 422
+
+
+# QA-006 (UTalca 22-10): el formulario ya no pide las fechas del reposo; el backend las
+# deriva de las fechas de la licencia para que el agendamiento y las alertas sigan igual.
+def test_crear_lm_sin_fechas_de_reposo_las_deriva_de_la_licencia(as_admin):
+    ing_id = _payload_ingreso(as_admin, folio="F-LIC-QA006")
+    payload = _payload_lm(
+        ing_id, fecha_inicio="2026-07-01", fecha_termino="2026-07-10", cantidad_dias=10
+    )
+    del payload["inicio_reposo"]
+    del payload["fin_reposo"]
+    r = as_admin.post("/api/v1/licencias", json=payload)
+    assert r.status_code == 201, r.text
+    cuerpo = r.json()
+    assert cuerpo["inicio_reposo"] == "2026-07-01"
+    assert cuerpo["fin_reposo"] == "2026-07-10"
+
+    detalle = as_admin.get(f"/api/v1/licencias/{cuerpo['id']}")
+    assert detalle.json()["inicio_reposo"] == "2026-07-01"
+    assert detalle.json()["fin_reposo"] == "2026-07-10"
+
+
+# Compatibilidad: un cliente que todavía envía las fechas del reposo las conserva.
+def test_crear_lm_con_fechas_de_reposo_explicitas_las_respeta(as_admin):
+    ing_id = _payload_ingreso(as_admin, folio="F-LIC-QA006B")
+    r = as_admin.post(
+        "/api/v1/licencias",
+        json=_payload_lm(ing_id, inicio_reposo="2026-06-03", fin_reposo="2026-06-12"),
+    )
+    assert r.status_code == 201, r.text
+    assert r.json()["inicio_reposo"] == "2026-06-03"
+    assert r.json()["fin_reposo"] == "2026-06-12"

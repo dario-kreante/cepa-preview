@@ -22,8 +22,11 @@ class LicenciaCreate(BaseModel):
     fecha_inicio: date
     fecha_termino: date
     fecha_emision: date
-    inicio_reposo: date
-    fin_reposo: date
+    # QA-006 (UTalca 22-10): el período de reposo es el de la licencia. El formulario ya
+    # no los pide; si no vienen se derivan de fecha_inicio/fecha_termino. Se aceptan
+    # explícitos por compatibilidad con clientes previos.
+    inicio_reposo: date | None = None
+    fin_reposo: date | None = None
     cantidad_dias: Annotated[int, Field(ge=1)]
     indicacion_reposo: str | None = None
     diagnostico: str
@@ -33,6 +36,11 @@ class LicenciaCreate(BaseModel):
 
     @model_validator(mode="after")
     def _validar_coherencia_fechas(self) -> "LicenciaCreate":
+        # QA-006: el reposo, si no viene, es el mismo período de la licencia.
+        if self.inicio_reposo is None:
+            self.inicio_reposo = self.fecha_inicio
+        if self.fin_reposo is None:
+            self.fin_reposo = self.fecha_termino
         # RN-4: fecha_termino >= fecha_inicio
         if self.fecha_termino < self.fecha_inicio:
             raise ValueError(
