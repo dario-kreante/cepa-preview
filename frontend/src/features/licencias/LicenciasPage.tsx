@@ -20,6 +20,7 @@ import { AltaLicenciaDialog } from "./AltaLicenciaDialog";
 import { AnularLicenciaDialog } from "./AnularLicenciaDialog";
 import { IslLicenciaDialog } from "./IslLicenciaDialog";
 import { useBuscarPacientes, useVista360 } from "@/features/ingresos/hooks";
+import { DocumentosSalutemPaciente } from "@/features/controles/DocumentosSalutem";
 import type { PacienteRead } from "@/features/ingresos/api";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -550,6 +551,14 @@ export function LicenciasPage() {
             Sin licencias para este paciente.
           </p>
         </div>
+      )}
+
+      {hasSearched && !isFetching && paciente && (
+        <DocumentosSalutemPaciente
+          pacienteId={paciente.id}
+          relacion="licencia"
+          titulo="Documentos de licencias en SALUTEM"
+        />
       )}
 
       {/* Alta de licencia dialog — writers only */}

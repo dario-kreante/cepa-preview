@@ -142,6 +142,33 @@ export async function archivosDeAtencion(citaId: number): Promise<ArchivoControl
   return data;
 }
 
+export type DocumentoSalutemRead = components["schemas"]["DocumentoSalutemRead"];
+/** Relación DEDUCIDA de la atención: SALUTEM no informa la carpeta del archivo. */
+export type RelacionDocumento = "licencia" | "receta";
+
+/** GET /api/v1/pacientes/{paciente_id}/documentos-salutem */
+export async function documentosDePaciente(
+  pacienteId: number,
+  relacion?: RelacionDocumento,
+): Promise<DocumentoSalutemRead[]> {
+  const { data, error } = await api.GET("/api/v1/pacientes/{paciente_id}/documentos-salutem", {
+    params: { path: { paciente_id: pacienteId }, query: relacion ? { relacion } : {} },
+  });
+  if (error || !data) throw new Error("No se pudieron cargar los documentos de SALUTEM");
+  return data;
+}
+
+export function abrirDocumentoDePaciente(pacienteId: number, archivoId: number, nombre: string) {
+  return abrirArchivo(
+    () =>
+      api.GET("/api/v1/pacientes/{paciente_id}/documentos-salutem/{archivo_id}/contenido", {
+        params: { path: { paciente_id: pacienteId, archivo_id: archivoId } },
+        parseAs: "blob",
+      }),
+    nombre,
+  );
+}
+
 export class PestanaBloqueadaError extends Error {
   constructor() {
     super("El navegador bloqueó la pestaña nueva.");
