@@ -156,6 +156,7 @@ def actualizar_licencia(
         HTTPException 404: si control_id no existe.
     """
     control = _get_control_o_404(db, control_id)
+    antes = _foto(control, _CAMPOS_LICENCIA)
 
     control.tiene_licencia = data.tiene_licencia
     if data.tiene_licencia:
@@ -182,6 +183,7 @@ def actualizar_licencia(
         control.gaf_tramo = resolver_tramo(db, None, data.gaf)
     control.estado_reca = data.estado_reca.value if data.estado_reca else None
     control.observaciones = data.observaciones
+    _marcar_cambios(control, antes)
     db.flush()
     return control
 
@@ -199,8 +201,11 @@ def actualizar_evaluacion(
         HTTPException 404: si control_id no existe.
     """
     control = _get_control_o_404(db, control_id)
-    for campo, valor in data.model_dump(exclude_unset=True).items():
+    cambios = data.model_dump(exclude_unset=True)
+    antes = _foto(control, tuple(cambios))
+    for campo, valor in cambios.items():
         setattr(control, campo, valor)
+    _marcar_cambios(control, antes)
     db.flush()
     return control
 
@@ -208,6 +213,34 @@ def actualizar_evaluacion(
 # ─────────────────────────────────────────────────────────────────────────────
 # Helpers
 # ─────────────────────────────────────────────────────────────────────────────
+
+# Lo que edita el diálogo «Licencia/RECA».
+_CAMPOS_LICENCIA = (
+    "tiene_licencia",
+    "resumen_termino_lm",
+    "total_dias_lm",
+    "tipo_licencia",
+    "tipo_reposo",
+    "gaf",
+    "gaf_tramo",
+    "estado_reca",
+    "observaciones",
+)
+
+
+def _foto(control: ControlMedico, campos: tuple[str, ...]) -> dict:
+    return {c: getattr(control, c) for c in campos}
+
+
+def _marcar_cambios(control: ControlMedico, antes: dict) -> None:
+    """Registra los campos que cambiaron a mano: el sync de SALUTEM ya no los pisa (D4)."""
+    def _norm(v):  # el formulario manda "" donde la BD tiene NULL: eso no es un cambio
+        return None if v == "" else v
+
+    cambiados = {c for c, v in antes.items() if _norm(getattr(control, c)) != _norm(v)}
+    if cambiados:
+        control.marcar_editados(cambiados)
+
 
 def _get_control_o_404(db: Session, control_id: int) -> ControlMedico:
     control = db.execute(

@@ -302,6 +302,46 @@ describe("ControlesPage", () => {
     expect(within(delCepa).queryByText("SALUTEM")).not.toBeInTheDocument();
   });
 
+  it("marca «Corregido» el control de SALUTEM editado a mano en SIGE (D4)", async () => {
+    server.use(
+      http.get(`${BASE}/api/v1/pacientes/buscar`, () => HttpResponse.json([MOCK_PACIENTE])),
+      http.get(`${BASE}/api/v1/pacientes/:pacienteId/vista-360`, () =>
+        HttpResponse.json(MOCK_VISTA_360)
+      ),
+      http.get(`${BASE}/api/v1/controles-medicos/por-ingreso/:ingresoId`, () =>
+        HttpResponse.json([
+          {
+            ...MOCK_CONTROLES[0],
+            id: 301,
+            medico_tratante: "DRA. PAULA ROJAS",
+            origen: "SALUTEM",
+            salutem_cita_id: 5101,
+            campos_editados: ["total_dias_lm"],
+          },
+          {
+            ...MOCK_CONTROLES[0],
+            id: 302,
+            fecha_control: "2026-03-17",
+            medico_tratante: "DR. SIN CAMBIOS",
+            origen: "SALUTEM",
+            salutem_cita_id: 5102,
+            campos_editados: [],
+          },
+        ])
+      )
+    );
+
+    renderPage();
+    await userEvent.type(
+      screen.getByPlaceholderText("Buscar por RUT, folio, nombre o ID SALUTEM"),
+      "Juan"
+    );
+    await userEvent.click(await screen.findByText("Juan Pérez", {}, { timeout: 8000 }));
+
+    expect(await screen.findByTestId("badge-corregido-301", {}, { timeout: 8000 })).toHaveTextContent("Corregido");
+    expect(screen.queryByTestId("badge-corregido-302")).not.toBeInTheDocument();
+  });
+
   it("muestra la prestación de SALUTEM de cada control para distinguirlas (QA-002)", async () => {
     server.use(
       http.get(`${BASE}/api/v1/pacientes/buscar`, () => HttpResponse.json([MOCK_PACIENTE])),

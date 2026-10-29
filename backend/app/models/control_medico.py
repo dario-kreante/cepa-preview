@@ -86,6 +86,18 @@ class ControlMedico(Base):
     # clave compuesta con NULL choca con los controles manuales del mismo ingreso).
     origen: Mapped[str] = mapped_column(String(20), nullable=False, default="CEPA", server_default="CEPA")
     salutem_cita_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    # Campos corregidos a mano en SIGE (migración 1390), separados por coma. El sync de
+    # SALUTEM no los vuelve a escribir: un adendum del médico corrige los días de licencia
+    # sin tocar la ficha, y esa corrección debe quedarse (reunión 29-10, D4).
+    campos_editados: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
+    @property
+    def campos_editados_set(self) -> set[str]:
+        return {c for c in (self.campos_editados or "").split(",") if c}
+
+    def marcar_editados(self, campos: set[str]) -> None:
+        todos = self.campos_editados_set | campos
+        self.campos_editados = ",".join(sorted(todos)) or None
 
     # ── Profesional del catálogo (migración 1350) ────────────────────────────
     # El sync lo llena desde ``profesionalId``; en controles manuales, el selector.

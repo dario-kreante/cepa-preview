@@ -3097,6 +3097,8 @@ export interface components {
             salutem_cita_id?: number | null;
             /** Especialidad */
             especialidad?: string | null;
+            /** Campos Editados */
+            campos_editados?: string[];
         };
         /** CumplimientoConvenioItem */
         CumplimientoConvenioItem: {

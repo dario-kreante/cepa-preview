@@ -28,6 +28,9 @@ cualquier sección de la atención. Correspondencia con el control:
                      ← los campos "Tiempo estimado de tratamiento", "Proyección de
                        reintegro laboral" y "Factores de riesgo acogidos"
 - estado_reca        ← no viene en SALUTEM: lo completa el CEPA y el sync no lo toca
+
+Los campos que el CEPA corrige a mano en SIGE (``campos_editados``, migración 1390) no se
+vuelven a escribir desde SALUTEM.
 """
 
 import calendar
@@ -108,10 +111,15 @@ def sincronizar_control(
     profesional_id = profesional_de_salutem(db, atencion.contenido)
     if profesional_id is not None:
         campos["profesional_id"] = profesional_id
+    if control is not None:
+        # Lo que el CEPA corrigió a mano en SIGE (un adendum, días que la ficha no trae)
+        # manda sobre la ficha de SALUTEM.
+        for editado in control.campos_editados_set:
+            campos.pop(editado, None)
     creado = control is None
     # Un control que pasa a tener licencia (p. ej. porque el extractor ahora la reconoce)
     # también alerta, aunque la atención no haya cambiado en SALUTEM.
-    gano_licencia = not creado and campos["tiene_licencia"] and not control.tiene_licencia
+    gano_licencia = not creado and campos.get("tiene_licencia", False) and not control.tiene_licencia
     if control is None:
         control = ControlMedico(ingreso_id=ingreso.id, origen=ORIGEN, salutem_cita_id=atencion.cita_id, **campos)
         db.add(control)

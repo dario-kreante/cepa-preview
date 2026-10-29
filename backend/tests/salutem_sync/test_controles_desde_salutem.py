@@ -15,7 +15,13 @@ from app.integrations.salutem.models import AtencionSalutem, CitaSalutem, Estado
 from app.models.control_medico import ControlMedico
 from app.models.ingreso import Ingreso
 from app.models.paciente import Paciente
-from app.services.control_medico import leer_controles, obtener_controles_por_ingreso
+from app.schemas.control_medico import EvaluacionUpdate, LicenciaUpdate
+from app.services.control_medico import (
+    actualizar_evaluacion,
+    actualizar_licencia,
+    leer_controles,
+    obtener_controles_por_ingreso,
+)
 from app.services.salutem_sync import copia
 from app.services.salutem_sync.vinculacion import vincular
 from tests.salutem_sync.conftest import AHORA
@@ -438,3 +444,45 @@ def test_la_lectura_del_control_trae_la_especialidad_de_salutem(db_session):
     assert [(c.salutem_cita_id, c.especialidad) for c in leidos] == [
         (None, None), (5401, "Primera consulta médica AT"), (5400, "Médico/a"),
     ]
+
+
+# Reunión 29-10 (D4): un adendum corrige los días de licencia en SIGE; SALUTEM no lo pisa.
+def test_la_correccion_manual_de_la_licencia_no_la_pisa_el_sync(db_session):
+    _paciente_e_ingreso(db_session)
+    _persona(db_session)
+    reposo = [{"tipo": "Indicación", "nombre": "Indicación de Reposo",
+               "registro": "Se indica LM tipo 6 por 15 dias, fecha de inicio 14 de abril"}]
+    _atencion(db_session, 5101, "2024-04-14", indicaciones=reposo)
+    vincular(db_session, AHORA)
+    [c] = _controles(db_session)
+    assert c.total_dias_lm == 15
+
+    actualizar_licencia(db_session, c.id, LicenciaUpdate(
+        tiene_licencia=True, resumen_termino_lm=c.resumen_termino_lm, total_dias_lm=21,
+        tipo_licencia=c.tipo_licencia, tipo_reposo="total", observaciones=c.observaciones or "",
+    ))
+    assert set(leer_controles(db_session, [c])[0].campos_editados) == {"total_dias_lm", "tipo_reposo"}
+
+    _atencion(db_session, 5101, "2024-04-14", indicaciones=reposo, profesionalNombre="DR. OTRO")
+    vincular(db_session, AHORA)
+    vincular(db_session, AHORA, todo=True)
+
+    [c] = _controles(db_session)
+    assert (c.total_dias_lm, c.tipo_reposo) == (21, "total")  # la corrección se queda
+    assert c.medico_tratante == "DR. OTRO"  # lo demás sigue al día con SALUTEM
+
+
+def test_la_evaluacion_corregida_a_mano_tampoco_la_pisa_el_sync(db_session):
+    _paciente_e_ingreso(db_session)
+    _persona(db_session)
+    _atencion(db_session, 5102, "2024-05-02")
+    vincular(db_session, AHORA)
+    [c] = _controles(db_session)
+
+    actualizar_evaluacion(db_session, c.id, EvaluacionUpdate(proyeccion_reintegro="3 meses"))
+    _atencion(db_session, 5102, "2024-05-02", profesionalNombre="DR. OTRO")
+    vincular(db_session, AHORA, todo=True)
+
+    [c] = _controles(db_session)
+    assert c.proyeccion_reintegro == "3 meses"
+    assert c.campos_editados == "proyeccion_reintegro"

@@ -163,6 +163,17 @@ class ControlMedicoRead(BaseModel):
     # Prestación/especialidad de SALUTEM de la atención que originó el control
     # ("Primera consulta médica AT"). Nula en los controles cargados en SIGE.
     especialidad: str | None = None
+    # Campos corregidos a mano en SIGE: el sync de SALUTEM ya no los sobrescribe.
+    campos_editados: list[str] = []
+
+    @field_validator("campos_editados", mode="before")
+    @classmethod
+    def _separar_campos(cls, v: object) -> object:
+        if v is None:
+            return []
+        if isinstance(v, str):
+            return [c for c in v.split(",") if c]
+        return v
 
 
 class ArchivoControlRead(BaseModel):

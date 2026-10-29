@@ -90,6 +90,15 @@ function ControlRow({ control, ingresoId, canWrite, columnas }: ControlRowProps)
                 SALUTEM
               </Badge>
             )}
+            {control.origen === "SALUTEM" && (control.campos_editados?.length ?? 0) > 0 && (
+              <Badge
+                variant="warning"
+                title="Corregido a mano en SIGE: la sincronización con SALUTEM no sobrescribe esos datos"
+                data-testid={`badge-corregido-${control.id}`}
+              >
+                Corregido
+              </Badge>
+            )}
           </div>
         </td>
 
