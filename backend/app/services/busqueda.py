@@ -43,10 +43,12 @@ def buscar_pacientes(db, q: str) -> list[Paciente]:
     for ing in db.execute(select(Ingreso).where(Ingreso.folio == q)).scalars():
         ids.add(ing.paciente_id)
 
-    # 3) por nombre parcial (case-insensitive, portable con lower())
-    patron = f"%{q.lower()}%"
+    # 3) por nombre parcial (case-insensitive, portable con lower()). Cada palabra se
+    # busca por separado: SALUTEM muestra «PACIENTE FRANCISCA VALLADARES PRUEBA» y SIGE
+    # guarda «Paciente Prueba Francisca Valladares» (caso de Sasha, 21-10).
+    palabras = q.lower().split()
     for p in db.execute(
-        select(Paciente).where(func.lower(Paciente.nombre).like(patron))
+        select(Paciente).where(*(func.lower(Paciente.nombre).like(f"%{w}%") for w in palabras))
     ).scalars():
         ids.add(p.id)
 
@@ -68,20 +70,21 @@ def buscar_pacientes(db, q: str) -> list[Paciente]:
 
 
 def _por_identidad_salutem(db, q: str) -> set[int]:
+    personas: set[int] = set()
     if q.isdigit():
-        personas = {int(q)}
-    elif _SIN_ID.match(q):
+        personas.add(int(q))
+        # El número solo, sin el prefijo «sin_id_», también identifica al paciente.
+        q = f"sin_id_{q}"
+    if _SIN_ID.match(q):
         # El sin_id es la "identificacion" que SALUTEM muestra y vive en el contenido
         # JSON (CLOB en Oracle): se compara en Python. Solo se revisan las personas
         # sin RUT, que son pocas.
         buscado = q.lower()
-        personas = {
+        personas |= {
             p.salutem_id
             for p in db.scalars(select(SalutemPersona).where(SalutemPersona.rut.is_(None)))
             if str(p.contenido.get("identificacion") or "").lower() == buscado
         }
-    else:
-        return set()
     if not personas:
         return set()
     return set(
