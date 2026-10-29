@@ -20,6 +20,8 @@ def test_caso_reintegro_tabla_y_columnas():
         "region",
         "comuna",
         "rubro_empleador",
+        "razon_social",
+        "tipo_trabajador",
         "estado_reintegro",
         "fecha_reintegro",
         "remitido_isl",
@@ -54,6 +56,14 @@ def test_caso_reintegro_tipos_y_pk():
     assert isinstance(cols["alta_psicologica"].type, Boolean)
     assert isinstance(cols["created_at"].type, DateTime)
     assert cols["created_at"].type.timezone is True
+
+
+def test_caso_reintegro_sexo_edad_nullable_qa008():
+    cols = CasoReintegro.__table__.columns
+    assert cols["sexo"].nullable
+    assert cols["edad"].nullable
+    assert cols["razon_social"].nullable
+    assert cols["tipo_trabajador"].nullable
 
 
 def test_caso_reintegro_fk_ingreso():
