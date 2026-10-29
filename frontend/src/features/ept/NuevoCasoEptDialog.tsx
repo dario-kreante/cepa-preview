@@ -9,7 +9,7 @@
  * useActualizarCaso instead of useCrearCaso.
  */
 import { useEffect } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, type DefaultValues } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import {
@@ -24,9 +24,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   casoEptSchema,
+  etiquetaFactorRiesgo,
   FACTOR_RIESGO_LABELS,
+  FACTORES_RIESGO,
   type CasoEptForm,
-  type FactorRiesgo,
 } from "./casoEptSchema";
 import { useCrearCaso, useActualizarCaso } from "./hooks";
 import type { CasoEptRead } from "./api";
@@ -36,19 +37,27 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCreated: (caso: CasoEptRead) => void;
-  /** When provided, the dialog is in edit mode (PATCH). */
-  initialValues?: CasoEptForm;
+  /**
+   * When provided, the dialog is in edit mode (PATCH). `factor_riesgo` may be
+   * undefined when the caso still has a factor from the previous list: the
+   * user must pick one of the current list before saving.
+   */
+  initialValues?: DefaultValues<CasoEptForm>;
+  /** Legacy factor stored on the caso, shown as a hint while editing. */
+  factorRiesgoAnterior?: string;
   casoId?: number;
 }
 
-const DEFAULT_VALUES: CasoEptForm = {
+// factor_riesgo starts empty: with 24 options a preselected default would be
+// saved by accident. The placeholder option forces an explicit choice.
+const DEFAULT_VALUES: DefaultValues<CasoEptForm> = {
   mes: "",
   fecha_ingreso_ept: "",
   nombre_trabajador: "",
   rut_trabajador: "",
   region_trabajador: "",
   eista: "",
-  factor_riesgo: "carga",
+  factor_riesgo: undefined,
   corresponde_ept: true,
   razon_social: "",
   unidad_cargo_horario: "",
@@ -60,6 +69,7 @@ export function NuevoCasoEptDialog({
   onOpenChange,
   onCreated,
   initialValues,
+  factorRiesgoAnterior,
   casoId,
 }: Props) {
   const isEdit = !!initialValues && !!casoId;
@@ -252,14 +262,22 @@ export function NuevoCasoEptDialog({
               {...register("factor_riesgo")}
               className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-[13px] shadow-sm transition-colors focus:outline-none focus:ring-1 focus:ring-ring"
             >
-              {(Object.keys(FACTOR_RIESGO_LABELS) as FactorRiesgo[]).map(
-                (key) => (
-                  <option key={key} value={key}>
-                    {FACTOR_RIESGO_LABELS[key]}
-                  </option>
-                )
-              )}
+              <option value="">Selecciona un factor de riesgo…</option>
+              {FACTORES_RIESGO.map((key) => (
+                <option key={key} value={key}>
+                  {FACTOR_RIESGO_LABELS[key]}
+                </option>
+              ))}
             </select>
+            {factorRiesgoAnterior && (
+              <p
+                className="text-[11.5px] text-muted-foreground mt-1"
+                data-testid="factor-riesgo-anterior"
+              >
+                Este caso tenía «{etiquetaFactorRiesgo(factorRiesgoAnterior)}»,
+                que ya no está en la lista. Elige el factor que corresponda.
+              </p>
+            )}
             {errors.factor_riesgo && (
               <p className="text-[11.5px] text-destructive mt-1">
                 {errors.factor_riesgo.message}

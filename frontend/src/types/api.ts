@@ -2642,7 +2642,8 @@ export interface components {
             region_trabajador: string;
             /** Eista */
             eista: string;
-            factor_riesgo: components["schemas"]["FactorRiesgo"];
+            /** Factor Riesgo */
+            factor_riesgo: components["schemas"]["FactorRiesgo"] | components["schemas"]["FactorRiesgoLegado"];
             /** Corresponde Ept */
             corresponde_ept: boolean;
             estado: components["schemas"]["EstadoEpt"];
@@ -3325,12 +3326,26 @@ export interface components {
          * FactorRiesgo
          * @description Factor de riesgo del puesto laboral (CEPA-030 RN-1).
          *
-         *     Nota: confirmación pendiente de si es lista cerrada definitiva o parametrizable
-         *     (pregunta abierta del spec). Esta lista cubre los valores del Excel de origen.
-         *     Se trata como lista cerrada P0; se puede ampliar como migración de datos.
+         *     Lista cerrada que usa el área EPT de UTalca (QA UTalca 22-10, QA-003).
+         *     Es la única que se acepta al crear o editar un caso. El orden de los
+         *     miembros es el orden en que se muestran en la UI (las etiquetas viven en
+         *     el frontend). Los valores son slugs ASCII de hasta 40 caracteres porque la
+         *     columna ``caso_ept.factor_riesgo`` es String(40) sin check constraint.
          * @enum {string}
          */
-        FactorRiesgo: "carga" | "organizacion_trabajo" | "factores_psicosociales" | "violencia_laboral" | "condiciones_ergonomicas" | "otro";
+        FactorRiesgo: "sobrecarga" | "subcarga" | "trabajo_activo_continuo" | "ausencia_descansos" | "tareas_rutinarias" | "trabajo_emocionalmente_comprometido" | "ambiguedad_conflicto_roles" | "limitacion_regular_trabajo" | "limitacion_tomar_decisiones" | "limitacion_regular_permisos" | "carencia_uso_habilidades" | "ausencia_ayuda_informacion" | "ausencia_capacitacion_tecnologica" | "conflictos_interpersonales" | "condiciones_organizacionales_estresantes" | "hostilidad_pares" | "hostilidad_subalternos" | "disfuncionalidad_jefatura" | "hostilidad_jefatura" | "asedio_sexual" | "violencia_acoso_usuarios" | "violencia_personas_ajenas" | "condiciones_fisicas_ergonomicas" | "no_aplica";
+        /**
+         * FactorRiesgoLegado
+         * @description Factores de riesgo genéricos de la primera versión (deprecados).
+         *
+         *     Hay casos guardados con estos valores en las BD de dev/QA. Se aceptan solo
+         *     en lectura (``CasoEptRead``) para que esos casos se sigan mostrando; crear
+         *     o editar un caso exige un valor de ``FactorRiesgo``. No se migran los datos
+         *     porque no hay equivalencia 1 a 1 con la lista nueva: al editar el caso, el
+         *     usuario elige el factor nuevo.
+         * @enum {string}
+         */
+        FactorRiesgoLegado: "carga" | "organizacion_trabajo" | "factores_psicosociales" | "violencia_laboral" | "condiciones_ergonomicas" | "otro";
         /**
          * FarmacoSugeridoRead
          * @description Un medicamento leído de una receta de SALUTEM, estructurado para el esquema.
