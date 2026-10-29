@@ -547,6 +547,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/odas/importar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Importar
+         * @description Carga el «Reporte Prestador» del portal ISL (xlsx ≤ 10 MB) y actualiza las ODAS.
+         *
+         *     Idempotente: subir la misma planilla dos veces no duplica. Con ``dry_run=true`` aplica
+         *     los cambios dentro de un savepoint, arma el resumen y lo revierte (previsualización).
+         */
+        post: operations["importar_api_v1_odas_importar_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/odas/alertas": {
         parameters: {
             query?: never;
@@ -2573,6 +2596,11 @@ export interface components {
              */
             RelayState: string;
         };
+        /** Body_importar_api_v1_odas_importar_post */
+        Body_importar_api_v1_odas_importar_post: {
+            /** File */
+            file: string;
+        };
         /** Body_upload_pdf_api_v1_pdf_extract_upload_post */
         Body_upload_pdf_api_v1_pdf_extract_upload_post: {
             /** File */
@@ -4239,6 +4267,77 @@ export interface components {
              * Format: date
              */
             fecha_vencimiento: string;
+        };
+        /** OdaImportError */
+        OdaImportError: {
+            /** Fila */
+            fila: number;
+            /** Motivo */
+            motivo: string;
+        };
+        /**
+         * OdaImportFilaSinPaciente
+         * @description Fila del reporte que no calzó con ningún ingreso (ni por siniestro ni por RUT).
+         */
+        OdaImportFilaSinPaciente: {
+            /** Fila */
+            fila: number;
+            /** Numero Orden */
+            numero_orden: string;
+            /** Tipo Orden */
+            tipo_orden?: string | null;
+            /** Numero Siniestro */
+            numero_siniestro?: string | null;
+            /** Rut Trabajador */
+            rut_trabajador?: string | null;
+        };
+        /** OdaImportPorVencer */
+        OdaImportPorVencer: {
+            /** Oda Id */
+            oda_id: number;
+            /** Ingreso Id */
+            ingreso_id: number;
+            /** Folio */
+            folio: string;
+            /** Numero Orden */
+            numero_orden: string;
+            /**
+             * Fecha Vencimiento
+             * Format: date
+             */
+            fecha_vencimiento: string;
+        };
+        /**
+         * OdaImportResumen
+         * @description Resumen de la carga. Con dry_run=true nada se guarda: es la previsualización.
+         */
+        OdaImportResumen: {
+            /** Dry Run */
+            dry_run: boolean;
+            /** Archivo */
+            archivo?: string | null;
+            /** Filas Leidas */
+            filas_leidas: number;
+            /** Creadas */
+            creadas: number;
+            /** Actualizadas */
+            actualizadas: number;
+            /** Sin Cambios */
+            sin_cambios: number;
+            /** Match Por Siniestro */
+            match_por_siniestro: number;
+            /** Match Por Rut */
+            match_por_rut: number;
+            /** Sin Paciente */
+            sin_paciente: components["schemas"]["OdaImportFilaSinPaciente"][];
+            /** Errores */
+            errores: components["schemas"]["OdaImportError"][];
+            /** Ventana Dias */
+            ventana_dias: number;
+            /** Por Vencer Paciente Activo */
+            por_vencer_paciente_activo: number;
+            /** Por Vencer */
+            por_vencer: components["schemas"]["OdaImportPorVencer"][];
         };
         /** OdaRead */
         OdaRead: {
@@ -6714,6 +6813,42 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OdaRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    importar_api_v1_odas_importar_post: {
+        parameters: {
+            query?: {
+                /** @description true = previsualizar sin guardar */
+                dry_run?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_importar_api_v1_odas_importar_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OdaImportResumen"];
                 };
             };
             /** @description Validation Error */

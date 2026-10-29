@@ -231,18 +231,24 @@ def _resolver_usuario(ingreso_id: int | None, db: Session) -> int | None:
 def _construir_hitos_oda(db: Session, ventanas: dict[str, dict] | None = None) -> list[HitoPlazos]:
     """Construye HitoPlazos desde la tabla oda (EPIC-01) via ORM.
 
-    Filtra por vigente=True y fecha_vencimiento IS NOT NULL.
+    Filtra por vigente=True, fecha_vencimiento IS NOT NULL e ingreso activo: la ODA de un
+    paciente cerrado o derivado no necesita renovarse (QA-004).
     Destinatario: ver _resolver_usuario (hoy None, panel general).
     """
+    from app.domain.enums import EstadoCaso
+    from app.models.ingreso import Ingreso
     from app.models.oda import Oda  # local import para evitar ciclos
 
     ventana = (ventanas or VENTANAS_DEFAULT)[TipoAlerta.ODA_POR_VENCER.value]
     if not ventana.get("activo", True):
         return []
     filas = db.scalars(
-        select(Oda).where(
+        select(Oda)
+        .join(Ingreso, Oda.ingreso_id == Ingreso.id)
+        .where(
             Oda.vigente == True,  # noqa: E712
             Oda.fecha_vencimiento.isnot(None),
+            Ingreso.estado == EstadoCaso.ACTIVO.value,
         )
     ).all()
     hitos = []
