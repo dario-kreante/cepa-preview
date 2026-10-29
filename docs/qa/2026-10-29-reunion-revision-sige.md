@@ -47,3 +47,55 @@ Estado de los pedidos de los informes de QA del 22-10 y 23-10 (Pilar García, Al
 6. **Licencias y recetas de SALUTEM en sus módulos.** Hoy solo llegan como alertas, y hay que gestionarlas para que aparezcan en Licencias o Fármacos. Propuesta: mostrar en cada módulo una sección «Informadas en SALUTEM, pendientes de registrar», con el botón para registrarlas.
 7. **N° de siniestro en los pacientes de prueba.** Para probar la carga del reporte ISL se necesita al menos un paciente con un N° de siniestro que esté en la planilla.
 8. **Dónde prueban.** Las testers usan la VM de **dev**. Confirmar que siguen ahí.
+
+---
+
+## Acta (29-10, 15:02–16:18)
+
+Transcripción completa: [2026-10-29-reunion-revision-sige-transcripcion.md](2026-10-29-reunion-revision-sige-transcripcion.md).
+
+Asistentes: Pilar García, Alejandra Herrera, Melissa Cabrera, Jocelyn, Gissela, Paula Sánchez, Sasha Cofré,
+Carla Hevia, Gustavo Espinoza y Darío Ramírez. Darío presentó la arquitectura (sync SALUTEM de solo lectura
+en 3 ritmos), los perfiles y los módulos. El equipo planteó dudas y pedidos por módulo.
+
+### Plazos
+
+- Un par de semanas más de pruebas, hasta no tener observaciones. Después vienen la revisión de los
+  comités y la de la DTI.
+- Paso a producción hacia **fines de diciembre 2026**. Desde los ingresos de **enero 2027** se usa SIGE
+  al 100 %, con un par de meses de corrección en operación.
+- Próxima actualización comprometida: **viernes 30-10 por la tarde**, con el rol superadministrador y
+  algunos de los ajustes. Hay que avisarle a Pilar cuando esté.
+- El contrato del CEPA con SALUTEM llega hasta 2028.
+
+### Tareas de Darío (desarrollo)
+
+| # | Tarea | Pedido por | Notas |
+|---|---|---|---|
+| D1 | Mandar a Pilar por WhatsApp la captura del error de SALUTEM y desde cuándo ocurre | Pilar / SALUTEM | **Hoy.** `SIN_INTEGRACION_CONFIGURADA` desde el 23-10 09:20, empresa 96, qa.salutem.cl. |
+| D2 | Rol nuevo **superadministrador** (todo: EPT, corregir folio, auditoría, etc.) para Pilar y Alejandra | Pilar | **30-10 tarde.** Hoy Pilar (Coordinación) no puede crear EPT ni cambiar el folio. |
+| D3 | Revisar en los logs por qué Pilar no pudo cambiar el folio | Pilar | Casi seguro es el permiso: corregir folio es solo para Administrativo. Ella necesita editarlo al completar el registro (folios internos por programa). |
+| D4 | Control médico: dejar editar a mano días/reposo (y datos de licencia) cuando SALUTEM no los trae o un adendum los corrige | Pilar | |
+| D5 | Estado de paciente **«En encuadre»** (manual, junto a activo/cerrado) | Jocelyn, Pilar, Gissela | |
+| D6 | Alerta de **inasistencias para encuadre**: desde la 2.ª inasistencia, contando el histórico; cada inasistencia nueva vuelve a alertar | Jocelyn, Pilar, Gissela | Se acordó alertar todas y que el equipo revise si el paciente está en tratamiento o en acompañamiento. |
+| D7 | Alertas por correo: activarlas con la lista de correos institucionales, destinatarios por tipo de alerta (p. ej. recetas → prestaciones médicas) y opción de desactivarlas en la configuración personal | Pilar | Darío revisa si se configura por tipo. Depende de P2. |
+| D8 | Alerta de **anulación de cita**, la haga quien la haga (paciente por correo o WhatsApp, administrativo o profesional) | Pilar, Paula | Buscar un caso en el historial. Depende de que SALUTEM vuelva y de P6. |
+| D9 | ODA: alerta cuando un control o atención cae **fuera de la vigencia de la ODA** (fecha de atención vs. inicio/término) | Jocelyn, Melissa | La carga del Excel del ISL y el aviso de vencimiento ya están en PR #61. Responder en el grupo que eso ya existe. El cruce por fecha de atención es nuevo. |
+| D10 | EPT: **plazo de insumos** (documentos del empleador → EPTista) con alerta el mismo día del plazo, para todos los casos | Sasha | |
+| D11 | EPT: selección múltiple de **hasta 3 factores de riesgo** | Carla | Hoy hay uno solo de los 24 subfactores (PR #61). |
+| D12 | EPT: revisar con Sasha, en **dev**, que ya encuentra los casos por nombre/RUT/ID y que puede borrar los creados por error | Sasha | Lo resolvió el PR #60 (23-10), después de su prueba del 21-10. Aclarar la etiqueta «EPTista». |
+| D13 | Probar el botón masivo «marcar como enviadas» de Licencias | Darío | |
+| D14 | Revisar que todas las tarjetas del dashboard sean clicables y lleven al lugar correcto | Darío | |
+| D15 | Futuro (no ahora): leer un campo sí/no de «receta» en la ficha de SALUTEM e integrar los adendum | Pilar | Solo se puede probar en producción. Queda para una versión posterior. |
+
+### Tareas del CEPA
+
+| # | Tarea | Responsable |
+|---|---|---|
+| P1 | Pedir a la DTI que SIGE sea accesible desde fuera de la red UTalca (teletrabajo); si no, VPN para quien la necesite | Pilar |
+| P2 | Enviar la lista de correos institucionales para las alertas por mail | Pilar |
+| P3 | Enviar la lista de campos a agregar/quitar en «Completar registro» del folio pendiente (p. ej. tipo de programa) | Pilar |
+| P4 | Preguntar a SALUTEM si su API puede informar la carpeta del documento (licencias / recetas / ODA) | Pilar |
+| P5 | Gestionar con SALUTEM la caída de la integración (con la captura de D1) | Pilar |
+| P6 | Cuando vuelva la integración: crear un paciente nuevo y una cita, y anularla por los distintos medios, para probar folio pendiente y anulaciones | Pilar |
+| P7 | Registrar todas las observaciones de las pruebas en el documento de incidencias | Todo el equipo |
