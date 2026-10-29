@@ -301,4 +301,51 @@ describe("ControlesPage", () => {
     const delCepa = screen.getByText("Dr. Andrés Molina").closest("tr")!;
     expect(within(delCepa).queryByText("SALUTEM")).not.toBeInTheDocument();
   });
+
+  it("muestra la prestación de SALUTEM de cada control para distinguirlas (QA-002)", async () => {
+    server.use(
+      http.get(`${BASE}/api/v1/pacientes/buscar`, () => HttpResponse.json([MOCK_PACIENTE])),
+      http.get(`${BASE}/api/v1/pacientes/:pacienteId/vista-360`, () =>
+        HttpResponse.json(MOCK_VISTA_360)
+      ),
+      http.get(`${BASE}/api/v1/controles-medicos/por-ingreso/:ingresoId`, () =>
+        HttpResponse.json([
+          { ...MOCK_CONTROLES[0], origen: "CEPA", salutem_cita_id: null, especialidad: null },
+          {
+            ...MOCK_CONTROLES[0],
+            id: 201,
+            fecha_control: "2026-10-15",
+            medico_tratante: "DRA. PAULA ROJAS",
+            origen: "SALUTEM",
+            salutem_cita_id: 5001,
+            especialidad: "Médico/a",
+          },
+          {
+            ...MOCK_CONTROLES[0],
+            id: 202,
+            fecha_control: "2026-10-20",
+            medico_tratante: "DR. PEDRO SOTO",
+            origen: "SALUTEM",
+            salutem_cita_id: 5002,
+            especialidad: "Primera consulta médica AT",
+          },
+        ])
+      )
+    );
+
+    renderPage();
+    await userEvent.type(
+      screen.getByPlaceholderText("Buscar por RUT, folio, nombre o ID SALUTEM"),
+      "Juan"
+    );
+    await userEvent.click(await screen.findByText("Juan Pérez", {}, { timeout: 8000 }));
+
+    expect(await screen.findByRole("columnheader", { name: "Prestación" }, { timeout: 8000 })).toBeInTheDocument();
+    const primera = (await screen.findByText("DR. PEDRO SOTO")).closest("tr")!;
+    expect(within(primera).getByText("Primera consulta médica AT")).toBeInTheDocument();
+    const medico = screen.getByText("DRA. PAULA ROJAS").closest("tr")!;
+    expect(within(medico).getByText("Médico/a")).toBeInTheDocument();
+    const delCepa = screen.getByText("Dr. Andrés Molina").closest("tr")!;
+    expect(within(delCepa).getByTestId(/prestacion-control-/)).toHaveTextContent("—");
+  });
 });
