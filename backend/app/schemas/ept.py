@@ -4,7 +4,12 @@ from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr, field_validator
 
-from app.domain.enums_ept import EstadoCumplimiento, EstadoEpt, FactorRiesgo
+from app.domain.enums_ept import (
+    EstadoCumplimiento,
+    EstadoEpt,
+    FactorRiesgo,
+    FactorRiesgoLegado,
+)
 from app.util.rut import RutInvalidoError, normalizar_rut
 
 
@@ -74,7 +79,9 @@ class CasoEptRead(BaseModel):
     rut_trabajador: str
     region_trabajador: str
     eista: str
-    factor_riesgo: FactorRiesgo
+    # Lectura tolerante: los casos creados antes de QA-003 conservan un valor
+    # legado. La escritura (Create/Update) solo acepta FactorRiesgo.
+    factor_riesgo: FactorRiesgo | FactorRiesgoLegado
     corresponde_ept: bool
     estado: EstadoEpt
     razon_social: str | None

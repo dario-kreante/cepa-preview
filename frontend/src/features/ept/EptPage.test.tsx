@@ -79,7 +79,7 @@ const MOCK_CASO: import("./api").CasoEptRead = {
   rut_trabajador: "12.345.678-9",
   region_trabajador: "Metropolitana",
   eista: "EISTA-001",
-  factor_riesgo: "carga",
+  factor_riesgo: "sobrecarga",
   corresponde_ept: true,
   estado: "abierto",
   razon_social: "Empresa S.A.",
@@ -223,6 +223,18 @@ describe("EptPage", () => {
     );
     await userEvent.type(screen.getByLabelText(/EISTA/i), "EISTA-001");
 
+    // Sin factor elegido no se envía (el selector parte vacío: QA-003)
+    await userEvent.click(screen.getByRole("button", { name: /Crear caso EPT/i }));
+    expect(
+      await screen.findByText("Selecciona un factor de riesgo")
+    ).toBeInTheDocument();
+    expect(capturedBody).toBeUndefined();
+
+    await userEvent.selectOptions(
+      screen.getByLabelText(/Factor de riesgo/i),
+      "Hostilidad de la jefatura"
+    );
+
     // Submit
     await userEvent.click(screen.getByRole("button", { name: /Crear caso EPT/i }));
 
@@ -231,6 +243,9 @@ describe("EptPage", () => {
       () => {
         expect(capturedBody).toBeDefined();
         expect((capturedBody as Record<string, unknown>).ingreso_id).toBe(10);
+        expect((capturedBody as Record<string, unknown>).factor_riesgo).toBe(
+          "hostilidad_jefatura"
+        );
       },
       { timeout: 8000 }
     );
@@ -358,5 +373,68 @@ describe("EptPage", () => {
     await userEvent.click(screen.getByTestId("btn-cargar-caso"));
     await screen.findByText("Caso N° 55", {}, { timeout: 8000 });
     expect(screen.queryByTestId("btn-eliminar-caso")).not.toBeInTheDocument();
+  });
+
+  // ── QA UTalca 22-10 QA-003: factores de riesgo del área ────────────────────
+
+  it("el selector ofrece los 24 factores del área en orden", async () => {
+    setupPacienteHandlers();
+    renderPage(ADMIN_TOKEN);
+
+    await userEvent.type(
+      screen.getByPlaceholderText("Buscar por RUT, folio, nombre o ID SALUTEM"),
+      "Juan"
+    );
+    await userEvent.click(await screen.findByText("Juan Pérez", {}, { timeout: 8000 }));
+    await waitFor(() => expect(screen.getByTestId("btn-nueva-ept")).not.toBeDisabled(), {
+      timeout: 8000,
+    });
+    await userEvent.click(screen.getByTestId("btn-nueva-ept"));
+
+    const select = (await screen.findByLabelText(/Factor de riesgo/i)) as HTMLSelectElement;
+    const opciones = Array.from(select.options).map((o) => o.textContent);
+    expect(opciones).toHaveLength(25); // placeholder + 24
+    expect(select.value).toBe("");
+    expect(opciones[1]).toBe("Sobrecarga");
+    expect(opciones[24]).toBe("No aplica (no se evidencia exposición a riesgo laboral)");
+    expect(opciones).not.toContain("Carga");
+  });
+
+  it("un caso con factor legado se muestra como «(anterior)» y al editarlo exige uno nuevo", async () => {
+    const legado = { ...MOCK_CASO, factor_riesgo: "carga" as const };
+    let patchBody: unknown;
+    server.use(
+      http.get(`${BASE}/api/v1/casos-ept/:casoId`, () => HttpResponse.json(legado)),
+      http.patch(`${BASE}/api/v1/casos-ept/:casoId`, async ({ request }) => {
+        patchBody = await request.json();
+        return HttpResponse.json({ ...legado, factor_riesgo: "subcarga" });
+      })
+    );
+    renderPage(ADMIN_TOKEN);
+
+    await userEvent.type(screen.getByPlaceholderText("Cargar caso N°"), "55");
+    await userEvent.click(screen.getByTestId("btn-cargar-caso"));
+    expect(
+      await screen.findByText("(anterior) Carga", {}, { timeout: 8000 })
+    ).toBeInTheDocument();
+
+    await userEvent.click(screen.getByTestId("btn-editar-caso"));
+    const select = (await screen.findByLabelText(/Factor de riesgo/i)) as HTMLSelectElement;
+    expect(select.value).toBe("");
+    expect(screen.getByTestId("factor-riesgo-anterior")).toHaveTextContent(
+      "(anterior) Carga"
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: /Actualizar caso/i }));
+    expect(
+      await screen.findByText("Selecciona un factor de riesgo")
+    ).toBeInTheDocument();
+    expect(patchBody).toBeUndefined();
+
+    await userEvent.selectOptions(select, "subcarga");
+    await userEvent.click(screen.getByRole("button", { name: /Actualizar caso/i }));
+    await waitFor(() =>
+      expect((patchBody as Record<string, unknown>).factor_riesgo).toBe("subcarga")
+    );
   });
 });

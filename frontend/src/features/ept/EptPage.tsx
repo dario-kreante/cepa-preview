@@ -46,8 +46,13 @@ import { NuevoCasoEptDialog } from "./NuevoCasoEptDialog";
 import { ProcesoEptPanel } from "./ProcesoEptPanel";
 import { PlazosEptPanel } from "./PlazosEptPanel";
 import { ContactosEptPanel } from "./ContactosEptPanel";
-import { FACTOR_RIESGO_LABELS, type CasoEptForm } from "./casoEptSchema";
-import type { CasoEptRead, EstadoEpt, FactorRiesgo } from "./api";
+import {
+  esFactorRiesgoVigente,
+  etiquetaFactorRiesgo,
+  type CasoEptForm,
+} from "./casoEptSchema";
+import type { CasoEptRead, EstadoEpt } from "./api";
+import type { DefaultValues } from "react-hook-form";
 import type { components } from "@/types/api";
 
 type PacienteRead = components["schemas"]["PacienteRead"];
@@ -153,8 +158,7 @@ function CasoDetail({ caso, canWrite, onEdit, onDelete }: CasoDetailProps) {
             Factor de riesgo
           </p>
           <Badge variant="neutral" className="mt-0.5">
-            {FACTOR_RIESGO_LABELS[caso.factor_riesgo as FactorRiesgo] ??
-              caso.factor_riesgo}
+            {etiquetaFactorRiesgo(caso.factor_riesgo)}
           </Badge>
         </div>
         <div>
@@ -296,14 +300,19 @@ function CasoPanel({ casoId, canWrite, onCasoUpdated, onCasoDeleted }: CasoPanel
 
   if (!caso) return null;
 
-  const initialValues: CasoEptForm = {
+  // Un caso con factor de la lista anterior abre el selector vacío: hay que
+  // elegir uno vigente para poder guardar (QA-003).
+  const factorVigente = esFactorRiesgoVigente(caso.factor_riesgo);
+  const initialValues: DefaultValues<CasoEptForm> = {
     mes: caso.mes,
     fecha_ingreso_ept: caso.fecha_ingreso_ept,
     nombre_trabajador: caso.nombre_trabajador,
     rut_trabajador: caso.rut_trabajador,
     region_trabajador: caso.region_trabajador,
     eista: caso.eista,
-    factor_riesgo: caso.factor_riesgo as CasoEptForm["factor_riesgo"],
+    factor_riesgo: esFactorRiesgoVigente(caso.factor_riesgo)
+      ? caso.factor_riesgo
+      : undefined,
     corresponde_ept: caso.corresponde_ept,
     razon_social: caso.razon_social ?? "",
     unidad_cargo_horario: caso.unidad_cargo_horario ?? "",
@@ -330,6 +339,7 @@ function CasoPanel({ casoId, canWrite, onCasoUpdated, onCasoDeleted }: CasoPanel
             setEditOpen(false);
           }}
           initialValues={initialValues}
+          factorRiesgoAnterior={factorVigente ? undefined : caso.factor_riesgo}
           casoId={caso.id}
         />
       )}
@@ -610,8 +620,7 @@ export function EptPage() {
                             {fmtDate(c.fecha_ingreso_ept)}
                           </td>
                           <td className="px-4 py-3 text-[12.5px]">
-                            {FACTOR_RIESGO_LABELS[c.factor_riesgo as FactorRiesgo] ??
-                              c.factor_riesgo}
+                            {etiquetaFactorRiesgo(c.factor_riesgo)}
                           </td>
                           <td className="px-4 py-3">
                             <Badge variant={estadoVariant(c.estado)}>
