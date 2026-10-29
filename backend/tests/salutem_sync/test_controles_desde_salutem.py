@@ -15,6 +15,7 @@ from app.integrations.salutem.models import AtencionSalutem, CitaSalutem, Estado
 from app.models.control_medico import ControlMedico
 from app.models.ingreso import Ingreso
 from app.models.paciente import Paciente
+from app.services.control_medico import leer_controles, obtener_controles_por_ingreso
 from app.services.salutem_sync import copia
 from app.services.salutem_sync.vinculacion import vincular
 from tests.salutem_sync.conftest import AHORA
@@ -208,7 +209,7 @@ def test_una_atencion_no_atendida_no_crea_control(db_session):
     assert _controles(db_session) == []
 
 
-def test_solo_las_atenciones_de_medico_crean_control(db_session):
+def test_solo_las_atenciones_medicas_crean_control(db_session):
     _paciente_e_ingreso(db_session)
     _persona(db_session)
     _atencion(db_session, 5011, "2023-03-01", especialidadNombre="Psicología")
@@ -217,7 +218,8 @@ def test_solo_las_atenciones_de_medico_crean_control(db_session):
 
     vincular(db_session, AHORA)
 
-    assert [c.salutem_cita_id for c in _controles(db_session)] == [5013]
+    # Desde QA-002 (22-10-2026) la Evaluación médica también es control.
+    assert [c.salutem_cita_id for c in _controles(db_session)] == [5012, 5013]
 
 
 def test_el_control_se_elimina_si_la_atencion_deja_de_ser_control(db_session):
@@ -377,3 +379,61 @@ def test_una_cita_agendada_manda_sobre_el_campo_proximo_control(db_session):
 
     [c] = _controles(db_session)
     assert (c.proximo_control, c.proximo_agendado) == (date(2023, 3, 20), True)
+
+
+ESPECIALIDADES_QA_002 = [
+    "Médico/a", "Médico/a AT", "Primera consulta médica AT", "Primera consulta médica EP",
+    "Psiquiatría", "Evaluación médica", "Evaluación médica AT", "Evaluación médica EP",
+    "Evaluación médica PIPT", "Evaluación psiquiátrica", "Consultoría Psiquiátrica",
+]
+
+
+def test_todas_las_categorias_de_atencion_medica_son_control_por_defecto(db_session):
+    """QA-002 (22-10-2026): la "Primera consulta médica AT" de Humberto no aparecía en
+    Controles. Las categorías médicas/psiquiátricas de SALUTEM son control; las
+    psicológicas, administrativas y de enfermería no."""
+    _paciente_e_ingreso(db_session)
+    _persona(db_session)
+    for i, especialidad in enumerate(ESPECIALIDADES_QA_002):
+        _atencion(db_session, 5100 + i, f"2023-04-{i + 1:02d}", especialidadNombre=especialidad)
+    for i, especialidad in enumerate(["Psicología", "Gestión administrativa", "Enfermería", "Uclínica"]):
+        _atencion(db_session, 5200 + i, f"2023-05-{i + 1:02d}", especialidadNombre=especialidad)
+
+    vincular(db_session, AHORA)
+
+    assert [c.salutem_cita_id for c in _controles(db_session)] == [
+        5100 + i for i in range(len(ESPECIALIDADES_QA_002))
+    ]
+
+
+def test_la_especialidad_se_compara_sin_tildes_ni_mayusculas(db_session):
+    _paciente_e_ingreso(db_session)
+    _persona(db_session)
+    _atencion(db_session, 5300, "2023-06-01", especialidadNombre="PRIMERA CONSULTA MEDICA AT")
+    _atencion(db_session, 5301, "2023-06-02", especialidadNombre="  Evaluacion  psiquiatrica ")
+    _atencion(db_session, 5302, "2023-06-03", especialidadNombre="consultoría psiquiátrica")
+
+    vincular(db_session, AHORA)
+
+    assert [c.salutem_cita_id for c in _controles(db_session)] == [5300, 5301, 5302]
+
+
+def test_la_lectura_del_control_trae_la_especialidad_de_salutem(db_session):
+    """La UI de Controles distingue "Primera consulta médica AT" de "Médico/a"."""
+    ingreso = _paciente_e_ingreso(db_session)
+    _persona(db_session)
+    _atencion(db_session, 5400, "2023-07-01", especialidadNombre="Médico/a")
+    _atencion(db_session, 5401, "2023-07-02", especialidadNombre="Primera consulta médica AT")
+    vincular(db_session, AHORA)
+    manual = ControlMedico(
+        ingreso_id=ingreso.id, fecha_control=date(2023, 7, 3), semana_control=1,
+        medico_tratante="DR. MANUAL", region_derivacion="Maule",
+    )
+    db_session.add(manual)
+    db_session.flush()
+
+    leidos = leer_controles(db_session, obtener_controles_por_ingreso(db_session, ingreso.id))
+
+    assert [(c.salutem_cita_id, c.especialidad) for c in leidos] == [
+        (5400, "Médico/a"), (5401, "Primera consulta médica AT"), (None, None),
+    ]

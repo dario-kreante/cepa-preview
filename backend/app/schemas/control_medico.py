@@ -160,6 +160,9 @@ class ControlMedicoRead(BaseModel):
     # "CEPA" = cargado en SIGE; "SALUTEM" = creado por el sync desde una atención.
     origen: str = "CEPA"
     salutem_cita_id: int | None = None
+    # Prestación/especialidad de SALUTEM de la atención que originó el control
+    # ("Primera consulta médica AT"). Nula en los controles cargados en SIGE.
+    especialidad: str | None = None
 
 
 class ArchivoControlRead(BaseModel):

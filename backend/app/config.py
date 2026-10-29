@@ -1,9 +1,22 @@
+import unicodedata
 from datetime import date
 from functools import lru_cache
 from typing import Literal
 
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def clave_especialidad(nombre: object) -> str:
+    """Clave para comparar nombres de especialidad de SALUTEM: sin tildes, en minúsculas
+    y con los espacios colapsados ("Evaluación  médica" == "evaluacion medica")."""
+    base = unicodedata.normalize("NFD", str(nombre or ""))
+    sin_tildes = "".join(c for c in base if unicodedata.category(c) != "Mn")
+    return " ".join(sin_tildes.casefold().split())
+
+
+def _claves_especialidad(lista: str) -> frozenset[str]:
+    return frozenset(clave for x in lista.split(",") if (clave := clave_especialidad(x)))
 
 
 class Settings(BaseSettings):
@@ -109,10 +122,19 @@ class Settings(BaseSettings):
     # hay que limitarse a los pacientes de prueba.
     salutem_sync_personas_permitidas: str = ""
     # Especialidades de SALUTEM cuya atención "Atendido" es un control médico del CEPA,
-    # separadas por coma (sin distinguir mayúsculas).
-    salutem_especialidades_control: str = "Médico/a,Primera consulta médica EP"
+    # separadas por coma (sin distinguir mayúsculas ni tildes). Por defecto, todas las
+    # categorías de atención médica/psiquiátrica que UTalca pidió ver en Controles (QA-002,
+    # 22-10-2026); quedan fuera las psicológicas, administrativas, Uclínica y enfermería.
+    salutem_especialidades_control: str = (
+        "Médico/a,Médico/a AT,Primera consulta médica AT,Primera consulta médica EP,"
+        "Psiquiatría,Evaluación médica,Evaluación médica AT,Evaluación médica EP,"
+        "Evaluación médica PIPT,Evaluación psiquiátrica,Consultoría Psiquiátrica"
+    )
     # Otras especialidades médicas cuya atención no es control pero alerta si el médico
-    # emitió una licencia o una receta, separadas por coma.
+    # emitió una licencia o una receta, separadas por coma. Una especialidad que también
+    # está en SALUTEM_ESPECIALIDADES_CONTROL cuenta como control (la alerta va al control).
+    # Con el default de control actual estas dos ya son control; se mantienen por si un
+    # .env reduce SALUTEM_ESPECIALIDADES_CONTROL.
     salutem_especialidades_alerta: str = "Evaluación médica,Evaluación psiquiátrica"
     # Fecha ISO (AAAA-MM-DD): las personas atendidas en SALUTEM desde ese día y sin paciente
     # en el SIGE reciben un paciente borrador pendiente de folio. Vacía = no se crean.
@@ -137,15 +159,13 @@ class Settings(BaseSettings):
 
     @property
     def salutem_especialidades_control_set(self) -> frozenset[str]:
-        return frozenset(
-            x.strip().casefold() for x in self.salutem_especialidades_control.split(",") if x.strip()
-        )
+        """Claves normalizadas (ver `clave_especialidad`)."""
+        return _claves_especialidad(self.salutem_especialidades_control)
 
     @property
     def salutem_especialidades_alerta_set(self) -> frozenset[str]:
-        return frozenset(
-            x.strip().casefold() for x in self.salutem_especialidades_alerta.split(",") if x.strip()
-        )
+        """Claves normalizadas (ver `clave_especialidad`)."""
+        return _claves_especialidad(self.salutem_especialidades_alerta)
 
     @property
     def salutem_borradores_desde_fecha(self) -> date | None:

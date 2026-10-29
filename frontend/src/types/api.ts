@@ -3030,6 +3030,8 @@ export interface components {
             origen: string;
             /** Salutem Cita Id */
             salutem_cita_id?: number | null;
+            /** Especialidad */
+            especialidad?: string | null;
         };
         /** CumplimientoConvenioItem */
         CumplimientoConvenioItem: {

@@ -93,6 +93,15 @@ function ControlRow({ control, ingresoId, canWrite, columnas }: ControlRowProps)
           </div>
         </td>
 
+        {/* Prestación — la especialidad de SALUTEM ("Primera consulta médica AT") */}
+        <td className="px-4 py-3 text-[12.5px]" data-testid={`prestacion-control-${control.id}`}>
+          {control.especialidad ? (
+            control.especialidad
+          ) : (
+            <span className="text-muted-foreground">—</span>
+          )}
+        </td>
+
         {/* Próximo control */}
         <td className="px-4 py-3">
           <div className="flex items-center gap-1.5">
@@ -279,7 +288,7 @@ function ControlesPanel({ ingresoId, canWrite }: ControlesPanelProps) {
   const [reposoFilter, setReposoFilter] = useState<TipoReposo | "Todos">("Todos");
   const [licenciaFilter, setLicenciaFilter] = useState<"todos" | "con" | "sin">("todos");
 
-  const columnas = canWrite ? 9 : 8;
+  const columnas = canWrite ? 10 : 9;
 
   const filtered = controles.filter((c) => {
     if (recaFilter !== "Todos" && c.estado_reca !== recaFilter) return false;
@@ -385,6 +394,7 @@ function ControlesPanel({ ingresoId, canWrite }: ControlesPanelProps) {
               <thead>
                 <tr className="bg-muted/30 border-b">
                   <Th>Fecha control</Th>
+                  <Th>Prestación</Th>
                   <Th>Próximo control</Th>
                   <Th>Semana</Th>
                   <Th>Días LM</Th>
