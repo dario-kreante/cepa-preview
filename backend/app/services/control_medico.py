@@ -14,8 +14,10 @@ from sqlalchemy.orm import Session
 from app.models.control_medico import ControlMedico
 from app.models.ingreso import Ingreso
 from app.models.profesional import Profesional
+from app.models.salutem_copia import SalutemAtencion
 from app.schemas.control_medico import (
     ControlMedicoCreate,
+    ControlMedicoRead,
     EvaluacionUpdate,
     LicenciaUpdate,
     ProximoControlUpdate,
@@ -228,3 +230,33 @@ def obtener_controles_por_ingreso(db: Session, ingreso_id: int) -> list[ControlM
             .order_by(ControlMedico.fecha_control)
         ).scalars()
     )
+
+
+def leer_controles(db: Session, controles: list[ControlMedico]) -> list[ControlMedicoRead]:
+    """Los controles como respuesta del API, con la especialidad de SALUTEM de cada uno.
+
+    La especialidad no se guarda en el control: se lee de la atención copiada de SALUTEM
+    (salutem_cita_id), así un control "Primera consulta médica AT" se distingue de uno
+    "Médico/a" sin migración.
+    """
+    citas = {c.salutem_cita_id for c in controles if c.salutem_cita_id is not None}
+    especialidades: dict[int, str] = {}
+    if citas:
+        for cita_id, contenido in db.execute(
+            select(SalutemAtencion.cita_id, SalutemAtencion.contenido).where(
+                SalutemAtencion.cita_id.in_(citas)
+            )
+        ):
+            nombre = (contenido or {}).get("especialidadNombre")
+            if isinstance(nombre, str) and nombre.strip():
+                especialidades[cita_id] = nombre.strip()
+    return [
+        ControlMedicoRead.model_validate(c).model_copy(
+            update={"especialidad": especialidades.get(c.salutem_cita_id)}
+        )
+        for c in controles
+    ]
+
+
+def leer_control(db: Session, control: ControlMedico) -> ControlMedicoRead:
+    return leer_controles(db, [control])[0]

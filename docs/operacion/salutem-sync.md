@@ -18,7 +18,8 @@ Diseño: `docs/superpowers/specs/2026-09-16-salutem-sync-fase1-design.md`.
 | `SALUTEM_SYNC_LLAMADAS_POR_SEG` | `2` | ajustar con el límite que confirme FabricApp |
 | `SALUTEM_BACKFILL_DIAS_VACIOS` | `365` | |
 | `SALUTEM_SYNC_LOG` | `/home/segicepa/sige-cepa/logs/salutem-sync.log` | rota a 5 × 10 MB; un archivo por modo, ver abajo |
-| `SALUTEM_ESPECIALIDADES_CONTROL` | (sin definir: usa el valor por defecto) | especialidades cuya atención "Atendido" crea un control médico, separadas por coma; por defecto `Médico/a,Primera consulta médica EP`. Tras cambiarla: reiniciar y `vincular --todo` |
+| `SALUTEM_ESPECIALIDADES_CONTROL` | (sin definir: usa el valor por defecto) | especialidades cuya atención "Atendido" crea un control médico, separadas por coma; por defecto las categorías médicas/psiquiátricas (QA-002, 22-10-2026): `Médico/a,Médico/a AT,Primera consulta médica AT,Primera consulta médica EP,Psiquiatría,Evaluación médica,Evaluación médica AT,Evaluación médica EP,Evaluación médica PIPT,Evaluación psiquiátrica,Consultoría Psiquiátrica`. Se compara sin tildes ni mayúsculas. Si el `.env` la define, manda sobre el default: borrarla o actualizarla. Tras cambiarla: reiniciar y `vincular --todo` |
+| `SALUTEM_ESPECIALIDADES_ALERTA` | (sin definir: usa el valor por defecto) | atenciones médicas que no son control pero alertan licencia/receta; por defecto `Evaluación médica,Evaluación psiquiátrica` (con el default de control ya son control: la alerta va al control y no se duplica) |
 
 ## Puesta en marcha (una vez)
 Requiere aprobación explícita de Darío, la clave de producción y el aviso a DTI.
