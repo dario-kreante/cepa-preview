@@ -147,6 +147,19 @@ def test_parser_rechaza_archivo_sin_columnas_obligatorias():
         parsear_reporte(b"esto no es un excel")
 
 
+def test_parser_rechaza_planillas_desmedidas(monkeypatch: pytest.MonkeyPatch):
+    import app.services.oda_importacion as mod
+
+    fin = HOY + timedelta(days=10)
+    contenido = _xlsx([_fila(i, f"S{i}", fin) for i in range(1, 4)])
+    monkeypatch.setattr(mod, "MAX_FILAS", 2)
+    with pytest.raises(ArchivoInvalidoError, match="máximo de 2 filas"):
+        parsear_reporte(contenido)
+    monkeypatch.setattr(mod, "MAX_DESCOMPRIMIDO_BYTES", 10)
+    with pytest.raises(ArchivoInvalidoError, match="demasiado grande"):
+        parsear_reporte(contenido)
+
+
 # ── Servicio: match, upsert y vigencia ─────────────────────────────────────────
 
 

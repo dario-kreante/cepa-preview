@@ -22,6 +22,7 @@ from __future__ import annotations
 import io
 import re
 import unicodedata
+import zipfile
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 
@@ -37,6 +38,10 @@ from app.util.rut import RutInvalidoError, normalizar_rut
 HOJA_ESPERADA = "Reporte Prestador"
 MAX_FILAS_ENCABEZADO = 15  # filas en que se busca el encabezado (por si el ISL agrega títulos)
 LOTE_IN = 500  # Oracle limita las listas IN a 1000 elementos
+# Topes contra planillas desmedidas o «zip bombs»: el límite de 10 MB del endpoint es sobre
+# el archivo comprimido; un xlsx real del ISL (~2.600 filas) pesa ~1 MB descomprimido.
+MAX_DESCOMPRIMIDO_BYTES = 100 * 1024 * 1024
+MAX_FILAS = 50_000
 
 # Clave normalizada del encabezado → nombre lógico de la columna.
 _COLUMNAS = {
@@ -145,6 +150,14 @@ def parsear_reporte(contenido: bytes) -> ResultadoParseo:
     from openpyxl import load_workbook
 
     try:
+        with zipfile.ZipFile(io.BytesIO(contenido)) as zf:
+            descomprimido = sum(info.file_size for info in zf.infolist())
+    except zipfile.BadZipFile as exc:
+        raise ArchivoInvalidoError("El archivo no es un Excel (.xlsx) válido.") from exc
+    if descomprimido > MAX_DESCOMPRIMIDO_BYTES:
+        raise ArchivoInvalidoError("El archivo es demasiado grande para un Reporte Prestador.")
+
+    try:
         wb = load_workbook(io.BytesIO(contenido), read_only=True, data_only=True)
     except Exception as exc:  # noqa: BLE001 — openpyxl lanza tipos variados ante archivos rotos
         raise ArchivoInvalidoError("El archivo no es un Excel (.xlsx) válido.") from exc
@@ -178,6 +191,10 @@ def parsear_reporte(contenido: bytes) -> ResultadoParseo:
             if fila is None or all(_texto(c) is None for c in fila):
                 continue  # filas vacías (p. ej. al final de la hoja)
             resultado.filas_leidas += 1
+            if resultado.filas_leidas > MAX_FILAS:
+                raise ArchivoInvalidoError(
+                    f"El archivo supera el máximo de {MAX_FILAS:,} filas.".replace(",", ".")
+                )
 
             def celda(nombre: str, _fila=fila) -> object:
                 i = indices.get(nombre)

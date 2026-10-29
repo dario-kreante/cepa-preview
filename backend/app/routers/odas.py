@@ -1,6 +1,7 @@
 import json
 
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, status
+from fastapi.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session
 
 from app.audit.service import record_audit
@@ -87,7 +88,8 @@ async def importar(
 
     savepoint = db.begin_nested()
     try:
-        resumen = importar_reporte(db, contenido)
+        # El parseo y el upsert son síncronos y pueden tardar: fuera del event loop.
+        resumen = await run_in_threadpool(importar_reporte, db, contenido)
     except ArchivoInvalidoError as exc:
         savepoint.rollback()
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
