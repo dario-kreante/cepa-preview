@@ -48,11 +48,15 @@ class CasoReintegro(Base):
     nombre: Mapped[str] = mapped_column(String(160), nullable=False)
     tipo_derivacion: Mapped[str] = mapped_column(String(40), nullable=False)
     fecha_caso: Mapped[date] = mapped_column(Date, nullable=False)
-    sexo: Mapped[str] = mapped_column(String(10), nullable=False)
-    edad: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    # Nullable desde 1380: el alta ya no los pide; se copian del paciente del ingreso.
+    sexo: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    edad: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     region: Mapped[str] = mapped_column(String(80), nullable=False)
     comuna: Mapped[str | None] = mapped_column(String(80), nullable=True)
     rubro_empleador: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    # Empresa y relación laboral (1380, QA-008). Nullable para los casos previos.
+    razon_social: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    tipo_trabajador: Mapped[str | None] = mapped_column(String(20), nullable=True)
     # Cierre / reintegro (CEPA-042) ────────────────────────────────────────
     estado_reintegro: Mapped[str] = mapped_column(
         String(20), default=EstadoReintegro.PENDIENTE.value, nullable=False

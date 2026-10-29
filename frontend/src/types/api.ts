@@ -2704,16 +2704,19 @@ export interface components {
              * Format: date
              */
             fecha_caso: string;
-            /** Sexo */
-            sexo: string;
-            /** Edad */
-            edad: number;
             /** Region */
             region: string;
+            /** Sexo */
+            sexo?: string | null;
+            /** Edad */
+            edad?: number | null;
             /** Comuna */
             comuna?: string | null;
             /** Rubro Empleador */
             rubro_empleador?: string | null;
+            /** Razon Social */
+            razon_social?: string | null;
+            tipo_trabajador?: components["schemas"]["TipoTrabajador"] | null;
         };
         /** CasoReintegroRead */
         CasoReintegroRead: {
@@ -2732,15 +2735,18 @@ export interface components {
              */
             fecha_caso: string;
             /** Sexo */
-            sexo: string;
+            sexo: string | null;
             /** Edad */
-            edad: number;
+            edad: number | null;
             /** Region */
             region: string;
             /** Comuna */
             comuna: string | null;
             /** Rubro Empleador */
             rubro_empleador: string | null;
+            /** Razon Social */
+            razon_social: string | null;
+            tipo_trabajador: components["schemas"]["TipoTrabajador"] | null;
             estado_reintegro: components["schemas"]["EstadoReintegro"];
             /** Fecha Reintegro */
             fecha_reintegro: string | null;
@@ -2778,6 +2784,9 @@ export interface components {
             comuna?: string | null;
             /** Rubro Empleador */
             rubro_empleador?: string | null;
+            /** Razon Social */
+            razon_social?: string | null;
+            tipo_trabajador?: components["schemas"]["TipoTrabajador"] | null;
         };
         /**
          * CierreReintegroUpdate
@@ -5234,6 +5243,12 @@ export interface components {
          * @enum {string}
          */
         TipoReca: "EP" | "EC" | "AT" | "AC" | "NPE" | "no_aplica";
+        /**
+         * TipoTrabajador
+         * @description Relación laboral del trabajador del caso de reintegro (QA-008).
+         * @enum {string}
+         */
+        TipoTrabajador: "dependiente" | "independiente";
         /** TokenPair */
         TokenPair: {
             /** Access Token */
