@@ -149,7 +149,7 @@ function CasoDetail({ caso, canWrite, onEdit, onDelete }: CasoDetailProps) {
         </div>
         <div>
           <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
-            EISTA
+            EPTista
           </p>
           <p>{caso.eista}</p>
         </div>

@@ -72,9 +72,9 @@ en 3 ritmos), los perfiles y los módulos. El equipo planteó dudas y pedidos po
 
 | # | Tarea | Pedido por | Notas |
 |---|---|---|---|
-| D1 | Mandar a Pilar por WhatsApp la captura del error de SALUTEM y desde cuándo ocurre | Pilar / SALUTEM | **Hoy.** `SIN_INTEGRACION_CONFIGURADA` desde el 23-10 09:20, empresa 96, qa.salutem.cl. |
-| D2 | Rol nuevo **superadministrador** (todo: EPT, corregir folio, auditoría, etc.) para Pilar y Alejandra | Pilar | **30-10 tarde.** Hoy Pilar (Coordinación) no puede crear EPT ni cambiar el folio. |
-| D3 | Revisar en los logs por qué Pilar no pudo cambiar el folio | Pilar | Casi seguro es el permiso: corregir folio es solo para Administrativo. Ella necesita editarlo al completar el registro (folios internos por programa). |
+| D1 | ✅ Mandar a Pilar por WhatsApp la captura del error de SALUTEM y desde cuándo ocurre | Pilar / SALUTEM | Enviado el 29-10. `SIN_INTEGRACION_CONFIGURADA` desde el 23-10 09:20, empresa 96, qa.salutem.cl. |
+| D2 | ✅ Rol nuevo **superadministrador** (todo: EPT, corregir folio, auditoría, etc.) para Pilar y Alejandra | Pilar | Desplegado el 29-10 16:39 en dev y QA; dramirezr, aherrera y mgarcia ya son Superadmin. |
+| D3 | ✅ Revisar por qué Pilar no pudo cambiar el folio | Pilar | Era el permiso (lo resuelve D2) y el alta no tenía campo «Folio»: se agregó (opcional; vacío = automático). Antes: corregir folio es solo para Administrativo. Ella necesita editarlo al completar el registro (folios internos por programa). |
 | D4 | Control médico: dejar editar a mano días/reposo (y datos de licencia) cuando SALUTEM no los trae o un adendum los corrige | Pilar | |
 | D5 | Estado de paciente **«En encuadre»** (manual, junto a activo/cerrado) | Jocelyn, Pilar, Gissela | |
 | D6 | Alerta de **inasistencias para encuadre**: desde la 2.ª inasistencia, contando el histórico; cada inasistencia nueva vuelve a alertar | Jocelyn, Pilar, Gissela | Se acordó alertar todas y que el equipo revise si el paciente está en tratamiento o en acompañamiento. |
@@ -83,7 +83,7 @@ en 3 ritmos), los perfiles y los módulos. El equipo planteó dudas y pedidos po
 | D9 | ODA: alerta cuando un control o atención cae **fuera de la vigencia de la ODA** (fecha de atención vs. inicio/término) | Jocelyn, Melissa | La carga del Excel del ISL y el aviso de vencimiento ya están en PR #61. Responder en el grupo que eso ya existe. El cruce por fecha de atención es nuevo. |
 | D10 | EPT: **plazo de insumos** (documentos del empleador → EPTista) con alerta el mismo día del plazo, para todos los casos | Sasha | |
 | D11 | EPT: selección múltiple de **hasta 3 factores de riesgo** | Carla | Hoy hay uno solo de los 24 subfactores (PR #61). |
-| D12 | EPT: revisar con Sasha, en **dev**, que ya encuentra los casos por nombre/RUT/ID y que puede borrar los creados por error | Sasha | Lo resolvió el PR #60 (23-10), después de su prueba del 21-10. Aclarar la etiqueta «EPTista». |
+| D12 | ✅ EPT: revisar con Sasha que ya encuentra los casos por nombre/RUT/ID y que puede borrar los creados por error | Sasha | Sus casos 21–23 se crearon en **dev** el 21-10, antes del PR #60. Verificado en QA el 29-10: buscar paciente → lista de casos → «Abrir» → «Eliminar». La etiqueta «EISTA» pasa a «EPTista». Pedirle que lo pruebe en QA. |
 | D13 | Probar el botón masivo «marcar como enviadas» de Licencias | Darío | |
 | D14 | Revisar que todas las tarjetas del dashboard sean clicables y lleven al lugar correcto | Darío | |
 | D15 | Futuro (no ahora): leer un campo sí/no de «receta» en la ficha de SALUTEM e integrar los adendum | Pilar | Solo se puede probar en producción. Queda para una versión posterior. |

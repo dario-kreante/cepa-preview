@@ -221,7 +221,7 @@ describe("EptPage", () => {
       screen.getByLabelText(/Región del trabajador/i),
       "Metropolitana"
     );
-    await userEvent.type(screen.getByLabelText(/EISTA/i), "EISTA-001");
+    await userEvent.type(screen.getByLabelText(/EPTista/i), "EISTA-001");
 
     // Sin factor elegido no se envía (el selector parte vacío: QA-003)
     await userEvent.click(screen.getByRole("button", { name: /Crear caso EPT/i }));

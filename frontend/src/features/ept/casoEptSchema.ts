@@ -108,7 +108,7 @@ export const casoEptSchema = z.object({
     .trim()
     .min(1, "La región del trabajador es requerida"),
 
-  eista: z.string().trim().min(1, "El EISTA es requerido"),
+  eista: z.string().trim().min(1, "El EPTista es requerido"),
 
   factor_riesgo: z.enum(FACTORES_RIESGO, {
     errorMap: () => ({ message: "Selecciona un factor de riesgo" }),

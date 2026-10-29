@@ -238,13 +238,13 @@ export function NuevoCasoEptDialog({
             )}
           </div>
 
-          {/* EISTA */}
+          {/* EPTista: en la planilla del área la columna se llamaba «EISTA». */}
           <div>
-            <Label htmlFor="eista">EISTA</Label>
+            <Label htmlFor="eista">EPTista</Label>
             <Input
               id="eista"
               type="text"
-              placeholder="Ej. EISTA-001"
+              placeholder="Profesional que elabora el informe"
               {...register("eista")}
             />
             {errors.eista && (

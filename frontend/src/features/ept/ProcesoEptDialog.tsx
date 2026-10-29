@@ -225,9 +225,9 @@ export function ProcesoEptDialog({ casoId, proceso, open, onOpenChange }: Props)
             )}
           </div>
 
-          {/* Insumos EISTA */}
+          {/* Insumos para el EPTista */}
           <div>
-            <Label htmlFor="insumos_eista">Insumos EISTA</Label>
+            <Label htmlFor="insumos_eista">Insumos para el EPTista</Label>
             <input
               id="insumos_eista"
               type="text"
