@@ -3991,16 +3991,10 @@ export interface components {
              * Format: date
              */
             fecha_emision: string;
-            /**
-             * Inicio Reposo
-             * Format: date
-             */
-            inicio_reposo: string;
-            /**
-             * Fin Reposo
-             * Format: date
-             */
-            fin_reposo: string;
+            /** Inicio Reposo */
+            inicio_reposo?: string | null;
+            /** Fin Reposo */
+            fin_reposo?: string | null;
             /** Cantidad Dias */
             cantidad_dias: number;
             /** Indicacion Reposo */

@@ -110,8 +110,9 @@ export function AltaLicenciaDialog({ folio, ingresoId, open, onOpenChange, suger
       fecha_inicio: values.fecha_inicio,
       fecha_termino: values.fecha_termino,
       fecha_emision: values.fecha_emision,
-      inicio_reposo: values.inicio_reposo,
-      fin_reposo: values.fin_reposo,
+      // QA-006: el reposo es el mismo período de la licencia (ya no se pide aparte).
+      inicio_reposo: values.fecha_inicio,
+      fin_reposo: values.fecha_termino,
       cantidad_dias: values.cantidad_dias,
       diagnostico: values.diagnostico,
       origen: values.origen,
@@ -220,7 +221,7 @@ export function AltaLicenciaDialog({ folio, ingresoId, open, onOpenChange, suger
             </div>
           </div>
 
-          {/* Fechas de la licencia — agrupadas para no confundirlas con las del reposo (BUG-2608-04) */}
+          {/* Fechas de la licencia — también son las del reposo (QA-006: no se piden aparte) */}
           <fieldset className="rounded-md border border-border/70 p-3 space-y-3">
             <legend className="px-1 text-[11.5px] font-medium uppercase tracking-wide text-muted-foreground">
               Fechas de la licencia
@@ -249,33 +250,6 @@ export function AltaLicenciaDialog({ folio, ingresoId, open, onOpenChange, suger
             {errors.fecha_emision && (
               <p className="text-[11.5px] text-destructive mt-1">{errors.fecha_emision.message}</p>
             )}
-          </div>
-          </fieldset>
-
-          {/* Fechas del reposo — par distinto del anterior (BUG-2608-04) */}
-          <fieldset className="rounded-md border border-border/70 p-3 space-y-3">
-            <legend className="px-1 text-[11.5px] font-medium uppercase tracking-wide text-muted-foreground">
-              Fechas del reposo
-            </legend>
-            <p className="text-[11.5px] text-muted-foreground">
-              El período de reposo indicado en la licencia. Puede no coincidir con las fechas de la
-              licencia.
-            </p>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="inicio_reposo">Inicio del reposo</Label>
-              <Input id="inicio_reposo" type="date" {...register("inicio_reposo")} />
-              {errors.inicio_reposo && (
-                <p className="text-[11.5px] text-destructive mt-1">{errors.inicio_reposo.message}</p>
-              )}
-            </div>
-            <div>
-              <Label htmlFor="fin_reposo">Fin del reposo</Label>
-              <Input id="fin_reposo" type="date" {...register("fin_reposo")} />
-              {errors.fin_reposo && (
-                <p className="text-[11.5px] text-destructive mt-1">{errors.fin_reposo.message}</p>
-              )}
-            </div>
           </div>
           </fieldset>
 
