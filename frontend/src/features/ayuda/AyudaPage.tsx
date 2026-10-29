@@ -28,6 +28,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { NAV, itemsVisibles, type NavItem } from "@/app/shell/nav";
 import { useAuth } from "@/lib/auth/AuthContext";
+import { tieneRol } from "@/lib/rbac";
 import { cn } from "@/lib/utils";
 import {
   ATAJOS,
@@ -41,7 +42,12 @@ import {
 
 export const URL_PORTAL_INCIDENCIAS = "https://cepa-incidencias.dramirez-gysactiva.chatgpt.site";
 
-const NOMBRE_ROL = { Coordinacion: "Coordinación", Administrativo: "Administrativo", Auditor: "Auditor" };
+const NOMBRE_ROL = {
+  Coordinacion: "Coordinación",
+  Administrativo: "Administrativo",
+  Auditor: "Auditor",
+  Superadmin: "Superadmin",
+};
 
 const idGuia = (ruta: string) => `guia-${ruta === "/" ? "dashboard" : ruta.slice(1)}`;
 
@@ -121,7 +127,7 @@ export function AyudaPage() {
     };
   }, [q, visibles]);
 
-  const atajos = ATAJOS.filter((a) => (!a.roles || (rol && a.roles.includes(rol))) && visibles.has(a.guia));
+  const atajos = ATAJOS.filter((a) => (!a.roles || tieneRol(rol, ...a.roles)) && visibles.has(a.guia));
 
   return (
     <div className="max-w-6xl grid gap-5 lg:grid-cols-[minmax(0,1fr)_280px] items-start">

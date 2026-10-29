@@ -178,6 +178,11 @@ def as_auditor(client: TestClient, db_session: Session) -> TestClient:
     return _cliente_autenticado(client, db_session, "auditor_test", "Auditor")
 
 
+@pytest.fixture
+def as_superadmin(client: TestClient, db_session: Session) -> TestClient:
+    return _cliente_autenticado(client, db_session, "super_test", "Superadmin")
+
+
 import datetime  # noqa: E402
 
 

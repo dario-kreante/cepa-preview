@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.auth.jwt import TokenInvalido, decodificar_token
 from app.db.session import get_db
-from app.models.usuario import Usuario
+from app.models.usuario import ROL_SUPERADMIN, Usuario
 
 _bearer = HTTPBearer(auto_error=False)
 
@@ -51,10 +51,13 @@ def get_current_user(
 
 
 def require_role(*roles: str):
-    """Dependencia que exige que el usuario autenticado tenga uno de los roles dados (403 si no)."""
+    """Dependencia que exige que el usuario autenticado tenga uno de los roles dados (403 si no).
+
+    Superadmin pasa siempre: tiene todos los permisos de los demás roles.
+    """
 
     def _checker(user: CurrentUser = Depends(get_current_user)) -> CurrentUser:
-        if user.role not in roles:
+        if user.role != ROL_SUPERADMIN and user.role not in roles:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="No tiene permisos para esta operación",

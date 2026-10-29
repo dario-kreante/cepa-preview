@@ -5463,7 +5463,7 @@ export interface components {
              * Rol
              * @enum {string}
              */
-            rol: "Coordinacion" | "Administrativo" | "Auditor";
+            rol: "Coordinacion" | "Administrativo" | "Auditor" | "Superadmin";
             /** Email */
             email?: string | null;
         };
@@ -5494,7 +5494,7 @@ export interface components {
             /** Password */
             password?: string | null;
             /** Rol */
-            rol?: ("Coordinacion" | "Administrativo" | "Auditor") | null;
+            rol?: ("Coordinacion" | "Administrativo" | "Auditor" | "Superadmin") | null;
             /** Email */
             email?: string | null;
         };

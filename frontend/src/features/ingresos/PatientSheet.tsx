@@ -19,7 +19,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth/AuthContext";
-import { puedeEscribir, type Rol } from "@/lib/rbac";
+import { puedeEscribir, tieneRol, type Rol } from "@/lib/rbac";
 import {
   useVista360,
   useLicenciasPorIngreso,
@@ -554,7 +554,7 @@ export function PatientSheet({
                       pacienteId={vista.paciente.id}
                       ingresoId={primaryIngreso.id}
                       folio={primaryIngreso.folio}
-                      editable={rol === "Administrativo"}
+                      editable={tieneRol(rol as Rol, "Administrativo")}
                     />
                   )}
 

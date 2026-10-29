@@ -276,7 +276,7 @@ export const GUIAS: Guia[] = [
         pasos: ["En «Reportes», indica «Desde» y «Hasta», presiona «Generar» y luego «CSV»."],
       },
     ],
-    quienEscribe: "Disponible para Coordinación y Auditor.",
+    quienEscribe: "Disponible para Coordinación, Auditor y Superadmin.",
   },
   {
     ruta: "/agenda",
@@ -483,7 +483,7 @@ export const PREGUNTAS: Pregunta[] = [
   {
     pregunta: "No veo un botón que otra persona sí ve",
     respuesta:
-      "Cada perfil tiene permisos distintos. El perfil Auditor solo consulta; en Seguimiento EPT solo Administrativo registra; corregir un folio es solo de Administrativo. Si necesitas otro perfil, pídelo a Coordinación.",
+      "Cada perfil tiene permisos distintos. El perfil Auditor solo consulta; en Seguimiento EPT solo Administrativo registra; corregir un folio es solo de Administrativo. El perfil Superadmin tiene todos los permisos. Si necesitas otro perfil, pídelo a Coordinación.",
   },
   {
     pregunta: "¿El SIGE modifica datos en SALUTEM?",

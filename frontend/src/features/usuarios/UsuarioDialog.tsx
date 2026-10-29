@@ -25,6 +25,7 @@ import {
 } from "./usuarioSchema";
 import { useActualizarUsuario, useCrearUsuario } from "./hooks";
 import type { UsuarioRead } from "./api";
+import { useAuth } from "@/lib/auth/AuthContext";
 
 interface Props {
   open: boolean;
@@ -46,6 +47,7 @@ const DEFAULTS: UsuarioCreateForm = {
 
 export function UsuarioDialog({ open, onOpenChange, usuario }: Props) {
   const isEdit = !!usuario;
+  const { rol } = useAuth();
   const crear = useCrearUsuario();
   const actualizar = useActualizarUsuario();
 
@@ -143,7 +145,8 @@ export function UsuarioDialog({ open, onOpenChange, usuario }: Props) {
           <div>
             <Label htmlFor="rol">Rol</Label>
             <select id="rol" className={selectCls} {...register("rol")}>
-              {ROL_VALUES.map((r) => (
+              {/* Otorgar Superadmin es solo de otro Superadmin. */}
+              {ROL_VALUES.filter((r) => r !== "Superadmin" || rol === "Superadmin").map((r) => (
                 <option key={r} value={r}>
                   {ROL_LABELS[r]}
                 </option>
