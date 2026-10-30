@@ -88,6 +88,7 @@ export const TITULOS_ALERTA: Record<string, string> = {
   inasistencia: "Inasistencia a cita",
   posible_encuadre: "Posible encuadre: 2 o más inasistencias",
   cita_fuera_de_oda: "Cita fuera de la vigencia de la ODA",
+  plazo_insumos_ept: "Plazo de insumos EPT (hoy)",
 };
 
 /** Alertas de un control médico: al hacer clic abren sus documentos en un diálogo. */
@@ -148,6 +149,8 @@ export function routeForCaso(
     return `/ingresos?paciente=${pacienteId}`;
   switch (casoTipo) {
     case "ept":
+      return casoId ? `/ept?caso=${casoId}` : "/ept";
+    case "caso_ept":
       return casoId ? `/ept?caso=${casoId}` : "/ept";
     case "control_medico":
       return "/controles";

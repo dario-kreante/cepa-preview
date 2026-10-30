@@ -197,6 +197,8 @@ VENTANAS_DEFAULT: dict[str, dict] = {
     TipoAlerta.POSIBLE_ENCUADRE.value: {"dias": 0, "habiles": False},
     # "dias" = cuántos días hacia adelante se revisan las citas agendadas.
     TipoAlerta.CITA_FUERA_DE_ODA.value: {"dias": 30, "habiles": False},
+    # El mismo día del plazo (D10): Sasha envía los insumos al EPTista esa mañana.
+    TipoAlerta.PLAZO_INSUMOS_EPT.value: {"dias": 0, "habiles": False},
 }
 
 
@@ -344,7 +346,42 @@ def _construir_hitos_ept(db: Session, ventanas: dict[str, dict] | None = None) -
                     usar_dias_habiles=ventana["habiles"],
                 )
             )
+    hitos.extend(_construir_hitos_insumos_ept(db, ventanas))
     return hitos
+
+
+def _construir_hitos_insumos_ept(db: Session, ventanas: dict[str, dict] | None = None) -> list[HitoPlazos]:
+    """Plazo de insumos de la empresa (proceso EPT, CEPA-031): alerta el mismo día (D10).
+
+    El empleador entrega ese día los documentos que el CEPA envía al EPTista para el
+    informe. Una alerta por caso y fecha (caso_tipo 'caso_ept': abre el caso); solo
+    casos abiertos.
+    """
+    from app.domain.enums_ept import EstadoEpt
+    from app.models.ept import CasoEpt, ProcesoEpt  # local import
+
+    ventana = (ventanas or VENTANAS_DEFAULT).get(
+        TipoAlerta.PLAZO_INSUMOS_EPT.value, VENTANAS_DEFAULT[TipoAlerta.PLAZO_INSUMOS_EPT.value]
+    )
+    if not ventana.get("activo", True):
+        return []
+    filas = db.execute(
+        select(ProcesoEpt.caso_ept_id, ProcesoEpt.plazo_insumos_empresa, CasoEpt.ingreso_id)
+        .join(CasoEpt, CasoEpt.id == ProcesoEpt.caso_ept_id)
+        .where(ProcesoEpt.plazo_insumos_empresa.is_not(None), CasoEpt.estado == EstadoEpt.ABIERTO.value)
+    ).all()
+    return [
+        HitoPlazos(
+            tipo=TipoAlerta.PLAZO_INSUMOS_EPT.value,
+            caso_id=caso_id,
+            caso_tipo="caso_ept",
+            usuario_id=_resolver_usuario(ingreso_id, db),
+            plazo_objetivo=plazo,
+            ventana_dias=ventana["dias"],
+            usar_dias_habiles=ventana["habiles"],
+        )
+        for caso_id, plazo, ingreso_id in filas
+    ]
 
 
 def _construir_hitos_consentimiento(db: Session, ventanas: dict[str, dict] | None = None) -> list[HitoPlazos]:

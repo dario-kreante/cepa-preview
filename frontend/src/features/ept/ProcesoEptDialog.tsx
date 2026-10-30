@@ -165,6 +165,9 @@ export function ProcesoEptDialog({ casoId, proceso, open, onOpenChange }: Props)
               {...register("plazo_insumos_empresa")}
               className={inputClass}
             />
+            <p className="text-[11.5px] text-muted-foreground mt-1">
+              Día en que la empresa entrega los documentos para el EPTista. Ese día llega una alerta.
+            </p>
             {errors.plazo_insumos_empresa && (
               <p className="text-[11.5px] text-destructive mt-1">
                 {errors.plazo_insumos_empresa.message}

@@ -20,6 +20,7 @@ export const TIPO_LABELS: Record<string, string> = {
   inasistencia: "Inasistencia a cita",
   posible_encuadre: "Posible encuadre (2 o más inasistencias)",
   cita_fuera_de_oda: "Cita fuera de ODA (días hacia adelante que se revisan)",
+  plazo_insumos_ept: "Plazo de insumos EPT",
 };
 
 /** Alertas del sync de SALUTEM: no tienen plazo, solo se encienden o apagan. */

@@ -41,7 +41,7 @@ export function AppShell() {
       a.tipo.toLowerCase().includes("licencia"),
     ).length,
     ept: pendientes.filter(
-      (a) => a.caso_tipo?.toLowerCase() === "ept",
+      (a) => ["ept", "caso_ept"].includes(a.caso_tipo?.toLowerCase() ?? ""),
     ).length,
     pendientes_folio: pendientesFolio.length,
   };

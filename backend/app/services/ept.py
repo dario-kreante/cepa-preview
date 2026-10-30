@@ -95,11 +95,14 @@ def eliminar_caso_ept(db: Session, caso: CasoEpt) -> None:
     Las alertas abiertas de sus plazos (caso_tipo 'ept', caso_id = plazo_ept.id) quedan
     resueltas: ya no hay plazo que vigilar.
     """
+    casos = [("caso_ept", caso.id)]  # plazo de insumos (D10)
     if caso.plazo is not None:
+        casos.append(("ept", caso.plazo.id))
+    for caso_tipo, caso_id in casos:
         abiertas = db.scalars(
             select(AlertaNotif).where(
-                AlertaNotif.caso_tipo == "ept",
-                AlertaNotif.caso_id == caso.plazo.id,
+                AlertaNotif.caso_tipo == caso_tipo,
+                AlertaNotif.caso_id == caso_id,
                 AlertaNotif.estado != EstadoAlerta.RESUELTA.value,
             )
         )
