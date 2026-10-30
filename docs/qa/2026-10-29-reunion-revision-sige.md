@@ -84,8 +84,8 @@ en 3 ritmos), los perfiles y los módulos. El equipo planteó dudas y pedidos po
 | D10 | ✅ EPT: **plazo de insumos** (documentos del empleador → EPTista) con alerta el mismo día del plazo, para todos los casos | Sasha | El plazo ya existía como «Plazo insumos empresa» en Proceso EPT; se agregó la alerta del mismo día (migración 1420, configurable). |
 | D11 | ✅ EPT: selección múltiple de **hasta 3 factores de riesgo** | Carla | Hoy hay uno solo de los 24 subfactores (PR #61). |
 | D12 | ✅ EPT: revisar con Sasha que ya encuentra los casos por nombre/RUT/ID y que puede borrar los creados por error | Sasha | Sus casos 21–23 se crearon en **dev** el 21-10, antes del PR #60. Verificado en QA el 29-10: buscar paciente → lista de casos → «Abrir» → «Eliminar». La etiqueta «EISTA» pasa a «EPTista». Pedirle que lo pruebe en QA. |
-| D13 | Probar el botón masivo «marcar como enviadas» de Licencias | Darío | |
-| D14 | Revisar que todas las tarjetas del dashboard sean clicables y lleven al lugar correcto | Darío | |
+| D13 | ✅ Probar el botón masivo «marcar como enviadas» de Licencias | Darío | Corregido: la fecha de envío era UTC (después de las 21:00 quedaba el día siguiente), se podían reenviar licencias ya enviadas (pisaba su fecha) y se enviaban filas ocultas por un filtro. |
+| D14 | ✅ Revisar que todas las tarjetas del dashboard sean clicables y lleven al lugar correcto | Darío | Atenciones, Inasistencias y Anulaciones no eran clicables: llevan al reporte operativo. «Alertas abiertas» abre el panel de alertas. |
 | D15 | Futuro (no ahora): leer un campo sí/no de «receta» en la ficha de SALUTEM e integrar los adendum | Pilar | Solo se puede probar en producción. Queda para una versión posterior. |
 
 ### Tareas del CEPA
