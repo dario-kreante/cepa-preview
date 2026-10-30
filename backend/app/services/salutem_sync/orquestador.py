@@ -153,10 +153,10 @@ def correr(
             log.info(
                 "Citas SALUTEM: %d creadas, %d actualizadas, %d eliminadas, %d con estado desconocido, "
                 "%d sin ingreso, %d ambiguas, %d agendadas antiguas, %d alertas de inasistencia, "
-                "%d alertas resueltas",
+                "%d alertas de posible encuadre, %d alertas resueltas",
                 citas.creadas, citas.actualizadas, citas.eliminadas, citas.estado_desconocido,
                 citas.sin_ingreso, citas.ambiguas, citas.agendadas_antiguas,
-                citas.alertas_inasistencia, citas.alertas_resueltas,
+                citas.alertas_inasistencia, citas.alertas_encuadre, citas.alertas_resueltas,
             )
         except Exception as e:  # noqa: BLE001 — un fallo de este paso no debe perder el resto del ciclo
             log.exception("Modo %s: falló la sincronización de citas", modo)

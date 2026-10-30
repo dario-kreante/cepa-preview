@@ -194,6 +194,7 @@ VENTANAS_DEFAULT: dict[str, dict] = {
     TipoAlerta.PACIENTE_PENDIENTE_FOLIO.value: {"dias": 0, "habiles": False},
     # Sin plazo: la crea el sync de citas; aquí solo se enciende o apaga.
     TipoAlerta.INASISTENCIA.value: {"dias": 0, "habiles": False},
+    TipoAlerta.POSIBLE_ENCUADRE.value: {"dias": 0, "habiles": False},
 }
 
 

@@ -17,6 +17,7 @@ import {
   CalendarClock,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { puedeEscribir, tieneRol, type Rol } from "@/lib/rbac";
@@ -26,6 +27,7 @@ import {
   useControlesPorIngreso,
   useRecetasPorIngreso,
   useFichasClinicas,
+  useCambiarEstadoIngreso,
 } from "./hooks";
 import type { LicenciaRead, ControlMedicoRead, RecetaRead, OdaRead } from "./api";
 import { SalutemTab } from "./SalutemTab";
@@ -300,6 +302,13 @@ export interface PatientSheetProps {
   tabInicial?: string;
 }
 
+const ESTADO_INGRESO: Record<string, string> = {
+  activo: "Activo",
+  encuadre: "En encuadre",
+  cerrado: "Cerrado",
+  derivado: "Derivado",
+};
+
 export function PatientSheet({
   pacienteId,
   open,
@@ -309,6 +318,7 @@ export function PatientSheet({
   const { rol } = useAuth();
   const canWrite = puedeEscribir(rol as Rol);
   const navigate = useNavigate();
+  const cambiarEstado = useCambiarEstadoIngreso(pacienteId ?? 0);
 
   const {
     data: vista,
@@ -395,10 +405,40 @@ export function PatientSheet({
                         <Badge
                           variant="outline"
                           className="bg-white/15 text-white border-white/20"
+                          data-testid="estado-ingreso"
                         >
-                          {primaryIngreso.estado}
+                          {ESTADO_INGRESO[primaryIngreso.estado] ?? primaryIngreso.estado}
                         </Badge>
                       )}
+                      {/* Encuadre (reunión 29-10, D5): lo cambia a mano el CEPA al revisar la alerta. */}
+                      {canWrite &&
+                        primaryIngreso &&
+                        (primaryIngreso.estado === "activo" || primaryIngreso.estado === "encuadre") && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-6 px-2 text-[11px] bg-white/10 text-white border-white/30 hover:bg-white/20"
+                            disabled={cambiarEstado.isPending}
+                            data-testid="btn-encuadre"
+                            onClick={() =>
+                              cambiarEstado.mutate(
+                                {
+                                  ingresoId: primaryIngreso.id,
+                                  estado: primaryIngreso.estado === "activo" ? "encuadre" : "activo",
+                                },
+                                {
+                                  onSuccess: (i) =>
+                                    toast.success(
+                                      i.estado === "encuadre" ? "Paciente en encuadre" : "Paciente activo de nuevo",
+                                    ),
+                                  onError: (e) => toast.error(e.message),
+                                },
+                              )
+                            }
+                          >
+                            {primaryIngreso.estado === "activo" ? "Pasar a encuadre" : "Volver a activo"}
+                          </Button>
+                        )}
                       {primaryIngreso && (
                         <Badge
                           variant="outline"
@@ -568,7 +608,7 @@ export function PatientSheet({
                           {primaryIngreso.diagnostico}
                         </div>
                         <div className="text-[12px] text-muted-foreground mt-1">
-                          {primaryIngreso.estado} · Ingreso {formatDate(primaryIngreso.fecha_ingreso)}
+                          {ESTADO_INGRESO[primaryIngreso.estado] ?? primaryIngreso.estado} · Ingreso {formatDate(primaryIngreso.fecha_ingreso)}
                           {primaryIngreso.folio ? ` · Folio ${primaryIngreso.folio}` : ""}
                         </div>
                       </CardContent>
@@ -589,7 +629,7 @@ export function PatientSheet({
                             >
                               <span>Folio {ing.folio}</span>
                               <span className="text-muted-foreground">
-                                {ing.estado} · {formatDate(ing.fecha_ingreso)}
+                                {ESTADO_INGRESO[ing.estado] ?? ing.estado} · {formatDate(ing.fecha_ingreso)}
                               </span>
                             </li>
                           ))}

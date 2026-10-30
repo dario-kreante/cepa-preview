@@ -511,6 +511,11 @@ export const GLOSARIO: Termino[] = [
   { termino: "Extra sistema", definicion: "Licencia o fármaco indicado fuera del CEPA." },
   { termino: "Inasistencia", definicion: "Cita de SALUTEM a la que el paciente no llegó. Genera una alerta." },
   { termino: "Adherencia", definicion: "Citas atendidas sobre el total de atendidas más inasistencias." },
+  {
+    termino: "Encuadre",
+    definicion:
+      "Estado del ingreso cuando el paciente deja de asistir. Desde la 2.ª inasistencia llega la alerta «Posible encuadre»; se pasa a encuadre (y se vuelve a activo) con el botón de la ficha del paciente.",
+  },
   { termino: "Cupo diario", definicion: "Pacientes que un profesional puede recibir cada día; ordena la lista de Pacientes por citar." },
   { termino: "Umbral", definicion: "Días de anticipación con que se genera una alerta." },
 ];

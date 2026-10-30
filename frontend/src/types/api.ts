@@ -3311,7 +3311,7 @@ export interface components {
          * @description Estados de caso válidos (§7.1.3).
          * @enum {string}
          */
-        EstadoCaso: "activo" | "cerrado" | "derivado";
+        EstadoCaso: "activo" | "cerrado" | "derivado" | "encuadre";
         /**
          * EstadoCita
          * @description Estado de una cita dentro de una propuesta.
@@ -5389,7 +5389,7 @@ export interface components {
          * @description Tipos de alerta del motor: los 7 de CEPA-100 más el GAF de licencia (CEPA-075).
          * @enum {string}
          */
-        TipoAlerta: "control_medico" | "vencimiento_licencia" | "plazo_ept" | "plazo_isl" | "consentimiento_pendiente" | "receta_por_renovar" | "oda_por_vencer" | "gaf_licencia" | "licencia_en_control" | "receta_en_control" | "paciente_pendiente_folio" | "inasistencia";
+        TipoAlerta: "control_medico" | "vencimiento_licencia" | "plazo_ept" | "plazo_isl" | "consentimiento_pendiente" | "receta_por_renovar" | "oda_por_vencer" | "gaf_licencia" | "licencia_en_control" | "receta_en_control" | "paciente_pendiente_folio" | "inasistencia" | "posible_encuadre";
         /**
          * TipoAlta
          * @description Tipos de alta válidos (§7.1.3, v4 D6).

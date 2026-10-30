@@ -18,10 +18,16 @@ export const TIPO_LABELS: Record<string, string> = {
   licencia_en_control: "Licencia emitida en control",
   receta_en_control: "Receta emitida en control",
   inasistencia: "Inasistencia a cita",
+  posible_encuadre: "Posible encuadre (2 o más inasistencias)",
 };
 
 /** Alertas del sync de SALUTEM: no tienen plazo, solo se encienden o apagan. */
-export const TIPOS_SIN_DIAS = new Set(["licencia_en_control", "receta_en_control", "inasistencia"]);
+export const TIPOS_SIN_DIAS = new Set([
+  "licencia_en_control",
+  "receta_en_control",
+  "inasistencia",
+  "posible_encuadre",
+]);
 
 /** Tipo cuyo "dias" es el límite superior del tramo de GAF umbral (CEPA-075). */
 export const TIPO_GAF = "gaf_licencia";

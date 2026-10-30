@@ -26,6 +26,9 @@ class TipoAlerta(str, Enum):
     PACIENTE_PENDIENTE_FOLIO = "paciente_pendiente_folio"
     # Fase 2 (cita desde SALUTEM): inasistencia a una cita agendada en SALUTEM.
     INASISTENCIA = "inasistencia"
+    # Reunión 29-10 (D6): desde la 2.ª inasistencia del paciente (histórico completo),
+    # cada inasistencia nueva avisa que hay que revisar si corresponde el encuadre.
+    POSIBLE_ENCUADRE = "posible_encuadre"
 
 
 class EstadoAlerta(str, Enum):

@@ -19,6 +19,7 @@ from app.services.alertas import ejecutar_job_alertas
 from app.services.alertas_citas import (
     CASO_TIPO_INASISTENCIA,
     alertar_inasistencia,
+    alertar_posible_encuadre,
     resolver_alertas_con_hora,
 )
 from app.services.config_alertas import cargar_ventanas
@@ -337,3 +338,56 @@ def test_alerta_de_inasistencia_fallida_no_bloquea_las_demas(db_session, monkeyp
     assert r.alertas_inasistencia == 1
     assert len(r.errores) == 1 and "boom" in r.errores[0]
     assert len(_alertas(db_session, TipoAlerta.INASISTENCIA.value)) == 1
+
+
+# ── Posible encuadre (reunión 29-10, D6) ──────────────────────────────────────
+
+
+def _encuadre(db, cita: Cita) -> bool:
+    return alertar_posible_encuadre(
+        db, salutem_cita_id=cita.salutem_cita_id, cita=cita, hoy=HOY, ventanas=cargar_ventanas(db)
+    )
+
+
+def test_la_primera_inasistencia_no_alerta_encuadre(db_session):
+    ing = _ingreso(db_session, _paciente(db_session, "10000031"))
+    assert _encuadre(db_session, _cita_inasistencia(db_session, ing)) is False
+    assert _alertas(db_session, TipoAlerta.POSIBLE_ENCUADRE.value) == []
+
+
+def test_la_segunda_inasistencia_alerta_y_cada_nueva_vuelve_a_alertar(db_session):
+    paciente = _paciente(db_session, "10000032")
+    # El histórico cuenta aunque sea de otro ingreso o muy antiguo.
+    _cita_inasistencia(db_session, _ingreso(db_session, paciente), dias_atras=400)
+    ing = _ingreso(db_session, paciente, estado=EstadoCaso.ENCUADRE.value)
+    segunda = _cita_inasistencia(db_session, ing, dias_atras=3)
+    tercera = _cita_inasistencia(db_session, ing, dias_atras=1)
+
+    assert _encuadre(db_session, segunda) is True
+    assert _encuadre(db_session, tercera) is True
+    assert _encuadre(db_session, tercera) is False  # no se duplica
+    alertas = _alertas(db_session, TipoAlerta.POSIBLE_ENCUADRE.value)
+    assert sorted(a.caso_id for a in alertas) == sorted([segunda.salutem_cita_id, tercera.salutem_cita_id])
+    assert all(a.caso_tipo == CASO_TIPO_INASISTENCIA for a in alertas)
+
+
+def test_la_alerta_de_encuadre_se_apaga_en_la_configuracion(db_session):
+    fila = db_session.scalar(select(ConfigAlerta).where(ConfigAlerta.tipo == "posible_encuadre"))
+    fila.activo = False
+    db_session.flush()
+    ing = _ingreso(db_session, _paciente(db_session, "10000033"))
+    _cita_inasistencia(db_session, ing, dias_atras=5)
+    assert _encuadre(db_session, _cita_inasistencia(db_session, ing)) is False
+
+
+def test_la_alerta_de_encuadre_no_se_resuelve_por_tener_hora(db_session):
+    paciente = _paciente(db_session, "10000034")
+    ing = _ingreso(db_session, paciente)
+    _cita_inasistencia(db_session, ing, dias_atras=5)
+    _encuadre(db_session, _cita_inasistencia(db_session, ing))
+    _hora_vigente(db_session, "10000034", 777034)
+    paciente.salutem_persona_id = 777034
+    db_session.flush()
+    resolver_alertas_con_hora(db_session, HOY, "test")
+    (a,) = _alertas(db_session, TipoAlerta.POSIBLE_ENCUADRE.value)
+    assert a.estado == EstadoAlerta.PENDIENTE.value
