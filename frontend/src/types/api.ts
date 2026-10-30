@@ -3099,6 +3099,13 @@ export interface components {
             especialidad?: string | null;
             /** Campos Editados */
             campos_editados?: string[];
+            /** Oda Que Cubre */
+            oda_que_cubre?: string | null;
+            /**
+             * Fuera De Oda
+             * @default false
+             */
+            fuera_de_oda?: boolean;
         };
         /** CumplimientoConvenioItem */
         CumplimientoConvenioItem: {
@@ -5389,7 +5396,7 @@ export interface components {
          * @description Tipos de alerta del motor: los 7 de CEPA-100 más el GAF de licencia (CEPA-075).
          * @enum {string}
          */
-        TipoAlerta: "control_medico" | "vencimiento_licencia" | "plazo_ept" | "plazo_isl" | "consentimiento_pendiente" | "receta_por_renovar" | "oda_por_vencer" | "gaf_licencia" | "licencia_en_control" | "receta_en_control" | "paciente_pendiente_folio" | "inasistencia" | "posible_encuadre";
+        TipoAlerta: "control_medico" | "vencimiento_licencia" | "plazo_ept" | "plazo_isl" | "consentimiento_pendiente" | "receta_por_renovar" | "oda_por_vencer" | "gaf_licencia" | "licencia_en_control" | "receta_en_control" | "paciente_pendiente_folio" | "inasistencia" | "posible_encuadre" | "cita_fuera_de_oda";
         /**
          * TipoAlta
          * @description Tipos de alta válidos (§7.1.3, v4 D6).

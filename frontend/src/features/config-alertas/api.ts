@@ -19,6 +19,7 @@ export const TIPO_LABELS: Record<string, string> = {
   receta_en_control: "Receta emitida en control",
   inasistencia: "Inasistencia a cita",
   posible_encuadre: "Posible encuadre (2 o más inasistencias)",
+  cita_fuera_de_oda: "Cita fuera de ODA (días hacia adelante que se revisan)",
 };
 
 /** Alertas del sync de SALUTEM: no tienen plazo, solo se encienden o apagan. */

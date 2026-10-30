@@ -22,6 +22,7 @@ from app.schemas.control_medico import (
     LicenciaUpdate,
     ProximoControlUpdate,
 )
+from app.services.cobertura_oda import oda_que_cubre, odas_por_ingreso
 from app.services.gaf_tramos import resolver_tramo
 from app.services.semana_control import FechaControlInvalidaError, calcular_semana_control
 
@@ -283,12 +284,20 @@ def leer_controles(db: Session, controles: list[ControlMedico]) -> list[ControlM
             nombre = (contenido or {}).get("especialidadNombre")
             if isinstance(nombre, str) and nombre.strip():
                 especialidades[cita_id] = nombre.strip()
-    return [
-        ControlMedicoRead.model_validate(c).model_copy(
-            update={"especialidad": especialidades.get(c.salutem_cita_id)}
+    odas = odas_por_ingreso(db, {c.ingreso_id for c in controles})
+    leidos = []
+    for c in controles:
+        cubre = oda_que_cubre(odas.get(c.ingreso_id, []), c.fecha_control)
+        leidos.append(
+            ControlMedicoRead.model_validate(c).model_copy(
+                update={
+                    "especialidad": especialidades.get(c.salutem_cita_id),
+                    "oda_que_cubre": cubre.identificador if cubre else None,
+                    "fuera_de_oda": bool(odas.get(c.ingreso_id)) and cubre is None,
+                }
+            )
         )
-        for c in controles
-    ]
+    return leidos
 
 
 def leer_control(db: Session, control: ControlMedico) -> ControlMedicoRead:

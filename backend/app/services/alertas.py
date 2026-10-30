@@ -195,6 +195,8 @@ VENTANAS_DEFAULT: dict[str, dict] = {
     # Sin plazo: la crea el sync de citas; aquí solo se enciende o apaga.
     TipoAlerta.INASISTENCIA.value: {"dias": 0, "habiles": False},
     TipoAlerta.POSIBLE_ENCUADRE.value: {"dias": 0, "habiles": False},
+    # "dias" = cuántos días hacia adelante se revisan las citas agendadas.
+    TipoAlerta.CITA_FUERA_DE_ODA.value: {"dias": 30, "habiles": False},
 }
 
 
@@ -568,6 +570,11 @@ def ejecutar_job_alertas(
 
     resueltas = resolver_alertas_con_hora(db, hoy, actor)
 
+    from app.services.cobertura_oda import alertar_citas_fuera_de_oda
+
+    fuera_de_oda, resueltas_oda = alertar_citas_fuera_de_oda(db, hoy, ventanas, actor)
+    resueltas += resueltas_oda
+
     hitos: list[HitoPlazos] = []
     hitos.extend(_construir_hitos_oda(db, ventanas))
     hitos.extend(_construir_hitos_licencias(db, ventanas))
@@ -606,11 +613,11 @@ def ejecutar_job_alertas(
             entity="alerta_notif",
             entity_id=f"job:{len(resultados)}",
         )
-    if resultados or resueltas:
+    if resultados or resueltas or fuera_de_oda:
         # Las resoluciones por hora vigente solo se flushean: sin alertas nuevas igual hay que persistirlas.
         db.commit()
 
-    return len(resultados)
+    return len(resultados) + fuera_de_oda
 
 
 def enviar_correos_alertas(

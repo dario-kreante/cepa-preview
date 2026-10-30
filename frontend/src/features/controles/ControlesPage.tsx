@@ -90,6 +90,15 @@ function ControlRow({ control, ingresoId, canWrite, columnas }: ControlRowProps)
                 SALUTEM
               </Badge>
             )}
+            {control.fuera_de_oda && (
+              <Badge
+                variant="destructive"
+                title="Ninguna ODA del paciente cubre la fecha de este control: pide la ODA o su renovación"
+                data-testid={`badge-fuera-oda-${control.id}`}
+              >
+                Fuera de ODA
+              </Badge>
+            )}
             {control.origen === "SALUTEM" && (control.campos_editados?.length ?? 0) > 0 && (
               <Badge
                 variant="warning"

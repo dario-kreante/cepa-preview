@@ -342,6 +342,37 @@ describe("ControlesPage", () => {
     expect(screen.queryByTestId("badge-corregido-302")).not.toBeInTheDocument();
   });
 
+  it("marca «Fuera de ODA» el control que ninguna ODA cubre (D9)", async () => {
+    server.use(
+      http.get(`${BASE}/api/v1/pacientes/buscar`, () => HttpResponse.json([MOCK_PACIENTE])),
+      http.get(`${BASE}/api/v1/pacientes/:pacienteId/vista-360`, () =>
+        HttpResponse.json(MOCK_VISTA_360)
+      ),
+      http.get(`${BASE}/api/v1/controles-medicos/por-ingreso/:ingresoId`, () =>
+        HttpResponse.json([
+          { ...MOCK_CONTROLES[0], id: 401, fuera_de_oda: true, oda_que_cubre: null },
+          {
+            ...MOCK_CONTROLES[0],
+            id: 402,
+            fecha_control: "2026-03-17",
+            fuera_de_oda: false,
+            oda_que_cubre: "ODA-1",
+          },
+        ])
+      )
+    );
+
+    renderPage();
+    await userEvent.type(
+      screen.getByPlaceholderText("Buscar por RUT, folio, nombre o ID SALUTEM"),
+      "Juan"
+    );
+    await userEvent.click(await screen.findByText("Juan Pérez", {}, { timeout: 8000 }));
+
+    expect(await screen.findByTestId("badge-fuera-oda-401", {}, { timeout: 8000 })).toHaveTextContent("Fuera de ODA");
+    expect(screen.queryByTestId("badge-fuera-oda-402")).not.toBeInTheDocument();
+  });
+
   it("muestra la prestación de SALUTEM de cada control para distinguirlas (QA-002)", async () => {
     server.use(
       http.get(`${BASE}/api/v1/pacientes/buscar`, () => HttpResponse.json([MOCK_PACIENTE])),

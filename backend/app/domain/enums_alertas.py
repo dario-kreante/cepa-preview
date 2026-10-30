@@ -29,6 +29,9 @@ class TipoAlerta(str, Enum):
     # Reunión 29-10 (D6): desde la 2.ª inasistencia del paciente (histórico completo),
     # cada inasistencia nueva avisa que hay que revisar si corresponde el encuadre.
     POSIBLE_ENCUADRE = "posible_encuadre"
+    # Reunión 29-10 (D9): cita de SALUTEM (agendada o realizada) que ninguna ODA del
+    # ingreso cubre: hay que pedir la ODA o su renovación antes de atender o facturar.
+    CITA_FUERA_DE_ODA = "cita_fuera_de_oda"
 
 
 class EstadoAlerta(str, Enum):

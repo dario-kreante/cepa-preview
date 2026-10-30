@@ -17,6 +17,7 @@ from app.schemas.oda import (
     OdaRead,
 )
 from app.services.oda import listar_odas, odas_por_vencer, registrar_oda
+from app.services.cobertura_oda import resolver_citas_cubiertas
 from app.services.oda_importacion import ArchivoInvalidoError, importar_reporte
 
 router = APIRouter(prefix="/api/v1", tags=["odas"])
@@ -147,6 +148,8 @@ async def importar(
             }
         ),
     )
+    # Las citas que la carga dejó cubiertas no esperan al job de las 07:00 (D9).
+    resolver_citas_cubiertas(db, current_user.username)
     savepoint.commit()
     db.commit()
     return respuesta

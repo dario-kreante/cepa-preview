@@ -512,6 +512,11 @@ export const GLOSARIO: Termino[] = [
   { termino: "Inasistencia", definicion: "Cita de SALUTEM a la que el paciente no llegó. Genera una alerta." },
   { termino: "Adherencia", definicion: "Citas atendidas sobre el total de atendidas más inasistencias." },
   {
+    termino: "Fuera de ODA",
+    definicion:
+      "Control o cita cuya fecha no cubre ninguna ODA del paciente (entre su inicio de vigencia y su vencimiento). Se marca en Controles y llega la alerta «Cita fuera de la vigencia de la ODA» para pedir la ODA o su renovación.",
+  },
+  {
     termino: "Encuadre",
     definicion:
       "Estado del ingreso cuando el paciente deja de asistir. Desde la 2.ª inasistencia llega la alerta «Posible encuadre»; se pasa a encuadre (y se vuelve a activo) con el botón de la ficha del paciente.",

@@ -165,6 +165,10 @@ class ControlMedicoRead(BaseModel):
     especialidad: str | None = None
     # Campos corregidos a mano en SIGE: el sync de SALUTEM ya no los sobrescribe.
     campos_editados: list[str] = []
+    # Cobertura de la ODA (D9): identificador de la ODA que cubre la fecha del control, y
+    # fuera_de_oda=True si el ingreso tiene ODA pero ninguna cubre esa fecha.
+    oda_que_cubre: str | None = None
+    fuera_de_oda: bool = False
 
     @field_validator("campos_editados", mode="before")
     @classmethod

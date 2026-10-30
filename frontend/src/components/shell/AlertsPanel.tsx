@@ -87,6 +87,7 @@ export const TITULOS_ALERTA: Record<string, string> = {
   paciente_pendiente_folio: "Paciente nuevo pendiente de folio",
   inasistencia: "Inasistencia a cita",
   posible_encuadre: "Posible encuadre: 2 o más inasistencias",
+  cita_fuera_de_oda: "Cita fuera de la vigencia de la ODA",
 };
 
 /** Alertas de un control médico: al hacer clic abren sus documentos en un diálogo. */
@@ -195,7 +196,7 @@ function metaAlerta(
   esDeControl: boolean,
 ): string {
   if (!a.plazo_objetivo) return formatDate(a.generada_en);
-  if (a.tipo === "inasistencia" || a.tipo === "posible_encuadre")
+  if (a.tipo === "inasistencia" || a.tipo === "posible_encuadre" || a.tipo === "cita_fuera_de_oda")
     return `Cita: ${formatDate(a.plazo_objetivo, "UTC")}`;
   if (esDeControl) {
     const etiqueta = a.caso_tipo === CASO_ATENCION ? "Atención" : "Control";
