@@ -1,3 +1,6 @@
+import pytest
+
+
 def _payload(ingreso_id, **over):
     base = {
         "ingreso_id": ingreso_id,
@@ -244,3 +247,45 @@ def test_editar_caso_a_factor_legado_rechazado(as_admin, ingreso_fixture):
     caso_id = as_admin.post("/api/v1/casos-ept", json=_payload(ingreso_fixture.id)).json()["id"]
     r = as_admin.patch(f"/api/v1/casos-ept/{caso_id}", json={"factor_riesgo": "otro"})
     assert r.status_code == 422
+
+
+# Reunión 29-10 (D11): hasta 3 factores de riesgo (principal + 2 adicionales).
+def test_caso_con_factores_adicionales(as_admin, ingreso_fixture):
+    r = as_admin.post(
+        "/api/v1/casos-ept",
+        json=_payload(ingreso_fixture.id, factores_adicionales=["subcarga", "hostilidad_jefatura"]),
+    )
+    assert r.status_code == 201, r.text
+    caso = r.json()
+    assert caso["factor_riesgo"] == "sobrecarga"
+    assert caso["factores_adicionales"] == ["subcarga", "hostilidad_jefatura"]
+
+    r = as_admin.patch(f"/api/v1/casos-ept/{caso['id']}", json={"factores_adicionales": []})
+    assert r.status_code == 200, r.text
+    assert r.json()["factores_adicionales"] == []
+
+
+@pytest.mark.parametrize(
+    "adicionales",
+    [
+        ["subcarga", "hostilidad_jefatura", "asedio_sexual"],  # 4 en total
+        ["subcarga", "subcarga"],  # repetido
+        ["sobrecarga"],  # repite el principal
+    ],
+)
+def test_factores_adicionales_invalidos(as_admin, ingreso_fixture, adicionales):
+    r = as_admin.post(
+        "/api/v1/casos-ept",
+        json=_payload(ingreso_fixture.id, factores_adicionales=adicionales),
+    )
+    assert r.status_code == 422
+
+
+def test_cambiar_el_principal_a_uno_adicional_lo_saca_de_los_adicionales(as_admin, ingreso_fixture):
+    caso = as_admin.post(
+        "/api/v1/casos-ept",
+        json=_payload(ingreso_fixture.id, factores_adicionales=["subcarga"]),
+    ).json()
+    r = as_admin.patch(f"/api/v1/casos-ept/{caso['id']}", json={"factor_riesgo": "subcarga"})
+    assert r.status_code == 200, r.text
+    assert (r.json()["factor_riesgo"], r.json()["factores_adicionales"]) == ("subcarga", [])

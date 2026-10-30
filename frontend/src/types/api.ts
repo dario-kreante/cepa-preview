@@ -2676,6 +2676,8 @@ export interface components {
             /** Eista */
             eista: string;
             factor_riesgo: components["schemas"]["FactorRiesgo"];
+            /** Factores Adicionales */
+            factores_adicionales?: components["schemas"]["FactorRiesgo"][];
             /**
              * Corresponde Ept
              * @default true
@@ -2709,6 +2711,8 @@ export interface components {
             eista: string;
             /** Factor Riesgo */
             factor_riesgo: components["schemas"]["FactorRiesgo"] | components["schemas"]["FactorRiesgoLegado"];
+            /** Factores Adicionales */
+            factores_adicionales?: string[];
             /** Corresponde Ept */
             corresponde_ept: boolean;
             estado: components["schemas"]["EstadoEpt"];
@@ -2745,6 +2749,8 @@ export interface components {
             /** Eista */
             eista?: string | null;
             factor_riesgo?: components["schemas"]["FactorRiesgo"] | null;
+            /** Factores Adicionales */
+            factores_adicionales?: components["schemas"]["FactorRiesgo"][] | null;
             /** Corresponde Ept */
             corresponde_ept?: boolean | null;
             estado?: components["schemas"]["EstadoEpt"] | null;

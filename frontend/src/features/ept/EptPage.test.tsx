@@ -234,6 +234,8 @@ describe("EptPage", () => {
       screen.getByLabelText(/Factor de riesgo/i),
       "Hostilidad de la jefatura"
     );
+    // D11: hasta 2 factores adicionales (3 en total)
+    await userEvent.selectOptions(screen.getByLabelText(/Factor adicional 1/i), "Subcarga");
 
     // Submit
     await userEvent.click(screen.getByRole("button", { name: /Crear caso EPT/i }));
@@ -246,6 +248,9 @@ describe("EptPage", () => {
         expect((capturedBody as Record<string, unknown>).factor_riesgo).toBe(
           "hostilidad_jefatura"
         );
+        expect((capturedBody as Record<string, unknown>).factores_adicionales).toEqual([
+          "subcarga",
+        ]);
       },
       { timeout: 8000 }
     );

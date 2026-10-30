@@ -27,6 +27,7 @@ import {
   etiquetaFactorRiesgo,
   FACTOR_RIESGO_LABELS,
   FACTORES_RIESGO,
+  factoresAdicionales,
   type CasoEptForm,
 } from "./casoEptSchema";
 import { useCrearCaso, useActualizarCaso } from "./hooks";
@@ -58,6 +59,8 @@ const DEFAULT_VALUES: DefaultValues<CasoEptForm> = {
   region_trabajador: "",
   eista: "",
   factor_riesgo: undefined,
+  factor_adicional_1: "",
+  factor_adicional_2: "",
   corresponde_ept: true,
   razon_social: "",
   unidad_cargo_horario: "",
@@ -113,6 +116,7 @@ export function NuevoCasoEptDialog({
             region_trabajador: values.region_trabajador,
             eista: values.eista,
             factor_riesgo: values.factor_riesgo,
+            factores_adicionales: factoresAdicionales(values),
             corresponde_ept: values.corresponde_ept,
             razon_social: values.razon_social || null,
             unidad_cargo_horario: values.unidad_cargo_horario || null,
@@ -129,6 +133,7 @@ export function NuevoCasoEptDialog({
           region_trabajador: values.region_trabajador,
           eista: values.eista,
           factor_riesgo: values.factor_riesgo,
+          factores_adicionales: factoresAdicionales(values),
           corresponde_ept: values.corresponde_ept,
           razon_social: values.razon_social || null,
           unidad_cargo_horario: values.unidad_cargo_horario || null,
@@ -281,6 +286,32 @@ export function NuevoCasoEptDialog({
             {errors.factor_riesgo && (
               <p className="text-[11.5px] text-destructive mt-1">
                 {errors.factor_riesgo.message}
+              </p>
+            )}
+          </div>
+
+          {/* Factores adicionales (D11): hasta 3 factores en total */}
+          <div className="grid grid-cols-2 gap-3">
+            {(["factor_adicional_1", "factor_adicional_2"] as const).map((campo, i) => (
+              <div key={campo}>
+                <Label htmlFor={campo}>Factor adicional {i + 1} (opcional)</Label>
+                <select
+                  id={campo}
+                  {...register(campo)}
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-[13px] shadow-sm transition-colors focus:outline-none focus:ring-1 focus:ring-ring"
+                >
+                  <option value="">Ninguno</option>
+                  {FACTORES_RIESGO.map((key) => (
+                    <option key={key} value={key}>
+                      {FACTOR_RIESGO_LABELS[key]}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ))}
+            {errors.factor_adicional_2 && (
+              <p className="col-span-2 text-[11.5px] text-destructive">
+                {errors.factor_adicional_2.message}
               </p>
             )}
           </div>

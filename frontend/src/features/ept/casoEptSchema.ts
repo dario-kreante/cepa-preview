@@ -114,11 +114,31 @@ export const casoEptSchema = z.object({
     errorMap: () => ({ message: "Selecciona un factor de riesgo" }),
   }),
 
+  // Reunión 29-10 (D11): hasta 2 factores más, opcionales ("" = ninguno).
+  factor_adicional_1: z.union([z.enum(FACTORES_RIESGO), z.literal("")]).optional(),
+  factor_adicional_2: z.union([z.enum(FACTORES_RIESGO), z.literal("")]).optional(),
+
   corresponde_ept: z.boolean().default(true),
 
   razon_social: z.string().trim().optional(),
 
   unidad_cargo_horario: z.string().trim().optional(),
+}).superRefine((v, ctx) => {
+  const elegidos = [v.factor_riesgo, v.factor_adicional_1, v.factor_adicional_2].filter(Boolean);
+  if (new Set(elegidos).size !== elegidos.length) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["factor_adicional_2"],
+      message: "No repitas un factor de riesgo",
+    });
+  }
 });
+
+/** Factores adicionales elegidos en el formulario, sin vacíos. */
+export function factoresAdicionales(v: CasoEptForm): FactorRiesgo[] {
+  return [v.factor_adicional_1, v.factor_adicional_2].filter(
+    (f): f is FactorRiesgo => !!f,
+  );
+}
 
 export type CasoEptForm = z.infer<typeof casoEptSchema>;

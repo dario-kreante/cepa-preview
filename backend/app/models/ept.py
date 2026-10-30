@@ -54,6 +54,8 @@ class CasoEpt(Base):
     region_trabajador: Mapped[str] = mapped_column(String(80), nullable=False)
     eista: Mapped[str] = mapped_column(String(160), nullable=False)
     factor_riesgo: Mapped[str] = mapped_column(String(40), nullable=False)
+    # Reunión 29-10 (D11): hasta 2 factores más (3 en total), separados por coma (migración 1430).
+    factores_adicionales: Mapped[str | None] = mapped_column(String(90), nullable=True)
     corresponde_ept: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     estado: Mapped[str] = mapped_column(
         String(20), nullable=False, default=EstadoEpt.ABIERTO.value

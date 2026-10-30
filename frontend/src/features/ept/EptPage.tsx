@@ -50,6 +50,7 @@ import {
   esFactorRiesgoVigente,
   etiquetaFactorRiesgo,
   type CasoEptForm,
+  type FactorRiesgo,
 } from "./casoEptSchema";
 import type { CasoEptRead, EstadoEpt } from "./api";
 import type { DefaultValues } from "react-hook-form";
@@ -64,6 +65,11 @@ const ESTADO_EPT_LABELS: Record<EstadoEpt, string> = {
   no_corresponde: "No corresponde",
   cerrado: "Cerrado",
 };
+
+/** Un factor adicional vigente para precargar el formulario, o vacío. */
+function adicionalVigente(f: string | undefined): FactorRiesgo | "" {
+  return f && esFactorRiesgoVigente(f) ? (f as FactorRiesgo) : "";
+}
 
 function estadoVariant(
   estado: EstadoEpt
@@ -157,9 +163,13 @@ function CasoDetail({ caso, canWrite, onEdit, onDelete }: CasoDetailProps) {
           <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
             Factor de riesgo
           </p>
-          <Badge variant="neutral" className="mt-0.5">
-            {etiquetaFactorRiesgo(caso.factor_riesgo)}
-          </Badge>
+          <div className="mt-0.5 flex flex-wrap gap-1">
+            {[caso.factor_riesgo, ...(caso.factores_adicionales ?? [])].map((f) => (
+              <Badge key={f} variant="neutral">
+                {etiquetaFactorRiesgo(f)}
+              </Badge>
+            ))}
+          </div>
         </div>
         <div>
           <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
@@ -313,6 +323,8 @@ function CasoPanel({ casoId, canWrite, onCasoUpdated, onCasoDeleted }: CasoPanel
     factor_riesgo: esFactorRiesgoVigente(caso.factor_riesgo)
       ? caso.factor_riesgo
       : undefined,
+    factor_adicional_1: adicionalVigente(caso.factores_adicionales?.[0]),
+    factor_adicional_2: adicionalVigente(caso.factores_adicionales?.[1]),
     corresponde_ept: caso.corresponde_ept,
     razon_social: caso.razon_social ?? "",
     unidad_cargo_horario: caso.unidad_cargo_horario ?? "",
@@ -621,6 +633,11 @@ export function EptPage() {
                           </td>
                           <td className="px-4 py-3 text-[12.5px]">
                             {etiquetaFactorRiesgo(c.factor_riesgo)}
+                            {(c.factores_adicionales?.length ?? 0) > 0 && (
+                              <span className="text-muted-foreground">
+                                {" "}+{c.factores_adicionales!.length}
+                              </span>
+                            )}
                           </td>
                           <td className="px-4 py-3">
                             <Badge variant={estadoVariant(c.estado)}>
