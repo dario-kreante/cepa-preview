@@ -145,6 +145,9 @@ Estimaciones para producción: la API responde ~0,5–0,6 s por llamada, así qu
 - La vinculación crea las alertas `licencia_en_control` y `receta_en_control` (una por control y
   tipo; solo controles de los últimos 14 días). Se apagan en `/config-alertas`.
 - La API de SALUTEM no informa carpeta ni cita del archivo: se unen al control por fecha.
+- `receta_en_control` también se activa con un campo de selección con «receta» en el nombre
+  marcado «Sí» (cualquier sección). La API no entrega adendum (ni en la doc ni en las atenciones
+  copiadas): las correcciones de un adendum se hacen a mano en SIGE y el sync no las pisa.
 - En QA los archivos antiguos llegan con `archivo_base64` vacío; los subidos recientemente sí traen
   contenido.
 - Despliegue: aplicar la migración (`alembic upgrade head`) antes de reiniciar la API y el cron.
