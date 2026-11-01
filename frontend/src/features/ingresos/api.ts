@@ -40,6 +40,22 @@ export async function actualizarIngreso(
   return data;
 }
 
+/** PATCH /api/v1/ingresos/{id}/estado — p. ej. pasar a encuadre o volver a activo. */
+export async function cambiarEstadoIngreso(
+  ingresoId: number,
+  estado: IngresoRead["estado"],
+): Promise<IngresoRead> {
+  const { data, error, response } = await api.PATCH("/api/v1/ingresos/{ingreso_id}/estado", {
+    params: { path: { ingreso_id: ingresoId } },
+    body: { estado },
+  });
+  if (error || !data) {
+    if (response.status === 403) throw new Error("Tu perfil no puede cambiar el estado del ingreso.");
+    throw new Error("No se pudo cambiar el estado. Intenta nuevamente.");
+  }
+  return data;
+}
+
 /** PUT /api/v1/ingresos/{id}/folio — corrige el folio (solo Administrativo). */
 export async function corregirFolio(ingresoId: number, folio: string): Promise<IngresoRead> {
   const { data, error, response } = await api.PUT("/api/v1/ingresos/{ingreso_id}/folio", {

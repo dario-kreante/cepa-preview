@@ -35,6 +35,8 @@ from app.services.control_medico import (
     actualizar_evaluacion,
     actualizar_licencia,
     crear_control,
+    leer_control,
+    leer_controles,
     obtener_controles_por_ingreso,
     programar_proximo_control,
 )
@@ -68,7 +70,7 @@ def crear(
     )
     db.commit()
     db.refresh(control)
-    return control
+    return leer_control(db, control)
 
 
 # ── Lectura ───────────────────────────────────────────────────────────────────
@@ -82,7 +84,7 @@ def listar_por_ingreso(
     ingreso_id: int,
     db: Session = Depends(get_db),
 ) -> list[ControlMedicoRead]:
-    return obtener_controles_por_ingreso(db, ingreso_id)
+    return leer_controles(db, obtener_controles_por_ingreso(db, ingreso_id))
 
 
 @router.get(
@@ -94,7 +96,7 @@ def detalle(
     control_id: int,
     db: Session = Depends(get_db),
 ) -> ControlMedicoRead:
-    return _get_control_o_404(db, control_id)
+    return leer_control(db, _get_control_o_404(db, control_id))
 
 
 # ── CEPA-061: Próximo control ─────────────────────────────────────────────────
@@ -120,7 +122,7 @@ def programar_proximo(
     )
     db.commit()
     db.refresh(control)
-    return control
+    return leer_control(db, control)
 
 
 # ── CEPA-062: Licencia y RECA ─────────────────────────────────────────────────
@@ -146,7 +148,7 @@ def actualizar_licencia_endpoint(
     )
     db.commit()
     db.refresh(control)
-    return control
+    return leer_control(db, control)
 
 
 # ── Evaluación clínica (ficha del CEPA) ───────────────────────────────────────
@@ -172,7 +174,7 @@ def actualizar_evaluacion_endpoint(
     )
     db.commit()
     db.refresh(control)
-    return control
+    return leer_control(db, control)
 
 
 # ── Documentos de la biblioteca de SALUTEM ───────────────────────────────────

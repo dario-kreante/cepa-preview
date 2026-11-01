@@ -107,3 +107,19 @@ def test_schema_valido_acepta():
     )
     assert lm.tipo_lm.value == "1"
     assert lm.cantidad_dias == 15
+
+
+# QA-006 (UTalca 22-10): sin fechas de reposo, el reposo es el período de la licencia.
+def test_reposo_omitido_se_deriva_de_las_fechas_de_la_licencia():
+    lm = LicenciaCreate(
+        ingreso_id=1,
+        tipo_lm="1",
+        tipo_reposo="total",
+        fecha_inicio="2026-06-01",
+        fecha_termino="2026-06-15",
+        fecha_emision="2026-05-30",
+        cantidad_dias=15,
+        diagnostico="F32.1",
+    )
+    assert lm.inicio_reposo.isoformat() == "2026-06-01"
+    assert lm.fin_reposo.isoformat() == "2026-06-15"

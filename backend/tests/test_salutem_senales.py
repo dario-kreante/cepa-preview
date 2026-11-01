@@ -44,3 +44,30 @@ def test_sin_farmacos_no_hay_receta():
 def test_contenido_vacio_no_tiene_senales():
     assert certificado_reposo({}) is False
     assert tiene_receta({}) is False
+
+
+# Reunión 29-10 (D15): el médico responde sí/no y no hay que interpretar texto libre.
+def test_campo_de_receta_marcado_si_es_receta_en_cualquier_forma_y_seccion():
+    for registro in ("Si", "Sí", {"1": "Si"}, ["Sí"], "{'1': 'Si'}"):
+        contenido = {"examenes": [{"nombre": "Receta de fármacos", "registro": registro}]}
+        assert tiene_receta(contenido) is True, registro
+
+
+def test_campo_de_receta_marcado_no_no_es_receta_si_el_texto_no_trae_farmacos():
+    contenido = {"anamnesis": [{"nombre": "Receta de fármacos", "registro": {"2": "No"}}]}
+    assert tiene_receta(contenido) is False
+
+
+def test_un_no_en_el_campo_no_apaga_la_receta_escrita():
+    contenido = {
+        "anamnesis": [{"nombre": "Receta de fármacos", "registro": "No"}],
+        "indicaciones": [
+            {"tipo": "Receta Medicamentos", "nombre": "Receta", "registro": "Clotiazepam 5 mg 1 al día"}
+        ],
+    }
+    assert tiene_receta(contenido) is True
+
+
+def test_otro_campo_si_sobre_farmacos_no_es_receta():
+    contenido = {"antecedentes": [{"nombre": "Indicación previa de fármacos", "registro": "Si"}]}
+    assert tiene_receta(contenido) is False

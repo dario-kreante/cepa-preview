@@ -6,7 +6,10 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
-import { BarChart3, FileText } from "lucide-react";
+import { BarChart3, FileText, Upload } from "lucide-react";
+import { useAuth } from "@/lib/auth/AuthContext";
+import { puedeEscribir, type Rol } from "@/lib/rbac";
+import { CargarReporteIslDialog } from "./CargarReporteIslDialog";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -337,6 +340,8 @@ function LicenciasTab() {
 
 function OdasTab() {
   const m = useReporteOdasVencidas();
+  const { rol } = useAuth();
+  const [cargaAbierta, setCargaAbierta] = useState(false);
 
   async function gen() {
     try {
@@ -353,12 +358,26 @@ function OdasTab() {
           <p className="text-[13px] text-muted-foreground">
             ODAS con fecha de vencimiento pasada a hoy.
           </p>
-          <Button size="sm" onClick={gen} disabled={m.isPending} data-testid="btn-generar-reporte">
-            <FileText className="size-3.5" />
-            {m.isPending ? "Consultando…" : "Consultar"}
-          </Button>
+          <div className="flex gap-2">
+            {puedeEscribir(rol as Rol) && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setCargaAbierta(true)}
+                data-testid="btn-cargar-reporte-isl"
+              >
+                <Upload className="size-3.5" />
+                Cargar reporte ISL
+              </Button>
+            )}
+            <Button size="sm" onClick={gen} disabled={m.isPending} data-testid="btn-generar-reporte">
+              <FileText className="size-3.5" />
+              {m.isPending ? "Consultando…" : "Consultar"}
+            </Button>
+          </div>
         </div>
       </Card>
+      <CargarReporteIslDialog open={cargaAbierta} onOpenChange={setCargaAbierta} />
       {m.data && (
         <Tabla
           headers={["ODA", "Folio", "Registro", "Vencimiento", "Programa", "Región"]}

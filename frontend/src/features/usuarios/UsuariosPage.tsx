@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { fmtDate } from "@/lib/utils";
 import { useAuth } from "@/lib/auth/AuthContext";
-import { type Rol } from "@/lib/rbac";
+import { tieneRol, type Rol } from "@/lib/rbac";
 import {
   useActivarUsuario,
   useDesactivarUsuario,
@@ -21,7 +21,8 @@ import { UsuarioDialog } from "./UsuarioDialog";
 import { ROL_LABELS } from "./usuarioSchema";
 import type { RolUsuario, UsuarioRead } from "./api";
 
-function rolVariant(rol: string): "info" | "warning" | "neutral" {
+function rolVariant(rol: string): "info" | "warning" | "neutral" | "purple" {
+  if (rol === "Superadmin") return "purple";
   if (rol === "Coordinacion") return "info";
   if (rol === "Auditor") return "warning";
   return "neutral";
@@ -45,7 +46,7 @@ export function UsuariosPage() {
   const [editando, setEditando] = useState<UsuarioRead | undefined>(undefined);
 
   // RBAC: solo Coordinación gestiona usuarios (CEPA-002 RN-4).
-  if ((rol as Rol) !== "Coordinacion") {
+  if (!tieneRol(rol as Rol, "Coordinacion")) {
     return (
       <div className="rounded-lg border border-dashed border-border bg-muted/20 px-6 py-16 text-center">
         <ShieldCheck className="mx-auto mb-3 size-8 text-muted-foreground/50" />
@@ -147,6 +148,8 @@ export function UsuariosPage() {
                         {fmtDate(u.created_at)}
                       </td>
                       <td className="px-4 py-3">
+                        {/* Solo un Superadmin gestiona a otro Superadmin (el backend responde 403). */}
+                        {u.rol === "Superadmin" && rol !== "Superadmin" ? null : (
                         <div className="flex items-center justify-end gap-1.5">
                           <Button
                             size="sm"
@@ -181,6 +184,7 @@ export function UsuariosPage() {
                             )}
                           </Button>
                         </div>
+                        )}
                       </td>
                     </tr>
                   );

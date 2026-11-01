@@ -6,13 +6,14 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { cn, fmtDate } from "@/lib/utils";
+import { cn, fechaLocalISO, fmtDate } from "@/lib/utils";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { puedeEscribir, type Rol } from "@/lib/rbac";
 import { useBuscarPacientes, usePaciente, useVista360 } from "@/features/ingresos/hooks";
 import { useRegistro, useRecetas, useGenerarAlertasRevision } from "./hooks";
 import { EsquemaPanel } from "./EsquemaPanel";
 import { FarmacosSugeridosPanel } from "./FarmacosSugeridosPanel";
+import { DocumentosSalutemPaciente } from "@/features/controles/DocumentosSalutem";
 import { SeguimientoPanel } from "./SeguimientoPanel";
 import { CrearRegistroDialog } from "./CrearRegistroDialog";
 import { NuevaRecetaDialog } from "./NuevaRecetaDialog";
@@ -33,10 +34,10 @@ function recetaStatusInfo(fechaRevision: string): {
   variant: "destructive" | "warning" | "success";
 } {
   // Compare yyyy-mm-dd strings directly (lexicographic == chronological for ISO dates)
-  const todayStr = new Date().toISOString().split("T")[0];
+  const todayStr = fechaLocalISO();
   const in5Days = new Date();
   in5Days.setDate(in5Days.getDate() + 5);
-  const in5DaysStr = in5Days.toISOString().split("T")[0];
+  const in5DaysStr = fechaLocalISO(in5Days);
 
   if (fechaRevision < todayStr) return { label: "Vencida", variant: "destructive" };
   if (fechaRevision <= in5DaysStr) return { label: "Por vencer", variant: "warning" };
@@ -547,6 +548,13 @@ export function FarmacosPage() {
                 <h2 className="text-[14px] font-semibold px-0.5">Recetas</h2>
                 <RecetasPanel ingresoId={ingresoId} />
               </div>
+              {selectedPaciente && (
+                <DocumentosSalutemPaciente
+                  pacienteId={selectedPaciente.id}
+                  relacion="receta"
+                  titulo="Recetas en SALUTEM"
+                />
+              )}
               <SeguimientoPanel
                 ingresoId={ingresoId}
                 registro={registroForPage}

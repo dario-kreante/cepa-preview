@@ -11,7 +11,10 @@ def _utcnow() -> datetime:
 
 
 # Roles operativos vigentes (Decisiones v4 D1). No existe "Clinico".
-ROLES_VALIDOS = ("Coordinacion", "Administrativo", "Auditor")
+# Superadmin (reunión 29-10-2026): acceso completo, para quienes revisan todos los módulos y
+# se reemplazan entre sí; require_role lo deja pasar en cualquier endpoint.
+ROL_SUPERADMIN = "Superadmin"
+ROLES_VALIDOS = ("Coordinacion", "Administrativo", "Auditor", ROL_SUPERADMIN)
 
 
 class Usuario(Base):

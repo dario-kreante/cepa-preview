@@ -10,7 +10,7 @@ paciente que ya tiene hora vigente en SALUTEM: el aviso cumplió su propósito.
 
 from datetime import date, datetime, time, timedelta, timezone
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.agendamiento.salutem import pacientes_con_hora_vigente
@@ -66,6 +66,71 @@ def alertar_inasistencia(
     record_audit(
         db, actor=ACTOR, action="CREATE", entity="alerta_notif",
         entity_id=f"cita:{salutem_cita_id}",
+    )
+    return True
+
+
+# Desde cuántas inasistencias (contando todo el historial del paciente) se avisa.
+MINIMO_INASISTENCIAS_ENCUADRE = 2
+
+
+def alertar_posible_encuadre(
+    db: Session, *, salutem_cita_id: int, cita: Cita, hoy: date, ventanas: dict
+) -> bool:
+    """Alerta «posible encuadre» si esta inasistencia es la 2.ª o más del paciente. True si la creó.
+
+    Una por inasistencia: cada inasistencia nueva vuelve a avisar, aunque el paciente ya
+    esté en encuadre (el CEPA revisa y decide). No se resuelve sola al tener hora vigente.
+    """
+    if cita.estado != "inasistencia":
+        return False
+    if cita.fecha < hoy - timedelta(days=DIAS_NOVEDAD):
+        return False
+    if not ventanas.get(TipoAlerta.POSIBLE_ENCUADRE.value, {}).get("activo", True):
+        return False
+    filtro = get_settings().citas_especialidades_reportes_set
+    if filtro and (cita.especialidad or "").casefold() not in filtro:
+        return False
+    existe = db.scalar(
+        select(AlertaNotif.id).where(
+            AlertaNotif.tipo == TipoAlerta.POSIBLE_ENCUADRE.value,
+            AlertaNotif.caso_tipo == CASO_TIPO_INASISTENCIA,
+            AlertaNotif.caso_id == salutem_cita_id,
+        )
+    )
+    if existe is not None:
+        return False
+    paciente_id = db.scalar(select(Ingreso.paciente_id).where(Ingreso.id == cita.ingreso_id))
+    consulta = (
+        select(func.count())
+        .select_from(Cita)
+        .join(Ingreso, Ingreso.id == Cita.ingreso_id)
+        .where(
+            Ingreso.paciente_id == paciente_id,
+            Cita.estado == "inasistencia",
+            Cita.fecha <= cita.fecha,
+        )
+    )
+    if filtro:
+        consulta = consulta.where(func.lower(Cita.especialidad).in_(filtro))
+    if (db.scalar(consulta) or 0) < MINIMO_INASISTENCIAS_ENCUADRE:
+        return False
+    db.add(
+        AlertaNotif(
+            tipo=TipoAlerta.POSIBLE_ENCUADRE.value,
+            estado=EstadoAlerta.PENDIENTE.value,
+            caso_id=salutem_cita_id,
+            caso_tipo=CASO_TIPO_INASISTENCIA,
+            usuario_id=_resolver_usuario(cita.ingreso_id, db),
+            plazo_objetivo=datetime.combine(cita.fecha, time.min, tzinfo=timezone.utc),
+            ventana_dias=0,
+            email_enviado=False,
+        )
+    )
+    db.flush()
+    record_audit(
+        db, actor=ACTOR, action="CREATE", entity="alerta_notif",
+        entity_id=f"encuadre:{salutem_cita_id}",
     )
     return True
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { puedeEscribir, puedeEscribirEpt } from "./rbac";
+import { puedeEscribir, puedeEscribirEpt, tieneRol } from "./rbac";
 
 describe("rbac", () => {
   it("Administrativo y Coordinacion pueden escribir; Auditor no", () => {
@@ -16,5 +16,20 @@ describe("puedeEscribirEpt", () => {
     expect(puedeEscribirEpt("Auditor")).toBe(false);
     expect(puedeEscribirEpt(null)).toBe(false);
     expect(puedeEscribirEpt(undefined)).toBe(false);
+  });
+});
+
+describe("Superadmin", () => {
+  it("tiene todos los permisos", () => {
+    expect(puedeEscribir("Superadmin")).toBe(true);
+    expect(puedeEscribirEpt("Superadmin")).toBe(true);
+    expect(tieneRol("Superadmin", "Coordinacion")).toBe(true);
+    expect(tieneRol("Superadmin", "Administrativo")).toBe(true);
+  });
+
+  it("los demás roles solo pasan con su propio rol", () => {
+    expect(tieneRol("Coordinacion", "Administrativo")).toBe(false);
+    expect(tieneRol("Administrativo", "Administrativo")).toBe(true);
+    expect(tieneRol(null, "Coordinacion")).toBe(false);
   });
 });

@@ -199,7 +199,7 @@ export const GUIAS: Guia[] = [
         titulo: "Completar un control",
         pasos: [
           "Usa los botones de la fila: «Próximo control», «Licencia/RECA» o «Evaluación».",
-          "Despliega la flecha junto a la fecha para ver el detalle clínico y los «Documentos en SALUTEM».",
+          "Despliega la flecha junto a la fecha para ver el detalle clínico. Bajo la tabla están los «Documentos del paciente en SALUTEM»; las licencias y recetas también se ven en sus módulos.",
         ],
       },
     ],
@@ -276,7 +276,7 @@ export const GUIAS: Guia[] = [
         pasos: ["En «Reportes», indica «Desde» y «Hasta», presiona «Generar» y luego «CSV»."],
       },
     ],
-    quienEscribe: "Disponible para Coordinación y Auditor.",
+    quienEscribe: "Disponible para Coordinación, Auditor y Superadmin.",
   },
   {
     ruta: "/agenda",
@@ -483,7 +483,7 @@ export const PREGUNTAS: Pregunta[] = [
   {
     pregunta: "No veo un botón que otra persona sí ve",
     respuesta:
-      "Cada perfil tiene permisos distintos. El perfil Auditor solo consulta; en Seguimiento EPT solo Administrativo registra; corregir un folio es solo de Administrativo. Si necesitas otro perfil, pídelo a Coordinación.",
+      "Cada perfil tiene permisos distintos. El perfil Auditor solo consulta; en Seguimiento EPT solo Administrativo registra; corregir un folio es solo de Administrativo. El perfil Superadmin tiene todos los permisos. Si necesitas otro perfil, pídelo a Coordinación.",
   },
   {
     pregunta: "¿El SIGE modifica datos en SALUTEM?",
@@ -511,6 +511,16 @@ export const GLOSARIO: Termino[] = [
   { termino: "Extra sistema", definicion: "Licencia o fármaco indicado fuera del CEPA." },
   { termino: "Inasistencia", definicion: "Cita de SALUTEM a la que el paciente no llegó. Genera una alerta." },
   { termino: "Adherencia", definicion: "Citas atendidas sobre el total de atendidas más inasistencias." },
+  {
+    termino: "Fuera de ODA",
+    definicion:
+      "Control o cita cuya fecha no cubre ninguna ODA del paciente (entre su inicio de vigencia y su vencimiento). Se marca en Controles y llega la alerta «Cita fuera de la vigencia de la ODA» para pedir la ODA o su renovación.",
+  },
+  {
+    termino: "Encuadre",
+    definicion:
+      "Estado del ingreso cuando el paciente deja de asistir. Desde la 2.ª inasistencia llega la alerta «Posible encuadre»; se pasa a encuadre (y se vuelve a activo) con el botón de la ficha del paciente.",
+  },
   { termino: "Cupo diario", definicion: "Pacientes que un profesional puede recibir cada día; ordena la lista de Pacientes por citar." },
   { termino: "Umbral", definicion: "Días de anticipación con que se genera una alerta." },
 ];

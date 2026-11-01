@@ -83,3 +83,13 @@ export function fmtRelativo(iso: string | null | undefined, ahora: Date = new Da
   const a = Math.floor(d / 365);
   return a <= 1 ? "hace 1 año" : `hace ${a} años`;
 }
+
+/**
+ * Fecha local de hoy (o de `fecha`) como "YYYY-MM-DD". `toISOString()` usa UTC: en Chile,
+ * después de las 21:00 daría el día siguiente.
+ */
+export function fechaLocalISO(fecha: Date = new Date()): string {
+  const m = String(fecha.getMonth() + 1).padStart(2, "0");
+  const d = String(fecha.getDate()).padStart(2, "0");
+  return `${fecha.getFullYear()}-${m}-${d}`;
+}

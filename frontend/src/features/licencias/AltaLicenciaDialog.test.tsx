@@ -99,16 +99,6 @@ describe("AltaLicenciaDialog", () => {
     await user.clear(fechaEmisionInput);
     await user.type(fechaEmisionInput, "2026-06-14");
 
-    // inicio_reposo
-    const inicioReposoInput = screen.getByLabelText(/inicio del reposo/i);
-    await user.clear(inicioReposoInput);
-    await user.type(inicioReposoInput, "2026-06-15");
-
-    // fin_reposo
-    const finReposoInput = screen.getByLabelText(/fin del reposo/i);
-    await user.clear(finReposoInput);
-    await user.type(finReposoInput, "2026-06-20");
-
     // cantidad_dias
     const cantidadDiasInput = screen.getByLabelText(/cantidad de días/i);
     await user.clear(cantidadDiasInput);
@@ -198,14 +188,6 @@ describe("AltaLicenciaDialog", () => {
     await user.clear(fechaEmisionInput);
     await user.type(fechaEmisionInput, "2026-05-31");
 
-    const inicioReposoInput = screen.getByLabelText(/inicio del reposo/i);
-    await user.clear(inicioReposoInput);
-    await user.type(inicioReposoInput, "2026-06-01");
-
-    const finReposoInput = screen.getByLabelText(/fin del reposo/i);
-    await user.clear(finReposoInput);
-    await user.type(finReposoInput, "2026-06-14");
-
     const cantidadDiasInput = screen.getByLabelText(/cantidad de días/i);
     await user.clear(cantidadDiasInput);
     await user.type(cantidadDiasInput, "14");
@@ -226,5 +208,19 @@ describe("AltaLicenciaDialog", () => {
     expect(sentBody.ingreso_id).toBe(5);
     expect(sentBody.tipo_lm).toBe("1");
     expect(sentBody.tipo_reposo).toBe("total");
+    // QA-006: el reposo no se pide aparte; es el mismo período de la licencia.
+    expect(sentBody.inicio_reposo).toBe("2026-06-01");
+    expect(sentBody.fin_reposo).toBe("2026-06-14");
+  });
+
+  it("no pide las fechas del reposo: duplican las de la licencia (QA-006)", async () => {
+    renderDialog();
+    await screen.findByRole("dialog");
+    expect(screen.queryByLabelText(/inicio del reposo/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/fin del reposo/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/fechas del reposo/i)).not.toBeInTheDocument();
+    // Las de la licencia siguen ahí
+    expect(screen.getByLabelText(/fecha inicio de la licencia/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/fecha término de la licencia/i)).toBeInTheDocument();
   });
 });

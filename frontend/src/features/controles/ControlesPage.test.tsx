@@ -301,4 +301,122 @@ describe("ControlesPage", () => {
     const delCepa = screen.getByText("Dr. Andrés Molina").closest("tr")!;
     expect(within(delCepa).queryByText("SALUTEM")).not.toBeInTheDocument();
   });
+
+  it("marca «Corregido» el control de SALUTEM editado a mano en SIGE (D4)", async () => {
+    server.use(
+      http.get(`${BASE}/api/v1/pacientes/buscar`, () => HttpResponse.json([MOCK_PACIENTE])),
+      http.get(`${BASE}/api/v1/pacientes/:pacienteId/vista-360`, () =>
+        HttpResponse.json(MOCK_VISTA_360)
+      ),
+      http.get(`${BASE}/api/v1/controles-medicos/por-ingreso/:ingresoId`, () =>
+        HttpResponse.json([
+          {
+            ...MOCK_CONTROLES[0],
+            id: 301,
+            medico_tratante: "DRA. PAULA ROJAS",
+            origen: "SALUTEM",
+            salutem_cita_id: 5101,
+            campos_editados: ["total_dias_lm"],
+          },
+          {
+            ...MOCK_CONTROLES[0],
+            id: 302,
+            fecha_control: "2026-03-17",
+            medico_tratante: "DR. SIN CAMBIOS",
+            origen: "SALUTEM",
+            salutem_cita_id: 5102,
+            campos_editados: [],
+          },
+        ])
+      )
+    );
+
+    renderPage();
+    await userEvent.type(
+      screen.getByPlaceholderText("Buscar por RUT, folio, nombre o ID SALUTEM"),
+      "Juan"
+    );
+    await userEvent.click(await screen.findByText("Juan Pérez", {}, { timeout: 8000 }));
+
+    expect(await screen.findByTestId("badge-corregido-301", {}, { timeout: 8000 })).toHaveTextContent("Corregido");
+    expect(screen.queryByTestId("badge-corregido-302")).not.toBeInTheDocument();
+  });
+
+  it("marca «Fuera de ODA» el control que ninguna ODA cubre (D9)", async () => {
+    server.use(
+      http.get(`${BASE}/api/v1/pacientes/buscar`, () => HttpResponse.json([MOCK_PACIENTE])),
+      http.get(`${BASE}/api/v1/pacientes/:pacienteId/vista-360`, () =>
+        HttpResponse.json(MOCK_VISTA_360)
+      ),
+      http.get(`${BASE}/api/v1/controles-medicos/por-ingreso/:ingresoId`, () =>
+        HttpResponse.json([
+          { ...MOCK_CONTROLES[0], id: 401, fuera_de_oda: true, oda_que_cubre: null },
+          {
+            ...MOCK_CONTROLES[0],
+            id: 402,
+            fecha_control: "2026-03-17",
+            fuera_de_oda: false,
+            oda_que_cubre: "ODA-1",
+          },
+        ])
+      )
+    );
+
+    renderPage();
+    await userEvent.type(
+      screen.getByPlaceholderText("Buscar por RUT, folio, nombre o ID SALUTEM"),
+      "Juan"
+    );
+    await userEvent.click(await screen.findByText("Juan Pérez", {}, { timeout: 8000 }));
+
+    expect(await screen.findByTestId("badge-fuera-oda-401", {}, { timeout: 8000 })).toHaveTextContent("Fuera de ODA");
+    expect(screen.queryByTestId("badge-fuera-oda-402")).not.toBeInTheDocument();
+  });
+
+  it("muestra la prestación de SALUTEM de cada control para distinguirlas (QA-002)", async () => {
+    server.use(
+      http.get(`${BASE}/api/v1/pacientes/buscar`, () => HttpResponse.json([MOCK_PACIENTE])),
+      http.get(`${BASE}/api/v1/pacientes/:pacienteId/vista-360`, () =>
+        HttpResponse.json(MOCK_VISTA_360)
+      ),
+      http.get(`${BASE}/api/v1/controles-medicos/por-ingreso/:ingresoId`, () =>
+        HttpResponse.json([
+          { ...MOCK_CONTROLES[0], origen: "CEPA", salutem_cita_id: null, especialidad: null },
+          {
+            ...MOCK_CONTROLES[0],
+            id: 201,
+            fecha_control: "2026-10-15",
+            medico_tratante: "DRA. PAULA ROJAS",
+            origen: "SALUTEM",
+            salutem_cita_id: 5001,
+            especialidad: "Médico/a",
+          },
+          {
+            ...MOCK_CONTROLES[0],
+            id: 202,
+            fecha_control: "2026-10-20",
+            medico_tratante: "DR. PEDRO SOTO",
+            origen: "SALUTEM",
+            salutem_cita_id: 5002,
+            especialidad: "Primera consulta médica AT",
+          },
+        ])
+      )
+    );
+
+    renderPage();
+    await userEvent.type(
+      screen.getByPlaceholderText("Buscar por RUT, folio, nombre o ID SALUTEM"),
+      "Juan"
+    );
+    await userEvent.click(await screen.findByText("Juan Pérez", {}, { timeout: 8000 }));
+
+    expect(await screen.findByRole("columnheader", { name: "Prestación" }, { timeout: 8000 })).toBeInTheDocument();
+    const primera = (await screen.findByText("DR. PEDRO SOTO")).closest("tr")!;
+    expect(within(primera).getByText("Primera consulta médica AT")).toBeInTheDocument();
+    const medico = screen.getByText("DRA. PAULA ROJAS").closest("tr")!;
+    expect(within(medico).getByText("Médico/a")).toBeInTheDocument();
+    const delCepa = screen.getByText("Dr. Andrés Molina").closest("tr")!;
+    expect(within(delCepa).getByTestId(/prestacion-control-/)).toHaveTextContent("—");
+  });
 });

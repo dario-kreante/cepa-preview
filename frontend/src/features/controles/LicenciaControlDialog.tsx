@@ -166,6 +166,8 @@ export function LicenciaControlDialog({
           <DialogTitle>Licencia / RECA</DialogTitle>
           <p className="text-[12.5px] text-muted-foreground">
             Registra la licencia médica, GAF y estado RECA del control.
+            {control.origen === "SALUTEM" &&
+              " Lo que corrijas aquí (por ejemplo, los días de un adendum) se mantiene aunque SALUTEM se vuelva a sincronizar."}
           </p>
         </DialogHeader>
 

@@ -14,12 +14,15 @@ from sqlalchemy.orm import Session
 from app.models.control_medico import ControlMedico
 from app.models.ingreso import Ingreso
 from app.models.profesional import Profesional
+from app.models.salutem_copia import SalutemAtencion
 from app.schemas.control_medico import (
     ControlMedicoCreate,
+    ControlMedicoRead,
     EvaluacionUpdate,
     LicenciaUpdate,
     ProximoControlUpdate,
 )
+from app.services.cobertura_oda import oda_que_cubre, odas_por_ingreso
 from app.services.gaf_tramos import resolver_tramo
 from app.services.semana_control import FechaControlInvalidaError, calcular_semana_control
 
@@ -154,6 +157,7 @@ def actualizar_licencia(
         HTTPException 404: si control_id no existe.
     """
     control = _get_control_o_404(db, control_id)
+    antes = _foto(control, _CAMPOS_LICENCIA)
 
     control.tiene_licencia = data.tiene_licencia
     if data.tiene_licencia:
@@ -180,6 +184,7 @@ def actualizar_licencia(
         control.gaf_tramo = resolver_tramo(db, None, data.gaf)
     control.estado_reca = data.estado_reca.value if data.estado_reca else None
     control.observaciones = data.observaciones
+    _marcar_cambios(control, antes)
     db.flush()
     return control
 
@@ -197,8 +202,11 @@ def actualizar_evaluacion(
         HTTPException 404: si control_id no existe.
     """
     control = _get_control_o_404(db, control_id)
-    for campo, valor in data.model_dump(exclude_unset=True).items():
+    cambios = data.model_dump(exclude_unset=True)
+    antes = _foto(control, tuple(cambios))
+    for campo, valor in cambios.items():
         setattr(control, campo, valor)
+    _marcar_cambios(control, antes)
     db.flush()
     return control
 
@@ -206,6 +214,34 @@ def actualizar_evaluacion(
 # ─────────────────────────────────────────────────────────────────────────────
 # Helpers
 # ─────────────────────────────────────────────────────────────────────────────
+
+# Lo que edita el diálogo «Licencia/RECA».
+_CAMPOS_LICENCIA = (
+    "tiene_licencia",
+    "resumen_termino_lm",
+    "total_dias_lm",
+    "tipo_licencia",
+    "tipo_reposo",
+    "gaf",
+    "gaf_tramo",
+    "estado_reca",
+    "observaciones",
+)
+
+
+def _foto(control: ControlMedico, campos: tuple[str, ...]) -> dict:
+    return {c: getattr(control, c) for c in campos}
+
+
+def _marcar_cambios(control: ControlMedico, antes: dict) -> None:
+    """Registra los campos que cambiaron a mano: el sync de SALUTEM ya no los pisa (D4)."""
+    def _norm(v):  # el formulario manda "" donde la BD tiene NULL: eso no es un cambio
+        return None if v == "" else v
+
+    cambiados = {c for c, v in antes.items() if _norm(getattr(control, c)) != _norm(v)}
+    if cambiados:
+        control.marcar_editados(cambiados)
+
 
 def _get_control_o_404(db: Session, control_id: int) -> ControlMedico:
     control = db.execute(
@@ -220,11 +256,49 @@ def _get_control_o_404(db: Session, control_id: int) -> ControlMedico:
 
 
 def obtener_controles_por_ingreso(db: Session, ingreso_id: int) -> list[ControlMedico]:
-    """Lista todos los controles asociados a un ingreso/folio."""
+    """Lista todos los controles asociados a un ingreso/folio, del más reciente al más antiguo."""
     return list(
         db.execute(
             select(ControlMedico)
             .where(ControlMedico.ingreso_id == ingreso_id)
-            .order_by(ControlMedico.fecha_control)
+            .order_by(ControlMedico.fecha_control.desc(), ControlMedico.id.desc())
         ).scalars()
     )
+
+
+def leer_controles(db: Session, controles: list[ControlMedico]) -> list[ControlMedicoRead]:
+    """Los controles como respuesta del API, con la especialidad de SALUTEM de cada uno.
+
+    La especialidad no se guarda en el control: se lee de la atención copiada de SALUTEM
+    (salutem_cita_id), así un control "Primera consulta médica AT" se distingue de uno
+    "Médico/a" sin migración.
+    """
+    citas = {c.salutem_cita_id for c in controles if c.salutem_cita_id is not None}
+    especialidades: dict[int, str] = {}
+    if citas:
+        for cita_id, contenido in db.execute(
+            select(SalutemAtencion.cita_id, SalutemAtencion.contenido).where(
+                SalutemAtencion.cita_id.in_(citas)
+            )
+        ):
+            nombre = (contenido or {}).get("especialidadNombre")
+            if isinstance(nombre, str) and nombre.strip():
+                especialidades[cita_id] = nombre.strip()
+    odas = odas_por_ingreso(db, {c.ingreso_id for c in controles})
+    leidos = []
+    for c in controles:
+        cubre = oda_que_cubre(odas.get(c.ingreso_id, []), c.fecha_control)
+        leidos.append(
+            ControlMedicoRead.model_validate(c).model_copy(
+                update={
+                    "especialidad": especialidades.get(c.salutem_cita_id),
+                    "oda_que_cubre": cubre.identificador if cubre else None,
+                    "fuera_de_oda": bool(odas.get(c.ingreso_id)) and cubre is None,
+                }
+            )
+        )
+    return leidos
+
+
+def leer_control(db: Session, control: ControlMedico) -> ControlMedicoRead:
+    return leer_controles(db, [control])[0]

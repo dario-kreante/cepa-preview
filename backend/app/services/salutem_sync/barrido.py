@@ -7,6 +7,7 @@ from datetime import date, datetime
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.config import clave_especialidad
 from app.integrations.salutem.errors import (
     SalutemAuthError,
     SalutemError,
@@ -187,7 +188,7 @@ def refrescar_atenciones(
     `al_avanzar` se llama en cada lote confirmado: en la fría son cientos de llamadas
     y el orquestador lo usa para renovar el lease. Las atenciones que SALUTEM rechaza
     se saltan y se anotan en `errores` (si se pasa). Con `especialidades` (nombres en
-    minúscula) solo se releen las atenciones de esas especialidades.
+    normalizados con `clave_especialidad`) solo se releen las atenciones de esas especialidades.
     """
     contadores = Contadores()
     filas = db.execute(
@@ -203,7 +204,7 @@ def refrescar_atenciones(
         (persona_id, cita_id)
         for persona_id, cita_id, contenido in filas
         if especialidades is None
-        or str((contenido or {}).get("especialidadNombre") or "").strip().casefold() in especialidades
+        or clave_especialidad((contenido or {}).get("especialidadNombre")) in especialidades
     ]
     for i, (persona_id, cita_id) in enumerate(claves, start=1):
         try:

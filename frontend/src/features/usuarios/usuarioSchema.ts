@@ -10,12 +10,14 @@ export const ROL_VALUES = [
   "Coordinacion",
   "Administrativo",
   "Auditor",
+  "Superadmin",
 ] as const satisfies readonly RolUsuario[];
 
 export const ROL_LABELS: Record<RolUsuario, string> = {
   Coordinacion: "Coordinación",
   Administrativo: "Administrativo",
   Auditor: "Auditor",
+  Superadmin: "Superadmin (acceso completo)",
 };
 
 const emailOpcional = z

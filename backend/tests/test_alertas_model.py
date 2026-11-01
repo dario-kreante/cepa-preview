@@ -61,7 +61,10 @@ def test_enum_tipo_alerta_contiene_todos_los_tipos_rn1():
     assert "licencia_en_control" in tipos
     assert "receta_en_control" in tipos
     assert "inasistencia" in tipos  # Fase 2 (cita desde SALUTEM)
-    assert len(tipos) == 12
+    assert "posible_encuadre" in tipos  # reunión 29-10 (D6)
+    assert "cita_fuera_de_oda" in tipos  # reunión 29-10 (D9)
+    assert "plazo_insumos_ept" in tipos  # reunión 29-10 (D10)
+    assert len(tipos) == 15
 
 
 def test_enum_estado_alerta():

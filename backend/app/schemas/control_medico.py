@@ -160,6 +160,24 @@ class ControlMedicoRead(BaseModel):
     # "CEPA" = cargado en SIGE; "SALUTEM" = creado por el sync desde una atención.
     origen: str = "CEPA"
     salutem_cita_id: int | None = None
+    # Prestación/especialidad de SALUTEM de la atención que originó el control
+    # ("Primera consulta médica AT"). Nula en los controles cargados en SIGE.
+    especialidad: str | None = None
+    # Campos corregidos a mano en SIGE: el sync de SALUTEM ya no los sobrescribe.
+    campos_editados: list[str] = []
+    # Cobertura de la ODA (D9): identificador de la ODA que cubre la fecha del control, y
+    # fuera_de_oda=True si el ingreso tiene ODA pero ninguna cubre esa fecha.
+    oda_que_cubre: str | None = None
+    fuera_de_oda: bool = False
+
+    @field_validator("campos_editados", mode="before")
+    @classmethod
+    def _separar_campos(cls, v: object) -> object:
+        if v is None:
+            return []
+        if isinstance(v, str):
+            return [c for c in v.split(",") if c]
+        return v
 
 
 class ArchivoControlRead(BaseModel):

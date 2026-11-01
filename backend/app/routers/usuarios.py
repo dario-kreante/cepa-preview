@@ -7,13 +7,22 @@ from app.audit.service import record_audit
 from app.auth.deps import CurrentUser, require_role
 from app.auth.security import hash_password
 from app.db.session import get_db
-from app.models.usuario import Usuario
+from app.models.usuario import ROL_SUPERADMIN, Usuario
 from app.schemas.usuario import UsuarioCreate, UsuarioRead, UsuarioUpdate
 
 router = APIRouter(prefix="/api/v1/usuarios", tags=["usuarios"])
 
 # Toda la gestión de usuarios es exclusiva de Coordinación (CEPA-002 RN-4).
 _solo_coordinacion = require_role("Coordinacion")
+
+
+def _exigir_superadmin(actor: CurrentUser, *roles_tocados: str | None) -> None:
+    """Solo un Superadmin puede crear, editar o desactivar a otro Superadmin, u otorgar el rol."""
+    if ROL_SUPERADMIN in roles_tocados and actor.role != ROL_SUPERADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Solo un Superadmin puede gestionar usuarios Superadmin",
+        )
 
 
 def _get_usuario_o_404(db: Session, usuario_id: int) -> Usuario:
@@ -29,6 +38,7 @@ def crear_usuario(
     db: Session = Depends(get_db),
     actor: CurrentUser = Depends(_solo_coordinacion),
 ) -> Usuario:
+    _exigir_superadmin(actor, payload.rol)
     usuario = Usuario(
         username=payload.username,
         nombre=payload.nombre,
@@ -85,6 +95,7 @@ def actualizar_usuario(
     actor: CurrentUser = Depends(_solo_coordinacion),
 ) -> Usuario:
     usuario = _get_usuario_o_404(db, usuario_id)
+    _exigir_superadmin(actor, usuario.rol, payload.rol)
     if payload.nombre is not None:
         usuario.nombre = payload.nombre
     if payload.rol is not None:
@@ -113,6 +124,7 @@ def desactivar_usuario(
     actor: CurrentUser = Depends(_solo_coordinacion),
 ) -> Usuario:
     usuario = _get_usuario_o_404(db, usuario_id)
+    _exigir_superadmin(actor, usuario.rol)
     usuario.activo = False
     record_audit(
         db,
@@ -136,6 +148,7 @@ def activar_usuario(
     actor: CurrentUser = Depends(_solo_coordinacion),
 ) -> Usuario:
     usuario = _get_usuario_o_404(db, usuario_id)
+    _exigir_superadmin(actor, usuario.rol)
     usuario.activo = True
     usuario.intentos_fallidos = 0
     usuario.bloqueado_hasta = None

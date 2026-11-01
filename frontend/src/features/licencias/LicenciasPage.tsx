@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { cn } from "@/lib/utils";
+import { cn, fechaLocalISO } from "@/lib/utils";
 import { fmtDate } from "@/lib/utils";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { puedeEscribir, type Rol } from "@/lib/rbac";
@@ -20,6 +20,7 @@ import { AltaLicenciaDialog } from "./AltaLicenciaDialog";
 import { AnularLicenciaDialog } from "./AnularLicenciaDialog";
 import { IslLicenciaDialog } from "./IslLicenciaDialog";
 import { useBuscarPacientes, useVista360 } from "@/features/ingresos/hooks";
+import { DocumentosSalutemPaciente } from "@/features/controles/DocumentosSalutem";
 import type { PacienteRead } from "@/features/ingresos/api";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -74,6 +75,14 @@ const TIPO_REPOSO_LABELS: Record<string, string> = {
 };
 
 // Label map for EstadoEnvioISL
+/**
+ * Se puede marcar como enviada al ISL: no anulada y aún no enviada. Reenviar una ya
+ * enviada pisaría su fecha de envío real (D13).
+ */
+function seleccionableIsl(slim: LicenciaReadSlim): boolean {
+  return !slim.anulada && slim.envio_isl !== "enviado";
+}
+
 const ISL_LABELS: Record<string, string> = {
   pendiente: "Pendiente",
   enviado: "Enviado",
@@ -127,7 +136,8 @@ function LicenciaRow({
           <Checkbox
             checked={selected}
             onCheckedChange={() => onToggleSelect(slim.id)}
-            disabled={slim.anulada}
+            disabled={!seleccionableIsl(slim)}
+            title={slim.envio_isl === "enviado" ? "Ya enviada al ISL" : undefined}
             aria-label={`Seleccionar licencia ${slim.id}`}
           />
         </td>
@@ -260,8 +270,8 @@ export function LicenciasPage() {
     })
     .map((slim) => ({ slim }));
 
-  // Non-anulled filtered rows eligible for selection
-  const selectableRows = filtered.filter(({ slim }) => !slim.anulada);
+  // Filas visibles que se pueden marcar como enviadas al ISL
+  const selectableRows = filtered.filter(({ slim }) => seleccionableIsl(slim));
 
   // Select-all state: checked if all selectable visible rows are in selectedIds
   const allSelected =
@@ -307,10 +317,12 @@ export function LicenciasPage() {
   const [isGeneratingAlertas, setIsGeneratingAlertas] = useState(false);
 
   async function handleBulkISL() {
-    if (selectedIds.size === 0) return;
+    // Solo las seleccionadas que siguen visibles y pendientes: un filtro aplicado después
+    // de seleccionar no debe enviar filas ocultas (D13).
+    const ids = selectableRows.map(({ slim }) => slim.id).filter((id) => selectedIds.has(id));
+    if (ids.length === 0) return;
     setIsBulkSending(true);
-    const today = new Date().toISOString().split("T")[0];
-    const ids = Array.from(selectedIds);
+    const today = fechaLocalISO();
 
     const results = await Promise.allSettled(
       ids.map((id) =>
@@ -550,6 +562,14 @@ export function LicenciasPage() {
             Sin licencias para este paciente.
           </p>
         </div>
+      )}
+
+      {hasSearched && !isFetching && paciente && (
+        <DocumentosSalutemPaciente
+          pacienteId={paciente.id}
+          relacion="licencia"
+          titulo="Documentos de licencias en SALUTEM"
+        />
       )}
 
       {/* Alta de licencia dialog — writers only */}

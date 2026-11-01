@@ -18,7 +18,7 @@ import {
   Contact,
   type LucideIcon,
 } from "lucide-react";
-import type { Rol } from "@/lib/rbac";
+import { tieneRol, type Rol } from "@/lib/rbac";
 
 export interface NavItem {
   to: string;
@@ -119,7 +119,7 @@ export const NAV: NavSection[] = [
 
 /** Items de `items` visibles para `rol` (RBAC de menú). Sin rol, solo los no restringidos. */
 export function itemsVisibles(items: NavItem[], rol: Rol | null | undefined): NavItem[] {
-  return items.filter((item) => !item.roles || (rol != null && item.roles.includes(rol)));
+  return items.filter((item) => !item.roles || tieneRol(rol, ...item.roles));
 }
 
 /** Sección "Administración": la reusa el índice de /configuracion. */

@@ -142,8 +142,8 @@ describe("PatientSheet — licencias detectadas en SALUTEM", () => {
     expect(dialogo.getByLabelText(/tipo de reposo/i)).toHaveValue("total");
     expect(dialogo.getByLabelText(/fecha inicio de la licencia/i)).toHaveValue("2024-05-09");
     expect(dialogo.getByLabelText(/fecha término de la licencia/i)).toHaveValue("2024-05-29");
-    expect(dialogo.getByLabelText(/inicio del reposo/i)).toHaveValue("2024-05-09");
-    expect(dialogo.getByLabelText(/fin del reposo/i)).toHaveValue("2024-05-29");
+    // QA-006: el reposo es el período de la licencia; no se pide aparte
+    expect(dialogo.queryByLabelText(/inicio del reposo/i)).not.toBeInTheDocument();
     expect(dialogo.getByLabelText(/cantidad de días/i)).toHaveValue(21);
     // lo que la indicación no dice queda para que lo complete el administrativo
     expect(dialogo.getByLabelText(/^diagnóstico$/i)).toHaveValue("");

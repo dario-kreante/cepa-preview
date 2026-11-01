@@ -1,9 +1,10 @@
 """Controles médicos creados automáticamente desde las atenciones de SALUTEM.
 
-Cada atención con estado "Atendido" de una especialidad de control (`Médico/a` y
-`Primera consulta médica EP` por defecto; se configura en SALUTEM_ESPECIALIDADES_CONTROL)
-que cae en la ventana de un ingreso es un control del CEPA con origen SALUTEM. Las demás
-especialidades (psicología, EPT, evaluaciones de ingreso, gestión administrativa...)
+Cada atención con estado "Atendido" de una especialidad de control (las categorías de
+atención médica y psiquiátrica: `Médico/a`, `Primera consulta médica AT/EP`, `Evaluación
+médica…`, `Psiquiatría`…; se configura en SALUTEM_ESPECIALIDADES_CONTROL y se compara sin
+tildes ni mayúsculas) que cae en la ventana de un ingreso es un control del CEPA con origen
+SALUTEM. Las demás especialidades (psicología, EPT, gestión administrativa, enfermería...)
 quedan solo en la pestaña SALUTEM. Los campos del formulario se buscan por nombre en
 cualquier sección de la atención. Correspondencia con el control:
 
@@ -27,6 +28,9 @@ cualquier sección de la atención. Correspondencia con el control:
                      ← los campos "Tiempo estimado de tratamiento", "Proyección de
                        reintegro laboral" y "Factores de riesgo acogidos"
 - estado_reca        ← no viene en SALUTEM: lo completa el CEPA y el sync no lo toca
+
+Los campos que el CEPA corrige a mano en SIGE (``campos_editados``, migración 1390) no se
+vuelven a escribir desde SALUTEM.
 """
 
 import calendar
@@ -39,7 +43,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.audit.service import record_audit
-from app.config import get_settings
+from app.config import clave_especialidad, get_settings
 from app.domain.enums_controles import TipoLicencia, TipoReposo
 from app.integrations.salutem.campos import campo, tramo_gaf
 from app.integrations.salutem.licencias import (
@@ -76,7 +80,7 @@ def es_control(atencion: SalutemAtencion) -> bool:
         atencion.desaparecida_en is None
         and atencion.fecha_cita is not None
         and c.get("estadoCitaId") == ATENDIDO
-        and str(c.get("especialidadNombre") or "").strip().casefold()
+        and clave_especialidad(c.get("especialidadNombre"))
         in get_settings().salutem_especialidades_control_set
     )
 
@@ -107,10 +111,15 @@ def sincronizar_control(
     profesional_id = profesional_de_salutem(db, atencion.contenido)
     if profesional_id is not None:
         campos["profesional_id"] = profesional_id
+    if control is not None:
+        # Lo que el CEPA corrigió a mano en SIGE (un adendum, días que la ficha no trae)
+        # manda sobre la ficha de SALUTEM.
+        for editado in control.campos_editados_set:
+            campos.pop(editado, None)
     creado = control is None
     # Un control que pasa a tener licencia (p. ej. porque el extractor ahora la reconoce)
     # también alerta, aunque la atención no haya cambiado en SALUTEM.
-    gano_licencia = not creado and campos["tiene_licencia"] and not control.tiene_licencia
+    gano_licencia = not creado and campos.get("tiene_licencia", False) and not control.tiene_licencia
     if control is None:
         control = ControlMedico(ingreso_id=ingreso.id, origen=ORIGEN, salutem_cita_id=atencion.cita_id, **campos)
         db.add(control)
@@ -133,7 +142,7 @@ def es_atencion_medica_sin_control(atencion: SalutemAtencion) -> bool:
         atencion.desaparecida_en is None
         and atencion.fecha_cita is not None
         and c.get("estadoCitaId") == ATENDIDO
-        and str(c.get("especialidadNombre") or "").strip().casefold()
+        and clave_especialidad(c.get("especialidadNombre"))
         in get_settings().salutem_especialidades_alerta_set
         and not es_control(atencion)
     )
@@ -143,10 +152,13 @@ def sincronizar_alerta_atencion(db: Session, atencion: SalutemAtencion, ingreso:
     """Alerta la licencia o receta de una atención médica que no es control.
 
     Una vez por atención y tipo: si ya se alertó (aunque esté resuelta) no se repite. Si la
-    atención se anula o desaparece, sus alertas abiertas quedan resueltas.
+    atención se anula o desaparece, sus alertas abiertas quedan resueltas. Si pasó a ser
+    control (se amplió SALUTEM_ESPECIALIDADES_CONTROL), sus alertas siguen vigentes: el
+    control no las repite (ver `alertar_control`).
     """
     if not es_atencion_medica_sin_control(atencion):
-        resolver_alertas_control(db, atencion.cita_id, CASO_ATENCION)
+        if not es_control(atencion):
+            resolver_alertas_control(db, atencion.cita_id, CASO_ATENCION)
         return
     hay_licencia = licencia_de_atencion(atencion.contenido, atencion.fecha_cita) is not None
     alertar_atencion(

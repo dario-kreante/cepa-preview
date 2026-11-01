@@ -84,7 +84,6 @@ def test_rut_invalido_rechazado(as_admin):
 def test_campos_obligatorios_faltantes(as_admin):
     ingreso_id = _ingreso_fixture(as_admin)
     datos = _payload_caso(ingreso_id)
-    del datos["sexo"]
     del datos["region"]
     r = as_admin.post("/api/v1/reintegros", json=datos)
     assert r.status_code == 422
@@ -179,3 +178,96 @@ def test_paciente_sin_rut_permite_crear_caso(as_admin, db_session):
     r = as_admin.post("/api/v1/reintegros", json=datos)
     assert r.status_code == 201, r.text
     assert r.json()["rut"] is None
+
+
+# QA Pilar 22-10 QA-008: el alta ya no pide edad ni sexo; se copian del paciente
+def test_sin_sexo_ni_edad_toma_los_del_paciente(as_admin):
+    ingreso_id = _ingreso_fixture(as_admin)
+    datos = _payload_caso(ingreso_id, tipo_trabajador="dependiente")
+    del datos["sexo"]
+    del datos["edad"]
+    r = as_admin.post("/api/v1/reintegros", json=datos)
+    assert r.status_code == 201, r.text
+    cuerpo = r.json()
+    assert cuerpo["sexo"] == "M"
+    assert cuerpo["edad"] == 40
+    assert cuerpo["tipo_trabajador"] == "dependiente"
+
+
+def _ingreso_directo(db_session, *, razon_social=None, sexo=None, edad=None):
+    from datetime import date
+
+    from app.models.ingreso import Ingreso
+    from app.models.paciente import Paciente
+
+    paciente = Paciente(rut=None, nombre="Paciente QA", sexo=sexo, edad=edad, region="Maule")
+    db_session.add(paciente)
+    db_session.flush()
+    ingreso = Ingreso(
+        paciente_id=paciente.id,
+        folio=f"QA8-{paciente.id}",
+        fecha_ingreso=date(2026, 10, 1),
+        tipo_derivacion="DIAT",
+        tipo_ingreso="convenio",
+        modelo_tratamiento="ambulatorio",
+        diagnostico="x",
+        estado="activo",
+        razon_social=razon_social,
+    )
+    db_session.add(ingreso)
+    db_session.commit()
+    return ingreso.id
+
+
+# QA-008: paciente sin sexo ni edad → el caso se crea igual, con esos datos vacíos
+def test_paciente_sin_sexo_ni_edad_permite_crear_caso(as_admin, db_session):
+    ingreso_id = _ingreso_directo(db_session)
+    datos = _payload_caso(ingreso_id, rut="")
+    del datos["sexo"]
+    del datos["edad"]
+    r = as_admin.post("/api/v1/reintegros", json=datos)
+    assert r.status_code == 201, r.text
+    assert r.json()["sexo"] is None
+    assert r.json()["edad"] is None
+
+
+# QA-008: sin razón social en el alta se toma la del ingreso
+def test_sin_razon_social_toma_la_del_ingreso(as_admin, db_session):
+    ingreso_id = _ingreso_directo(db_session, razon_social="Forestal Maule SpA")
+    r = as_admin.post("/api/v1/reintegros", json=_payload_caso(ingreso_id, rut=""))
+    assert r.status_code == 201, r.text
+    assert r.json()["razon_social"] == "Forestal Maule SpA"
+
+
+# QA-008: la razón social indicada en el alta gana sobre la del ingreso
+def test_razon_social_explicita_gana(as_admin, db_session):
+    ingreso_id = _ingreso_directo(db_session, razon_social="Forestal Maule SpA")
+    r = as_admin.post(
+        "/api/v1/reintegros",
+        json=_payload_caso(ingreso_id, rut="", razon_social="Otra Empresa Ltda."),
+    )
+    assert r.status_code == 201, r.text
+    assert r.json()["razon_social"] == "Otra Empresa Ltda."
+
+
+# QA-008: tipo de trabajador fuera de la lista → 422
+def test_tipo_trabajador_invalido_rechazado(as_admin):
+    ingreso_id = _ingreso_fixture(as_admin)
+    r = as_admin.post(
+        "/api/v1/reintegros",
+        json=_payload_caso(ingreso_id, tipo_trabajador="honorarios"),
+    )
+    assert r.status_code == 422
+
+
+# QA-008: tipo de trabajador y razón social se editan por PATCH
+def test_patch_tipo_trabajador_y_razon_social(as_admin):
+    ingreso_id = _ingreso_fixture(as_admin)
+    caso_id = as_admin.post("/api/v1/reintegros", json=_payload_caso(ingreso_id)).json()["id"]
+    r = as_admin.patch(
+        f"/api/v1/reintegros/{caso_id}",
+        json={"tipo_trabajador": "independiente", "razon_social": "Mi Empresa"},
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["tipo_trabajador"] == "independiente"
+    assert r.json()["razon_social"] == "Mi Empresa"

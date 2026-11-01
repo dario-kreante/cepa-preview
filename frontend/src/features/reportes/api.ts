@@ -81,6 +81,32 @@ export async function reporteOdasVencidas(): Promise<ReporteODASVencidasResponse
   return data;
 }
 
+export type OdaImportResumen = components["schemas"]["OdaImportResumen"];
+
+/**
+ * POST /api/v1/odas/importar (multipart) — carga el «Reporte Prestador» del portal ISL.
+ * Con `dryRun` el backend arma el resumen sin guardar nada (previsualización).
+ */
+export async function importarReporteIsl(
+  file: File,
+  dryRun: boolean,
+): Promise<OdaImportResumen> {
+  const fd = new FormData();
+  fd.append("file", file);
+  const { data, error } = await api.POST("/api/v1/odas/importar", {
+    params: { query: { dry_run: dryRun } },
+    body: fd as never,
+    bodySerializer: (b) => b as unknown as FormData,
+  });
+  if (error || !data) {
+    const detail = (error as { detail?: unknown } | undefined)?.detail;
+    throw new Error(
+      typeof detail === "string" ? detail : "No se pudo procesar el archivo.",
+    );
+  }
+  return data;
+}
+
 /** GET /api/v1/reportes/adherencia/{folio_id} — adherencia y avance de un ingreso. */
 export async function reporteAdherencia(
   folioId: number,

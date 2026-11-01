@@ -21,7 +21,7 @@ describe("useCaso", () => {
           id: 1,
           ingreso_id: 10,
           fecha_ingreso_ept: "2026-06-16",
-          factor_riesgo: "carga",
+          factor_riesgo: "sobrecarga",
           corresponde_ept: true,
           estado: "abierto",
           created_at: "2026-06-16T00:00:00Z",
