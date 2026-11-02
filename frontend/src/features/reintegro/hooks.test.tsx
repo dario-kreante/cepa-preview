@@ -25,6 +25,8 @@ const CASO = {
   region: "Maule",
   comuna: null,
   rubro_empleador: null,
+  razon_social: null,
+  tipo_trabajador: null,
   estado_reintegro: "pendiente",
   fecha_reintegro: null,
   remitido_isl: false,

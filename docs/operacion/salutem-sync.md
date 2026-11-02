@@ -18,7 +18,8 @@ Diseño: `docs/superpowers/specs/2026-09-16-salutem-sync-fase1-design.md`.
 | `SALUTEM_SYNC_LLAMADAS_POR_SEG` | `2` | ajustar con el límite que confirme FabricApp |
 | `SALUTEM_BACKFILL_DIAS_VACIOS` | `365` | |
 | `SALUTEM_SYNC_LOG` | `/home/segicepa/sige-cepa/logs/salutem-sync.log` | rota a 5 × 10 MB; un archivo por modo, ver abajo |
-| `SALUTEM_ESPECIALIDADES_CONTROL` | (sin definir: usa el valor por defecto) | especialidades cuya atención "Atendido" crea un control médico, separadas por coma; por defecto `Médico/a,Primera consulta médica EP`. Tras cambiarla: reiniciar y `vincular --todo` |
+| `SALUTEM_ESPECIALIDADES_CONTROL` | (sin definir: usa el valor por defecto) | especialidades cuya atención "Atendido" crea un control médico, separadas por coma; por defecto las categorías médicas/psiquiátricas (QA-002, 22-10-2026): `Médico/a,Médico/a AT,Primera consulta médica AT,Primera consulta médica EP,Psiquiatría,Evaluación médica,Evaluación médica AT,Evaluación médica EP,Evaluación médica PIPT,Evaluación psiquiátrica,Consultoría Psiquiátrica`. Se compara sin tildes ni mayúsculas. Si el `.env` la define, manda sobre el default: borrarla o actualizarla. Tras cambiarla: reiniciar y `vincular --todo` |
+| `SALUTEM_ESPECIALIDADES_ALERTA` | (sin definir: usa el valor por defecto) | atenciones médicas que no son control pero alertan licencia/receta; por defecto `Evaluación médica,Evaluación psiquiátrica` (con el default de control ya son control: la alerta va al control y no se duplica) |
 
 ## Puesta en marcha (una vez)
 Requiere aprobación explícita de Darío, la clave de producción y el aviso a DTI.
@@ -144,6 +145,9 @@ Estimaciones para producción: la API responde ~0,5–0,6 s por llamada, así qu
 - La vinculación crea las alertas `licencia_en_control` y `receta_en_control` (una por control y
   tipo; solo controles de los últimos 14 días). Se apagan en `/config-alertas`.
 - La API de SALUTEM no informa carpeta ni cita del archivo: se unen al control por fecha.
+- `receta_en_control` también se activa con un campo de selección con «receta» en el nombre
+  marcado «Sí» (cualquier sección). La API no entrega adendum (ni en la doc ni en las atenciones
+  copiadas): las correcciones de un adendum se hacen a mano en SIGE y el sync no las pisa.
 - En QA los archivos antiguos llegan con `archivo_base64` vacío; los subidos recientemente sí traen
   contenido.
 - Despliegue: aplicar la migración (`alembic upgrade head`) antes de reiniciar la API y el cron.

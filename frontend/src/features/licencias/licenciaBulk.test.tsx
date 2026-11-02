@@ -247,6 +247,37 @@ describe("LicenciasPage — Envío masivo ISL", () => {
     }
   });
 
+  it("no deja seleccionar ni reenviar una licencia ya enviada al ISL (D13)", async () => {
+    server.use(
+      http.get(`${BASE}/api/v1/licencias/folio/:folio`, () =>
+        HttpResponse.json({
+          folio: FOLIO,
+          ingreso_id: 5,
+          historial: [SLIM_1, { ...SLIM_2, envio_isl: "enviado", fecha_envio_isl: "2026-06-10" }],
+          dias_acumulados: 21,
+        })
+      )
+    );
+    const islCalls: string[] = [];
+    server.use(
+      http.patch(`${BASE}/api/v1/licencias/:id/isl`, ({ params }) => {
+        islCalls.push(String(params["id"]));
+        return HttpResponse.json({ ...FULL_1, id: Number(params["id"]), envio_isl: "enviado" });
+      })
+    );
+
+    renderPage();
+    await searchAndWaitRows();
+    expect(screen.getByRole("checkbox", { name: "Seleccionar licencia 12" })).toBeDisabled();
+
+    const user = userEvent.setup();
+    const [headerCb] = screen.getAllByRole("checkbox");
+    await user.click(headerCb);
+    await user.click(screen.getByRole("button", { name: /envío masivo isl/i }));
+
+    await waitFor(() => expect(islCalls).toEqual(["11"]), { timeout: 8000 });
+  });
+
   it("shows 'Envío masivo ISL' button only for writers (not auditor)", async () => {
     registerTwoRowHandlers();
     renderPage(AUDITOR_TOKEN);

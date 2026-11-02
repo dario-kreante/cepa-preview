@@ -18,6 +18,7 @@ def test_tabla_caso_ept_columnas():
         "region_trabajador",
         "eista",
         "factor_riesgo",
+        "factores_adicionales",  # D11 (migración 1430)
         "corresponde_ept",
         "estado",
         "razon_social",

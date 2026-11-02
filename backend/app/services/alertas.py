@@ -194,6 +194,11 @@ VENTANAS_DEFAULT: dict[str, dict] = {
     TipoAlerta.PACIENTE_PENDIENTE_FOLIO.value: {"dias": 0, "habiles": False},
     # Sin plazo: la crea el sync de citas; aquí solo se enciende o apaga.
     TipoAlerta.INASISTENCIA.value: {"dias": 0, "habiles": False},
+    TipoAlerta.POSIBLE_ENCUADRE.value: {"dias": 0, "habiles": False},
+    # "dias" = cuántos días hacia adelante se revisan las citas agendadas.
+    TipoAlerta.CITA_FUERA_DE_ODA.value: {"dias": 30, "habiles": False},
+    # El mismo día del plazo (D10): Sasha envía los insumos al EPTista esa mañana.
+    TipoAlerta.PLAZO_INSUMOS_EPT.value: {"dias": 0, "habiles": False},
 }
 
 
@@ -231,18 +236,24 @@ def _resolver_usuario(ingreso_id: int | None, db: Session) -> int | None:
 def _construir_hitos_oda(db: Session, ventanas: dict[str, dict] | None = None) -> list[HitoPlazos]:
     """Construye HitoPlazos desde la tabla oda (EPIC-01) via ORM.
 
-    Filtra por vigente=True y fecha_vencimiento IS NOT NULL.
+    Filtra por vigente=True, fecha_vencimiento IS NOT NULL e ingreso activo: la ODA de un
+    paciente cerrado o derivado no necesita renovarse (QA-004).
     Destinatario: ver _resolver_usuario (hoy None, panel general).
     """
+    from app.domain.enums import EstadoCaso
+    from app.models.ingreso import Ingreso
     from app.models.oda import Oda  # local import para evitar ciclos
 
     ventana = (ventanas or VENTANAS_DEFAULT)[TipoAlerta.ODA_POR_VENCER.value]
     if not ventana.get("activo", True):
         return []
     filas = db.scalars(
-        select(Oda).where(
+        select(Oda)
+        .join(Ingreso, Oda.ingreso_id == Ingreso.id)
+        .where(
             Oda.vigente == True,  # noqa: E712
             Oda.fecha_vencimiento.isnot(None),
+            Ingreso.estado == EstadoCaso.ACTIVO.value,
         )
     ).all()
     hitos = []
@@ -335,7 +346,42 @@ def _construir_hitos_ept(db: Session, ventanas: dict[str, dict] | None = None) -
                     usar_dias_habiles=ventana["habiles"],
                 )
             )
+    hitos.extend(_construir_hitos_insumos_ept(db, ventanas))
     return hitos
+
+
+def _construir_hitos_insumos_ept(db: Session, ventanas: dict[str, dict] | None = None) -> list[HitoPlazos]:
+    """Plazo de insumos de la empresa (proceso EPT, CEPA-031): alerta el mismo día (D10).
+
+    El empleador entrega ese día los documentos que el CEPA envía al EPTista para el
+    informe. Una alerta por caso y fecha (caso_tipo 'caso_ept': abre el caso); solo
+    casos abiertos.
+    """
+    from app.domain.enums_ept import EstadoEpt
+    from app.models.ept import CasoEpt, ProcesoEpt  # local import
+
+    ventana = (ventanas or VENTANAS_DEFAULT).get(
+        TipoAlerta.PLAZO_INSUMOS_EPT.value, VENTANAS_DEFAULT[TipoAlerta.PLAZO_INSUMOS_EPT.value]
+    )
+    if not ventana.get("activo", True):
+        return []
+    filas = db.execute(
+        select(ProcesoEpt.caso_ept_id, ProcesoEpt.plazo_insumos_empresa, CasoEpt.ingreso_id)
+        .join(CasoEpt, CasoEpt.id == ProcesoEpt.caso_ept_id)
+        .where(ProcesoEpt.plazo_insumos_empresa.is_not(None), CasoEpt.estado == EstadoEpt.ABIERTO.value)
+    ).all()
+    return [
+        HitoPlazos(
+            tipo=TipoAlerta.PLAZO_INSUMOS_EPT.value,
+            caso_id=caso_id,
+            caso_tipo="caso_ept",
+            usuario_id=_resolver_usuario(ingreso_id, db),
+            plazo_objetivo=plazo,
+            ventana_dias=ventana["dias"],
+            usar_dias_habiles=ventana["habiles"],
+        )
+        for caso_id, plazo, ingreso_id in filas
+    ]
 
 
 def _construir_hitos_consentimiento(db: Session, ventanas: dict[str, dict] | None = None) -> list[HitoPlazos]:
@@ -561,6 +607,11 @@ def ejecutar_job_alertas(
 
     resueltas = resolver_alertas_con_hora(db, hoy, actor)
 
+    from app.services.cobertura_oda import alertar_citas_fuera_de_oda
+
+    fuera_de_oda, resueltas_oda = alertar_citas_fuera_de_oda(db, hoy, ventanas, actor)
+    resueltas += resueltas_oda
+
     hitos: list[HitoPlazos] = []
     hitos.extend(_construir_hitos_oda(db, ventanas))
     hitos.extend(_construir_hitos_licencias(db, ventanas))
@@ -599,11 +650,11 @@ def ejecutar_job_alertas(
             entity="alerta_notif",
             entity_id=f"job:{len(resultados)}",
         )
-    if resultados or resueltas:
+    if resultados or resueltas or fuera_de_oda:
         # Las resoluciones por hora vigente solo se flushean: sin alertas nuevas igual hay que persistirlas.
         db.commit()
 
-    return len(resultados)
+    return len(resultados) + fuera_de_oda
 
 
 def enviar_correos_alertas(

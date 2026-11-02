@@ -11,7 +11,12 @@ from datetime import date
 from pydantic import BaseModel, ConfigDict, field_validator
 
 from app.domain.enums import TipoDerivacion
-from app.domain.reintegro_enums import EstadoReintegro, TipoAlta, TipoReca
+from app.domain.reintegro_enums import (
+    EstadoReintegro,
+    TipoAlta,
+    TipoReca,
+    TipoTrabajador,
+)
 from app.util.rut import RutInvalidoError, normalizar_rut
 
 
@@ -26,12 +31,16 @@ class CasoReintegroCreate(BaseModel):
     nombre: str
     tipo_derivacion: TipoDerivacion
     fecha_caso: date
-    sexo: str          # "F" / "M" / "otro" — igual que Sexo de EPIC-01
-    edad: int
     region: str
     # opcionales
+    # sexo/edad: el formulario ya no los pide (QA-008); sin valor se copian del paciente.
+    sexo: str | None = None  # "F" / "M" / "otro" — igual que Sexo de EPIC-01
+    edad: int | None = None
     comuna: str | None = None
     rubro_empleador: str | None = None
+    # Sin valor se usa la razón social del ingreso (puede no tenerla).
+    razon_social: str | None = None
+    tipo_trabajador: TipoTrabajador | None = None
 
     @field_validator("rut")
     @classmethod
@@ -45,7 +54,9 @@ class CasoReintegroCreate(BaseModel):
 
     @field_validator("edad")
     @classmethod
-    def _edad_positiva(cls, v: int) -> int:
+    def _edad_positiva(cls, v: int | None) -> int | None:
+        if v is None:
+            return None
         if v <= 0 or v > 130:
             raise ValueError("edad fuera de rango (1–130)")
         return v
@@ -62,6 +73,8 @@ class CasoReintegroUpdate(BaseModel):
     region: str | None = None
     comuna: str | None = None
     rubro_empleador: str | None = None
+    razon_social: str | None = None
+    tipo_trabajador: TipoTrabajador | None = None
 
 
 class CasoReintegroRead(BaseModel):
@@ -73,11 +86,13 @@ class CasoReintegroRead(BaseModel):
     nombre: str
     tipo_derivacion: TipoDerivacion
     fecha_caso: date
-    sexo: str
-    edad: int
+    sexo: str | None
+    edad: int | None
     region: str
     comuna: str | None
     rubro_empleador: str | None
+    razon_social: str | None
+    tipo_trabajador: TipoTrabajador | None
     estado_reintegro: EstadoReintegro
     fecha_reintegro: date | None
     remitido_isl: bool

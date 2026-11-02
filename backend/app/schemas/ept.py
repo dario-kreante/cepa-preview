@@ -2,15 +2,38 @@
 
 from datetime import date, datetime
 
-from pydantic import BaseModel, ConfigDict, EmailStr, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, field_validator, model_validator
 
-from app.domain.enums_ept import EstadoCumplimiento, EstadoEpt, FactorRiesgo
+from app.domain.enums_ept import (
+    EstadoCumplimiento,
+    EstadoEpt,
+    FactorRiesgo,
+    FactorRiesgoLegado,
+)
 from app.util.rut import RutInvalidoError, normalizar_rut
 
 
 # ──────────────────────────────
 # CasoEpt
 # ──────────────────────────────
+
+MAX_FACTORES_ADICIONALES = 2  # 3 factores en total con el principal (D11)
+
+
+def _validar_adicionales(v: list[FactorRiesgo] | None) -> list[FactorRiesgo] | None:
+    if v is None:
+        return v
+    if len(v) > MAX_FACTORES_ADICIONALES:
+        raise ValueError("Se pueden elegir hasta 3 factores de riesgo en total.")
+    if len(set(v)) != len(v):
+        raise ValueError("Los factores de riesgo no se pueden repetir.")
+    return v
+
+
+def _sin_repetir_principal(principal: FactorRiesgo | None, adicionales: list[FactorRiesgo] | None) -> None:
+    if principal is not None and adicionales and principal in adicionales:
+        raise ValueError("El factor principal no se repite entre los adicionales.")
+
 
 class CasoEptCreate(BaseModel):
     """Alta de caso EPT (CEPA-030). Campos obligatorios = RN-1."""
@@ -23,6 +46,7 @@ class CasoEptCreate(BaseModel):
     region_trabajador: str
     eista: str
     factor_riesgo: FactorRiesgo
+    factores_adicionales: list[FactorRiesgo] = []
     corresponde_ept: bool = True
     # datos empleador (opcionales; al menos razon_social recomendada)
     razon_social: str | None = None
@@ -36,6 +60,13 @@ class CasoEptCreate(BaseModel):
         except RutInvalidoError as exc:
             raise ValueError(f"RUT inválido: {v}") from exc
 
+    _adicionales = field_validator("factores_adicionales")(_validar_adicionales)
+
+    @model_validator(mode="after")
+    def _principal_unico(self) -> "CasoEptCreate":
+        _sin_repetir_principal(self.factor_riesgo, self.factores_adicionales)
+        return self
+
 
 class CasoEptUpdate(BaseModel):
     """Actualización parcial del caso EPT. Todos los campos son opcionales."""
@@ -47,6 +78,8 @@ class CasoEptUpdate(BaseModel):
     region_trabajador: str | None = None
     eista: str | None = None
     factor_riesgo: FactorRiesgo | None = None
+    # Lista completa de adicionales: [] los borra; ausente no los toca.
+    factores_adicionales: list[FactorRiesgo] | None = None
     corresponde_ept: bool | None = None
     estado: EstadoEpt | None = None
     razon_social: str | None = None
@@ -62,6 +95,13 @@ class CasoEptUpdate(BaseModel):
         except RutInvalidoError as exc:
             raise ValueError(f"RUT inválido: {v}") from exc
 
+    _adicionales = field_validator("factores_adicionales")(_validar_adicionales)
+
+    @model_validator(mode="after")
+    def _principal_unico(self) -> "CasoEptUpdate":
+        _sin_repetir_principal(self.factor_riesgo, self.factores_adicionales)
+        return self
+
 
 class CasoEptRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -74,13 +114,25 @@ class CasoEptRead(BaseModel):
     rut_trabajador: str
     region_trabajador: str
     eista: str
-    factor_riesgo: FactorRiesgo
+    # Lectura tolerante: los casos creados antes de QA-003 conservan un valor
+    # legado. La escritura (Create/Update) solo acepta FactorRiesgo.
+    factor_riesgo: FactorRiesgo | FactorRiesgoLegado
+    factores_adicionales: list[str] = []
     corresponde_ept: bool
     estado: EstadoEpt
     razon_social: str | None
     unidad_cargo_horario: str | None
     created_at: datetime
     updated_at: datetime
+
+    @field_validator("factores_adicionales", mode="before")
+    @classmethod
+    def _separar(cls, v: object) -> object:
+        if v is None:
+            return []
+        if isinstance(v, str):
+            return [f for f in v.split(",") if f]
+        return v
 
 
 # ──────────────────────────────

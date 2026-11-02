@@ -20,6 +20,13 @@ class EstadoReintegro(str, Enum):
     TOTAL = "total"
 
 
+class TipoTrabajador(str, Enum):
+    """Relación laboral del trabajador del caso de reintegro (QA-008)."""
+
+    DEPENDIENTE = "dependiente"
+    INDEPENDIENTE = "independiente"
+
+
 class TipoReca(str, Enum):
     """Calificación de la RECA (Resolución de Calificación) — Decisiones v5 D20.
 

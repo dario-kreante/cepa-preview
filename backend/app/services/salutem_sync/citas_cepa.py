@@ -23,7 +23,11 @@ from app.models.ingreso import Ingreso
 from app.models.paciente import Paciente
 from app.models.profesional import SIN_PROFESIONAL_SALUTEM, Profesional
 from app.models.salutem_copia import SalutemCita, SalutemPersona
-from app.services.alertas_citas import alertar_inasistencia, resolver_alertas_con_hora
+from app.services.alertas_citas import (
+    alertar_inasistencia,
+    alertar_posible_encuadre,
+    resolver_alertas_con_hora,
+)
 from app.services.config_alertas import cargar_ventanas
 from app.services.ficha_clinica import _en_ventana_del_ingreso
 from app.services.salutem_sync.alertas_control import (
@@ -73,6 +77,7 @@ class ResultadoCitas:
     ambiguas: int = 0
     agendadas_antiguas: int = 0
     alertas_inasistencia: int = 0
+    alertas_encuadre: int = 0
     alertas_resueltas: int = 0
     errores: list[str] = field(default_factory=list)
 
@@ -84,6 +89,7 @@ class ResultadoCitas:
         self.sin_ingreso += otro.sin_ingreso
         self.ambiguas += otro.ambiguas
         self.alertas_inasistencia += otro.alertas_inasistencia
+        self.alertas_encuadre += otro.alertas_encuadre
         self.alertas_resueltas += otro.alertas_resueltas
 
 
@@ -225,6 +231,23 @@ def sincronizar_citas(
                 continue
             if creada:
                 resultado.alertas_inasistencia += 1
+            try:
+                with db.begin_nested():
+                    encuadre = alertar_posible_encuadre(
+                        db, salutem_cita_id=cita.salutem_cita_id, cita=cita, hoy=hoy,
+                        ventanas=ventanas,
+                    )
+            except Exception as e:  # noqa: BLE001 — igual que la de inasistencia
+                log.warning(
+                    "Alerta de posible encuadre de la cita %s falló: %s: %s",
+                    cita.salutem_cita_id, type(e).__name__, e,
+                )
+                resultado.errores.append(
+                    f"alerta encuadre cita {cita.salutem_cita_id}: {type(e).__name__}: {e}"
+                )
+                continue
+            if encuadre:
+                resultado.alertas_encuadre += 1
     resultado.alertas_resueltas = resolver_alertas_con_hora(db, hoy, ACTOR)
     db.commit()
 

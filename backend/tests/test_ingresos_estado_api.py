@@ -71,3 +71,13 @@ def test_ingreso_inexistente_devuelve_404(as_admin):
         json={"estado": "cerrado"},
     )
     assert r.status_code == 404
+
+
+def test_pasar_a_encuadre_y_volver_a_activo(as_admin, ingreso_activo):
+    """Reunión 29-10 (D5): el CEPA pasa el ingreso a encuadre a mano y lo reactiva."""
+    ingreso_id = ingreso_activo["id"]
+    r = as_admin.patch(f"/api/v1/ingresos/{ingreso_id}/estado", json={"estado": "encuadre"})
+    assert r.status_code == 200, r.text
+    assert r.json()["estado"] == "encuadre"
+    r = as_admin.patch(f"/api/v1/ingresos/{ingreso_id}/estado", json={"estado": "activo"})
+    assert r.json()["estado"] == "activo"

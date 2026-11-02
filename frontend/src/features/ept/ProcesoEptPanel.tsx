@@ -85,7 +85,7 @@ function ProcesoView({
           value={proceso.num_entrevistas}
         />
         {proceso.insumos_eista && (
-          <FieldRow label="Insumos EISTA" value={proceso.insumos_eista} />
+          <FieldRow label="Insumos para el EPTista" value={proceso.insumos_eista} />
         )}
         {proceso.doc_incumplimiento && (
           <FieldRow

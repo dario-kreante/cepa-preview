@@ -26,7 +26,7 @@ import { NuevaRecaDialog } from "./NuevaRecaDialog";
 import { CierreDialog } from "./CierreDialog";
 import { ESTADO_REINTEGRO_LABELS } from "./cierreSchema";
 import {
-  SEXO_VALUES,
+  TIPO_TRABAJADOR_LABELS,
   TIPO_DERIVACION_VALUES,
   type CasoReintegroForm,
 } from "./casoReintegroSchema";
@@ -184,11 +184,11 @@ function CasoPanel({
     nombre: caso.nombre,
     tipo_derivacion: caso.tipo_derivacion,
     fecha_caso: caso.fecha_caso,
-    sexo: caso.sexo as CasoReintegroForm["sexo"],
-    edad: caso.edad,
     region: caso.region,
     comuna: caso.comuna ?? "",
     rubro_empleador: caso.rubro_empleador ?? "",
+    razon_social: caso.razon_social ?? "",
+    tipo_trabajador: caso.tipo_trabajador ?? "",
   };
 
   return (
@@ -237,7 +237,15 @@ function CasoPanel({
           <Field label="Fecha caso" value={fmtDate(caso.fecha_caso)} />
           <Field label="Región" value={caso.region} />
           <Field label="Comuna" value={caso.comuna ?? "—"} />
-          <Field label="Edad / Sexo" value={`${caso.edad} · ${caso.sexo}`} />
+          <Field label="Razón social empresa" value={caso.razon_social ?? "—"} />
+          <Field
+            label="Tipo de trabajador"
+            value={
+              caso.tipo_trabajador
+                ? TIPO_TRABAJADOR_LABELS[caso.tipo_trabajador]
+                : "—"
+            }
+          />
           <Field label="Rubro empleador" value={caso.rubro_empleador ?? "—"} />
           <Field
             label="Remitido ISL"
@@ -327,11 +335,8 @@ export function ReintegroPage() {
     const p = vista.paciente;
     const ing = vista.ingresos?.[0];
     const prefill: Partial<CasoReintegroForm> = { rut: p.rut ?? "", nombre: p.nombre };
-    if (p.sexo && (SEXO_VALUES as readonly string[]).includes(p.sexo)) {
-      prefill.sexo = p.sexo as CasoReintegroForm["sexo"];
-    }
-    if (p.edad) prefill.edad = p.edad;
     if (p.region) prefill.region = p.region;
+    if (ing?.razon_social) prefill.razon_social = ing.razon_social;
     if (ing && (TIPO_DERIVACION_VALUES as readonly string[]).includes(ing.tipo_derivacion)) {
       prefill.tipo_derivacion = ing.tipo_derivacion as CasoReintegroForm["tipo_derivacion"];
     }

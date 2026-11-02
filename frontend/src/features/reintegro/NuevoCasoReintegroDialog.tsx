@@ -19,10 +19,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  casoReintegroAltaSchema,
   casoReintegroSchema,
-  SEXO_LABELS,
-  SEXO_VALUES,
   TIPO_DERIVACION_VALUES,
+  TIPO_TRABAJADOR_LABELS,
+  TIPO_TRABAJADOR_VALUES,
   type CasoReintegroForm,
 } from "./casoReintegroSchema";
 import { useActualizarCaso, useCrearCaso } from "./hooks";
@@ -45,11 +46,11 @@ const DEFAULT_VALUES: CasoReintegroForm = {
   nombre: "",
   tipo_derivacion: "DIEP",
   fecha_caso: "",
-  sexo: "F",
-  edad: 1,
   region: "",
   comuna: "",
   rubro_empleador: "",
+  razon_social: "",
+  tipo_trabajador: "",
 };
 
 const selectCls =
@@ -74,7 +75,7 @@ export function NuevoCasoReintegroDialog({
     reset,
     formState: { errors, isSubmitting },
   } = useForm<CasoReintegroForm>({
-    resolver: zodResolver(casoReintegroSchema),
+    resolver: zodResolver(isEdit ? casoReintegroSchema : casoReintegroAltaSchema),
     defaultValues: initialValues ?? { ...DEFAULT_VALUES, ...prefill },
   });
 
@@ -92,11 +93,11 @@ export function NuevoCasoReintegroDialog({
             nombre: values.nombre,
             tipo_derivacion: values.tipo_derivacion,
             fecha_caso: values.fecha_caso,
-            sexo: values.sexo,
-            edad: values.edad,
             region: values.region,
             comuna: values.comuna || null,
             rubro_empleador: values.rubro_empleador || null,
+            razon_social: values.razon_social || null,
+            tipo_trabajador: values.tipo_trabajador || null,
           },
         });
         toast.success("Caso de reintegro actualizado");
@@ -107,11 +108,11 @@ export function NuevoCasoReintegroDialog({
           nombre: values.nombre,
           tipo_derivacion: values.tipo_derivacion,
           fecha_caso: values.fecha_caso,
-          sexo: values.sexo,
-          edad: values.edad,
           region: values.region,
           comuna: values.comuna || null,
           rubro_empleador: values.rubro_empleador || null,
+          razon_social: values.razon_social || null,
+          tipo_trabajador: values.tipo_trabajador || null,
         });
         toast.success("Caso de reintegro creado");
       }
@@ -188,7 +189,36 @@ export function NuevoCasoReintegroDialog({
             )}
           </div>
 
+          <div>
+            <Label htmlFor="razon_social">Razón social de la empresa (opcional)</Label>
+            <Input
+              id="razon_social"
+              placeholder="Ej. Forestal Maule SpA"
+              {...register("razon_social")}
+            />
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label htmlFor="tipo_trabajador">Tipo de trabajador</Label>
+              <select
+                id="tipo_trabajador"
+                className={selectCls}
+                {...register("tipo_trabajador")}
+              >
+                <option value="">Selecciona…</option>
+                {TIPO_TRABAJADOR_VALUES.map((v) => (
+                  <option key={v} value={v}>
+                    {TIPO_TRABAJADOR_LABELS[v]}
+                  </option>
+                ))}
+              </select>
+              {errors.tipo_trabajador && (
+                <p className="text-[11.5px] text-destructive mt-1">
+                  {errors.tipo_trabajador.message}
+                </p>
+              )}
+            </div>
             <div>
               <Label htmlFor="fecha_caso">Fecha del caso</Label>
               <Input id="fecha_caso" type="date" {...register("fecha_caso")} />
@@ -198,28 +228,9 @@ export function NuevoCasoReintegroDialog({
                 </p>
               )}
             </div>
-            <div>
-              <Label htmlFor="edad">Edad</Label>
-              <Input id="edad" type="number" min={1} max={130} {...register("edad")} />
-              {errors.edad && (
-                <p className="text-[11.5px] text-destructive mt-1">
-                  {errors.edad.message}
-                </p>
-              )}
-            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label htmlFor="sexo">Sexo</Label>
-              <select id="sexo" className={selectCls} {...register("sexo")}>
-                {SEXO_VALUES.map((v) => (
-                  <option key={v} value={v}>
-                    {SEXO_LABELS[v]}
-                  </option>
-                ))}
-              </select>
-            </div>
             <div>
               <Label htmlFor="region">Región</Label>
               <Input

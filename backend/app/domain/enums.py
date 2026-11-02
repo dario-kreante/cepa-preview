@@ -56,6 +56,9 @@ class EstadoCaso(str, Enum):
     ACTIVO = "activo"
     CERRADO = "cerrado"
     DERIVADO = "derivado"
+    # Reunión 29-10 (D5): el paciente dejó de asistir y deja de recibir atenciones hasta
+    # firmar el encuadre. Lo cambia a mano el CEPA al revisar la alerta de posible encuadre.
+    ENCUADRE = "encuadre"
 
 
 class TipoAlta(str, Enum):

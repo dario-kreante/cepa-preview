@@ -15,7 +15,7 @@ def test_rut_invalido_rechazado():
             rut_trabajador="12.345.678-0",  # DV inválido
             region_trabajador="Maule",
             eista="Ana González",
-            factor_riesgo="carga",
+            factor_riesgo="sobrecarga",
             corresponde_ept=True,
         )
     assert "rut" in str(exc.value).lower()
@@ -31,7 +31,7 @@ def test_schema_valido_acepta_corresponde_ept_false():
         rut_trabajador="12.345.678-5",
         region_trabajador="Maule",
         eista="Ana González",
-        factor_riesgo="carga",
+        factor_riesgo="sobrecarga",
         corresponde_ept=False,
     )
     assert caso.corresponde_ept is False

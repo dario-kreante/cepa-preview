@@ -199,6 +199,26 @@ def test_buscar_por_id_de_persona_salutem(as_admin, db_session):
     assert paciente_id in [p["id"] for p in r.json()]
 
 
+def test_buscar_por_numero_del_sin_id_sin_prefijo(as_admin, db_session):
+    paciente_id = _paciente_de_prueba_salutem(as_admin, db_session)
+    r = as_admin.get("/api/v1/pacientes/buscar", params={"q": "1216018"})
+    assert r.status_code == 200
+    assert [p["id"] for p in r.json()] == [paciente_id]
+
+
+# Caso de Sasha (21-10): copió el nombre como lo muestra SALUTEM, con otro orden.
+def test_buscar_por_nombre_con_las_palabras_en_otro_orden(as_admin):
+    creado = as_admin.post(
+        "/api/v1/ingresos",
+        json=_payload(rut="39.000.005-7", nombre="Paciente Prueba Francisca Valladares"),
+    ).json()
+    as_admin.post("/api/v1/ingresos", json=_payload(rut="5.126.663-3", nombre="Francisca Soto"))
+    for termino in ("PACIENTE FRANCISCA VALLADARES PRUEBA", "valladares francisca", "  Francisca   Valladares "):
+        r = as_admin.get("/api/v1/pacientes/buscar", params={"q": termino})
+        assert r.status_code == 200
+        assert [p["id"] for p in r.json()] == [creado["paciente_id"]], termino
+
+
 def test_sin_id_inexistente_devuelve_lista_vacia(as_admin, db_session):
     _paciente_de_prueba_salutem(as_admin, db_session)
     r = as_admin.get("/api/v1/pacientes/buscar", params={"q": "sin_id_999"})

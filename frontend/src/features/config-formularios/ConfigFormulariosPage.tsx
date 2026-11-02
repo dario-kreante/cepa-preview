@@ -28,7 +28,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth/AuthContext";
-import { type Rol } from "@/lib/rbac";
+import { tieneRol, type Rol } from "@/lib/rbac";
 import { usePublicada, useCrearBorrador, usePublicar } from "./hooks";
 import {
   editorSchema,
@@ -320,7 +320,7 @@ function FieldsEditor({ formKey, initial, onCancel, onPublished }: EditorProps) 
 
 export function ConfigFormulariosPage() {
   const { rol } = useAuth();
-  const canWrite = (rol as Rol) === "Coordinacion";
+  const canWrite = tieneRol(rol as Rol, "Coordinacion");
 
   const [keyInput, setKeyInput] = useState("");
   const [formKey, setFormKey] = useState<string | null>(null);

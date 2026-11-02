@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { fmtDate } from "@/lib/utils";
 import { useAuth } from "@/lib/auth/AuthContext";
-import type { Rol } from "@/lib/rbac";
+import { tieneRol, type Rol } from "@/lib/rbac";
 import {
   useConfigAlertas,
   useCrearFestivo,
@@ -36,7 +36,7 @@ function Th({ children }: { children: React.ReactNode }) {
 
 export function ConfigAlertasPage() {
   const { rol } = useAuth();
-  if ((rol as Rol) !== "Coordinacion") {
+  if (!tieneRol(rol as Rol, "Coordinacion")) {
     return (
       <div className="rounded-lg border border-dashed border-border bg-muted/20 px-6 py-16 text-center">
         <ShieldCheck className="mx-auto mb-3 size-8 text-muted-foreground/50" />

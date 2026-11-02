@@ -12,7 +12,9 @@ import {
   obtenerLicenciasSugeridas,
   actualizarIngreso,
   corregirFolio,
+  cambiarEstadoIngreso,
   type IngresoCreate,
+  type IngresoRead,
   type IngresoUpdate,
 } from "./api";
 
@@ -120,6 +122,18 @@ export function useActualizarIngreso(pacienteId: number) {
       qc.invalidateQueries({ queryKey: ["pacientes", "buscar"] });
       // Un cierre o derivación cambia el conteo de activos del Topbar.
       qc.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+  });
+}
+
+export function useCambiarEstadoIngreso(pacienteId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ ingresoId, estado }: { ingresoId: number; estado: IngresoRead["estado"] }) =>
+      cambiarEstadoIngreso(ingresoId, estado),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["pacientes", pacienteId, "vista360"] });
+      qc.invalidateQueries({ queryKey: ["pacientes", "buscar"] });
     },
   });
 }

@@ -5,6 +5,7 @@ from datetime import date, timedelta
 from fastapi import HTTPException, status
 from sqlalchemy import select, update, true
 
+from app.domain.enums import EstadoCaso
 from app.models.ingreso import Ingreso
 from app.models.oda import Oda
 from app.schemas.oda import OdaCreate
@@ -38,13 +39,15 @@ def listar_odas(db, ingreso_id: int) -> list[Oda]:
 
 
 def odas_por_vencer(db, ventana_dias: int = VENTANA_ALERTA_DIAS) -> list[Oda]:
-    """ODAS vigentes que vencen entre hoy y hoy+ventana (inclusive ambos extremos)."""
+    """ODAS vigentes de ingresos activos que vencen entre hoy y hoy+ventana (ambos inclusive)."""
     hoy = date.today()
     limite = hoy + timedelta(days=ventana_dias)
     return list(
         db.execute(
             select(Oda)
+            .join(Ingreso, Oda.ingreso_id == Ingreso.id)
             .where(Oda.vigente == true())
+            .where(Ingreso.estado == EstadoCaso.ACTIVO.value)
             .where(Oda.fecha_vencimiento >= hoy)
             .where(Oda.fecha_vencimiento <= limite)
             .order_by(Oda.fecha_vencimiento)

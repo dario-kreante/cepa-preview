@@ -1,5 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
 import {
+  importarReporteIsl,
   reporteAdherencia,
   reporteCargaLaboral,
   reporteConvenio,
@@ -32,6 +33,13 @@ export function useReporteLicencias() {
 
 export function useReporteOdasVencidas() {
   return useMutation({ mutationFn: () => reporteOdasVencidas() });
+}
+
+export function useImportarReporteIsl() {
+  return useMutation({
+    mutationFn: ({ file, dryRun }: { file: File; dryRun: boolean }) =>
+      importarReporteIsl(file, dryRun),
+  });
 }
 
 export function useReporteAdherencia() {

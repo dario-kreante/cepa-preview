@@ -192,4 +192,19 @@ describe("PatientSheet", () => {
     expect(screen.getByText("Vencimiento: 31/12/2099")).toBeInTheDocument();
     expect(screen.getByText("Reemplazada")).toBeInTheDocument();
   });
+
+  it("pasa el ingreso a encuadre desde la ficha (D5)", async () => {
+    setupMocks();
+    let enviado: unknown = null;
+    server.use(
+      http.patch(`${BASE}/api/v1/ingresos/:ingreso_id/estado`, async ({ request }) => {
+        enviado = await request.json();
+        return HttpResponse.json({ ...MOCK_INGRESO, estado: "encuadre" });
+      })
+    );
+    renderSheet(7);
+    expect(await screen.findByTestId("estado-ingreso", {}, { timeout: 8000 })).toHaveTextContent("Activo");
+    await userEvent.click(screen.getByTestId("btn-encuadre"));
+    await waitFor(() => expect(enviado).toEqual({ estado: "encuadre" }));
+  });
 });

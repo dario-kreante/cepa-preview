@@ -53,6 +53,7 @@ def crear_caso_ept(db: Session, data: CasoEptCreate) -> CasoEpt:
         region_trabajador=data.region_trabajador,
         eista=data.eista,
         factor_riesgo=data.factor_riesgo.value,
+        factores_adicionales=_unir(data.factores_adicionales),
         corresponde_ept=data.corresponde_ept,
         estado=estado,
         razon_social=data.razon_social,
@@ -63,8 +64,25 @@ def crear_caso_ept(db: Session, data: CasoEptCreate) -> CasoEpt:
     return caso
 
 
+def _unir(factores) -> str | None:
+    return ",".join(f.value if hasattr(f, "value") else f for f in factores) or None
+
+
 def actualizar_caso_ept(db: Session, caso: CasoEpt, data: CasoEptUpdate) -> CasoEpt:
-    for campo, valor in data.model_dump(exclude_none=True).items():
+    principal = data.factor_riesgo.value if data.factor_riesgo else caso.factor_riesgo
+    if data.factores_adicionales is not None:
+        if principal in {f.value for f in data.factores_adicionales}:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="El factor principal no se repite entre los adicionales.",
+            )
+        caso.factores_adicionales = _unir(data.factores_adicionales)
+    elif data.factor_riesgo is not None and principal in (caso.factores_adicionales or "").split(","):
+        # El nuevo principal estaba entre los adicionales: se quita de ahí.
+        caso.factores_adicionales = _unir(
+            [f for f in caso.factores_adicionales.split(",") if f and f != principal]
+        )
+    for campo, valor in data.model_dump(exclude_none=True, exclude={"factores_adicionales"}).items():
         if campo == "factor_riesgo" and valor is not None:
             valor = valor.value if hasattr(valor, "value") else valor
         if campo == "estado" and valor is not None:
@@ -95,11 +113,14 @@ def eliminar_caso_ept(db: Session, caso: CasoEpt) -> None:
     Las alertas abiertas de sus plazos (caso_tipo 'ept', caso_id = plazo_ept.id) quedan
     resueltas: ya no hay plazo que vigilar.
     """
+    casos = [("caso_ept", caso.id)]  # plazo de insumos (D10)
     if caso.plazo is not None:
+        casos.append(("ept", caso.plazo.id))
+    for caso_tipo, caso_id in casos:
         abiertas = db.scalars(
             select(AlertaNotif).where(
-                AlertaNotif.caso_tipo == "ept",
-                AlertaNotif.caso_id == caso.plazo.id,
+                AlertaNotif.caso_tipo == caso_tipo,
+                AlertaNotif.caso_id == caso_id,
                 AlertaNotif.estado != EstadoAlerta.RESUELTA.value,
             )
         )

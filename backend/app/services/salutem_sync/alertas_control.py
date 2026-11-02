@@ -39,7 +39,18 @@ def alertar_control(db: Session, control: ControlMedico, contenido: dict[str, An
         TipoAlerta.LICENCIA_EN_CONTROL.value: bool(control.tiene_licencia) or certificado_reposo(contenido),
         TipoAlerta.RECETA_EN_CONTROL.value: tiene_receta(contenido),
     }
-    return _crear_alertas(db, CASO_TIPO, control.id, control.ingreso_id, control.fecha_control, senales, hoy)
+    # Si la atención ya alertó como "atención médica sin control" (p. ej. una Evaluación
+    # médica que pasó a ser control al ampliar SALUTEM_ESPECIALIDADES_CONTROL), esos tipos
+    # ya están alertados: no se repiten para el control.
+    ya_alertados = (
+        _tipos_alertados(db, CASO_ATENCION, control.salutem_cita_id)
+        if control.salutem_cita_id is not None
+        else set()
+    )
+    return _crear_alertas(
+        db, CASO_TIPO, control.id, control.ingreso_id, control.fecha_control, senales, hoy,
+        ya_alertados=ya_alertados,
+    )
 
 
 def alertar_atencion(
@@ -54,14 +65,9 @@ def alertar_atencion(
     return _crear_alertas(db, CASO_ATENCION, cita_id, ingreso_id, fecha, senales, hoy)
 
 
-def _crear_alertas(
-    db: Session, caso_tipo: str, caso_id: int, ingreso_id: int, fecha: date,
-    senales: dict[str, bool], hoy: date,
-) -> int:
-    if fecha < hoy - timedelta(days=DIAS_NOVEDAD) or not any(senales.values()):
-        return 0
-    ventanas = cargar_ventanas(db)
-    existentes = set(
+def _tipos_alertados(db: Session, caso_tipo: str, caso_id: int) -> set[str]:
+    """Tipos de alerta de licencia/receta que ya existen para el caso (resueltas incluidas)."""
+    return set(
         db.scalars(
             select(AlertaNotif.tipo).where(
                 AlertaNotif.caso_tipo == caso_tipo,
@@ -70,6 +76,16 @@ def _crear_alertas(
             )
         )
     )
+
+
+def _crear_alertas(
+    db: Session, caso_tipo: str, caso_id: int, ingreso_id: int, fecha: date,
+    senales: dict[str, bool], hoy: date, ya_alertados: set[str] = frozenset(),
+) -> int:
+    if fecha < hoy - timedelta(days=DIAS_NOVEDAD) or not any(senales.values()):
+        return 0
+    ventanas = cargar_ventanas(db)
+    existentes = _tipos_alertados(db, caso_tipo, caso_id) | set(ya_alertados)
     creadas = 0
     for tipo, hay in senales.items():
         if not hay or tipo in existentes or not ventanas.get(tipo, {}).get("activo", True):

@@ -3,7 +3,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
-Rol = Literal["Coordinacion", "Administrativo", "Auditor"]
+Rol = Literal["Coordinacion", "Administrativo", "Auditor", "Superadmin"]
 
 
 class UsuarioCreate(BaseModel):

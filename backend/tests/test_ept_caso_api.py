@@ -1,3 +1,6 @@
+import pytest
+
+
 def _payload(ingreso_id, **over):
     base = {
         "ingreso_id": ingreso_id,
@@ -7,7 +10,7 @@ def _payload(ingreso_id, **over):
         "rut_trabajador": "12.345.678-5",
         "region_trabajador": "Maule",
         "eista": "Ana González",
-        "factor_riesgo": "carga",
+        "factor_riesgo": "sobrecarga",
         "corresponde_ept": True,
         "razon_social": "Empresa XY SA",
         "unidad_cargo_horario": "Bodega / Bodeguero / turno mañana",
@@ -165,3 +168,124 @@ def test_auditor_no_puede_eliminar_caso_ept(as_admin, as_auditor, ingreso_fixtur
 
 def test_eliminar_caso_ept_inexistente_404(as_admin):
     assert as_admin.delete("/api/v1/casos-ept/999999").status_code == 404
+
+
+# ── QA UTalca 22-10 QA-003: factores de riesgo del área EPT ──
+
+def _caso_legado(db_session, ingreso_fixture, factor="carga"):
+    """Inserta un caso con un factor de riesgo legado, como los que ya existen en dev/QA."""
+    import datetime
+
+    from app.models.ept import CasoEpt
+
+    caso = CasoEpt(
+        ingreso_id=ingreso_fixture.id,
+        mes="2026-06",
+        fecha_ingreso_ept=datetime.date(2026, 1, 10),
+        nombre_trabajador="Pedro Soto",
+        rut_trabajador="123456785",
+        region_trabajador="Maule",
+        eista="Ana González",
+        factor_riesgo=factor,
+        corresponde_ept=True,
+        estado="abierto",
+    )
+    db_session.add(caso)
+    db_session.commit()
+    return caso.id
+
+
+def test_crear_caso_con_cada_factor_nuevo(as_admin, ingreso_fixture):
+    from app.domain.enums_ept import FactorRiesgo
+
+    for factor in FactorRiesgo:
+        r = as_admin.post(
+            "/api/v1/casos-ept", json=_payload(ingreso_fixture.id, factor_riesgo=factor.value)
+        )
+        assert r.status_code == 201, (factor, r.text)
+        assert r.json()["factor_riesgo"] == factor.value
+
+
+def test_crear_caso_con_factor_legado_rechazado(as_admin, ingreso_fixture):
+    r = as_admin.post(
+        "/api/v1/casos-ept", json=_payload(ingreso_fixture.id, factor_riesgo="carga")
+    )
+    assert r.status_code == 422
+
+
+def test_caso_legado_se_lee_y_lista(as_admin, db_session, ingreso_fixture):
+    from app.domain.enums_ept import FactorRiesgoLegado
+
+    ids = [
+        _caso_legado(db_session, ingreso_fixture, factor=f.value) for f in FactorRiesgoLegado
+    ]
+    for caso_id, factor in zip(ids, FactorRiesgoLegado):
+        r = as_admin.get(f"/api/v1/casos-ept/{caso_id}")
+        assert r.status_code == 200, r.text
+        assert r.json()["factor_riesgo"] == factor.value
+
+    r = as_admin.get("/api/v1/casos-ept", params={"paciente_id": ingreso_fixture.paciente_id})
+    assert r.status_code == 200, r.text
+    assert sorted(c["id"] for c in r.json()) == sorted(ids)
+
+
+def test_editar_caso_legado_con_factor_nuevo(as_admin, db_session, ingreso_fixture):
+    caso_id = _caso_legado(db_session, ingreso_fixture)
+    r = as_admin.patch(f"/api/v1/casos-ept/{caso_id}", json={"factor_riesgo": "hostilidad_pares"})
+    assert r.status_code == 200, r.text
+    assert r.json()["factor_riesgo"] == "hostilidad_pares"
+
+
+def test_editar_caso_legado_sin_tocar_factor(as_admin, db_session, ingreso_fixture):
+    caso_id = _caso_legado(db_session, ingreso_fixture)
+    r = as_admin.patch(f"/api/v1/casos-ept/{caso_id}", json={"eista": "Otra EISTA"})
+    assert r.status_code == 200, r.text
+    assert r.json()["factor_riesgo"] == "carga"
+
+
+def test_editar_caso_a_factor_legado_rechazado(as_admin, ingreso_fixture):
+    caso_id = as_admin.post("/api/v1/casos-ept", json=_payload(ingreso_fixture.id)).json()["id"]
+    r = as_admin.patch(f"/api/v1/casos-ept/{caso_id}", json={"factor_riesgo": "otro"})
+    assert r.status_code == 422
+
+
+# Reunión 29-10 (D11): hasta 3 factores de riesgo (principal + 2 adicionales).
+def test_caso_con_factores_adicionales(as_admin, ingreso_fixture):
+    r = as_admin.post(
+        "/api/v1/casos-ept",
+        json=_payload(ingreso_fixture.id, factores_adicionales=["subcarga", "hostilidad_jefatura"]),
+    )
+    assert r.status_code == 201, r.text
+    caso = r.json()
+    assert caso["factor_riesgo"] == "sobrecarga"
+    assert caso["factores_adicionales"] == ["subcarga", "hostilidad_jefatura"]
+
+    r = as_admin.patch(f"/api/v1/casos-ept/{caso['id']}", json={"factores_adicionales": []})
+    assert r.status_code == 200, r.text
+    assert r.json()["factores_adicionales"] == []
+
+
+@pytest.mark.parametrize(
+    "adicionales",
+    [
+        ["subcarga", "hostilidad_jefatura", "asedio_sexual"],  # 4 en total
+        ["subcarga", "subcarga"],  # repetido
+        ["sobrecarga"],  # repite el principal
+    ],
+)
+def test_factores_adicionales_invalidos(as_admin, ingreso_fixture, adicionales):
+    r = as_admin.post(
+        "/api/v1/casos-ept",
+        json=_payload(ingreso_fixture.id, factores_adicionales=adicionales),
+    )
+    assert r.status_code == 422
+
+
+def test_cambiar_el_principal_a_uno_adicional_lo_saca_de_los_adicionales(as_admin, ingreso_fixture):
+    caso = as_admin.post(
+        "/api/v1/casos-ept",
+        json=_payload(ingreso_fixture.id, factores_adicionales=["subcarga"]),
+    ).json()
+    r = as_admin.patch(f"/api/v1/casos-ept/{caso['id']}", json={"factor_riesgo": "subcarga"})
+    assert r.status_code == 200, r.text
+    assert (r.json()["factor_riesgo"], r.json()["factores_adicionales"]) == ("subcarga", [])

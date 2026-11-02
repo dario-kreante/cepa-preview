@@ -28,7 +28,7 @@ def test_tipos_de_derivacion_son_la_lista_cerrada_v4_d4():
 
 
 def test_estados_de_caso():
-    assert {e.value for e in EstadoCaso} == {"activo", "cerrado", "derivado"}
+    assert {e.value for e in EstadoCaso} == {"activo", "cerrado", "derivado", "encuadre"}
 
 
 def test_tipos_de_alta_v4_d6():

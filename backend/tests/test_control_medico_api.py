@@ -129,6 +129,16 @@ def test_control_visible_en_listado(as_admin, db_session):
     assert lista[0]["ingreso_id"] == ing.id
 
 
+def test_listado_del_mas_reciente_al_mas_antiguo(as_admin, db_session):
+    """QA UTalca 29-10: los controles se leen del más reciente al más antiguo."""
+    ing = _crear_ingreso(db_session, folio="F-2026-0007", fecha_ingreso=date(2026, 1, 5))
+    for fecha in ("2026-02-02", "2026-04-06", "2026-03-02"):
+        r = as_admin.post("/api/v1/controles-medicos", json=_payload_control(ing.id, fecha))
+        assert r.status_code == 201, r.text
+    lista = as_admin.get(f"/api/v1/controles-medicos/por-ingreso/{ing.id}").json()
+    assert [c["fecha_control"] for c in lista] == ["2026-04-06", "2026-03-02", "2026-02-02"]
+
+
 # Semana solo lectura: el campo semana_control no se acepta desde el payload
 def test_semana_control_es_solo_lectura(as_admin, db_session):
     ing = _crear_ingreso(db_session, folio="F-2026-0007", fecha_ingreso=date(2026, 1, 5))

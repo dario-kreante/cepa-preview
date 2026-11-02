@@ -273,15 +273,16 @@ export function DashboardPage() {
           Actividad del período
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 2xl:grid-cols-6 gap-3">
-          <Kpi label="Atenciones" value={n(d?.atenciones)} icon={CheckCircle2} tone="text-[oklch(0.5_0.13_150)]" detalle="Citas atendidas en SALUTEM" />
+          <Kpi label="Atenciones" value={n(d?.atenciones)} icon={CheckCircle2} tone="text-[oklch(0.5_0.13_150)]" detalle="Citas atendidas en SALUTEM" to="/reportes?tab=operativo" />
           <Kpi
             label="Inasistencias"
             value={n(d?.inasistencias)}
             icon={UserX}
             tone="text-[oklch(0.55_0.15_60)]"
             detalle={d?.tasa_inasistencia != null ? `${d.tasa_inasistencia.toLocaleString("es-CL")}% de las citas` : "Sin citas con resultado"}
+            to="/reportes?tab=operativo"
           />
-          <Kpi label="Anulaciones" value={n(d?.anulaciones)} icon={Ban} tone="text-destructive" />
+          <Kpi label="Anulaciones" value={n(d?.anulaciones)} icon={Ban} tone="text-destructive" to="/reportes?tab=operativo" />
           <Kpi label="Ingresos" value={n(d?.ingresos_periodo)} icon={UserPlus} tone="text-[oklch(0.45_0.13_250)]" detalle={`${n(d?.altas_periodo)} altas en el período`} to="/ingresos" />
           <Kpi label="Controles médicos" value={n(d?.controles_periodo)} icon={ClipboardCheck} tone="text-[oklch(0.5_0.12_220)]" to="/controles" />
           <Kpi label="Agenda 7 días" value={n(d?.agendadas_proximas)} icon={CalendarClock} tone="text-[oklch(0.45_0.13_250)]" detalle="Citas vigentes desde hoy" to="/agenda" />
@@ -299,7 +300,7 @@ export function DashboardPage() {
           <Kpi label="ODA vencidas" value={n(d?.odas_vencidas)} icon={FileClock} tone="text-destructive" detalle={`${n(d?.odas_por_vencer)} vencen en 15 días`} to="/reportes?tab=odas" destacar={(d?.odas_vencidas ?? 0) > 0} />
           <Kpi label="Sin folio" value={n(d?.pacientes_pendientes_folio)} icon={UserRoundSearch} tone="text-[oklch(0.5_0.12_220)]" detalle="Atendidos en SALUTEM" to="/pendientes-folio" destacar={(d?.pacientes_pendientes_folio ?? 0) > 0} />
           <Kpi label="EPT abiertos" value={n(d?.ept_abiertos)} icon={BriefcaseBusiness} tone="text-[oklch(0.56_0.10_185)]" to="/ept" />
-          <Kpi label="Alertas abiertas" value={n(d?.alertas_abiertas)} icon={AlertTriangle} tone="text-destructive" detalle="Pendientes o leídas" destacar={(d?.alertas_abiertas ?? 0) > 0} />
+          <Kpi label="Alertas abiertas" value={n(d?.alertas_abiertas)} icon={AlertTriangle} tone="text-destructive" detalle="Pendientes o leídas" destacar={(d?.alertas_abiertas ?? 0) > 0} to="?alertas=1" />
         </div>
       </section>
 

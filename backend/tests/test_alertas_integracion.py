@@ -20,7 +20,7 @@ from app.models.alertas import AlertaNotif
 from app.models.audit_log import AuditLog
 from app.models.consentimiento import Consentimiento
 from app.models.control_medico import ControlMedico
-from app.models.ept import CasoEpt, PlazoEpt
+from app.models.ept import CasoEpt, PlazoEpt, ProcesoEpt
 from app.models.farmacos import Receta, RegistroFarmacologico
 from app.models.ingreso import Ingreso
 from app.models.licencia import LicenciaMedica
@@ -899,3 +899,38 @@ def test_control_medico_caso_tipo_es_control_medico(db_session: Session):
     assert alerta.caso_tipo == "control_medico", (
         f"Se esperaba caso_tipo='control_medico', se obtuvo '{alerta.caso_tipo}'"
     )
+
+
+def _proceso_con_insumos(db_session: Session, ingreso: Ingreso, plazo: datetime.date, estado="abierto"):
+    caso_ept = CasoEpt(
+        ingreso_id=ingreso.id, mes="2026-10", fecha_ingreso_ept=datetime.date(2026, 1, 1),
+        nombre_trabajador="Insumos", rut_trabajador="22222222-2", region_trabajador="Maule",
+        eista="EPTista", factor_riesgo="carga", corresponde_ept=True, estado=estado,
+    )
+    db_session.add(caso_ept)
+    db_session.flush()
+    db_session.add(ProcesoEpt(caso_ept_id=caso_ept.id, plazo_insumos_empresa=plazo))
+    db_session.flush()
+    return caso_ept
+
+
+def test_plazo_de_insumos_alerta_solo_el_mismo_dia(db_session: Session):
+    """Reunión 29-10 (D10): el plazo de insumos de la empresa avisa el mismo día, para
+    todos los casos abiertos que vencen ese día."""
+    from sqlalchemy import select
+
+    hoy = datetime.date(2026, 10, 20)
+    ingreso = _make_ingreso(db_session, folio="F-INS-1")
+    del_dia = [_proceso_con_insumos(db_session, ingreso, hoy) for _ in range(3)]
+    manana = _proceso_con_insumos(db_session, ingreso, hoy + datetime.timedelta(days=1))
+    cerrado = _proceso_con_insumos(db_session, ingreso, hoy, estado="cerrado")
+
+    ejecutar_job_alertas(db_session, actor="test", hoy=hoy)
+
+    alertas = list(
+        db_session.scalars(select(AlertaNotif).where(AlertaNotif.tipo == "plazo_insumos_ept"))
+    )
+    assert {a.caso_id for a in alertas} == {c.id for c in del_dia}
+    assert {a.caso_tipo for a in alertas} == {"caso_ept"}
+    assert manana.id not in {a.caso_id for a in alertas}
+    assert cerrado.id not in {a.caso_id for a in alertas}

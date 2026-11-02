@@ -5,7 +5,7 @@
  * `ingreso_id` lo inyecta el caller (no es campo del formulario).
  */
 import { z } from "zod";
-import type { TipoDerivacion } from "./api";
+import type { TipoDerivacion, TipoTrabajador } from "./api";
 
 export const TIPO_DERIVACION_VALUES = [
   "DIEP",
@@ -20,11 +20,15 @@ export const TIPO_DERIVACION_VALUES = [
   "PAPT",
 ] as const satisfies readonly TipoDerivacion[];
 
-export const SEXO_VALUES = ["F", "M", "otro"] as const;
-export const SEXO_LABELS: Record<(typeof SEXO_VALUES)[number], string> = {
-  F: "Femenino",
-  M: "Masculino",
-  otro: "Otro",
+// QA-008 (QA UTalca 22-10): el alta ya no pide edad ni sexo (el backend los copia del
+// paciente) y pide la razón social de la empresa y el tipo de trabajador.
+export const TIPO_TRABAJADOR_VALUES = [
+  "dependiente",
+  "independiente",
+] as const satisfies readonly TipoTrabajador[];
+export const TIPO_TRABAJADOR_LABELS: Record<TipoTrabajador, string> = {
+  dependiente: "Dependiente",
+  independiente: "Independiente",
 };
 
 const isoDate = z
@@ -40,15 +44,18 @@ export const casoReintegroSchema = z.object({
     required_error: "El tipo de derivación es requerido",
   }),
   fecha_caso: isoDate.min(1, "La fecha del caso es requerida"),
-  sexo: z.enum(SEXO_VALUES, { required_error: "El sexo es requerido" }),
-  edad: z.coerce
-    .number({ invalid_type_error: "La edad debe ser un número" })
-    .int("La edad debe ser un entero")
-    .min(1, "Edad fuera de rango (1–130)")
-    .max(130, "Edad fuera de rango (1–130)"),
   region: z.string().trim().min(1, "La región es requerida"),
   comuna: z.string().trim().optional(),
   rubro_empleador: z.string().trim().optional(),
+  razon_social: z.string().trim().optional(),
+  // "" = sin indicar (casos previos a QA-008). En el alta es obligatorio (ver abajo).
+  tipo_trabajador: z.enum(TIPO_TRABAJADOR_VALUES).or(z.literal("")),
 });
+
+/** Alta: además exige el tipo de trabajador (los casos previos pueden no tenerlo). */
+export const casoReintegroAltaSchema = casoReintegroSchema.refine(
+  (v) => v.tipo_trabajador !== "",
+  { message: "El tipo de trabajador es requerido", path: ["tipo_trabajador"] },
+);
 
 export type CasoReintegroForm = z.infer<typeof casoReintegroSchema>;

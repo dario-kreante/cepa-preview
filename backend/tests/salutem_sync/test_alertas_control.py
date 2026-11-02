@@ -5,7 +5,10 @@ El fixture AHORA es 2026-09-16 (Santiago): las atenciones recientes van el 2026-
 
 from datetime import date, timezone
 
+import pytest
 from sqlalchemy import select
+
+from app.config import get_settings
 
 from app.integrations.salutem.models import AtencionSalutem, EstadoCitaSalutem, PersonaSalutem
 from app.models.alertas import AlertaNotif
@@ -219,13 +222,20 @@ def test_la_revinculacion_sin_cambios_no_repite_alertas(db_session):
 
 
 # ── Atenciones médicas que no son control (Evaluación médica, psiquiátrica) ──────
+# Desde QA-002 (22-10-2026) las evaluaciones médicas son control por defecto; estas pruebas
+# cubren la vía de SALUTEM_ESPECIALIDADES_ALERTA con un .env que deja solo Médico/a.
 
 EVALUACION = {"especialidadNombre": "Evaluación médica"}
 REPOSO = {"antecedentes": [{"nombre": "Indicación de reposo",
                             "registro": "Reposo por 15 días desde el 10/09/2026"}]}
 
 
-def test_evaluacion_medica_con_licencia_alerta_aunque_no_sea_control(db_session):
+@pytest.fixture
+def control_solo_medico(monkeypatch):
+    monkeypatch.setattr(get_settings(), "salutem_especialidades_control", "Médico/a")
+
+
+def test_evaluacion_medica_con_licencia_alerta_aunque_no_sea_control(db_session, control_solo_medico):
     """Caso real de QA (15-10-2026): la licencia se emitió en una Evaluación médica."""
     _ingreso(db_session)
     _atencion(db_session, 7020, **EVALUACION, **REPOSO)
@@ -238,7 +248,7 @@ def test_evaluacion_medica_con_licencia_alerta_aunque_no_sea_control(db_session)
     assert a.plazo_objetivo.astimezone(timezone.utc).date() == date(2026, 9, 10)
 
 
-def test_evaluacion_psiquiatrica_con_receta_alerta(db_session):
+def test_evaluacion_psiquiatrica_con_receta_alerta(db_session, control_solo_medico):
     _ingreso(db_session)
     _atencion(db_session, 7021, especialidadNombre="Evaluación psiquiátrica", **RECETA)
 
@@ -256,7 +266,7 @@ def test_la_atencion_no_medica_no_alerta(db_session):
     assert _alertas(db_session) == []
 
 
-def test_la_alerta_de_la_atencion_no_se_repite_ni_reaparece(db_session):
+def test_la_alerta_de_la_atencion_no_se_repite_ni_reaparece(db_session, control_solo_medico):
     _ingreso(db_session)
     _atencion(db_session, 7023, **EVALUACION, **REPOSO)
     vincular(db_session, AHORA)
@@ -271,7 +281,7 @@ def test_la_alerta_de_la_atencion_no_se_repite_ni_reaparece(db_session):
     assert [x.estado for x in _alertas(db_session)] == ["resuelta"]
 
 
-def test_al_anularse_la_evaluacion_su_alerta_queda_resuelta(db_session):
+def test_al_anularse_la_evaluacion_su_alerta_queda_resuelta(db_session, control_solo_medico):
     _ingreso(db_session)
     _atencion(db_session, 7024, **EVALUACION, **REPOSO)
     vincular(db_session, AHORA)
@@ -283,10 +293,65 @@ def test_al_anularse_la_evaluacion_su_alerta_queda_resuelta(db_session):
     assert a.estado == "resuelta"
 
 
-def test_una_evaluacion_antigua_no_alerta(db_session):
+def test_una_evaluacion_antigua_no_alerta(db_session, control_solo_medico):
     _ingreso(db_session)
     _atencion(db_session, 7025, fecha="2026-08-20", **EVALUACION, **REPOSO)
 
     vincular(db_session, AHORA, todo=True)
 
     assert _alertas(db_session) == []
+
+
+# ── La evaluación médica es control por defecto (QA-002, 22-10-2026) ─────────────
+
+
+def test_la_evaluacion_medica_es_control_y_su_licencia_alerta_al_control(db_session):
+    _ingreso(db_session)
+    _atencion(db_session, 7030, **EVALUACION, **REPOSO)
+
+    vincular(db_session, AHORA)
+
+    [c] = db_session.scalars(select(ControlMedico)).all()
+    [a] = _alertas(db_session)
+    assert (a.tipo, a.caso_tipo, a.caso_id) == ("licencia_en_control", "control_medico", c.id)
+
+
+def test_la_atencion_que_pasa_a_control_no_duplica_su_alerta(db_session, monkeypatch):
+    """La evaluación alertó como atención; al ampliarse las especialidades de control
+    (y re-vincular todo) se crea el control, pero la alerta no se repite y la de la
+    atención sigue abierta."""
+    monkeypatch.setattr(get_settings(), "salutem_especialidades_control", "Médico/a")
+    _ingreso(db_session)
+    _atencion(db_session, 7031, **EVALUACION, **REPOSO, **RECETA)
+    vincular(db_session, AHORA)
+    assert [(a.caso_tipo, a.estado) for a in _alertas(db_session)] == [
+        ("salutem_atencion", "pendiente"), ("salutem_atencion", "pendiente"),
+    ]
+    monkeypatch.undo()
+    # Un cambio en SALUTEM también fuerza la alerta del control: tampoco debe duplicar.
+    _atencion(db_session, 7031, **EVALUACION, **REPOSO, **RECETA,
+              evolucionTratamiento=[{"nombre": "E", "registro": "cambio"}])
+
+    vincular(db_session, AHORA)
+    vincular(db_session, AHORA, todo=True)
+
+    assert len(db_session.scalars(select(ControlMedico)).all()) == 1
+    assert [(a.caso_tipo, a.caso_id, a.estado) for a in _alertas(db_session)] == [
+        ("salutem_atencion", 7031, "pendiente"), ("salutem_atencion", 7031, "pendiente"),
+    ]
+
+
+def test_la_alerta_resuelta_de_la_atencion_no_reaparece_en_el_control(db_session, monkeypatch):
+    monkeypatch.setattr(get_settings(), "salutem_especialidades_control", "Médico/a")
+    _ingreso(db_session)
+    _atencion(db_session, 7032, **EVALUACION, **REPOSO)
+    vincular(db_session, AHORA)
+    [a] = _alertas(db_session)
+    a.estado = "resuelta"
+    db_session.flush()
+    monkeypatch.undo()
+
+    vincular(db_session, AHORA, todo=True)
+
+    assert len(db_session.scalars(select(ControlMedico)).all()) == 1
+    assert [(x.caso_tipo, x.estado) for x in _alertas(db_session)] == [("salutem_atencion", "resuelta")]

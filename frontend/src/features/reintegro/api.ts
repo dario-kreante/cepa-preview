@@ -18,6 +18,7 @@ export type EstadoReintegro = components["schemas"]["EstadoReintegro"];
 export type TipoReca = components["schemas"]["TipoReca"];
 export type TipoAlta = components["schemas"]["TipoAlta"];
 export type TipoDerivacion = components["schemas"]["TipoDerivacion"];
+export type TipoTrabajador = components["schemas"]["TipoTrabajador"];
 
 // ── CEPA-040: Caso de reintegro ──────────────────────────────────────────────
 

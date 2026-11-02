@@ -47,9 +47,11 @@ function AltaIngresoForm({ paciente }: { paciente?: PacienteRead }) {
 
   async function onSubmit(values: IngresoForm) {
     try {
+      // Folio vacío = el sistema asigna el siguiente; con texto, se usa el folio interno del programa.
+      const folio = values.folio?.trim() || undefined;
       const body = (paciente
-        ? { ...values, paciente_id: paciente.id, rut: values.rut?.trim() || null }
-        : values) as IngresoCreate;
+        ? { ...values, folio, paciente_id: paciente.id, rut: values.rut?.trim() || null }
+        : { ...values, folio }) as IngresoCreate;
       const ingreso = await crear.mutateAsync(body);
       toast.success(`Ingreso creado · folio ${ingreso.folio}`);
       nav("/ingresos");
@@ -90,6 +92,10 @@ function AltaIngresoForm({ paciente }: { paciente?: PacienteRead }) {
           {errors[name] && <p className="text-sm text-danger-600">{errors[name]?.message as string}</p>}
         </div>
       ))}
+      <div className="space-y-1">
+        <Label htmlFor="folio">Folio (opcional)</Label>
+        <Input id="folio" placeholder="Vacío = folio automático" {...register("folio")} />
+      </div>
       <div className="space-y-1">
         <Label htmlFor="fecha_ingreso">Fecha de ingreso</Label>
         <Input id="fecha_ingreso" type="date" {...register("fecha_ingreso")} />

@@ -85,3 +85,10 @@ def test_require_role_rechaza_rol_incorrecto_con_403(mini_app, db_session):
     client = TestClient(mini_app)
     r = client.get("/solo-coordinacion", headers={"Authorization": f"Bearer {token}"})
     assert r.status_code == 403
+
+
+def test_superadmin_pasa_cualquier_require_role(mini_app, db_session):
+    u = _crear_usuario(db_session, "super", "Superadmin")
+    token = crear_access_token(user_id=u.id, username=u.username, role=u.rol)
+    r = TestClient(mini_app).get("/solo-coordinacion", headers={"Authorization": f"Bearer {token}"})
+    assert r.status_code == 200

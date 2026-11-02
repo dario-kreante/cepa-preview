@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Outlet } from "react-router-dom";
+import { Outlet, useSearchParams } from "react-router-dom";
 import { Sidebar } from "@/components/shell/Sidebar";
 import { Topbar } from "@/components/shell/Topbar";
 import { AlertsPanel, alertasSinLeer } from "@/components/shell/AlertsPanel";
@@ -26,7 +26,19 @@ function isNarrow(): boolean {
 
 export function AppShell() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(isNarrow);
-  const [alertsVisible, setAlertsVisible] = useState(false);
+  const [panelAbierto, setPanelAbierto] = useState(false);
+  const [params, setParams] = useSearchParams();
+  // ?alertas=1 abre el panel (p. ej. desde la tarjeta «Alertas abiertas» del dashboard, D14).
+  const alertasPorUrl = params.get("alertas") === "1";
+  const alertsVisible = panelAbierto || alertasPorUrl;
+  const setAlertsVisible = (visible: boolean) => {
+    setPanelAbierto(visible);
+    if (!visible && alertasPorUrl) {
+      const resto = new URLSearchParams(params);
+      resto.delete("alertas");
+      setParams(resto, { replace: true });
+    }
+  };
 
   const { data: alertas = [] } = useAlertas();
   const { rol, usuarioId } = useAuth();
@@ -41,7 +53,7 @@ export function AppShell() {
       a.tipo.toLowerCase().includes("licencia"),
     ).length,
     ept: pendientes.filter(
-      (a) => a.caso_tipo?.toLowerCase() === "ept",
+      (a) => ["ept", "caso_ept"].includes(a.caso_tipo?.toLowerCase() ?? ""),
     ).length,
     pendientes_folio: pendientesFolio.length,
   };
@@ -67,7 +79,7 @@ export function AppShell() {
       <div className="flex-1 flex flex-col min-w-0">
         <Topbar
           alertsVisible={alertsVisible}
-          onToggleAlerts={() => setAlertsVisible((v) => !v)}
+          onToggleAlerts={() => setAlertsVisible(!alertsVisible)}
           alertasSinLeer={alertasSinLeer(alertas, usuarioId).length}
         />
 

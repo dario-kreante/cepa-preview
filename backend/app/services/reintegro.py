@@ -137,24 +137,36 @@ def validar_coherencia_cierre(
 def crear_caso_reintegro(db: Session, data: CasoReintegroCreate) -> CasoReintegro:
     """Crea el caso de reintegro vinculado al ingreso (CEPA-040).
 
-    Sin RUT en el payload se usa el del paciente del ingreso (puede no tenerlo).
+    Los datos que el payload no trae se toman del ingreso y su paciente (pueden no
+    tenerlos): RUT, sexo y edad del paciente; razón social del ingreso (QA-008).
     """
+    ingreso = db.get(Ingreso, data.ingreso_id)
+    paciente = db.get(Paciente, ingreso.paciente_id) if ingreso is not None else None
     rut = data.rut
-    if rut is None:
-        ingreso = db.get(Ingreso, data.ingreso_id)
-        paciente = db.get(Paciente, ingreso.paciente_id) if ingreso is not None else None
-        rut = paciente.rut if paciente is not None else None
+    if rut is None and paciente is not None:
+        rut = paciente.rut
+    sexo = data.sexo
+    if sexo is None and paciente is not None:
+        sexo = paciente.sexo
+    edad = data.edad
+    if edad is None and paciente is not None:
+        edad = paciente.edad
+    razon_social = (data.razon_social or "").strip() or None
+    if razon_social is None and ingreso is not None:
+        razon_social = ingreso.razon_social
     caso = CasoReintegro(
         ingreso_id=data.ingreso_id,
         rut=rut,
         nombre=data.nombre,
         tipo_derivacion=data.tipo_derivacion.value,
         fecha_caso=data.fecha_caso,
-        sexo=data.sexo,
-        edad=data.edad,
+        sexo=sexo,
+        edad=edad,
         region=data.region,
         comuna=data.comuna,
         rubro_empleador=data.rubro_empleador,
+        razon_social=razon_social,
+        tipo_trabajador=data.tipo_trabajador.value if data.tipo_trabajador else None,
     )
     db.add(caso)
     db.flush()
@@ -166,7 +178,7 @@ def actualizar_caso_reintegro(
 ) -> CasoReintegro:
     """Actualización parcial de datos del caso (CEPA-040 CA-1)."""
     for campo, valor in data.model_dump(exclude_unset=True).items():
-        if campo == "tipo_derivacion" and valor is not None:
+        if campo in ("tipo_derivacion", "tipo_trabajador") and valor is not None:
             setattr(caso, campo, valor.value if hasattr(valor, "value") else valor)
         else:
             setattr(caso, campo, valor)

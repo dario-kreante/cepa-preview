@@ -42,8 +42,8 @@ export const licenciaSchema = z
     fecha_inicio: isoDate,
     fecha_termino: isoDate,
     fecha_emision: isoDate,
-    inicio_reposo: isoDate,
-    fin_reposo: isoDate,
+    // QA-006 (UTalca 22-10): sin fechas de reposo; el reposo es el período de la licencia
+    // y se envía derivado de fecha_inicio / fecha_termino.
 
     cantidad_dias: z
       .number({ required_error: "Cantidad de días requerida", invalid_type_error: "Debe ser un número" })
@@ -67,13 +67,6 @@ export const licenciaSchema = z
     {
       message: "La fecha de término debe ser igual o posterior a la fecha de inicio",
       path: ["fecha_termino"],
-    },
-  )
-  .refine(
-    (d) => d.fin_reposo >= d.inicio_reposo,
-    {
-      message: "El fin de reposo debe ser igual o posterior al inicio de reposo",
-      path: ["fin_reposo"],
     },
   );
 

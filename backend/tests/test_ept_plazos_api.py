@@ -48,7 +48,7 @@ def _crear_caso(as_admin, ingreso_id):
             "rut_trabajador": "12.345.678-5",
             "region_trabajador": "Maule",
             "eista": "Ana González",
-            "factor_riesgo": "carga",
+            "factor_riesgo": "sobrecarga",
             "corresponde_ept": True,
         },
     )
@@ -165,7 +165,7 @@ def test_plazos_rechazados_si_no_corresponde(as_admin, ingreso_fixture):
             "rut_trabajador": "12.345.678-5",
             "region_trabajador": "Maule",
             "eista": "Ana González",
-            "factor_riesgo": "carga",
+            "factor_riesgo": "sobrecarga",
             "corresponde_ept": False,
         },
     )

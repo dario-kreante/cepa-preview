@@ -9,7 +9,7 @@ def _crear_caso(as_admin, ingreso_id, corresponde=True):
             "rut_trabajador": "12.345.678-5",
             "region_trabajador": "Maule",
             "eista": "Ana González",
-            "factor_riesgo": "carga",
+            "factor_riesgo": "sobrecarga",
             "corresponde_ept": corresponde,
         },
     )

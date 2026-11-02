@@ -129,4 +129,22 @@ describe("DashboardPage", () => {
     await waitFor(() => expect(screen.getByTestId("kpi-ODA vencidas")).toHaveTextContent("1"));
     expect(screen.getByTestId("kpi-ODA vencidas").closest("a")).toHaveAttribute("href", "/reportes?tab=odas");
   });
+
+  it("todas las tarjetas son clicables (D14)", async () => {
+    server.use(http.get(`${BASE}/api/v1/dashboard/operativo`, () => HttpResponse.json(RESPUESTA)));
+    renderizar();
+    await waitFor(() => expect(screen.getByTestId("kpi-Atenciones")).toBeInTheDocument());
+    const destinos: Record<string, string> = {
+      Atenciones: "/reportes?tab=operativo",
+      Inasistencias: "/reportes?tab=operativo",
+      Anulaciones: "/reportes?tab=operativo",
+      "Alertas abiertas": "?alertas=1",
+    };
+    for (const [kpi, destino] of Object.entries(destinos)) {
+      expect(screen.getByTestId(`kpi-${kpi}`).closest("a")?.getAttribute("href")).toContain(destino);
+    }
+    const tarjetas = screen.getAllByTestId(/^kpi-/);
+    expect(tarjetas.length).toBe(12);
+    for (const t of tarjetas) expect(t.closest("a")).not.toBeNull();
+  });
 });

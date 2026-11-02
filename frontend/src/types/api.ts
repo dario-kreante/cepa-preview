@@ -547,6 +547,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/odas/importar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Importar
+         * @description Carga el «Reporte Prestador» del portal ISL (xlsx ≤ 10 MB) y actualiza las ODAS.
+         *
+         *     Idempotente: subir la misma planilla dos veces no duplica. Con ``dry_run=true`` aplica
+         *     los cambios dentro de un savepoint, arma el resumen y lo revierte (previsualización).
+         */
+        post: operations["importar_api_v1_odas_importar_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/odas/alertas": {
         parameters: {
             query?: never;
@@ -2210,6 +2233,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/pacientes/{paciente_id}/documentos-salutem": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Listar Documentos */
+        get: operations["listar_documentos_api_v1_pacientes__paciente_id__documentos_salutem_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pacientes/{paciente_id}/documentos-salutem/{archivo_id}/contenido": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Contenido Documento
+         * @description Pide el archivo a SALUTEM y lo entrega sin guardarlo (ni en BD ni en disco).
+         */
+        get: operations["contenido_documento_api_v1_pacientes__paciente_id__documentos_salutem__archivo_id__contenido_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/licencias/folio/{folio}": {
         parameters: {
             query?: never;
@@ -2536,6 +2596,11 @@ export interface components {
              */
             RelayState: string;
         };
+        /** Body_importar_api_v1_odas_importar_post */
+        Body_importar_api_v1_odas_importar_post: {
+            /** File */
+            file: string;
+        };
         /** Body_upload_pdf_api_v1_pdf_extract_upload_post */
         Body_upload_pdf_api_v1_pdf_extract_upload_post: {
             /** File */
@@ -2611,6 +2676,8 @@ export interface components {
             /** Eista */
             eista: string;
             factor_riesgo: components["schemas"]["FactorRiesgo"];
+            /** Factores Adicionales */
+            factores_adicionales?: components["schemas"]["FactorRiesgo"][];
             /**
              * Corresponde Ept
              * @default true
@@ -2642,7 +2709,10 @@ export interface components {
             region_trabajador: string;
             /** Eista */
             eista: string;
-            factor_riesgo: components["schemas"]["FactorRiesgo"];
+            /** Factor Riesgo */
+            factor_riesgo: components["schemas"]["FactorRiesgo"] | components["schemas"]["FactorRiesgoLegado"];
+            /** Factores Adicionales */
+            factores_adicionales?: string[];
             /** Corresponde Ept */
             corresponde_ept: boolean;
             estado: components["schemas"]["EstadoEpt"];
@@ -2679,6 +2749,8 @@ export interface components {
             /** Eista */
             eista?: string | null;
             factor_riesgo?: components["schemas"]["FactorRiesgo"] | null;
+            /** Factores Adicionales */
+            factores_adicionales?: components["schemas"]["FactorRiesgo"][] | null;
             /** Corresponde Ept */
             corresponde_ept?: boolean | null;
             estado?: components["schemas"]["EstadoEpt"] | null;
@@ -2704,16 +2776,19 @@ export interface components {
              * Format: date
              */
             fecha_caso: string;
-            /** Sexo */
-            sexo: string;
-            /** Edad */
-            edad: number;
             /** Region */
             region: string;
+            /** Sexo */
+            sexo?: string | null;
+            /** Edad */
+            edad?: number | null;
             /** Comuna */
             comuna?: string | null;
             /** Rubro Empleador */
             rubro_empleador?: string | null;
+            /** Razon Social */
+            razon_social?: string | null;
+            tipo_trabajador?: components["schemas"]["TipoTrabajador"] | null;
         };
         /** CasoReintegroRead */
         CasoReintegroRead: {
@@ -2732,15 +2807,18 @@ export interface components {
              */
             fecha_caso: string;
             /** Sexo */
-            sexo: string;
+            sexo: string | null;
             /** Edad */
-            edad: number;
+            edad: number | null;
             /** Region */
             region: string;
             /** Comuna */
             comuna: string | null;
             /** Rubro Empleador */
             rubro_empleador: string | null;
+            /** Razon Social */
+            razon_social: string | null;
+            tipo_trabajador: components["schemas"]["TipoTrabajador"] | null;
             estado_reintegro: components["schemas"]["EstadoReintegro"];
             /** Fecha Reintegro */
             fecha_reintegro: string | null;
@@ -2778,6 +2856,9 @@ export interface components {
             comuna?: string | null;
             /** Rubro Empleador */
             rubro_empleador?: string | null;
+            /** Razon Social */
+            razon_social?: string | null;
+            tipo_trabajador?: components["schemas"]["TipoTrabajador"] | null;
         };
         /**
          * CierreReintegroUpdate
@@ -3020,6 +3101,17 @@ export interface components {
             origen: string;
             /** Salutem Cita Id */
             salutem_cita_id?: number | null;
+            /** Especialidad */
+            especialidad?: string | null;
+            /** Campos Editados */
+            campos_editados?: string[];
+            /** Oda Que Cubre */
+            oda_que_cubre?: string | null;
+            /**
+             * Fuera De Oda
+             * @default false
+             */
+            fuera_de_oda?: boolean;
         };
         /** CumplimientoConvenioItem */
         CumplimientoConvenioItem: {
@@ -3136,6 +3228,30 @@ export interface components {
              */
             created_at: string;
         };
+        /**
+         * DocumentoSalutemRead
+         * @description Un documento de la biblioteca de SALUTEM del paciente.
+         *
+         *     `licencia` y `receta` NO son la carpeta de SALUTEM (la API no la entrega): dicen si
+         *     el archivo se subió el día de una atención que indicó licencia o receta, o en los
+         *     días siguientes (tope de 7). `fecha_atencion` es esa atención.
+         */
+        DocumentoSalutemRead: {
+            /** Archivo Id */
+            archivo_id: number;
+            /** Nombre */
+            nombre: string;
+            /** Tipo */
+            tipo: string | null;
+            /** Fecha Creacion */
+            fecha_creacion: string | null;
+            /** Licencia */
+            licencia: boolean;
+            /** Receta */
+            receta: boolean;
+            /** Fecha Atencion */
+            fecha_atencion: string | null;
+        };
         /** EjecucionRead */
         EjecucionRead: {
             /** Modo */
@@ -3208,7 +3324,7 @@ export interface components {
          * @description Estados de caso válidos (§7.1.3).
          * @enum {string}
          */
-        EstadoCaso: "activo" | "cerrado" | "derivado";
+        EstadoCaso: "activo" | "cerrado" | "derivado" | "encuadre";
         /**
          * EstadoCita
          * @description Estado de una cita dentro de una propuesta.
@@ -3325,12 +3441,26 @@ export interface components {
          * FactorRiesgo
          * @description Factor de riesgo del puesto laboral (CEPA-030 RN-1).
          *
-         *     Nota: confirmación pendiente de si es lista cerrada definitiva o parametrizable
-         *     (pregunta abierta del spec). Esta lista cubre los valores del Excel de origen.
-         *     Se trata como lista cerrada P0; se puede ampliar como migración de datos.
+         *     Lista cerrada que usa el área EPT de UTalca (QA UTalca 22-10, QA-003).
+         *     Es la única que se acepta al crear o editar un caso. El orden de los
+         *     miembros es el orden en que se muestran en la UI (las etiquetas viven en
+         *     el frontend). Los valores son slugs ASCII de hasta 40 caracteres porque la
+         *     columna ``caso_ept.factor_riesgo`` es String(40) sin check constraint.
          * @enum {string}
          */
-        FactorRiesgo: "carga" | "organizacion_trabajo" | "factores_psicosociales" | "violencia_laboral" | "condiciones_ergonomicas" | "otro";
+        FactorRiesgo: "sobrecarga" | "subcarga" | "trabajo_activo_continuo" | "ausencia_descansos" | "tareas_rutinarias" | "trabajo_emocionalmente_comprometido" | "ambiguedad_conflicto_roles" | "limitacion_regular_trabajo" | "limitacion_tomar_decisiones" | "limitacion_regular_permisos" | "carencia_uso_habilidades" | "ausencia_ayuda_informacion" | "ausencia_capacitacion_tecnologica" | "conflictos_interpersonales" | "condiciones_organizacionales_estresantes" | "hostilidad_pares" | "hostilidad_subalternos" | "disfuncionalidad_jefatura" | "hostilidad_jefatura" | "asedio_sexual" | "violencia_acoso_usuarios" | "violencia_personas_ajenas" | "condiciones_fisicas_ergonomicas" | "no_aplica";
+        /**
+         * FactorRiesgoLegado
+         * @description Factores de riesgo genéricos de la primera versión (deprecados).
+         *
+         *     Hay casos guardados con estos valores en las BD de dev/QA. Se aceptan solo
+         *     en lectura (``CasoEptRead``) para que esos casos se sigan mostrando; crear
+         *     o editar un caso exige un valor de ``FactorRiesgo``. No se migran los datos
+         *     porque no hay equivalencia 1 a 1 con la lista nueva: al editar el caso, el
+         *     usuario elige el factor nuevo.
+         * @enum {string}
+         */
+        FactorRiesgoLegado: "carga" | "organizacion_trabajo" | "factores_psicosociales" | "violencia_laboral" | "condiciones_ergonomicas" | "otro";
         /**
          * FarmacoSugeridoRead
          * @description Un medicamento leído de una receta de SALUTEM, estructurado para el esquema.
@@ -3991,16 +4121,10 @@ export interface components {
              * Format: date
              */
             fecha_emision: string;
-            /**
-             * Inicio Reposo
-             * Format: date
-             */
-            inicio_reposo: string;
-            /**
-             * Fin Reposo
-             * Format: date
-             */
-            fin_reposo: string;
+            /** Inicio Reposo */
+            inicio_reposo?: string | null;
+            /** Fin Reposo */
+            fin_reposo?: string | null;
             /** Cantidad Dias */
             cantidad_dias: number;
             /** Indicacion Reposo */
@@ -4158,6 +4282,77 @@ export interface components {
              * Format: date
              */
             fecha_vencimiento: string;
+        };
+        /** OdaImportError */
+        OdaImportError: {
+            /** Fila */
+            fila: number;
+            /** Motivo */
+            motivo: string;
+        };
+        /**
+         * OdaImportFilaSinPaciente
+         * @description Fila del reporte que no calzó con ningún ingreso (ni por siniestro ni por RUT).
+         */
+        OdaImportFilaSinPaciente: {
+            /** Fila */
+            fila: number;
+            /** Numero Orden */
+            numero_orden: string;
+            /** Tipo Orden */
+            tipo_orden?: string | null;
+            /** Numero Siniestro */
+            numero_siniestro?: string | null;
+            /** Rut Trabajador */
+            rut_trabajador?: string | null;
+        };
+        /** OdaImportPorVencer */
+        OdaImportPorVencer: {
+            /** Oda Id */
+            oda_id: number;
+            /** Ingreso Id */
+            ingreso_id: number;
+            /** Folio */
+            folio: string;
+            /** Numero Orden */
+            numero_orden: string;
+            /**
+             * Fecha Vencimiento
+             * Format: date
+             */
+            fecha_vencimiento: string;
+        };
+        /**
+         * OdaImportResumen
+         * @description Resumen de la carga. Con dry_run=true nada se guarda: es la previsualización.
+         */
+        OdaImportResumen: {
+            /** Dry Run */
+            dry_run: boolean;
+            /** Archivo */
+            archivo?: string | null;
+            /** Filas Leidas */
+            filas_leidas: number;
+            /** Creadas */
+            creadas: number;
+            /** Actualizadas */
+            actualizadas: number;
+            /** Sin Cambios */
+            sin_cambios: number;
+            /** Match Por Siniestro */
+            match_por_siniestro: number;
+            /** Match Por Rut */
+            match_por_rut: number;
+            /** Sin Paciente */
+            sin_paciente: components["schemas"]["OdaImportFilaSinPaciente"][];
+            /** Errores */
+            errores: components["schemas"]["OdaImportError"][];
+            /** Ventana Dias */
+            ventana_dias: number;
+            /** Por Vencer Paciente Activo */
+            por_vencer_paciente_activo: number;
+            /** Por Vencer */
+            por_vencer: components["schemas"]["OdaImportPorVencer"][];
         };
         /** OdaRead */
         OdaRead: {
@@ -5207,7 +5402,7 @@ export interface components {
          * @description Tipos de alerta del motor: los 7 de CEPA-100 más el GAF de licencia (CEPA-075).
          * @enum {string}
          */
-        TipoAlerta: "control_medico" | "vencimiento_licencia" | "plazo_ept" | "plazo_isl" | "consentimiento_pendiente" | "receta_por_renovar" | "oda_por_vencer" | "gaf_licencia" | "licencia_en_control" | "receta_en_control" | "paciente_pendiente_folio" | "inasistencia";
+        TipoAlerta: "control_medico" | "vencimiento_licencia" | "plazo_ept" | "plazo_isl" | "consentimiento_pendiente" | "receta_por_renovar" | "oda_por_vencer" | "gaf_licencia" | "licencia_en_control" | "receta_en_control" | "paciente_pendiente_folio" | "inasistencia" | "posible_encuadre" | "cita_fuera_de_oda" | "plazo_insumos_ept";
         /**
          * TipoAlta
          * @description Tipos de alta válidos (§7.1.3, v4 D6).
@@ -5240,6 +5435,12 @@ export interface components {
          * @enum {string}
          */
         TipoReca: "EP" | "EC" | "AT" | "AC" | "NPE" | "no_aplica";
+        /**
+         * TipoTrabajador
+         * @description Relación laboral del trabajador del caso de reintegro (QA-008).
+         * @enum {string}
+         */
+        TipoTrabajador: "dependiente" | "independiente";
         /** TokenPair */
         TokenPair: {
             /** Access Token */
@@ -5277,7 +5478,7 @@ export interface components {
              * Rol
              * @enum {string}
              */
-            rol: "Coordinacion" | "Administrativo" | "Auditor";
+            rol: "Coordinacion" | "Administrativo" | "Auditor" | "Superadmin";
             /** Email */
             email?: string | null;
         };
@@ -5308,7 +5509,7 @@ export interface components {
             /** Password */
             password?: string | null;
             /** Rol */
-            rol?: ("Coordinacion" | "Administrativo" | "Auditor") | null;
+            rol?: ("Coordinacion" | "Administrativo" | "Auditor" | "Superadmin") | null;
             /** Email */
             email?: string | null;
         };
@@ -6627,6 +6828,42 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OdaRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    importar_api_v1_odas_importar_post: {
+        parameters: {
+            query?: {
+                /** @description true = previsualizar sin guardar */
+                dry_run?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_importar_api_v1_odas_importar_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OdaImportResumen"];
                 };
             };
             /** @description Validation Error */
@@ -9935,6 +10172,70 @@ export interface operations {
             header?: never;
             path: {
                 cita_id: number;
+                archivo_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    listar_documentos_api_v1_pacientes__paciente_id__documentos_salutem_get: {
+        parameters: {
+            query?: {
+                /** @description Solo los relacionados con una atención que indicó licencia o receta */
+                relacion?: ("licencia" | "receta") | null;
+            };
+            header?: never;
+            path: {
+                paciente_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentoSalutemRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    contenido_documento_api_v1_pacientes__paciente_id__documentos_salutem__archivo_id__contenido_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                paciente_id: number;
                 archivo_id: number;
             };
             cookie?: never;

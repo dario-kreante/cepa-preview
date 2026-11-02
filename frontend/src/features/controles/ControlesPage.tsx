@@ -12,7 +12,7 @@ import { useControlesPorIngreso } from "./hooks";
 import { NuevoControlDialog } from "./NuevoControlDialog";
 import { ProximoControlDialog } from "./ProximoControlDialog";
 import { EvaluacionControlDialog } from "./EvaluacionControlDialog";
-import { DocumentosSalutem } from "./DocumentosSalutem";
+import { DocumentosSalutemPaciente } from "./DocumentosSalutem";
 import { EVALUACION_LABELS } from "./evaluacionControlSchema";
 import {
   LicenciaControlDialog,
@@ -90,7 +90,34 @@ function ControlRow({ control, ingresoId, canWrite, columnas }: ControlRowProps)
                 SALUTEM
               </Badge>
             )}
+            {control.fuera_de_oda && (
+              <Badge
+                variant="destructive"
+                title="Ninguna ODA del paciente cubre la fecha de este control: pide la ODA o su renovación"
+                data-testid={`badge-fuera-oda-${control.id}`}
+              >
+                Fuera de ODA
+              </Badge>
+            )}
+            {control.origen === "SALUTEM" && (control.campos_editados?.length ?? 0) > 0 && (
+              <Badge
+                variant="warning"
+                title="Corregido a mano en SIGE: la sincronización con SALUTEM no sobrescribe esos datos"
+                data-testid={`badge-corregido-${control.id}`}
+              >
+                Corregido
+              </Badge>
+            )}
           </div>
+        </td>
+
+        {/* Prestación — la especialidad de SALUTEM ("Primera consulta médica AT") */}
+        <td className="px-4 py-3 text-[12.5px]" data-testid={`prestacion-control-${control.id}`}>
+          {control.especialidad ? (
+            control.especialidad
+          ) : (
+            <span className="text-muted-foreground">—</span>
+          )}
         </td>
 
         {/* Próximo control */}
@@ -224,11 +251,6 @@ function ControlRow({ control, ingresoId, canWrite, columnas }: ControlRowProps)
               <div className="sm:col-span-3">
                 <Dato label="Observaciones" valor={control.observaciones} />
               </div>
-              {control.origen === "SALUTEM" && (
-                <div className="sm:col-span-3">
-                  <DocumentosSalutem controlId={control.id} />
-                </div>
-              )}
             </dl>
           </td>
         </tr>
@@ -279,7 +301,7 @@ function ControlesPanel({ ingresoId, canWrite }: ControlesPanelProps) {
   const [reposoFilter, setReposoFilter] = useState<TipoReposo | "Todos">("Todos");
   const [licenciaFilter, setLicenciaFilter] = useState<"todos" | "con" | "sin">("todos");
 
-  const columnas = canWrite ? 9 : 8;
+  const columnas = canWrite ? 10 : 9;
 
   const filtered = controles.filter((c) => {
     if (recaFilter !== "Todos" && c.estado_reca !== recaFilter) return false;
@@ -385,6 +407,7 @@ function ControlesPanel({ ingresoId, canWrite }: ControlesPanelProps) {
               <thead>
                 <tr className="bg-muted/30 border-b">
                   <Th>Fecha control</Th>
+                  <Th>Prestación</Th>
                   <Th>Próximo control</Th>
                   <Th>Semana</Th>
                   <Th>Días LM</Th>
@@ -613,6 +636,13 @@ export function ControlesPage() {
               </h2>
               <ControlesPanel ingresoId={ingresoId} canWrite={canWrite} />
             </div>
+          )}
+          {/* La biblioteca de SALUTEM es del paciente, no de un control: va fuera de la tabla. */}
+          {ingresoId && selectedPaciente && (
+            <DocumentosSalutemPaciente
+              pacienteId={selectedPaciente.id}
+              titulo="Documentos del paciente en SALUTEM"
+            />
           )}
         </div>
       )}

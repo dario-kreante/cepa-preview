@@ -5,6 +5,7 @@ import {
   actualizarProximoControl,
   archivosDeControl,
   archivosDeAtencion,
+  documentosDePaciente,
   obtenerAtencionSalutem,
   controlesPorIngreso,
   crearControl,
@@ -13,6 +14,7 @@ import {
   type EvaluacionUpdate,
   type LicenciaUpdate,
   type ProximoControlUpdate,
+  type RelacionDocumento,
 } from "./api";
 
 // ── Query hooks ──────────────────────────────────────────────────────────────
@@ -54,6 +56,15 @@ export function useArchivosDeAtencion(citaId: number, habilitado = true) {
     queryKey: ["salutem", "atencion", citaId, "archivos"],
     queryFn: () => archivosDeAtencion(citaId),
     enabled: habilitado && citaId > 0,
+  });
+}
+
+/** Biblioteca de SALUTEM del paciente; `relacion` filtra por la relación deducida. */
+export function useDocumentosDePaciente(pacienteId: number, relacion?: RelacionDocumento) {
+  return useQuery({
+    queryKey: ["salutem", "paciente", pacienteId, "documentos", relacion ?? "todos"],
+    queryFn: () => documentosDePaciente(pacienteId, relacion),
+    enabled: pacienteId > 0,
   });
 }
 
