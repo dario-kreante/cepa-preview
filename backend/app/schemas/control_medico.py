@@ -157,6 +157,12 @@ class ControlMedicoRead(BaseModel):
     tiempo_estimado_tratamiento: str | None = None
     proyeccion_reintegro: str | None = None
     factores_riesgo: str | None = None
+    # Alta, sesiones y reintegro: solo lectura desde SALUTEM, tal como vienen.
+    tipo_alta: str | None = None
+    fecha_alta: str | None = None
+    numero_sesion_actual: str | None = None
+    numero_sesiones_tratamiento: str | None = None
+    observaciones_reintegro: str | None = None
     # "CEPA" = cargado en SIGE; "SALUTEM" = creado por el sync desde una atención.
     origen: str = "CEPA"
     salutem_cita_id: int | None = None

@@ -3094,6 +3094,16 @@ export interface components {
             proyeccion_reintegro?: string | null;
             /** Factores Riesgo */
             factores_riesgo?: string | null;
+            /** Tipo Alta */
+            tipo_alta?: string | null;
+            /** Fecha Alta */
+            fecha_alta?: string | null;
+            /** Numero Sesion Actual */
+            numero_sesion_actual?: string | null;
+            /** Numero Sesiones Tratamiento */
+            numero_sesiones_tratamiento?: string | null;
+            /** Observaciones Reintegro */
+            observaciones_reintegro?: string | null;
             /**
              * Origen
              * @default CEPA

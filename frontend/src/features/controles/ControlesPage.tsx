@@ -249,6 +249,13 @@ function ControlRow({ control, ingresoId, canWrite, columnas }: ControlRowProps)
                 valor={control.proyeccion_reintegro}
               />
               <Dato label={EVALUACION_LABELS.factores_riesgo} valor={control.factores_riesgo} />
+              <Dato label="Tipo de alta" valor={control.tipo_alta} />
+              <Dato label="Fecha de alta" valor={control.fecha_alta} />
+              <Dato label="Sesión actual" valor={control.numero_sesion_actual} />
+              <Dato label="Sesiones por tratamiento" valor={control.numero_sesiones_tratamiento} />
+              <div className="sm:col-span-3">
+                <Dato label="Observaciones para el reintegro laboral" valor={control.observaciones_reintegro} />
+              </div>
               <div className="sm:col-span-3">
                 <Dato label="Observaciones" valor={control.observaciones} />
               </div>
