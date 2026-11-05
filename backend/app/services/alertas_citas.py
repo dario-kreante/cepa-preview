@@ -17,12 +17,16 @@ from app.agendamiento.salutem import pacientes_con_hora_vigente
 from app.audit.service import record_audit
 from app.config import get_settings
 from app.domain.enums_alertas import EstadoAlerta, TipoAlerta
+from app.integrations.salutem.models import EstadoCitaSalutem
 from app.models.alertas import AlertaNotif
 from app.models.cita import Cita
 from app.models.control_medico import ControlMedico
 from app.models.ingreso import Ingreso
+from app.models.paciente import Paciente
+from app.models.salutem_copia import SalutemCita, SalutemPersona
 from app.services.alertas import _resolver_usuario
 from app.services.salutem_sync.alertas_control import ACTOR, DIAS_NOVEDAD
+from app.services.salutem_sync.filtro import cruce_con_paciente
 
 CASO_TIPO_INASISTENCIA = "salutem_cita"
 _ABIERTAS = (EstadoAlerta.PENDIENTE.value, EstadoAlerta.LEIDA.value)
@@ -74,6 +78,47 @@ def alertar_inasistencia(
 MINIMO_INASISTENCIAS_ENCUADRE = 2
 
 
+def _inasistencias_del_paciente(
+    db: Session, paciente_id: int, hasta: date, filtro: frozenset[str]
+) -> int:
+    """Inasistencias de todo el historial del paciente hasta esa fecha.
+
+    `cita` solo parte en CITAS_SALUTEM_DESDE: lo anterior está en la copia de SALUTEM. Una
+    cita que está en las dos cuenta una vez. La especialidad de la copia viene en el JSON,
+    que no se puede filtrar en SQL de forma portable: se filtra en Python.
+    """
+    consulta = (
+        select(Cita.salutem_cita_id)
+        .join(Ingreso, Ingreso.id == Cita.ingreso_id)
+        .where(
+            Ingreso.paciente_id == paciente_id,
+            Cita.estado == "inasistencia",
+            Cita.fecha <= hasta,
+        )
+    )
+    if filtro:
+        consulta = consulta.where(func.lower(Cita.especialidad).in_(filtro))
+    en_cita = db.scalars(consulta).all()
+    ids_salutem = {i for i in en_cita if i is not None}
+    sin_id_salutem = len(en_cita) - sum(1 for i in en_cita if i is not None)
+
+    for cita_id, contenido in db.execute(
+        select(SalutemCita.cita_id, SalutemCita.contenido)
+        .join(SalutemPersona, SalutemPersona.salutem_id == SalutemCita.persona_id)
+        .join(Paciente, cruce_con_paciente())
+        .where(
+            Paciente.id == paciente_id,
+            SalutemCita.estado_id == int(EstadoCitaSalutem.NO_ASISTE),
+            SalutemCita.desaparecida_en.is_(None),
+            SalutemCita.fecha_cita <= hasta,
+        )
+    ):
+        especialidad = str((contenido or {}).get("especialidadNombre") or "").casefold()
+        if not filtro or especialidad in filtro:
+            ids_salutem.add(cita_id)
+    return sin_id_salutem + len(ids_salutem)
+
+
 def alertar_posible_encuadre(
     db: Session, *, salutem_cita_id: int, cita: Cita, hoy: date, ventanas: dict
 ) -> bool:
@@ -101,19 +146,7 @@ def alertar_posible_encuadre(
     if existe is not None:
         return False
     paciente_id = db.scalar(select(Ingreso.paciente_id).where(Ingreso.id == cita.ingreso_id))
-    consulta = (
-        select(func.count())
-        .select_from(Cita)
-        .join(Ingreso, Ingreso.id == Cita.ingreso_id)
-        .where(
-            Ingreso.paciente_id == paciente_id,
-            Cita.estado == "inasistencia",
-            Cita.fecha <= cita.fecha,
-        )
-    )
-    if filtro:
-        consulta = consulta.where(func.lower(Cita.especialidad).in_(filtro))
-    if (db.scalar(consulta) or 0) < MINIMO_INASISTENCIAS_ENCUADRE:
+    if _inasistencias_del_paciente(db, paciente_id, cita.fecha, filtro) < MINIMO_INASISTENCIAS_ENCUADRE:
         return False
     db.add(
         AlertaNotif(
