@@ -5,7 +5,8 @@ El CEPA descarga cada quincena desde el portal del ISL un Excel con la vigencia 
 
 1. Busca el ingreso: primero por N° Siniestro contra ``ingreso.numero_siniestro``; si no
    hay, por RUT del trabajador contra ``paciente.rut`` (respaldo: en el archivo real la
-   columna «Rut Trabajador» viene casi siempre vacía o con ``sin_id_<n>``).
+   columna «Rut Trabajador» viene casi siempre vacía o con ``sin_id_<n>``). Una persona sin
+   RUT trae ``sin_id_<n>``, y se busca por ``paciente.salutem_persona_id`` (n = id de SALUTEM).
    Si hay varios ingresos candidatos se prefiere el activo y, entre iguales, el más reciente.
 2. Hace upsert de la ODA por (ingreso, identificador = N° de Orden): subir la misma planilla
    dos veces no duplica nada.
@@ -42,6 +43,7 @@ LOTE_IN = 500  # Oracle limita las listas IN a 1000 elementos
 # el archivo comprimido; un xlsx real del ISL (~2.600 filas) pesa ~1 MB descomprimido.
 MAX_DESCOMPRIMIDO_BYTES = 100 * 1024 * 1024
 MAX_FILAS = 50_000
+_SIN_ID = re.compile(r"sin_id_(\d{1,18})", re.IGNORECASE)
 
 # Clave normalizada del encabezado → nombre lógico de la columna.
 _COLUMNAS = {
@@ -261,6 +263,12 @@ def _rut_canonico(s: str | None) -> str | None:
         return None  # p. ej. «sin_id_1141409» o el RUT del prestador mal digitado
 
 
+def _id_salutem(s: str | None) -> int | None:
+    """El id de SALUTEM de una persona sin RUT: «sin_id_1141409» → 1141409."""
+    m = _SIN_ID.fullmatch((s or "").strip())
+    return int(m.group(1)) if m else None
+
+
 def _mejor(ingresos: list[Ingreso]) -> Ingreso:
     """Entre varios ingresos candidatos: el activo y, entre iguales, el más reciente."""
     return max(
@@ -276,7 +284,7 @@ def _lotes(valores: list, n: int = LOTE_IN):
 
 def _indices_ingresos(
     db: Session, filas: list[FilaReporte]
-) -> tuple[dict[str, list[Ingreso]], dict[str, list[Ingreso]]]:
+) -> tuple[dict[str, list[Ingreso]], dict[str, list[Ingreso]], dict[int, list[Ingreso]]]:
     por_siniestro: dict[str, list[Ingreso]] = {}
     siniestros = {_norm_siniestro(f.siniestro) for f in filas} - {None}
     if siniestros:
@@ -297,7 +305,18 @@ def _indices_ingresos(
         )
         for rut, ing in db.execute(consulta):
             por_rut.setdefault(rut, []).append(ing)
-    return por_siniestro, por_rut
+
+    por_id_salutem: dict[int, list[Ingreso]] = {}
+    ids = sorted({_id_salutem(f.rut_trabajador) for f in filas} - {None})
+    for lote in _lotes(ids):
+        consulta = (
+            select(Paciente.salutem_persona_id, Ingreso)
+            .join(Ingreso, Ingreso.paciente_id == Paciente.id)
+            .where(Paciente.salutem_persona_id.in_(lote))
+        )
+        for persona_id, ing in db.execute(consulta):
+            por_id_salutem.setdefault(persona_id, []).append(ing)
+    return por_siniestro, por_rut, por_id_salutem
 
 
 # ── Importación ────────────────────────────────────────────────────────────────
@@ -329,6 +348,7 @@ class ResumenImportacion:
     sin_cambios: int = 0
     match_por_siniestro: int = 0
     match_por_rut: int = 0
+    match_por_id_salutem: int = 0
     sin_paciente: list[FilaSinPaciente] = field(default_factory=list)
     errores: list[ErrorFila] = field(default_factory=list)
     por_vencer_paciente_activo: list[OdaPorVencer] = field(default_factory=list)
@@ -354,7 +374,7 @@ def importar_reporte(
     hoy = hoy or date.today()
     parseo = parsear_reporte(contenido)
     resumen = ResumenImportacion(filas_leidas=parseo.filas_leidas, errores=list(parseo.errores))
-    por_siniestro, por_rut = _indices_ingresos(db, parseo.filas)
+    por_siniestro, por_rut, por_id_salutem = _indices_ingresos(db, parseo.filas)
 
     # Filas con ingreso resuelto, agrupadas por ingreso.
     por_ingreso: dict[int, list[FilaReporte]] = {}
@@ -367,6 +387,10 @@ def importar_reporte(
             candidatos = por_rut.get(_rut_canonico(f.rut_trabajador) or "")
             if candidatos:
                 resumen.match_por_rut += 1
+            else:
+                candidatos = por_id_salutem.get(_id_salutem(f.rut_trabajador))
+                if candidatos:
+                    resumen.match_por_id_salutem += 1
         if not candidatos:
             resumen.sin_paciente.append(
                 FilaSinPaciente(f.fila, f.numero_orden, f.tipo_orden, f.siniestro, f.rut_trabajador)

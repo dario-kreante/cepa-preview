@@ -176,6 +176,62 @@ def test_match_por_siniestro_y_respaldo_por_rut(db_session: Session):
     assert {s.numero_orden for s in r.sin_paciente} >= {"900002", "900005", "900006"}
 
 
+def _con_persona_salutem(db: Session, ingreso: Ingreso, persona_id: int) -> None:
+    db.get(Paciente, ingreso.paciente_id).salutem_persona_id = persona_id
+    db.flush()
+
+
+def test_rut_sin_id_calza_por_el_id_de_salutem_del_paciente(db_session: Session):
+    ingreso = _ingreso(db_session)
+    _con_persona_salutem(db_session, ingreso, 1216017)
+
+    r = importar_reporte(
+        db_session, _xlsx([_fila("910001", "7777777", HOY + timedelta(days=30), rut="sin_id_1216017")])
+    )
+
+    assert r.match_por_id_salutem == 1
+    assert (r.creadas, r.sin_paciente) == (1, [])
+    oda = db_session.scalar(select(Oda).where(Oda.identificador == "910001"))
+    assert oda.ingreso_id == ingreso.id
+
+
+def test_rut_sin_id_acepta_mayusculas_y_espacios(db_session: Session):
+    ingreso = _ingreso(db_session)
+    _con_persona_salutem(db_session, ingreso, 1216018)
+
+    r = importar_reporte(
+        db_session, _xlsx([_fila("910002", "7777778", HOY + timedelta(days=30), rut=" SIN_ID_1216018 ")])
+    )
+
+    assert r.match_por_id_salutem == 1
+
+
+def test_rut_sin_id_de_otra_persona_queda_sin_paciente(db_session: Session):
+    ingreso = _ingreso(db_session)
+    _con_persona_salutem(db_session, ingreso, 1216019)
+
+    r = importar_reporte(
+        db_session, _xlsx([_fila("910003", "7777779", HOY + timedelta(days=30), rut="sin_id_999")])
+    )
+
+    assert r.match_por_id_salutem == 0
+    assert [s.numero_orden for s in r.sin_paciente] == ["910003"]
+
+
+def test_el_siniestro_tiene_prioridad_sobre_el_sin_id(db_session: Session):
+    por_siniestro = _ingreso(db_session, siniestro="7777780")
+    por_id = _ingreso(db_session)
+    _con_persona_salutem(db_session, por_id, 1216020)
+
+    r = importar_reporte(
+        db_session, _xlsx([_fila("910004", "7777780", HOY + timedelta(days=30), rut="sin_id_1216020")])
+    )
+
+    assert (r.match_por_siniestro, r.match_por_id_salutem) == (1, 0)
+    oda = db_session.scalar(select(Oda).where(Oda.identificador == "910004"))
+    assert oda.ingreso_id == por_siniestro.id
+
+
 def test_siniestro_con_ceros_a_la_izquierda_calza(db_session: Session):
     ing = _ingreso(db_session, siniestro=" 0001000004 ")
     importar_reporte(db_session, FIXTURE.read_bytes())

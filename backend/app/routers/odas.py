@@ -104,6 +104,7 @@ async def importar(
         sin_cambios=resumen.sin_cambios,
         match_por_siniestro=resumen.match_por_siniestro,
         match_por_rut=resumen.match_por_rut,
+        match_por_id_salutem=resumen.match_por_id_salutem,
         sin_paciente=[OdaImportFilaSinPaciente(**vars(f)) for f in resumen.sin_paciente],
         errores=[OdaImportError(**vars(e)) for e in resumen.errores],
         ventana_dias=resumen.ventana_dias,

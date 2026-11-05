@@ -82,6 +82,7 @@ const RESUMEN = {
   sin_cambios: 0,
   match_por_siniestro: 2,
   match_por_rut: 0,
+  match_por_id_salutem: 0,
   sin_paciente: [
     { fila: 4, numero_orden: "900002", tipo_orden: "Ambulatoria", numero_siniestro: "1000002", rut_trabajador: null },
   ],
