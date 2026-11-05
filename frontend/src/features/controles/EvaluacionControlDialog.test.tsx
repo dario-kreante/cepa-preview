@@ -109,6 +109,37 @@ async function abrirControles(
 }
 
 describe("Evaluación clínica del control", () => {
+  it("el detalle muestra el alta, las sesiones y las observaciones de reintegro que vienen de SALUTEM", async () => {
+    const user = await abrirControles(AUDITOR_TOKEN, [
+      http.get(`${BASE}/api/v1/controles-medicos/por-ingreso/:ingresoId`, () =>
+        HttpResponse.json([
+          {
+            ...MOCK_CONTROL,
+            tipo_alta: "Alta médica",
+            fecha_alta: "antes de fin de mes",
+            numero_sesion_actual: "4",
+            numero_sesiones_tratamiento: "12",
+            observaciones_reintegro: "Reintegro gradual",
+          },
+        ]),
+      ),
+    ]);
+
+    await user.click(screen.getByTestId(`btn-detalle-control-${MOCK_CONTROL.id}`));
+
+    const detalle = screen.getByTestId(`detalle-control-${MOCK_CONTROL.id}`);
+    expect(within(detalle).getByText("Tipo de alta")).toBeInTheDocument();
+    expect(within(detalle).getByText("Alta médica")).toBeInTheDocument();
+    expect(within(detalle).getByText("Fecha de alta")).toBeInTheDocument();
+    expect(within(detalle).getByText("antes de fin de mes")).toBeInTheDocument();
+    expect(within(detalle).getByText("Sesión actual")).toBeInTheDocument();
+    expect(within(detalle).getByText("4")).toBeInTheDocument();
+    expect(within(detalle).getByText("Sesiones por tratamiento")).toBeInTheDocument();
+    expect(within(detalle).getByText("12")).toBeInTheDocument();
+    expect(within(detalle).getByText("Observaciones para el reintegro laboral")).toBeInTheDocument();
+    expect(within(detalle).getByText("Reintegro gradual")).toBeInTheDocument();
+  });
+
   it("el detalle de la fila muestra la evaluación y las observaciones, también al Auditor", async () => {
     const user = await abrirControles(AUDITOR_TOKEN, [
       http.get(`${BASE}/api/v1/controles-medicos/por-ingreso/:ingresoId`, () =>

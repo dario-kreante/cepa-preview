@@ -76,6 +76,15 @@ class ControlMedico(Base):
     proyeccion_reintegro: Mapped[str | None] = mapped_column(String(80), nullable=True)
     factores_riesgo: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
+    # ── Alta, sesiones y reintegro (migración 1450) ────────────────────────
+    # Solo lectura desde SALUTEM y tal como vienen: allá la fecha de alta y las sesiones
+    # son texto libre, y el tipo de alta no usa el catálogo de cierre del caso.
+    tipo_alta: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    fecha_alta: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    numero_sesion_actual: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    numero_sesiones_tratamiento: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    observaciones_reintegro: Mapped[str | None] = mapped_column(Text, nullable=True)
+
     # ── RECA y observaciones (CEPA-062, siempre editables) ───────────────────
     estado_reca: Mapped[str | None] = mapped_column(String(20), nullable=True)
     observaciones: Mapped[str | None] = mapped_column(Text, nullable=True)

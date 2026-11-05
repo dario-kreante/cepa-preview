@@ -486,3 +486,43 @@ def test_la_evaluacion_corregida_a_mano_tampoco_la_pisa_el_sync(db_session):
     [c] = _controles(db_session)
     assert c.proyeccion_reintegro == "3 meses"
     assert c.campos_editados == "proyeccion_reintegro"
+
+
+def test_el_control_lee_alta_sesiones_y_observaciones_de_reintegro(db_session):
+    """Campos que el Excel «Prestaciones y campos» asigna a Controles y Reintegro."""
+    _paciente_e_ingreso(db_session)
+    _persona(db_session)
+    _atencion(
+        db_session, 5034, "2026-09-30", especialidadNombre="Médico/a",
+        indicaciones=[
+            {"agrupacion": "Alta", "nombre": "Tipo de alta", "registro": ["Alta médica"]},
+            # Texto libre en SALUTEM: se guarda tal cual, aunque no sea una fecha.
+            {"agrupacion": "Alta", "nombre": "Fecha de alta", "registro": "antes de fin de mes"},
+            {"agrupacion": "Evaluación", "nombre": "Número de sesión actual", "registro": 4},
+            {"agrupacion": "Evaluación", "nombre": "Número de sesiones por tratamiento", "registro": "12"},
+            {"agrupacion": "Indicaciones", "nombre": "Observaciones para el reintegro laboral",
+             "registro": "Reintegro <b>gradual</b>"},
+        ],
+    )
+
+    vincular(db_session, AHORA)
+
+    [c] = _controles(db_session)
+    assert (c.tipo_alta, c.fecha_alta) == ("Alta médica", "antes de fin de mes")
+    assert (c.numero_sesion_actual, c.numero_sesiones_tratamiento) == ("4", "12")
+    assert c.observaciones_reintegro == "Reintegro gradual"
+
+
+def test_sin_esos_campos_en_la_ficha_el_control_los_deja_vacios(db_session):
+    _paciente_e_ingreso(db_session)
+    _persona(db_session)
+    _atencion(db_session, 5035, "2026-09-30", especialidadNombre="Médico/a", indicaciones=[])
+
+    vincular(db_session, AHORA)
+
+    [c] = _controles(db_session)
+    assert c.tipo_alta is None
+    assert c.fecha_alta is None
+    assert c.numero_sesion_actual is None
+    assert c.numero_sesiones_tratamiento is None
+    assert c.observaciones_reintegro is None

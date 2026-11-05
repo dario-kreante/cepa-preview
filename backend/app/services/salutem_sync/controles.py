@@ -24,6 +24,8 @@ cualquier sección de la atención. Correspondencia con el control:
 - gaf_tramo          ← el campo "GAF", que SALUTEM registra por tramo ("51-60")
 - gaf                ← "GAF NN" escrito en el texto, cuando el médico anota el número
 - observaciones      ← la evolución del tratamiento
+- tipo_alta, fecha_alta, numero_sesion_actual, numero_sesiones_tratamiento,
+  observaciones_reintegro ← esos campos de la ficha, tal como vienen (texto libre)
 - tiempo_estimado_tratamiento, proyeccion_reintegro, factores_riesgo
                      ← los campos "Tiempo estimado de tratamiento", "Proyección de
                        reintegro laboral" y "Factores de riesgo acogidos"
@@ -195,6 +197,11 @@ def _campos(db: Session, atencion: SalutemAtencion, ingreso: Ingreso) -> dict[st
         "tiempo_estimado_tratamiento": _recortar(campo(c, "Tiempo estimado de tratamiento"), 80),
         "proyeccion_reintegro": _recortar(campo(c, "Proyección de reintegro laboral"), 80),
         "factores_riesgo": _recortar(campo(c, "Factores de riesgo acogidos"), 500),
+        "tipo_alta": _recortar(campo(c, "Tipo de alta"), 80),
+        "fecha_alta": _recortar(campo(c, "Fecha de alta"), 80),
+        "numero_sesion_actual": _recortar(campo(c, "Número de sesión actual"), 20),
+        "numero_sesiones_tratamiento": _recortar(campo(c, "Número de sesiones por tratamiento"), 20),
+        "observaciones_reintegro": campo(c, "Observaciones para el reintegro laboral"),
     }
 
 
