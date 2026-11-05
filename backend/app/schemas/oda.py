@@ -66,6 +66,7 @@ class OdaImportResumen(BaseModel):
     sin_cambios: int
     match_por_siniestro: int
     match_por_rut: int
+    match_por_id_salutem: int
     sin_paciente: list[OdaImportFilaSinPaciente]
     errores: list[OdaImportError]
     ventana_dias: int

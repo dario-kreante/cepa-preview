@@ -4345,6 +4345,8 @@ export interface components {
             match_por_siniestro: number;
             /** Match Por Rut */
             match_por_rut: number;
+            /** Match Por Id Salutem */
+            match_por_id_salutem: number;
             /** Sin Paciente */
             sin_paciente: components["schemas"]["OdaImportFilaSinPaciente"][];
             /** Errores */

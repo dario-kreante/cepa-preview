@@ -151,7 +151,8 @@ export function CargarReporteIslDialog({ open, onOpenChange }: Props) {
           <DialogTitle>Cargar reporte ISL</DialogTitle>
           <DialogDescription>
             Sube el «Reporte Prestador» (.xlsx) descargado del portal ISL. Cada orden se asocia al
-            paciente por N° de siniestro (o RUT del trabajador) y actualiza la vigencia de su ODA.
+            paciente por N° de siniestro, RUT del trabajador o <span className="font-mono">sin_id</span> de
+            SALUTEM, y actualiza la vigencia de su ODA.
             Las alertas de vencimiento solo consideran pacientes activos.
           </DialogDescription>
         </DialogHeader>
