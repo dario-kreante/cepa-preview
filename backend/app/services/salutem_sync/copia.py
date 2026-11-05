@@ -26,8 +26,8 @@ def _rut_cepa(identificacion: str | None) -> str | None:
         return None
 
 
-def _fecha_creacion(crudo: dict[str, Any]) -> datetime | None:
-    valor = crudo.get("citaFechaCreacion")
+def _fecha_creacion(crudo: dict[str, Any], clave: str = "citaFechaCreacion") -> datetime | None:
+    valor = crudo.get(clave)
     if not isinstance(valor, str):
         return None
     try:
@@ -81,14 +81,12 @@ def _guardar(
 
 
 def guardar_persona(db: Session, persona: PersonaSalutem, ahora: datetime) -> Resultado:
-    return _guardar(
-        db,
-        SalutemPersona,
-        persona.salutem_id,
-        persona.crudo,
-        {"salutem_id": persona.salutem_id, "rut": _rut_cepa(persona.identificacion)},
-        ahora,
-    )
+    campos: dict[str, Any] = {"salutem_id": persona.salutem_id, "rut": _rut_cepa(persona.identificacion)}
+    # Solo el listado por fecha la trae: la ficha demográfica no debe borrarla.
+    creada = _fecha_creacion(persona.crudo, "fechaCreacion")
+    if creada is not None:
+        campos["fecha_creacion"] = creada
+    return _guardar(db, SalutemPersona, persona.salutem_id, persona.crudo, campos, ahora)
 
 
 def guardar_cita(db: Session, cita: CitaSalutem, ahora: datetime) -> Resultado:

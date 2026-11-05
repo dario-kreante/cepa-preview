@@ -89,3 +89,15 @@ def test_la_biblioteca_solo_se_lee_de_personas_permitidas(salutem):
     assert cliente.listar_archivos(REAL) == []
     assert cliente.obtener_archivo(REAL, 2) is None
     assert not [ll for ll in salutem.llamadas if REAL in ll[1:]]
+
+
+def test_las_personas_creadas_solo_traen_a_las_permitidas(salutem):
+    from datetime import date
+
+    from app.services.salutem_sync.filtro import ClientePersonasPermitidas
+
+    salutem.agregar_persona(501, fechaCreacion="2026-11-03 10:00")
+    salutem.agregar_persona(999, fechaCreacion="2026-11-03 11:00")
+    filtro = ClientePersonasPermitidas(salutem, frozenset({501}))
+
+    assert [p.salutem_id for p in filtro.listar_personas(date(2026, 11, 3))] == [501]

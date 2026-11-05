@@ -1,10 +1,12 @@
 """Ventanas del sync incremental (solo lectura, D12).
 
-- caliente (cada 5 min): citas creadas hoy + citas de -7..+14 días, y re-lectura de los
+- caliente (cada 5 min): personas y citas creadas hoy + citas de -7..+14 días, y re-lectura de los
   controles médicos de hoy y ayer (el médico suele completar la licencia o la receta al día
   siguiente, y la alerta no debe esperar a la tibia). El CEPA espera ver en SIGE lo que hace
   en SALUTEM en 5 minutos, también al atender o anular citas de otros días (QA-005, 29-10).
-- tibia (cada hora): citas de -7..+30 días y re-lectura de atenciones de la última semana.
+- tibia (cada hora): personas creadas en la última semana, citas de -7..+30 días y re-lectura
+  de atenciones de la última semana. Las personas se copian aunque no tengan citas: el paciente
+  borrador nace con la persona (05-11-2026).
 - fría (cada noche): citas de -90..+180 días y re-lectura de atenciones del último mes.
 
 "Hoy" es el día en Santiago: SALUTEM trabaja en hora local.
@@ -20,7 +22,14 @@ from sqlalchemy.orm import Session
 from app.config import get_settings
 from app.integrations.salutem.models import TipoFechaCita
 from app.integrations.salutem.protocol import SalutemClientProtocol
-from app.services.salutem_sync.barrido import barrer_dia, refrescar_atenciones
+from app.integrations.salutem.errors import SalutemError
+from app.services.salutem_sync import copia
+from app.services.salutem_sync.barrido import (
+    barrer_dia,
+    describir_error,
+    es_error_de_registro,
+    refrescar_atenciones,
+)
 from app.services.salutem_sync.ritmo import Ritmo
 from app.services.salutem_sync.tipos import Contadores
 
@@ -60,6 +69,28 @@ def _barrer(
         al_terminar_dia()
 
 
+def _copiar_personas_creadas(
+    db: Session,
+    cliente: SalutemClientProtocol,
+    ritmo: Ritmo,
+    dias: list[date],
+    ahora: datetime,
+    resultado: ResultadoVentana,
+) -> None:
+    """Copia las personas creadas esos días (un día por llamada: SALUTEM no admite más)."""
+    for dia in dias:
+        try:
+            personas = ritmo.llamar(cliente.listar_personas, dia)
+        except SalutemError as e:
+            if not es_error_de_registro(e):
+                raise
+            resultado.errores.append(f"personas creadas {dia.isoformat()}: {describir_error(e)}")
+            continue
+        for persona in personas:
+            resultado.contadores.registrar(copia.guardar_persona(db, persona, ahora))
+        db.commit()
+
+
 def _rango(hoy: date, atras: int, adelante: int) -> list[date]:
     return [hoy + i * _UN_DIA for i in range(-atras, adelante + 1)]
 
@@ -79,6 +110,7 @@ def ventana_caliente(
     # hora local, cuya aritmética es de reloj) en vez de mirar `hour < 1` cubre el salto
     # 24:00→01:00 del cambio de horario y una corrida perdida cerca de la medianoche.
     creacion = sorted({hoy_en_santiago(ahora - timedelta(hours=1)), hoy})
+    _copiar_personas_creadas(db, cliente, ritmo, creacion, ahora, resultado)
     _barrer(db, cliente, ritmo, creacion, TipoFechaCita.FECHA_CREACION, ahora, resultado, al_terminar_dia)
     _barrer(
         db, cliente, ritmo, _rango(hoy, CALIENTE_DIAS_ATRAS, CALIENTE_DIAS_ADELANTE),
@@ -105,6 +137,7 @@ def ventana_tibia(
 ) -> ResultadoVentana:
     resultado = ResultadoVentana()
     hoy = hoy_en_santiago(ahora)
+    _copiar_personas_creadas(db, cliente, ritmo, _rango(hoy, TIBIA_DIAS_ATRAS, 0), ahora, resultado)
     _barrer(
         db, cliente, ritmo, _rango(hoy, TIBIA_DIAS_ATRAS, TIBIA_DIAS_ADELANTE),
         TipoFechaCita.FECHA_CITA, ahora, resultado, al_terminar_dia,

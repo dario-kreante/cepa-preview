@@ -62,6 +62,13 @@ class SalutemClientProtocol(Protocol):
         """
         ...
 
+    def listar_personas(self, dia: date) -> list[PersonaSalutem]:
+        """Personas creadas en SALUTEM ese día (`GET /personas` por rango).
+
+        SALUTEM rechaza rangos de más de un día (ERROR_INTERVALO_SUPERADO).
+        """
+        ...
+
     def listar_atenciones(self, salutem_id: int) -> list[CitaSalutem]:
         """Lista las atenciones de una persona, sin el contenido clínico.
 

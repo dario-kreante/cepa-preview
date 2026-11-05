@@ -181,6 +181,16 @@ class SalutemFalso:
             if c[campo][:10] == dia.isoformat() and c["estadoCitaId"] == int(estado)
         ]
 
+    def listar_personas(self, dia: date) -> list[PersonaSalutem]:
+        self._registrar("listar_personas", dia)
+        if dia in self.dias_caidos:
+            raise SalutemUnavailableError("SALUTEM devolvió un cuerpo ilegible (HTTP 504)")
+        return [
+            PersonaSalutem.desde_api(p)
+            for p in self.personas.values()
+            if str(p.get("fechaCreacion") or "")[:10] == dia.isoformat()
+        ]
+
     def listar_archivos(self, salutem_id: int) -> list[ArchivoSalutem]:
         self._registrar("listar_archivos", salutem_id)
         if salutem_id in self.personas_archivos_caidas:

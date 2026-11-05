@@ -164,6 +164,7 @@ METODOS_LECTURA_APROBADOS = frozenset(
         "listar_atenciones",
         "obtener_atencion",
         "listar_citas",
+        "listar_personas",
         "listar_archivos",
         "obtener_archivo",
     }
@@ -208,6 +209,7 @@ def test_d12_el_cliente_http_solo_emite_get():
     cliente.listar_atenciones(1)
     cliente.obtener_atencion(1, 2)
     cliente.listar_citas(date(2026, 9, 16), EstadoCitaSalutem.ATENDIDO)
+    cliente.listar_personas(date(2026, 9, 16))
 
-    assert len(metodos) == 5
+    assert len(metodos) == 6
     assert set(metodos) == {"GET"}

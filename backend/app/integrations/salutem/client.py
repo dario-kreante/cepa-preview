@@ -63,6 +63,9 @@ class SalutemStubClient:
     def listar_atenciones(self, salutem_id: int) -> list[CitaSalutem]:  # noqa: ARG002
         return []
 
+    def listar_personas(self, dia: date) -> list[PersonaSalutem]:  # noqa: ARG002
+        return []
+
     def obtener_atencion(  # noqa: ARG002
         self, salutem_id: int, cita_id: int
     ) -> AtencionSalutem | None:
@@ -157,6 +160,13 @@ class SalutemHttpClient:
         if not r or "demograficos" not in r:
             return None
         return PersonaSalutem.desde_api(r["demograficos"])
+
+    def listar_personas(self, dia: date) -> list[PersonaSalutem]:
+        r = self._get(
+            "personas",
+            {"fechaHoraInicio": f"{dia.isoformat()} 00:00", "fechaHoraTermino": f"{dia.isoformat()} 23:59"},
+        )
+        return [PersonaSalutem.desde_api(x) for x in (r or []) if isinstance(x, dict)]
 
     def listar_atenciones(self, salutem_id: int) -> list[CitaSalutem]:
         r = self._get("atencion", {"persona_id": salutem_id})
