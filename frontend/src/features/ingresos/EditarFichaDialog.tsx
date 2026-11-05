@@ -6,6 +6,7 @@
  * la tarjeta Folio del resumen (FolioCard). Un guardado fallido nunca
  * es silencioso: el error queda visible y el formulario conserva lo escrito.
  */
+import { opcionesRegion } from "@/lib/regiones";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -52,10 +53,10 @@ const edicionSchema = z.object({
   comuna: z.string().optional(),
   telefono: z.string().optional(),
   correo: z.string().optional(),
-  diagnostico: z.string().trim().min(1, "Requerido"),
+  diagnostico: z.string().optional(),
   tipo_derivacion: z.enum(TIPOS_DERIVACION),
   tipo_ingreso: z.enum(["consulta_espontanea", "convenio", "proyecto", "particular"]),
-  modelo_tratamiento: z.string().trim().min(1, "Requerido"),
+  modelo_tratamiento: z.string().optional(),
   fecha_ingreso: z.string().min(1, "Requerido"),
   fecha_diep_diat: z.string().optional(),
   razon_social: z.string().optional(),
@@ -74,10 +75,10 @@ function valoresIniciales(paciente: PacienteRead, ingreso: IngresoRead): Edicion
     comuna: paciente.comuna ?? "",
     telefono: paciente.telefono ?? "",
     correo: paciente.correo ?? "",
-    diagnostico: ingreso.diagnostico,
+    diagnostico: ingreso.diagnostico ?? "",
     tipo_derivacion: ingreso.tipo_derivacion,
     tipo_ingreso: ingreso.tipo_ingreso,
-    modelo_tratamiento: ingreso.modelo_tratamiento,
+    modelo_tratamiento: ingreso.modelo_tratamiento ?? "",
     fecha_ingreso: ingreso.fecha_ingreso,
     fecha_diep_diat: ingreso.fecha_diep_diat ?? "",
     razon_social: ingreso.razon_social ?? "",
@@ -96,10 +97,10 @@ function aCuerpo(v: EdicionForm): IngresoUpdate {
     comuna: vacioANull(v.comuna),
     telefono: vacioANull(v.telefono),
     correo: vacioANull(v.correo),
-    diagnostico: v.diagnostico.trim(),
+    diagnostico: vacioANull(v.diagnostico),
     tipo_derivacion: v.tipo_derivacion,
     tipo_ingreso: v.tipo_ingreso,
-    modelo_tratamiento: v.modelo_tratamiento.trim(),
+    modelo_tratamiento: vacioANull(v.modelo_tratamiento),
     fecha_ingreso: v.fecha_ingreso,
     fecha_diep_diat: vacioANull(v.fecha_diep_diat),
     razon_social: vacioANull(v.razon_social),
@@ -202,7 +203,20 @@ export function EditarFichaDialog({ paciente, ingreso, open, onOpenChange }: Pro
               )}
             </div>
             {campo("edad", "Edad", "number")}
-            {campo("region", "Región")}
+            <div>
+              <Label htmlFor="editar-region">Región</Label>
+              <select id="editar-region" className={selectClass} {...register("region")}>
+                <option value="">Seleccione…</option>
+                {opcionesRegion(paciente.region).map((r) => (
+                  <option key={r} value={r}>
+                    {r}
+                  </option>
+                ))}
+              </select>
+              {errors.region && (
+                <p className="text-[11.5px] text-destructive mt-1">{errors.region.message}</p>
+              )}
+            </div>
             {campo("comuna", "Comuna")}
             {campo("telefono", "Teléfono")}
             {/* Texto y no "email": la validación nativa rechaza correos ya guardados con tilde. */}

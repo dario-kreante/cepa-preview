@@ -3937,11 +3937,11 @@ export interface components {
             /** Region */
             region: string;
             /** Diagnostico */
-            diagnostico: string;
+            diagnostico?: string | null;
             tipo_derivacion: components["schemas"]["TipoDerivacion"];
             tipo_ingreso: components["schemas"]["TipoIngreso"];
             /** Modelo Tratamiento */
-            modelo_tratamiento: string;
+            modelo_tratamiento?: string | null;
             /**
              * Fecha Ingreso
              * Format: date
@@ -3999,9 +3999,9 @@ export interface components {
             tipo_derivacion: components["schemas"]["TipoDerivacion"];
             tipo_ingreso: components["schemas"]["TipoIngreso"];
             /** Modelo Tratamiento */
-            modelo_tratamiento: string;
+            modelo_tratamiento: string | null;
             /** Diagnostico */
-            diagnostico: string;
+            diagnostico: string | null;
             /** Razon Social */
             razon_social: string | null;
             estado: components["schemas"]["EstadoCaso"];

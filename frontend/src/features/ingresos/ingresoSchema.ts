@@ -19,10 +19,11 @@ export const ingresoSchema = z.object({
       .max(130, "La edad debe estar entre 1 y 130"),
   ),
   region: z.string().min(1, "Requerido"),
-  diagnostico: z.string().min(1, "Requerido"),
+  // Se conocen después de algunos controles: no se exigen al crear (QA-004).
+  diagnostico: z.string().optional(),
   tipo_derivacion: z.enum(["DIEP", "DIAT", "PAPT a flujo AT", "Reingreso FUMP", "Reingreso SUSESO", "Reingreso ISL", "Convenio U.Clinica", "Proyecto", "Particular", "PAPT"]),
   tipo_ingreso: z.enum(["consulta_espontanea", "convenio", "proyecto", "particular"]),
-  modelo_tratamiento: z.string().min(1, "Requerido"),
+  modelo_tratamiento: z.string().optional(),
   fecha_ingreso: z.string().min(1, "Requerido"),
   folio: z.string().optional(),
   es_reingreso: z.boolean().default(false),

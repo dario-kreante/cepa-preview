@@ -81,8 +81,19 @@ def test_editar_ingreso_valida_listas_cerradas(as_admin):
 
 def test_editar_ingreso_no_acepta_vaciar_obligatorios(as_admin):
     ingreso = _crear_ingreso(as_admin)
-    r = as_admin.put(f"/api/v1/ingresos/{ingreso['id']}", json={"diagnostico": None})
+    r = as_admin.put(f"/api/v1/ingresos/{ingreso['id']}", json={"nombre": None})
     assert r.status_code == 422
+
+
+def test_editar_ingreso_permite_dejar_sin_diagnostico_ni_modelo(as_admin):
+    ingreso = _crear_ingreso(as_admin)
+    r = as_admin.put(
+        f"/api/v1/ingresos/{ingreso['id']}",
+        json={"diagnostico": None, "modelo_tratamiento": "  "},
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["diagnostico"] is None
+    assert r.json()["modelo_tratamiento"] is None
 
 
 def test_editar_ingreso_inexistente_da_404(as_admin):

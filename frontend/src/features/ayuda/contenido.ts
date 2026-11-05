@@ -74,7 +74,7 @@ export const GUIAS: Guia[] = [
         titulo: "Crear un ingreso",
         pasos: [
           "Presiona «Nuevo ingreso».",
-          "Completa RUT, nombre, edad, región, diagnóstico, fecha de ingreso, sexo, tipo de derivación y tipo de ingreso.",
+          "Completa los campos marcados con *: RUT, nombre, edad, región, fecha de ingreso, sexo, tipo de derivación y tipo de ingreso. El diagnóstico y el modelo de tratamiento pueden quedar para después.",
           "Presiona «Crear ingreso». El folio se asigna solo (formato F-2026-0001) y el ingreso queda activo.",
         ],
       },

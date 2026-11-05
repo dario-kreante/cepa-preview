@@ -52,9 +52,30 @@ def test_rut_invalido_rechazado(as_admin):
 def test_campos_obligatorios_faltantes(as_admin):
     incompleto = _payload()
     del incompleto["sexo"]
-    del incompleto["diagnostico"]
+    del incompleto["region"]
     r = as_admin.post("/api/v1/ingresos", json=incompleto)
     assert r.status_code == 422
+
+
+# QA-004 (QA UTalca 29-10): diagnóstico y modelo se conocen después de algunos controles.
+def test_crear_ingreso_sin_diagnostico_ni_modelo(as_admin):
+    incompleto = _payload()
+    del incompleto["diagnostico"]
+    del incompleto["modelo_tratamiento"]
+    r = as_admin.post("/api/v1/ingresos", json=incompleto)
+    assert r.status_code == 201, r.text
+    assert r.json()["diagnostico"] is None
+    assert r.json()["modelo_tratamiento"] is None
+
+
+def test_crear_ingreso_con_diagnostico_en_blanco_lo_guarda_vacio(as_admin):
+    # Oracle guarda '' como NULL: el texto en blanco se normaliza igual en todas las BD.
+    r = as_admin.post(
+        "/api/v1/ingresos", json=_payload(diagnostico="   ", modelo_tratamiento="")
+    )
+    assert r.status_code == 201, r.text
+    assert r.json()["diagnostico"] is None
+    assert r.json()["modelo_tratamiento"] is None
 
 
 # TC-010-05: tipo de derivación fuera de lista cerrada -> 422

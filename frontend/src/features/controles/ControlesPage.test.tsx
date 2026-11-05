@@ -76,7 +76,8 @@ const MOCK_CONTROLES = [
     semana_control: 8,
     medico_tratante: "Dr. Andrés Molina",
     region_derivacion: "Metropolitana",
-    proximo_control: "2026-04-07",
+    // Fecha lejana: la insignia «Agendado» solo sale si el próximo control no ha pasado.
+    proximo_control: "2099-04-07",
     proximo_agendado: true,
     tiene_licencia: true,
     resumen_termino_lm: null,
