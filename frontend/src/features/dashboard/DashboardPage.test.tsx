@@ -30,6 +30,7 @@ const RESPUESTA = {
   inasistencias: 30,
   anulaciones: 4,
   tasa_inasistencia: 20,
+  agendadas_periodo: 26,
   agendadas_proximas: 18,
   controles_periodo: 9,
   licencias_activas: 11,
@@ -138,13 +139,15 @@ describe("DashboardPage", () => {
       Atenciones: "/reportes?tab=operativo",
       Inasistencias: "/reportes?tab=operativo",
       Anulaciones: "/reportes?tab=operativo",
+      Agendadas: "/reportes?tab=operativo",
       "Alertas abiertas": "?alertas=1",
     };
     for (const [kpi, destino] of Object.entries(destinos)) {
       expect(screen.getByTestId(`kpi-${kpi}`).closest("a")?.getAttribute("href")).toContain(destino);
     }
     const tarjetas = screen.getAllByTestId(/^kpi-/);
-    expect(tarjetas.length).toBe(12);
+    expect(tarjetas.length).toBe(13);
+    await waitFor(() => expect(screen.getByTestId("kpi-Agendadas")).toHaveTextContent("26"));
     for (const t of tarjetas) expect(t.closest("a")).not.toBeNull();
   });
 });

@@ -58,6 +58,7 @@ class DashboardOperativo(BaseModel):
     inasistencias: int
     anulaciones: int
     tasa_inasistencia: float | None
+    agendadas_periodo: int
     agendadas_proximas: int
     controles_periodo: int
     licencias_activas: int

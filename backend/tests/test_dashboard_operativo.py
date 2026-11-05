@@ -101,6 +101,22 @@ def datos(db_session):
     db_session.commit()
 
 
+def test_agendadas_del_periodo_cuentan_las_citas_vigentes(db_session, datos):
+    # QA-001 (QA UTalca 29-10): lo agendado se ve aunque la fecha de la cita ya haya pasado.
+    db_session.add_all([
+        _cita(12, HOY - timedelta(days=5), 1),
+        _cita(13, HOY - timedelta(days=45), 1),  # fuera del período por defecto
+    ])
+    db_session.commit()
+
+    # Cita 7 (hoy) y 12 (hace 5 días); atendidas, anuladas e inasistencias no cuentan.
+    assert resumen_operativo(db_session, hoy=HOY).agendadas_periodo == 2
+
+    # Un período que llega al futuro suma la cita 8; la 9 está anulada.
+    r = resumen_operativo(db_session, fecha_hasta=HOY + timedelta(days=6), hoy=HOY)
+    assert r.agendadas_periodo == 3
+
+
 def test_resumen_operativo_periodo_por_defecto(db_session, datos):
     r = resumen_operativo(db_session, hoy=HOY)
 

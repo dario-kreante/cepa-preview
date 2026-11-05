@@ -3162,6 +3162,8 @@ export interface components {
             anulaciones: number;
             /** Tasa Inasistencia */
             tasa_inasistencia: number | null;
+            /** Agendadas Periodo */
+            agendadas_periodo: number;
             /** Agendadas Proximas */
             agendadas_proximas: number;
             /** Controles Periodo */

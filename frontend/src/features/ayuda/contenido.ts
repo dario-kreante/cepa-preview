@@ -54,7 +54,7 @@ export const GUIAS: Guia[] = [
       { texto: "—", tono: "neutral", significado: "La cifra aún está cargando o no se pudo leer. No significa cero." },
     ],
     automatico:
-      "Atenciones, inasistencias y anulaciones se calculan con la copia de SALUTEM, que se actualiza sola.",
+      "Atenciones, inasistencias, anulaciones y agendadas se calculan con la copia de SALUTEM, que se actualiza sola.",
     consejos: ["El período queda en la dirección de la página: puedes copiarla y compartirla con tu equipo."],
   },
   {

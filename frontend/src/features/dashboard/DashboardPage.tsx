@@ -15,6 +15,7 @@ import {
   Ban,
   BriefcaseBusiness,
   CalendarClock,
+  CalendarDays,
   CheckCircle2,
   ClipboardCheck,
   FileClock,
@@ -272,7 +273,7 @@ export function DashboardPage() {
         <h2 className="text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">
           Actividad del período
         </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 2xl:grid-cols-6 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
           <Kpi label="Atenciones" value={n(d?.atenciones)} icon={CheckCircle2} tone="text-[oklch(0.5_0.13_150)]" detalle="Citas atendidas en SALUTEM" to="/reportes?tab=operativo" />
           <Kpi
             label="Inasistencias"
@@ -283,6 +284,7 @@ export function DashboardPage() {
             to="/reportes?tab=operativo"
           />
           <Kpi label="Anulaciones" value={n(d?.anulaciones)} icon={Ban} tone="text-destructive" to="/reportes?tab=operativo" />
+          <Kpi label="Agendadas" value={n(d?.agendadas_periodo)} icon={CalendarDays} tone="text-[oklch(0.45_0.13_250)]" detalle="Citas vigentes del período" to="/reportes?tab=operativo" />
           <Kpi label="Ingresos" value={n(d?.ingresos_periodo)} icon={UserPlus} tone="text-[oklch(0.45_0.13_250)]" detalle={`${n(d?.altas_periodo)} altas en el período`} to="/ingresos" />
           <Kpi label="Controles médicos" value={n(d?.controles_periodo)} icon={ClipboardCheck} tone="text-[oklch(0.5_0.12_220)]" to="/controles" />
           <Kpi label="Agenda 7 días" value={n(d?.agendadas_proximas)} icon={CalendarClock} tone="text-[oklch(0.45_0.13_250)]" detalle="Citas vigentes desde hoy" to="/agenda" />
