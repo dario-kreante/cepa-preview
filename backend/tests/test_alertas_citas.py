@@ -391,3 +391,94 @@ def test_la_alerta_de_encuadre_no_se_resuelve_por_tener_hora(db_session):
     resolver_alertas_con_hora(db_session, HOY, "test")
     (a,) = _alertas(db_session, TipoAlerta.POSIBLE_ENCUADRE.value)
     assert a.estado == EstadoAlerta.PENDIENTE.value
+
+
+# El histórico vive en la copia de SALUTEM: `cita` solo parte en CITAS_SALUTEM_DESDE.
+
+
+def _inasistencia_en_copia(
+    db, persona_id: int, *, cita_id=None, dias_atras=800, estado=EstadoCitaSalutem.NO_ASISTE,
+    especialidad="Médico/a", desaparecida=False,
+) -> int:
+    cita_id = cita_id or _n() + 930000
+    db.add(
+        SalutemCita(
+            cita_id=cita_id, persona_id=persona_id, fecha_cita=HOY - timedelta(days=dias_atras),
+            estado_id=int(estado), contenido={"especialidadNombre": especialidad},
+            hash_contenido="h", visto_primera_vez=AHORA, visto_ultima_vez=AHORA, cambiado_en=AHORA,
+            desaparecida_en=AHORA if desaparecida else None,
+        )
+    )
+    db.flush()
+    return cita_id
+
+
+def _persona(db, rut: str, persona_id: int) -> None:
+    db.add(
+        SalutemPersona(
+            salutem_id=persona_id, rut=rut, contenido={}, hash_contenido="h",
+            visto_primera_vez=AHORA, visto_ultima_vez=AHORA, cambiado_en=AHORA,
+        )
+    )
+    db.flush()
+
+
+def test_el_historico_de_la_copia_de_salutem_cuenta_para_el_encuadre(db_session):
+    ing = _ingreso(db_session, _paciente(db_session, "10000041"))
+    _persona(db_session, "10000041", 777041)
+    _inasistencia_en_copia(db_session, 777041, dias_atras=800)
+
+    assert _encuadre(db_session, _cita_inasistencia(db_session, ing)) is True
+
+
+def test_el_historico_tambien_cruza_por_id_de_salutem_sin_rut(db_session):
+    paciente = _paciente(db_session, None)
+    paciente.salutem_persona_id = 777042
+    db_session.flush()
+    _persona(db_session, None, 777042)
+    _inasistencia_en_copia(db_session, 777042, dias_atras=800)
+    ing = _ingreso(db_session, paciente)
+
+    assert _encuadre(db_session, _cita_inasistencia(db_session, ing)) is True
+
+
+def test_la_misma_cita_en_copia_y_en_cita_cuenta_una_sola_vez(db_session):
+    ing = _ingreso(db_session, _paciente(db_session, "10000043"))
+    _persona(db_session, "10000043", 777043)
+    cita = _cita_inasistencia(db_session, ing)
+    _inasistencia_en_copia(db_session, 777043, cita_id=cita.salutem_cita_id, dias_atras=2)
+
+    assert _encuadre(db_session, cita) is False
+
+
+def test_el_historico_ignora_otros_estados_citas_borradas_y_posteriores(db_session):
+    ing = _ingreso(db_session, _paciente(db_session, "10000044"))
+    _persona(db_session, "10000044", 777044)
+    _inasistencia_en_copia(db_session, 777044, estado=EstadoCitaSalutem.ATENDIDO)
+    _inasistencia_en_copia(db_session, 777044, desaparecida=True)
+    _inasistencia_en_copia(db_session, 777044, dias_atras=-3)  # posterior a la inasistencia
+
+    assert _encuadre(db_session, _cita_inasistencia(db_session, ing)) is False
+
+
+def test_el_historico_de_otra_persona_no_cuenta(db_session):
+    ing = _ingreso(db_session, _paciente(db_session, "10000045"))
+    _persona(db_session, "10000046", 777046)
+    _inasistencia_en_copia(db_session, 777046)
+
+    assert _encuadre(db_session, _cita_inasistencia(db_session, ing)) is False
+
+
+def test_el_historico_respeta_el_filtro_de_especialidades(db_session, monkeypatch):
+    monkeypatch.setattr(
+        "app.services.alertas_citas.get_settings",
+        lambda: SimpleNamespace(citas_especialidades_reportes_set=frozenset({"médico/a"})),
+    )
+    ing = _ingreso(db_session, _paciente(db_session, "10000047"))
+    _persona(db_session, "10000047", 777047)
+    _inasistencia_en_copia(db_session, 777047, especialidad="Psicología")
+    cita = _cita_inasistencia(db_session, ing)
+    assert _encuadre(db_session, cita) is False
+
+    _inasistencia_en_copia(db_session, 777047, especialidad="MÉDICO/A")
+    assert _encuadre(db_session, cita) is True
