@@ -173,6 +173,16 @@ def resumen_operativo(
     con_resultado = atenciones + inasistencias
     tasa = round(inasistencias * 100 / con_resultado, 1) if con_resultado else None
 
+    # Lo agendado del período, aunque la fecha ya haya pasado (QA-001, QA UTalca 29-10).
+    agendadas_periodo = _contar(
+        db,
+        select(func.count()).select_from(SalutemCita).where(
+            _citas_vivas(),
+            SalutemCita.estado_id.not_in(_NO_VIGENTES),
+            SalutemCita.fecha_cita >= desde,
+            SalutemCita.fecha_cita <= hasta,
+        ),
+    )
     agendadas_proximas = _contar(
         db,
         select(func.count()).select_from(SalutemCita).where(
@@ -245,6 +255,7 @@ def resumen_operativo(
         inasistencias=inasistencias,
         anulaciones=anulaciones,
         tasa_inasistencia=tasa,
+        agendadas_periodo=agendadas_periodo,
         agendadas_proximas=agendadas_proximas,
         controles_periodo=controles_periodo,
         licencias_activas=licencias_activas,

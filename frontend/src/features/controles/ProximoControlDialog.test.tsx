@@ -83,7 +83,7 @@ const MOCK_CONTROL: ControlMedicoRead = {
 
 const MOCK_CONTROL_UPDATED: ControlMedicoRead = {
   ...MOCK_CONTROL,
-  proximo_control: "2026-07-15",
+  proximo_control: "2099-07-15",
   proximo_agendado: true,
 };
 
@@ -174,7 +174,7 @@ describe("ProximoControlDialog — alta válida", () => {
 
     // Fill the date
     const dateInput = screen.getByLabelText(/Fecha del próximo control/i);
-    await user.type(dateInput, "2026-07-15");
+    await user.type(dateInput, "2099-07-15");
 
     // Check the agendado checkbox
     const checkbox = screen.getByRole("checkbox", {
@@ -195,7 +195,7 @@ describe("ProximoControlDialog — alta válida", () => {
     });
 
     const sentBody = patchSpy.mock.calls[0][0] as Record<string, unknown>;
-    expect(sentBody.proximo_control).toBe("2026-07-15");
+    expect(sentBody.proximo_control).toBe("2099-07-15");
     expect(sentBody.proximo_agendado).toBe(true);
 
     // After invalidation + refetch, the Agendado badge appears

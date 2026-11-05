@@ -12,6 +12,11 @@ from app.domain.enums import (
 from app.util.rut import RutInvalidoError, normalizar_rut
 
 
+def _texto_o_none(v: str | None) -> str | None:
+    """Texto en blanco = sin dato. Oracle guarda '' como NULL: así todas las BD quedan igual."""
+    return (v.strip() or None) if v is not None else None
+
+
 class IngresoCreate(BaseModel):
     """Alta de ingreso en formulario único (CEPA-010). Campos obligatorios = D6.
 
@@ -27,10 +32,11 @@ class IngresoCreate(BaseModel):
     sexo: Sexo
     edad: int
     region: str
-    diagnostico: str
+    # Se conocen después de algunos controles: no se exigen al crear (QA-004, QA UTalca 29-10).
+    diagnostico: str | None = None
     tipo_derivacion: TipoDerivacion
     tipo_ingreso: TipoIngreso
-    modelo_tratamiento: str
+    modelo_tratamiento: str | None = None
     fecha_ingreso: date
     # opcionales — datos paciente
     comuna: str | None = None
@@ -48,6 +54,8 @@ class IngresoCreate(BaseModel):
     profesional_id: int | None = None
     especialidad: str | None = None
     tipo_atencion: str | None = None
+
+    _blanco_es_vacio = field_validator("diagnostico", "modelo_tratamiento")(_texto_o_none)
 
     @field_validator("rut")
     @classmethod
@@ -100,6 +108,8 @@ class IngresoUpdate(BaseModel):
     razon_social: str | None = None
     numero_siniestro: str | None = None
 
+    _blanco_es_vacio = field_validator("diagnostico", "modelo_tratamiento")(_texto_o_none)
+
     @field_validator("edad")
     @classmethod
     def _edad_positiva(cls, v: int | None) -> int | None:
@@ -110,8 +120,8 @@ class IngresoUpdate(BaseModel):
     @model_validator(mode="after")
     def _obligatorios_no_se_vacian(self) -> "IngresoUpdate":
         obligatorios = (
-            "nombre", "sexo", "edad", "region", "diagnostico",
-            "tipo_derivacion", "tipo_ingreso", "modelo_tratamiento", "fecha_ingreso",
+            "nombre", "sexo", "edad", "region",
+            "tipo_derivacion", "tipo_ingreso", "fecha_ingreso",
         )
         vaciados = [c for c in obligatorios if c in self.model_fields_set and getattr(self, c) is None]
         if vaciados:
@@ -147,8 +157,8 @@ class IngresoRead(BaseModel):
     fecha_diep_diat: date | None
     tipo_derivacion: TipoDerivacion
     tipo_ingreso: TipoIngreso
-    modelo_tratamiento: str
-    diagnostico: str
+    modelo_tratamiento: str | None
+    diagnostico: str | None
     razon_social: str | None
     estado: EstadoCaso
     tipo_alta: TipoAlta | None

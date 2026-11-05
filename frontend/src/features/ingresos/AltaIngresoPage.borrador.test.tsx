@@ -103,12 +103,12 @@ function renderPage(ruta: string) {
 }
 
 async function completarCampos(user: ReturnType<typeof userEvent.setup>) {
-  await user.type(screen.getByLabelText("Edad"), "40");
-  await user.type(screen.getByLabelText("Región"), "Maule");
-  await user.selectOptions(screen.getByLabelText("Sexo"), "M");
-  await user.type(screen.getByLabelText("Diagnóstico"), "Ansiedad");
-  await user.type(screen.getByLabelText("Modelo de tratamiento"), "ambulatorio");
-  await user.type(screen.getByLabelText("Fecha de ingreso"), "2026-10-16");
+  await user.type(screen.getByLabelText(/^Edad/), "40");
+  await user.selectOptions(screen.getByLabelText(/^Región/), "Maule");
+  await user.selectOptions(screen.getByLabelText(/^Sexo/), "M");
+  await user.type(screen.getByLabelText(/^Diagnóstico/), "Ansiedad");
+  await user.type(screen.getByLabelText(/^Modelo de tratamiento/), "ambulatorio");
+  await user.type(screen.getByLabelText(/^Fecha de ingreso/), "2026-10-16");
 }
 
 describe("AltaIngresoPage — completar un paciente borrador", () => {
@@ -117,13 +117,13 @@ describe("AltaIngresoPage — completar un paciente borrador", () => {
     renderPage("/ingresos/nuevo?paciente=7");
     const user = userEvent.setup();
 
-    await waitFor(() => expect(screen.getByLabelText("Nombre")).toHaveValue("JUAN PEREZ SOTO"));
+    await waitFor(() => expect(screen.getByLabelText(/^Nombre/)).toHaveValue("JUAN PEREZ SOTO"));
     // Identificación de SALUTEM a la vista, RUT opcional
     expect(await screen.findByText("sin_id_1141409")).toBeInTheDocument();
     expect(screen.getByLabelText(/^RUT/)).toHaveValue("");
     // Los datos que faltan quedan vacíos, no inventados
-    expect(screen.getByLabelText("Edad")).toHaveValue("");
-    expect(screen.getByLabelText("Región")).toHaveValue("");
+    expect(screen.getByLabelText(/^Edad/)).toHaveValue("");
+    expect(screen.getByLabelText(/^Región/)).toHaveValue("");
 
     await completarCampos(user);
     await user.click(screen.getByRole("button", { name: /crear ingreso/i }));
@@ -140,7 +140,7 @@ describe("AltaIngresoPage — completar un paciente borrador", () => {
     renderPage("/ingresos/nuevo?paciente=7");
     const user = userEvent.setup();
 
-    await waitFor(() => expect(screen.getByLabelText("Nombre")).toHaveValue("JUAN PEREZ SOTO"));
+    await waitFor(() => expect(screen.getByLabelText(/^Nombre/)).toHaveValue("JUAN PEREZ SOTO"));
     await user.type(screen.getByLabelText(/^RUT/), "11.111.111-2");
     await user.click(screen.getByRole("button", { name: /crear ingreso/i }));
     expect(await screen.findByText(/RUT inválido/i)).toBeInTheDocument();
@@ -151,11 +151,11 @@ describe("AltaIngresoPage — completar un paciente borrador", () => {
     mockAlta({ ...BORRADOR, rut: "11.111.111-1", sexo: "M", edad: 33, region: "Maule" });
     renderPage("/ingresos/nuevo?paciente=7");
 
-    await waitFor(() => expect(screen.getByLabelText("Nombre")).toHaveValue("JUAN PEREZ SOTO"));
+    await waitFor(() => expect(screen.getByLabelText(/^Nombre/)).toHaveValue("JUAN PEREZ SOTO"));
     expect(screen.getByLabelText(/^RUT/)).toHaveValue("11.111.111-1");
-    expect(screen.getByLabelText("Edad")).toHaveValue("33");
-    expect(screen.getByLabelText("Región")).toHaveValue("Maule");
-    expect(screen.getByLabelText("Sexo")).toHaveValue("M");
+    expect(screen.getByLabelText(/^Edad/)).toHaveValue("33");
+    expect(screen.getByLabelText(/^Región/)).toHaveValue("Maule");
+    expect(screen.getByLabelText(/^Sexo/)).toHaveValue("M");
   });
 
   it("sin ?paciente= el RUT sigue siendo obligatorio", async () => {
@@ -163,7 +163,7 @@ describe("AltaIngresoPage — completar un paciente borrador", () => {
     renderPage("/ingresos/nuevo");
     const user = userEvent.setup();
 
-    await user.type(screen.getByLabelText("Nombre"), "Ana");
+    await user.type(screen.getByLabelText(/^Nombre/), "Ana");
     await user.click(screen.getByRole("button", { name: /crear ingreso/i }));
     expect((await screen.findAllByText("Requerido")).length).toBeGreaterThan(0);
     expect(enviados).toHaveLength(0);
@@ -175,7 +175,7 @@ describe("AltaIngresoPage — completar un paciente borrador", () => {
     const spy = vi.spyOn(ultimoQc, "invalidateQueries");
     const user = userEvent.setup();
 
-    await waitFor(() => expect(screen.getByLabelText("Nombre")).toHaveValue("JUAN PEREZ SOTO"));
+    await waitFor(() => expect(screen.getByLabelText(/^Nombre/)).toHaveValue("JUAN PEREZ SOTO"));
     await completarCampos(user);
     await user.click(screen.getByRole("button", { name: /crear ingreso/i }));
 

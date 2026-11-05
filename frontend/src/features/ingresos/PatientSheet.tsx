@@ -605,7 +605,7 @@ export function PatientSheet({
                           Diagnóstico principal
                         </div>
                         <div className="text-[14px] font-semibold">
-                          {primaryIngreso.diagnostico}
+                          {primaryIngreso.diagnostico ?? "Sin registrar"}
                         </div>
                         <div className="text-[12px] text-muted-foreground mt-1">
                           {ESTADO_INGRESO[primaryIngreso.estado] ?? primaryIngreso.estado} · Ingreso {formatDate(primaryIngreso.fecha_ingreso)}

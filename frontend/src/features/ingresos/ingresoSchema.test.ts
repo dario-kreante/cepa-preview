@@ -32,6 +32,11 @@ describe("ingresoSchema · mensajes en español", () => {
     expect(mensajes({ ...VALIDO, edad: "4.5" }).edad).toEqual(["La edad debe ser un número entero"]);
   });
 
+  it("diagnóstico y modelo de tratamiento pueden faltar: se conocen después de los controles", () => {
+    expect(ingresoSchema.safeParse({ ...VALIDO, diagnostico: undefined, modelo_tratamiento: undefined }).success).toBe(true);
+    expect(ingresoSchema.safeParse({ ...VALIDO, diagnostico: "", modelo_tratamiento: "" }).success).toBe(true);
+  });
+
   it("un ingreso completo es válido", () => {
     expect(ingresoSchema.safeParse(VALIDO).success).toBe(true);
   });

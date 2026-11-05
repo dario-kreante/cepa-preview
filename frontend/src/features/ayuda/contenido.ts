@@ -54,7 +54,7 @@ export const GUIAS: Guia[] = [
       { texto: "—", tono: "neutral", significado: "La cifra aún está cargando o no se pudo leer. No significa cero." },
     ],
     automatico:
-      "Atenciones, inasistencias y anulaciones se calculan con la copia de SALUTEM, que se actualiza sola.",
+      "Atenciones, inasistencias, anulaciones y agendadas se calculan con la copia de SALUTEM, que se actualiza sola.",
     consejos: ["El período queda en la dirección de la página: puedes copiarla y compartirla con tu equipo."],
   },
   {
@@ -74,7 +74,7 @@ export const GUIAS: Guia[] = [
         titulo: "Crear un ingreso",
         pasos: [
           "Presiona «Nuevo ingreso».",
-          "Completa RUT, nombre, edad, región, diagnóstico, fecha de ingreso, sexo, tipo de derivación y tipo de ingreso.",
+          "Completa los campos marcados con *: RUT, nombre, edad, región, fecha de ingreso, sexo, tipo de derivación y tipo de ingreso. El diagnóstico y el modelo de tratamiento pueden quedar para después.",
           "Presiona «Crear ingreso». El folio se asigna solo (formato F-2026-0001) y el ingreso queda activo.",
         ],
       },

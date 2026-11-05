@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { cn, fmtDate } from "@/lib/utils";
+import { proximoAgendadoVigente } from "./proximoControl";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { puedeEscribir, type Rol } from "@/lib/rbac";
 import { useBuscarPacientes, useVista360 } from "@/features/ingresos/hooks";
@@ -126,7 +127,7 @@ function ControlRow({ control, ingresoId, canWrite, columnas }: ControlRowProps)
             <span className="font-mono text-[12px] text-muted-foreground">
               {control.proximo_control ? fmtDate(control.proximo_control) : "—"}
             </span>
-            {control.proximo_agendado && (
+            {proximoAgendadoVigente(control) && (
               <Badge variant="success" className="gap-1">
                 <CalendarCheck className="size-2.5" />
                 Agendado
@@ -483,9 +484,7 @@ export function ControlesPage() {
   const { data: controlesForKpi = [] } = useControlesPorIngreso(ingresoId ?? 0);
   const totalControles = controlesForKpi.length;
   const conLicencia = controlesForKpi.filter((c) => c.tiene_licencia).length;
-  const proximoAgendado = controlesForKpi.filter(
-    (c) => c.proximo_agendado
-  ).length;
+  const proximoAgendado = controlesForKpi.filter((c) => proximoAgendadoVigente(c)).length;
 
   const hasSearched = q.length > 0;
 

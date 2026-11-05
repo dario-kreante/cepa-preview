@@ -9,6 +9,7 @@ import { usePendientesFolio } from "@/features/pacientes-borrador/hooks";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { opcionesRegion } from "@/lib/regiones";
 
 const TIPOS_DERIVACION = ["DIEP", "DIAT", "PAPT a flujo AT", "Reingreso FUMP", "Reingreso SUSESO", "Reingreso ISL", "Convenio U.Clinica", "Proyecto", "Particular", "PAPT"];
 const TIPOS_INGRESO = ["consulta_espontanea", "convenio", "proyecto", "particular"];
@@ -49,9 +50,15 @@ function AltaIngresoForm({ paciente }: { paciente?: PacienteRead }) {
     try {
       // Folio vacío = el sistema asigna el siguiente; con texto, se usa el folio interno del programa.
       const folio = values.folio?.trim() || undefined;
+      const datos = {
+        ...values,
+        folio,
+        diagnostico: values.diagnostico?.trim() || null,
+        modelo_tratamiento: values.modelo_tratamiento?.trim() || null,
+      };
       const body = (paciente
-        ? { ...values, folio, paciente_id: paciente.id, rut: values.rut?.trim() || null }
-        : { ...values, folio }) as IngresoCreate;
+        ? { ...datos, paciente_id: paciente.id, rut: values.rut?.trim() || null }
+        : datos) as IngresoCreate;
       const ingreso = await crear.mutateAsync(body);
       toast.success(`Ingreso creado · folio ${ingreso.folio}`);
       nav("/ingresos");
@@ -82,9 +89,9 @@ function AltaIngresoForm({ paciente }: { paciente?: PacienteRead }) {
           )}
         </p>
       )}
+      <p className="text-[12.5px] text-muted-foreground">* Campo obligatorio</p>
       {([
-        ["rut", rutOpcional ? "RUT (opcional)" : "RUT"], ["nombre", "Nombre"], ["edad", "Edad"], ["region", "Región"],
-        ["diagnostico", "Diagnóstico"], ["modelo_tratamiento", "Modelo de tratamiento"],
+        ["rut", rutOpcional ? "RUT (opcional)" : "RUT *"], ["nombre", "Nombre *"], ["edad", "Edad *"],
       ] as const).map(([name, label]) => (
         <div key={name} className="space-y-1">
           <Label htmlFor={name}>{label}</Label>
@@ -93,16 +100,32 @@ function AltaIngresoForm({ paciente }: { paciente?: PacienteRead }) {
         </div>
       ))}
       <div className="space-y-1">
+        <Label htmlFor="region">Región *</Label>
+        <select id="region" {...register("region")} className="w-full rounded-md border border-ink-300 px-3 py-2 text-sm">
+          <option value="">Seleccione…</option>
+          {opcionesRegion(paciente?.region).map((r) => <option key={r} value={r}>{r}</option>)}
+        </select>
+        {errors.region && <p className="text-sm text-danger-600">{errors.region.message}</p>}
+      </div>
+      {([
+        ["diagnostico", "Diagnóstico (opcional)"], ["modelo_tratamiento", "Modelo de tratamiento (opcional)"],
+      ] as const).map(([name, label]) => (
+        <div key={name} className="space-y-1">
+          <Label htmlFor={name}>{label}</Label>
+          <Input id={name} {...register(name)} />
+        </div>
+      ))}
+      <div className="space-y-1">
         <Label htmlFor="folio">Folio (opcional)</Label>
         <Input id="folio" placeholder="Vacío = folio automático" {...register("folio")} />
       </div>
       <div className="space-y-1">
-        <Label htmlFor="fecha_ingreso">Fecha de ingreso</Label>
+        <Label htmlFor="fecha_ingreso">Fecha de ingreso *</Label>
         <Input id="fecha_ingreso" type="date" {...register("fecha_ingreso")} />
         {errors.fecha_ingreso && <p className="text-sm text-danger-600">{errors.fecha_ingreso.message}</p>}
       </div>
       <div className="space-y-1">
-        <Label htmlFor="sexo">Sexo</Label>
+        <Label htmlFor="sexo">Sexo *</Label>
         <select id="sexo" {...register("sexo")} className="w-full rounded-md border border-ink-300 px-3 py-2 text-sm">
           <option value="" disabled>Seleccione…</option>
           <option value="F">F</option><option value="M">M</option><option value="otro">Otro</option>
@@ -110,13 +133,13 @@ function AltaIngresoForm({ paciente }: { paciente?: PacienteRead }) {
         {errors.sexo && <p className="text-sm text-danger-600">{errors.sexo.message}</p>}
       </div>
       <div className="space-y-1">
-        <Label htmlFor="tipo_derivacion">Tipo de derivación</Label>
+        <Label htmlFor="tipo_derivacion">Tipo de derivación *</Label>
         <select id="tipo_derivacion" {...register("tipo_derivacion")} className="w-full rounded-md border border-ink-300 px-3 py-2 text-sm">
           {TIPOS_DERIVACION.map((t) => <option key={t} value={t}>{t}</option>)}
         </select>
       </div>
       <div className="space-y-1">
-        <Label htmlFor="tipo_ingreso">Tipo de ingreso</Label>
+        <Label htmlFor="tipo_ingreso">Tipo de ingreso *</Label>
         <select id="tipo_ingreso" {...register("tipo_ingreso")} className="w-full rounded-md border border-ink-300 px-3 py-2 text-sm">
           {TIPOS_INGRESO.map((t) => <option key={t} value={t}>{t}</option>)}
         </select>
