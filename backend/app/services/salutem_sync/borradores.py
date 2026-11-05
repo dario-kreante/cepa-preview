@@ -1,9 +1,11 @@
-"""Pacientes borrador: personas atendidas en SALUTEM que todavía no existen en el SIGE.
+"""Pacientes borrador: personas de SALUTEM que todavía no existen en el SIGE.
 
-Corre al final de cada ciclo del sync, después de la vinculación. Cada persona con una
-atención Atendida desde la fecha de corte y sin paciente (por RUT o por id de SALUTEM, en
-cualquier estado de registro) recibe un paciente `pendiente_folio` y una alerta sin
-profesional asignado. Idempotente: con paciente, la persona nunca vuelve a ser candidata.
+Corre al final de cada ciclo del sync, después de la vinculación. Cada persona sin paciente
+(por RUT o por id de SALUTEM, en cualquier estado de registro) que fue creada en SALUTEM
+desde la fecha de corte, o que tiene una atención Atendida desde esa fecha, recibe un
+paciente `pendiente_folio` y una alerta sin profesional asignado. Desde el 05-11-2026 basta
+con la creación: el CEPA quiere al paciente en SIGE antes de su primera atención.
+Idempotente: con paciente, la persona nunca vuelve a ser candidata.
 """
 
 from dataclasses import dataclass, field
@@ -89,7 +91,7 @@ def _es_atendida(contenido: dict[str, Any]) -> bool:
 
 
 def _candidatas(db: Session, desde: date) -> list[SalutemPersona]:
-    """Personas con atenciones desde el corte y sin paciente; atendidas, filtradas en Python."""
+    """Personas sin paciente creadas desde el corte, o con una atención Atendida desde el corte."""
     sin_paciente = ~exists().where(cruce_con_paciente())
     # Una sola consulta con join (sin listas IN literales: Oracle admite máximo 1000 elementos).
     personas: dict[int, SalutemPersona] = {}
@@ -108,6 +110,15 @@ def _candidatas(db: Session, desde: date) -> list[SalutemPersona]:
         personas.setdefault(persona.salutem_id, persona)
         if _es_atendida(contenido):
             atendidas.add(persona.salutem_id)
+    creadas = db.scalars(
+        select(SalutemPersona).where(
+            sin_paciente,
+            SalutemPersona.fecha_creacion >= datetime.combine(desde, time.min),
+        )
+    )
+    for persona in creadas:
+        personas.setdefault(persona.salutem_id, persona)
+        atendidas.add(persona.salutem_id)
     return [p for sid, p in sorted(personas.items()) if sid in atendidas]
 
 

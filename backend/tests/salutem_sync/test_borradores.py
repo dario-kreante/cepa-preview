@@ -268,3 +268,30 @@ def test_candidatas_no_usa_listas_in_literales(db_session):
     assert sentencias
     for s in sentencias:
         assert not re.search(r"\bIN\s*\(\s*(%\(|\$\d|\?|:)", s, re.IGNORECASE), s
+
+
+# ── Desde la creación de la persona en SALUTEM (05-11-2026) ───────────────────
+
+
+def test_crea_el_borrador_de_una_persona_creada_desde_el_corte_aunque_no_tenga_atenciones(db_session):
+    _persona(db_session, 7201, identificacion="sin_id_2817285", tipoIdentificacion="SIN IDENTIFICACION",
+             nombres="BROWNIE", apellidos="ARRIAGADA", fechaCreacion="2026-11-03 15:40")
+
+    r = crear_borradores(db_session, AHORA, CORTE)
+
+    assert r.creados == 1
+    [p] = _pacientes(db_session)
+    assert (p.nombre, p.salutem_persona_id, p.estado_registro) == ("BROWNIE ARRIAGADA", 7201, "pendiente_folio")
+
+
+def test_no_crea_el_borrador_de_una_persona_creada_antes_del_corte_sin_atenciones(db_session):
+    _persona(db_session, 7202, fechaCreacion="2026-08-31 23:59")
+
+    assert crear_borradores(db_session, AHORA, CORTE).creados == 0
+
+
+def test_la_persona_creada_y_atendida_genera_un_solo_borrador(db_session):
+    _atendida(db_session, 7203, fechaCreacion="2026-09-05 10:00")
+
+    assert crear_borradores(db_session, AHORA, CORTE).creados == 1
+    assert crear_borradores(db_session, AHORA, CORTE).creados == 0

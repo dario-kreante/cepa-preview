@@ -129,3 +129,26 @@ def test_caliente_no_relee_otras_especialidades_ni_controles_antiguos(db_session
     ventana_caliente(db_session, salutem, ritmo, AHORA)
 
     assert _releidas(salutem).isdisjoint({9102, 9103})
+
+
+def test_caliente_copia_a_las_personas_creadas_hoy_aunque_no_tengan_citas(db_session, salutem, ritmo):
+    from app.models.salutem_copia import SalutemPersona
+
+    salutem.agregar_persona(4061957, rut="sin_id_2817285", fechaCreacion="2026-09-16 11:40")
+    salutem.agregar_persona(4061958, rut="sin_id_2817286", fechaCreacion="2026-09-10 11:40")
+
+    ventana_caliente(db_session, salutem, ritmo, AHORA)
+
+    assert ("listar_personas", HOY) in salutem.llamadas
+    assert db_session.get(SalutemPersona, 4061957) is not None
+    assert db_session.get(SalutemPersona, 4061958) is None  # creada otro día
+
+
+def test_tibia_recupera_las_personas_creadas_en_la_ultima_semana(db_session, salutem, ritmo):
+    from app.models.salutem_copia import SalutemPersona
+
+    salutem.agregar_persona(4061959, rut="sin_id_2817287", fechaCreacion="2026-09-10 08:00")
+
+    ventana_tibia(db_session, salutem, ritmo, AHORA)
+
+    assert db_session.get(SalutemPersona, 4061959) is not None

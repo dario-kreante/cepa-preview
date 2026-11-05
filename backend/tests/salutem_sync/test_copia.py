@@ -96,3 +96,17 @@ def test_atencion_desaparecida_y_reaparecida_vuelve_a_quedar_pendiente(db_sessio
 
 def test_marcar_atencion_inexistente_no_hace_nada(db_session):
     assert copia.marcar_atencion_desaparecida(db_session, 123, AHORA) is False
+
+
+def test_la_persona_guarda_su_fecha_de_creacion_y_no_la_pierde(db_session):
+    from datetime import datetime
+
+    listada = {"SALUTEM_ID": 4061957, "identificacion": "sin_id_2817285",
+               "tipoIdentificacion": "SIN IDENTIFICACION", "fechaCreacion": "2026-11-03 15:40"}
+    copia.guardar_persona(db_session, PersonaSalutem.desde_api(listada), AHORA)
+    assert db_session.get(SalutemPersona, 4061957).fecha_creacion == datetime(2026, 11, 3, 15, 40)
+
+    # La ficha demográfica (`obtener_persona`) no trae la fecha: no debe borrarla.
+    demografica = {k: v for k, v in listada.items() if k != "fechaCreacion"} | {"nombres": "BROWNIE"}
+    copia.guardar_persona(db_session, PersonaSalutem.desde_api(demografica), AHORA)
+    assert db_session.get(SalutemPersona, 4061957).fecha_creacion == datetime(2026, 11, 3, 15, 40)

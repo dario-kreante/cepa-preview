@@ -428,3 +428,24 @@ def test_un_base64_que_no_es_texto_es_un_error_de_salutem():
     with pytest.raises(SalutemError) as exc:
         _cliente(handler).obtener_archivo(1, 9)
     assert exc.value.codigo == "ARCHIVO_ILEGIBLE"
+
+
+def test_listar_personas_pide_las_creadas_en_un_solo_dia():
+    """`GET /personas` con rango: SALUTEM rechaza más de un día (ERROR_INTERVALO_SUPERADO)."""
+    visto = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        visto["ruta"] = request.url.path
+        visto["body"] = json.loads(request.content)
+        return _ok([
+            {"SALUTEM_ID": 4061957, "identificacion": "sin_id_2817285",
+             "tipoIdentificacion": "SIN IDENTIFICACION", "nombres": "BROWNIE",
+             "fechaCreacion": "2026-11-03 15:40"},
+        ])
+
+    personas = _cliente(handler).listar_personas(date(2026, 11, 3))
+
+    assert visto["ruta"].endswith("/personas")
+    assert visto["body"] == {"fechaHoraInicio": "2026-11-03 00:00", "fechaHoraTermino": "2026-11-03 23:59"}
+    assert [p.salutem_id for p in personas] == [4061957]
+    assert personas[0].crudo["fechaCreacion"] == "2026-11-03 15:40"

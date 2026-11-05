@@ -50,6 +50,9 @@ class ClientePersonasPermitidas:
             return None
         return self._cliente.obtener_persona(salutem_id)
 
+    def listar_personas(self, dia: date) -> list[PersonaSalutem]:
+        return [p for p in self._cliente.listar_personas(dia) if p.salutem_id in self._permitidas]
+
     def listar_atenciones(self, salutem_id: int) -> list[CitaSalutem]:
         if salutem_id not in self._permitidas:
             return []

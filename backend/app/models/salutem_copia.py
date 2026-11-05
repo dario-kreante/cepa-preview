@@ -32,6 +32,11 @@ class SalutemPersona(_RegistroCopia, Base):
     salutem_id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=False)
     # RUT en la forma canónica del CEPA (`<cuerpo><DV>`); None si SALUTEM no trae uno válido.
     rut: Mapped[str | None] = mapped_column(String(12), nullable=True, index=True)
+    # Cuándo se creó en SALUTEM (hora local). Solo la trae `GET /personas` por rango: la
+    # ficha demográfica no, así que puede quedar vacía (migración 1460).
+    fecha_creacion: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    __table_args__ = (Index("ix_salutem_persona_creacion", "fecha_creacion"),)
 
 
 class SalutemCita(_RegistroCopia, Base):
