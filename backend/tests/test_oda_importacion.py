@@ -6,7 +6,7 @@ vacío) con datos ficticios.
 """
 
 import io
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -20,6 +20,7 @@ from app.models.audit_log import AuditLog
 from app.models.ingreso import Ingreso
 from app.models.oda import Oda
 from app.models.paciente import Paciente
+from app.models.salutem_copia import SalutemPersona
 from app.services.alertas import _construir_hitos_oda, ejecutar_job_alertas
 from app.services.oda_importacion import ArchivoInvalidoError, importar_reporte, parsear_reporte
 
@@ -176,17 +177,25 @@ def test_match_por_siniestro_y_respaldo_por_rut(db_session: Session):
     assert {s.numero_orden for s in r.sin_paciente} >= {"900002", "900005", "900006"}
 
 
-def _con_persona_salutem(db: Session, ingreso: Ingreso, persona_id: int) -> None:
+def _con_persona_salutem(db: Session, ingreso: Ingreso, persona_id: int, identificacion: str) -> None:
+    """Persona sin RUT: en SALUTEM su «sin_id» NO es su id (1216017 ↔ sin_id_1206850)."""
+    ahora = datetime(2026, 11, 5, 12, 0, tzinfo=timezone.utc)
+    db.add(
+        SalutemPersona(
+            salutem_id=persona_id, rut=None, contenido={"identificacion": identificacion},
+            hash_contenido="h", visto_primera_vez=ahora, visto_ultima_vez=ahora, cambiado_en=ahora,
+        )
+    )
     db.get(Paciente, ingreso.paciente_id).salutem_persona_id = persona_id
     db.flush()
 
 
-def test_rut_sin_id_calza_por_el_id_de_salutem_del_paciente(db_session: Session):
+def test_rut_sin_id_calza_con_la_identificacion_de_salutem_del_paciente(db_session: Session):
     ingreso = _ingreso(db_session)
-    _con_persona_salutem(db_session, ingreso, 1216017)
+    _con_persona_salutem(db_session, ingreso, 1216017, "sin_id_1206850")
 
     r = importar_reporte(
-        db_session, _xlsx([_fila("910001", "7777777", HOY + timedelta(days=30), rut="sin_id_1216017")])
+        db_session, _xlsx([_fila("910001", "7777777", HOY + timedelta(days=30), rut="sin_id_1206850")])
     )
 
     assert r.match_por_id_salutem == 1
@@ -195,12 +204,26 @@ def test_rut_sin_id_calza_por_el_id_de_salutem_del_paciente(db_session: Session)
     assert oda.ingreso_id == ingreso.id
 
 
-def test_rut_sin_id_acepta_mayusculas_y_espacios(db_session: Session):
+def test_el_numero_del_sin_id_no_se_confunde_con_el_id_de_persona(db_session: Session):
+    # sin_id_1216017 es otra persona, aunque 1216017 sea el id de esta.
     ingreso = _ingreso(db_session)
-    _con_persona_salutem(db_session, ingreso, 1216018)
+    _con_persona_salutem(db_session, ingreso, 1216017, "sin_id_1206850")
 
     r = importar_reporte(
-        db_session, _xlsx([_fila("910002", "7777778", HOY + timedelta(days=30), rut=" SIN_ID_1216018 ")])
+        db_session, _xlsx([_fila("910002", "7777778", HOY + timedelta(days=30), rut="sin_id_1216017")])
+    )
+
+    assert r.match_por_id_salutem == 0
+    assert r.creadas == 0
+    assert [s.numero_orden for s in r.sin_paciente] == ["910002"]
+
+
+def test_rut_sin_id_acepta_mayusculas_y_espacios(db_session: Session):
+    ingreso = _ingreso(db_session)
+    _con_persona_salutem(db_session, ingreso, 1216018, "sin_id_1206851")
+
+    r = importar_reporte(
+        db_session, _xlsx([_fila("910003", "7777779", HOY + timedelta(days=30), rut=" SIN_ID_1206851 ")])
     )
 
     assert r.match_por_id_salutem == 1
@@ -208,27 +231,27 @@ def test_rut_sin_id_acepta_mayusculas_y_espacios(db_session: Session):
 
 def test_rut_sin_id_de_otra_persona_queda_sin_paciente(db_session: Session):
     ingreso = _ingreso(db_session)
-    _con_persona_salutem(db_session, ingreso, 1216019)
+    _con_persona_salutem(db_session, ingreso, 1216019, "sin_id_1206852")
 
     r = importar_reporte(
-        db_session, _xlsx([_fila("910003", "7777779", HOY + timedelta(days=30), rut="sin_id_999")])
+        db_session, _xlsx([_fila("910004", "7777780", HOY + timedelta(days=30), rut="sin_id_999")])
     )
 
     assert r.match_por_id_salutem == 0
-    assert [s.numero_orden for s in r.sin_paciente] == ["910003"]
+    assert [s.numero_orden for s in r.sin_paciente] == ["910004"]
 
 
 def test_el_siniestro_tiene_prioridad_sobre_el_sin_id(db_session: Session):
-    por_siniestro = _ingreso(db_session, siniestro="7777780")
+    por_siniestro = _ingreso(db_session, siniestro="7777781")
     por_id = _ingreso(db_session)
-    _con_persona_salutem(db_session, por_id, 1216020)
+    _con_persona_salutem(db_session, por_id, 1216020, "sin_id_1206853")
 
     r = importar_reporte(
-        db_session, _xlsx([_fila("910004", "7777780", HOY + timedelta(days=30), rut="sin_id_1216020")])
+        db_session, _xlsx([_fila("910005", "7777781", HOY + timedelta(days=30), rut="sin_id_1206853")])
     )
 
     assert (r.match_por_siniestro, r.match_por_id_salutem) == (1, 0)
-    oda = db_session.scalar(select(Oda).where(Oda.identificador == "910004"))
+    oda = db_session.scalar(select(Oda).where(Oda.identificador == "910005"))
     assert oda.ingreso_id == por_siniestro.id
 
 

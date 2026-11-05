@@ -6,7 +6,8 @@ El CEPA descarga cada quincena desde el portal del ISL un Excel con la vigencia 
 1. Busca el ingreso: primero por N° Siniestro contra ``ingreso.numero_siniestro``; si no
    hay, por RUT del trabajador contra ``paciente.rut`` (respaldo: en el archivo real la
    columna «Rut Trabajador» viene casi siempre vacía o con ``sin_id_<n>``). Una persona sin
-   RUT trae ``sin_id_<n>``, y se busca por ``paciente.salutem_persona_id`` (n = id de SALUTEM).
+   RUT trae ``sin_id_<n>``: es la identificación que SALUTEM guarda en la persona, no su id
+   (la persona 1216017 es sin_id_1206850), y por ella se llega a ``paciente.salutem_persona_id``.
    Si hay varios ingresos candidatos se prefiere el activo y, entre iguales, el más reciente.
 2. Hace upsert de la ODA por (ingreso, identificador = N° de Orden): subir la misma planilla
    dos veces no duplica nada.
@@ -34,6 +35,7 @@ from app.domain.enums import EstadoCaso
 from app.models.ingreso import Ingreso
 from app.models.oda import Oda
 from app.models.paciente import Paciente
+from app.models.salutem_copia import SalutemPersona
 from app.util.rut import RutInvalidoError, normalizar_rut
 
 HOJA_ESPERADA = "Reporte Prestador"
@@ -43,7 +45,7 @@ LOTE_IN = 500  # Oracle limita las listas IN a 1000 elementos
 # el archivo comprimido; un xlsx real del ISL (~2.600 filas) pesa ~1 MB descomprimido.
 MAX_DESCOMPRIMIDO_BYTES = 100 * 1024 * 1024
 MAX_FILAS = 50_000
-_SIN_ID = re.compile(r"sin_id_(\d{1,18})", re.IGNORECASE)
+_SIN_ID = re.compile(r"sin_id_\d{1,18}")
 
 # Clave normalizada del encabezado → nombre lógico de la columna.
 _COLUMNAS = {
@@ -263,10 +265,10 @@ def _rut_canonico(s: str | None) -> str | None:
         return None  # p. ej. «sin_id_1141409» o el RUT del prestador mal digitado
 
 
-def _id_salutem(s: str | None) -> int | None:
-    """El id de SALUTEM de una persona sin RUT: «sin_id_1141409» → 1141409."""
-    m = _SIN_ID.fullmatch((s or "").strip())
-    return int(m.group(1)) if m else None
+def _sin_id(s: str | None) -> str | None:
+    """La identificación de una persona sin RUT, normalizada: « SIN_ID_1141409 » → «sin_id_1141409»."""
+    texto = (s or "").strip().lower()
+    return texto if _SIN_ID.fullmatch(texto) else None
 
 
 def _mejor(ingresos: list[Ingreso]) -> Ingreso:
@@ -284,7 +286,7 @@ def _lotes(valores: list, n: int = LOTE_IN):
 
 def _indices_ingresos(
     db: Session, filas: list[FilaReporte]
-) -> tuple[dict[str, list[Ingreso]], dict[str, list[Ingreso]], dict[int, list[Ingreso]]]:
+) -> tuple[dict[str, list[Ingreso]], dict[str, list[Ingreso]], dict[str, list[Ingreso]]]:
     por_siniestro: dict[str, list[Ingreso]] = {}
     siniestros = {_norm_siniestro(f.siniestro) for f in filas} - {None}
     if siniestros:
@@ -306,17 +308,25 @@ def _indices_ingresos(
         for rut, ing in db.execute(consulta):
             por_rut.setdefault(rut, []).append(ing)
 
-    por_id_salutem: dict[int, list[Ingreso]] = {}
-    ids = sorted({_id_salutem(f.rut_trabajador) for f in filas} - {None})
-    for lote in _lotes(ids):
-        consulta = (
-            select(Paciente.salutem_persona_id, Ingreso)
-            .join(Ingreso, Ingreso.paciente_id == Paciente.id)
-            .where(Paciente.salutem_persona_id.in_(lote))
-        )
-        for persona_id, ing in db.execute(consulta):
-            por_id_salutem.setdefault(persona_id, []).append(ing)
-    return por_siniestro, por_rut, por_id_salutem
+    por_sin_id: dict[str, list[Ingreso]] = {}
+    buscados = {_sin_id(f.rut_trabajador) for f in filas} - {None}
+    if buscados:
+        # La identificación vive en el JSON (CLOB en Oracle): se compara en Python. Solo se
+        # revisan las personas sin RUT, que son pocas (igual que en busqueda.py).
+        sin_id_de: dict[int, str] = {}
+        for persona in db.scalars(select(SalutemPersona).where(SalutemPersona.rut.is_(None))):
+            identificacion = _sin_id(str((persona.contenido or {}).get("identificacion") or ""))
+            if identificacion in buscados:
+                sin_id_de[persona.salutem_id] = identificacion
+        for lote in _lotes(sorted(sin_id_de)):
+            consulta = (
+                select(Paciente.salutem_persona_id, Ingreso)
+                .join(Ingreso, Ingreso.paciente_id == Paciente.id)
+                .where(Paciente.salutem_persona_id.in_(lote))
+            )
+            for persona_id, ing in db.execute(consulta):
+                por_sin_id.setdefault(sin_id_de[persona_id], []).append(ing)
+    return por_siniestro, por_rut, por_sin_id
 
 
 # ── Importación ────────────────────────────────────────────────────────────────
@@ -374,7 +384,7 @@ def importar_reporte(
     hoy = hoy or date.today()
     parseo = parsear_reporte(contenido)
     resumen = ResumenImportacion(filas_leidas=parseo.filas_leidas, errores=list(parseo.errores))
-    por_siniestro, por_rut, por_id_salutem = _indices_ingresos(db, parseo.filas)
+    por_siniestro, por_rut, por_sin_id = _indices_ingresos(db, parseo.filas)
 
     # Filas con ingreso resuelto, agrupadas por ingreso.
     por_ingreso: dict[int, list[FilaReporte]] = {}
@@ -388,7 +398,7 @@ def importar_reporte(
             if candidatos:
                 resumen.match_por_rut += 1
             else:
-                candidatos = por_id_salutem.get(_id_salutem(f.rut_trabajador))
+                candidatos = por_sin_id.get(_sin_id(f.rut_trabajador) or "")
                 if candidatos:
                     resumen.match_por_id_salutem += 1
         if not candidatos:
