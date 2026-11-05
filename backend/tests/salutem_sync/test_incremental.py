@@ -16,9 +16,31 @@ def _pares(salutem) -> set[tuple[date, int]]:
     return {(ll[1], ll[3]) for ll in salutem.llamadas_a("listar_citas")}
 
 
-def test_caliente_al_mediodia_barre_creacion_de_hoy_y_citas_de_hoy_y_manana(db_session, salutem, ritmo):
+def test_caliente_al_mediodia_barre_creacion_de_hoy_y_citas_de_siete_dias_atras_a_catorce_adelante(
+    db_session, salutem, ritmo
+):
     ventana_caliente(db_session, salutem, ritmo, AHORA)
-    assert _pares(salutem) == {(HOY, CREACION), (HOY, CITA), (HOY + DIA, CITA)}
+    citas = {(HOY + i * DIA, CITA) for i in range(-7, 15)}
+    assert _pares(salutem) == {(HOY, CREACION)} | citas
+
+
+def test_caliente_ve_el_cambio_de_estado_de_una_cita_de_la_semana_pasada(db_session, salutem, ritmo):
+    # Lo que el CEPA hace en SALUTEM debe verse en SIGE en 5 minutos (QA UTalca 29-10, QA-005).
+    salutem.agregar_persona(501)
+    salutem.agregar_cita(9002, 501, HOY - 7 * DIA, EstadoCitaSalutem.AGENDADO)
+    barrer_dia(db_session, salutem, ritmo, HOY - 7 * DIA, TipoFechaCita.FECHA_CITA, AHORA)
+    salutem.citas[9002]["estadoCitaId"] = int(EstadoCitaSalutem.ANULADO)
+
+    ventana_caliente(db_session, salutem, ritmo, AHORA)
+
+    assert db_session.get(SalutemCita, 9002).estado_id == int(EstadoCitaSalutem.ANULADO)
+
+
+def test_caliente_no_barre_fuera_de_la_ventana(db_session, salutem, ritmo):
+    ventana_caliente(db_session, salutem, ritmo, AHORA)
+    pares = _pares(salutem)
+    assert (HOY - 8 * DIA, CITA) not in pares
+    assert (HOY + 15 * DIA, CITA) not in pares
 
 
 def test_caliente_pasada_la_medianoche_incluye_la_creacion_de_ayer(db_session, salutem, ritmo):

@@ -94,6 +94,10 @@ Requiere aprobación explícita de Darío, la clave de producción y el aviso a 
   vinculación. El detalle está en el campo `error` de esa ejecución. La ventana siguiente
   lo reintenta. Solo una credencial rechazada o SALUTEM caído tras los reintentos detienen
   la ejecución (`estado = error`).
+- La `caliente` barre las citas creadas hoy y las de -7..+14 días (207 llamadas, 5/11/2026): el
+  CEPA espera ver en SIGE en 5 minutos lo que hace en SALUTEM. Un cambio fuera de ese rango espera
+  a la `tibia` o a la `fria`. Si una `caliente` tarda más de 5 minutos, la siguiente queda `omitida`:
+  en ese caso, achicar `CALIENTE_DIAS_ATRAS` y `CALIENTE_DIAS_ADELANTE` en `incremental.py`.
 - Cada noche la `fria` (~35–40 min) tiene el lease: entre ~03:30 y 04:15 las `caliente`
   quedan `omitida` y `estado` puede mostrar `atrasado: true`. Es esperado; si sigue atrasado
   pasadas las 04:30, revisar.

@@ -55,7 +55,7 @@ def test_caliente_exitosa_registra_bitacora_y_suelta_el_lease(db_session, salute
 
     (ejecucion,) = _ejecuciones(db_session, "caliente")
     assert ejecucion.estado == "ok"
-    assert ejecucion.llamadas == 27  # 3 días × 9 estados
+    assert ejecucion.llamadas == 207  # 23 días × 9 estados (creación de hoy + citas de -7..+14)
     assert db_session.get(SalutemSyncLease, "salutem").dueno is None
 
 
