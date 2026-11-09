@@ -77,10 +77,10 @@ en 3 ritmos), los perfiles y los módulos. El equipo planteó dudas y pedidos po
 | D3 | ✅ Revisar por qué Pilar no pudo cambiar el folio | Pilar | Era el permiso (lo resuelve D2) y el alta no tenía campo «Folio»: se agregó (opcional; vacío = automático). Antes: corregir folio es solo para Administrativo. Ella necesita editarlo al completar el registro (folios internos por programa). |
 | D4 | ✅ Control médico: dejar editar a mano días/reposo (y datos de licencia) cuando SALUTEM no los trae o un adendum los corrige | Pilar | «Licencia/RECA» y «Evaluación» ya editaban, pero el sync volvía a escribir la ficha. Ahora el control guarda los campos corregidos (migración 1390) y el sync no los pisa; la tabla los marca «Corregido». |
 | D5 | ✅ Estado de paciente **«En encuadre»** (manual, junto a activo/cerrado) | Jocelyn, Pilar, Gissela | |
-| D6 | ✅ Alerta de **inasistencias para encuadre**: desde la 2.ª inasistencia, contando el histórico; cada inasistencia nueva vuelve a alertar | Jocelyn, Pilar, Gissela | Se acordó alertar todas y que el equipo revise si el paciente está en tratamiento o en acompañamiento. |
+| D6 | ✅ Alerta de **inasistencias para encuadre**: desde la 2.ª inasistencia, contando el histórico; cada inasistencia nueva vuelve a alertar | Jocelyn, Pilar, Gissela | Se acordó alertar todas y que el equipo revise si el paciente está en tratamiento o en acompañamiento. 09-11: el conteo ahora incluye el histórico completo de inasistencias de SALUTEM, no solo desde enero de 2026 (PR #64), y la alerta no excluye a ningún paciente. Sin probar con un caso real: SALUTEM QA no permite marcar inasistencias. |
 | D7 | Alertas por correo: activarlas con la lista de correos institucionales, destinatarios por tipo de alerta (p. ej. recetas → prestaciones médicas) y opción de desactivarlas en la configuración personal | Pilar | Darío revisa si se configura por tipo. Depende de P2. |
 | D8 | Alerta de **anulación de cita**, la haga quien la haga (paciente por correo o WhatsApp, administrativo o profesional) | Pilar, Paula | Buscar un caso en el historial. Depende de que SALUTEM vuelva y de P6. |
-| D9 | ✅ ODA: alerta cuando un control o atención cae **fuera de la vigencia de la ODA** (fecha de atención vs. inicio/término) | Jocelyn, Melissa | La carga del Excel del ISL y el aviso de vencimiento ya están en PR #61. Responder en el grupo que eso ya existe. El cruce por fecha de atención es nuevo. |
+| D9 | ✅ ODA: alerta cuando un control o atención cae **fuera de la vigencia de la ODA** (fecha de atención vs. inicio/término) | Jocelyn, Melissa | La carga del Excel del ISL y el aviso de vencimiento ya están en PR #61. Responder en el grupo que eso ya existe. El cruce por fecha de atención es nuevo. 09-11: las órdenes de pacientes sin RUT ahora se cruzan por el código `sin_id_` de la planilla, que corresponde a la identificación de SALUTEM (PR #63 y #67). Con la planilla de 2.633 filas, 12 órdenes quedan asociadas a 5 pacientes de prueba. |
 | D10 | ✅ EPT: **plazo de insumos** (documentos del empleador → EPTista) con alerta el mismo día del plazo, para todos los casos | Sasha | El plazo ya existía como «Plazo insumos empresa» en Proceso EPT; se agregó la alerta del mismo día (migración 1420, configurable). |
 | D11 | ✅ EPT: selección múltiple de **hasta 3 factores de riesgo** | Carla | Hoy hay uno solo de los 24 subfactores (PR #61). |
 | D12 | ✅ EPT: revisar con Sasha que ya encuentra los casos por nombre/RUT/ID y que puede borrar los creados por error | Sasha | Sus casos 21–23 se crearon en **dev** el 21-10, antes del PR #60. Verificado en QA el 29-10: buscar paciente → lista de casos → «Abrir» → «Eliminar». La etiqueta «EISTA» pasa a «EPTista». Pedirle que lo pruebe en QA. |
@@ -96,6 +96,49 @@ en 3 ritmos), los perfiles y los módulos. El equipo planteó dudas y pedidos po
 | P2 | Enviar la lista de correos institucionales para las alertas por mail | Pilar |
 | P3 | Enviar la lista de campos a agregar/quitar en «Completar registro» del folio pendiente (p. ej. tipo de programa) | Pilar |
 | P4 | Preguntar a SALUTEM si su API puede informar la carpeta del documento (licencias / recetas / ODA) | Pilar |
-| P5 | Gestionar con SALUTEM la caída de la integración (con la captura de D1) | Pilar |
-| P6 | Cuando vuelva la integración: crear un paciente nuevo y una cita, y anularla por los distintos medios, para probar folio pendiente y anulaciones | Pilar |
+| P5 | ✅ Gestionar con SALUTEM la caída de la integración (con la captura de D1) | Pilar |
+| P6 | 🟡 Cuando vuelva la integración: crear un paciente nuevo y una cita, y anularla por los distintos medios, para probar folio pendiente y anulaciones | Pilar |
 | P7 | Registrar todas las observaciones de las pruebas en el documento de incidencias | Todo el equipo |
+
+Notas al 09-11: la integración con SALUTEM QA funciona de nuevo (P5). SALUTEM QA se apaga de noche
+por programación (su ambiente dice 09:00–18:00). De P6, ya crearon 2 pacientes nuevos y uno tiene una cita
+recepcionada; falta probar las anulaciones.
+
+---
+
+## Respuesta de Pilar (04-11) y estado al 09-11
+
+Pilar respondió el 04-11 al correo de cambios de la reunión, con el registro de pruebas de QA del 29-10
+(QA-001 a QA-006).
+
+### Registro de pruebas del 29-10
+
+| Caso | Observación | Estado al 09-11 |
+|---|---|---|
+| QA-001 | Dashboard: lo agendado en SALUTEM no se reflejaba | ✅ Tarjeta nueva «Agendadas» con las citas vigentes del período (PR #62). Atenciones y anulaciones sí subían en sus capturas. |
+| QA-002 | Pacientes creados en SALUTEM no llegaban a SIGE | ✅ No era un error: QA solo trae una lista de pacientes de prueba, y los 2 nuevos no estaban. Se agregaron el 06-11. Además, el paciente borrador ahora nace cuando la persona se crea en SALUTEM, sin esperar una atención (PR #68), y su ficha muestra las citas de SALUTEM aunque aún no tenga ingreso (PR #69). Los 2 están en QA como pendientes de folio. |
+| QA-003 | Controles: «Agendado» en controles ya pasados y controles faltantes | ✅ «Agendado» era el próximo control; ahora solo aparece si su fecha no pasó (PR #62). La captura era anterior al despliegue del 29-10: la paciente ya muestra su control del 22-10. |
+| QA-004 | Ingreso de paciente: campos obligatorios de más | ✅ Diagnóstico y modelo de tratamiento son opcionales, los obligatorios llevan asterisco y la región se elige de una lista (PR #62). |
+| QA-005 | Lo hecho en SALUTEM tardaba en verse en SIGE | ✅ El ciclo de 5 minutos ahora revisa las citas de 7 días atrás a 14 adelante (PR #66), y las personas creadas en el día (PR #68). Un cambio se ve en 2 a 7 minutos, recargando la página. |
+| QA-006 | Un cambio de rol no se reflejaba | ✅ No era un error: el rol se cambió en QA y la usuaria entró ese día a dev. Probar entrando por el enlace de QA. |
+
+### Otros cambios desde el 04-11
+
+| Tema | Qué cambió |
+|---|---|
+| Controles de SALUTEM | El detalle del control muestra tipo y fecha de alta, sesión actual, sesiones del tratamiento y observaciones para el reintegro, tomados de la ficha de SALUTEM (PR #65, migración 1450). |
+| Pacientes de prueba en QA | Se agregan a la lista de pacientes permitidos de QA y dev. Cada paciente de prueba nuevo que creen en SALUTEM QA hay que avisarlo para sumarlo. |
+
+Todo lo anterior está desplegado en QA y dev (main `12af3dc`, 09-11).
+
+### Preguntas abiertas para el CEPA
+
+| # | Pregunta | Para |
+|---|---|---|
+| P8 | Alerta de alta próxima: ¿con cuánta anticipación debe avisar, según la «proyección de reintegro»? | Pilar |
+| P9 | Encuadre: ¿qué pierde exactamente el paciente, qué documento firma y hay que registrar la firma y su fecha en SIGE? | Pilar |
+| P10 | Excel de prestaciones y campos: la columna «¿Es Alerta?», ¿es una configuración de SALUTEM o un pedido de alerta para SIGE? ¿Se quieren filtrar los reportes por agrupación y tipo? | Pilar |
+| P11 | Tiempo de actualización: ¿sirve el rango de 2 a 7 minutos? | Pilar |
+
+Siguen pendientes de antes: D7 (depende de P2, la lista de correos), D8 (depende de P6) y D15 (adendum,
+depende de SALUTEM).
