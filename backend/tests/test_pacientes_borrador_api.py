@@ -160,3 +160,66 @@ def test_lista_no_usa_listas_in_literales(as_admin, db_session):
     assert sentencias
     for s in sentencias:
         assert not re.search(r"\bIN\s*\(\s*(%\(|\$\d|\?|:)", s, re.IGNORECASE), s
+
+
+# --- Citas de SALUTEM en la ficha del borrador (QA 06-11: cita recepcionada de un borrador sin ingreso) ---
+
+def _cita(db, cita_id, persona_id, fecha, *, estado_id=1, desaparecida=False, **contenido):
+    from app.models.salutem_copia import SalutemCita
+
+    db.add(SalutemCita(cita_id=cita_id, persona_id=persona_id, fecha_cita=fecha, estado_id=estado_id,
+                       contenido=contenido, hash_contenido="h", visto_primera_vez=_T,
+                       visto_ultima_vez=_T, cambiado_en=_T,
+                       desaparecida_en=_T if desaparecida else None))
+    db.flush()
+
+
+def test_vista_360_del_borrador_trae_sus_citas_de_salutem(as_auditor, db_session):
+    _persona(db_session, 9101, "sin_id_2817285")
+    p = _borrador(db_session, nombre="Paciente Prueba", persona_id=9101)
+    _cita(db_session, 16626042, 9101, date(2026, 11, 4), estado_id=8,
+          citaHoraInicio="10:30", estadoCitaNombre="Recepcionado",
+          especialidadNombre="Contención Psicologíca", profesionalNombre="PROFESIONAL PRUEBA")
+    _cita(db_session, 16626050, 9101, date(2026, 11, 20), citaHoraInicio="09:00",
+          estadoCitaNombre="Agendado", especialidadNombre="Médico/a", profesionalNombre="OTRO")
+    _cita(db_session, 16626060, 9101, date(2026, 11, 5), desaparecida=True)
+    _cita(db_session, 16626070, 9999, date(2026, 11, 6))  # de otra persona
+
+    r = as_auditor.get(f"/api/v1/pacientes/{p.id}/vista-360")
+
+    assert r.status_code == 200
+    citas = r.json()["citas_salutem"]
+    assert [c["cita_id"] for c in citas] == [16626050, 16626042]
+    assert citas[1] == {
+        "cita_id": 16626042,
+        "fecha": "2026-11-04",
+        "hora": "10:30",
+        "estado": "Recepcionado",
+        "especialidad": "Contención Psicologíca",
+        "profesional": "PROFESIONAL PRUEBA",
+    }
+
+
+def test_vista_360_sin_persona_salutem_no_trae_citas(as_auditor, db_session):
+    p = _borrador(db_session, persona_id=None)
+
+    r = as_auditor.get(f"/api/v1/pacientes/{p.id}/vista-360")
+
+    assert r.status_code == 200
+    assert r.json()["citas_salutem"] == []
+
+
+def test_vista_360_con_ingreso_no_repite_las_citas_de_salutem(as_admin, db_session):
+    """Con ingreso, las citas ya se importan al ingreso: la lista del borrador queda vacía."""
+    from app.models.ingreso import Ingreso
+
+    _persona(db_session, 9102, "sin_id_1")
+    p = _borrador(db_session, persona_id=9102, estado="completo", rut="111111111")
+    db_session.add(Ingreso(paciente_id=p.id, folio="F-2026-9102", fecha_ingreso=date(2026, 11, 1),
+                           tipo_derivacion="DIAT", tipo_ingreso="convenio", estado="activo"))
+    _cita(db_session, 16626080, 9102, date(2026, 11, 4))
+
+    r = as_admin.get(f"/api/v1/pacientes/{p.id}/vista-360")
+
+    assert r.status_code == 200
+    assert r.json()["citas_salutem"] == []

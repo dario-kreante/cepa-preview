@@ -1,3 +1,5 @@
+from datetime import date
+
 from pydantic import BaseModel
 
 from app.schemas.control_medico import ControlMedicoRead
@@ -19,6 +21,17 @@ class FarmacosIngresoRead(RegistroFarmacologicoRead):
     recetas: list[RecetaRead] = []
 
 
+class CitaSalutemResumen(BaseModel):
+    """Cita de SALUTEM de un paciente que aún no tiene ingreso donde importarla."""
+
+    cita_id: int
+    fecha: date | None
+    hora: str | None = None
+    estado: str | None = None
+    especialidad: str | None = None
+    profesional: str | None = None
+
+
 class Vista360(BaseModel):
     """Estado consolidado del paciente (CEPA-012).
 
@@ -33,3 +46,6 @@ class Vista360(BaseModel):
     controles: list[ControlMedicoRead] = []
     odas: list[OdaRead] = []
     reintegro: list[CasoReintegroRead] = []
+    # Solo para pacientes sin ingreso (los borradores de SALUTEM): con ingreso, las citas
+    # se importan a él y esta lista queda vacía.
+    citas_salutem: list[CitaSalutemResumen] = []

@@ -29,7 +29,13 @@ import {
   useFichasClinicas,
   useCambiarEstadoIngreso,
 } from "./hooks";
-import type { LicenciaRead, ControlMedicoRead, RecetaRead, OdaRead } from "./api";
+import type {
+  LicenciaRead,
+  ControlMedicoRead,
+  RecetaRead,
+  OdaRead,
+  CitaSalutemResumen,
+} from "./api";
 import { SalutemTab } from "./SalutemTab";
 import { EditarFichaDialog } from "./EditarFichaDialog";
 import { FolioCard } from "./FolioCard";
@@ -240,6 +246,46 @@ function ControlesTab({ controles }: { controles: ControlMedicoRead[] }) {
 }
 
 // ---------------------------------------------------------------------------
+// Tab: SALUTEM de un paciente sin ingreso (borrador)
+// ---------------------------------------------------------------------------
+
+/**
+ * Sin ingreso, el sync no tiene dónde importar las citas: la ficha las lista tal como
+ * vienen de SALUTEM. Al completar el registro pasan a colgar del ingreso.
+ */
+function CitasSalutemTab({ citas }: { citas: CitaSalutemResumen[] }) {
+  if (citas.length === 0) {
+    return <EmptyState icon={<CalendarClock />} msg="Sin citas en SALUTEM" />;
+  }
+  return (
+    <div className="space-y-2">
+      <p className="text-[12px] text-muted-foreground">
+        Citas en SALUTEM. Se asociarán al ingreso cuando se complete el registro.
+      </p>
+      {citas.map((c) => (
+        <Card key={c.cita_id}>
+          <CardContent className="p-4 flex items-center gap-4">
+            <div className="size-10 rounded-md bg-muted text-muted-foreground grid place-items-center shrink-0">
+              <CalendarClock className="size-5" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="font-semibold text-[13px] truncate">
+                {[c.especialidad, c.profesional].filter(Boolean).join(" · ") || "Cita SALUTEM"}
+              </div>
+              <div className="text-[11px] text-muted-foreground">
+                {formatDate(c.fecha)}
+                {c.hora ? ` · ${c.hora}` : ""}
+              </div>
+            </div>
+            {c.estado && <Badge variant="neutral">{c.estado}</Badge>}
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Tab: ODA
 // ---------------------------------------------------------------------------
 
@@ -347,6 +393,9 @@ export function PatientSheet({
   const [licenciaOpen, setLicenciaOpen] = useState(false);
   const [controlOpen, setControlOpen] = useState(false);
   const odas = vista?.odas ?? [];
+  const citasSalutem = vista?.citas_salutem ?? [];
+  // Sin ingreso con folio no hay fichas que consultar: la pestaña muestra las citas de SALUTEM.
+  const salutemSinIngreso = !primaryIngreso?.folio;
 
   // Cada vez que se abre otro paciente (o se pide otra pestaña) se parte en la pestaña pedida.
   const [tab, setTab] = useState(tabInicial);
@@ -545,7 +594,10 @@ export function PatientSheet({
                     { v: "farmacos", l: `Fármacos (${recetas.length})` },
                     { v: "controles", l: `Controles (${controles.length})` },
                     { v: "odas", l: `ODA (${odas.length})` },
-                    { v: "salutem", l: `SALUTEM (${fichasSalutem.length})` },
+                    {
+                      v: "salutem",
+                      l: `SALUTEM (${salutemSinIngreso ? citasSalutem.length : fichasSalutem.length})`,
+                    },
                   ].map((t) => (
                     <TabsTrigger
                       key={t.v}
@@ -702,10 +754,7 @@ export function PatientSheet({
                       canWrite={canWrite}
                     />
                   ) : (
-                    <EmptyState
-                      icon={<Stethoscope />}
-                      msg="El paciente no tiene un ingreso con folio para consultar SALUTEM"
-                    />
+                    <CitasSalutemTab citas={citasSalutem} />
                   )}
                 </TabsContent>
 

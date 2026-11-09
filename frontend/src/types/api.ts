@@ -2938,6 +2938,24 @@ export interface components {
              */
             fecha: string;
         };
+        /**
+         * CitaSalutemResumen
+         * @description Cita de SALUTEM de un paciente que aún no tiene ingreso donde importarla.
+         */
+        CitaSalutemResumen: {
+            /** Cita Id */
+            cita_id: number;
+            /** Fecha */
+            fecha: string | null;
+            /** Hora */
+            hora?: string | null;
+            /** Estado */
+            estado?: string | null;
+            /** Especialidad */
+            especialidad?: string | null;
+            /** Profesional */
+            profesional?: string | null;
+        };
         /** ConfigAlertaItem */
         ConfigAlertaItem: {
             tipo: components["schemas"]["TipoAlerta"];
@@ -5610,6 +5628,11 @@ export interface components {
              * @default []
              */
             reintegro: components["schemas"]["CasoReintegroRead"][];
+            /**
+             * Citas Salutem
+             * @default []
+             */
+            citas_salutem: components["schemas"]["CitaSalutemResumen"][];
         };
         /**
          * TipoLicencia
