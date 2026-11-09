@@ -18,7 +18,7 @@ from app.models.licencia import LicenciaMedica
 from app.models.oda import Oda
 from app.models.reintegro import CasoReintegro
 from app.models.paciente import Paciente
-from app.models.salutem_copia import SalutemPersona
+from app.models.salutem_copia import SalutemCita, SalutemPersona
 from app.util.rut import RutInvalidoError, normalizar_rut
 
 _SIN_ID = re.compile(r"^sin_id_\d+$", re.IGNORECASE)
@@ -111,7 +111,12 @@ def vista_360(db, paciente: Paciente) -> dict:
     )
     vacio = {"farmacos": [], "licencias": [], "controles": [], "odas": [], "reintegro": []}
     if not ingresos:
-        return {"paciente": paciente, "ingresos": ingresos, **vacio}
+        return {
+            "paciente": paciente,
+            "ingresos": ingresos,
+            **vacio,
+            "citas_salutem": _citas_salutem_sin_ingreso(db, paciente),
+        }
     ids = [i.id for i in ingresos]
 
     licencias = list(
@@ -152,6 +157,43 @@ def vista_360(db, paciente: Paciente) -> dict:
         "odas": odas,
         "reintegro": reintegro,
     }
+
+
+def _citas_salutem_sin_ingreso(db, paciente: Paciente) -> list[dict]:
+    """Citas de SALUTEM del paciente, de la más nueva a la más antigua.
+
+    Sin ingreso, el sync no tiene dónde importarlas ("sin ingreso" en su log), así que la
+    ficha del borrador las muestra desde la copia de SALUTEM. Las desaparecidas no van.
+    """
+    if paciente.salutem_persona_id is None:
+        return []
+    citas = db.scalars(
+        select(SalutemCita)
+        .where(
+            SalutemCita.persona_id == paciente.salutem_persona_id,
+            SalutemCita.desaparecida_en.is_(None),
+        )
+        .order_by(SalutemCita.fecha_cita.desc(), SalutemCita.cita_id.desc())
+    )
+    return [
+        {
+            "cita_id": c.cita_id,
+            "fecha": c.fecha_cita,
+            "hora": _texto(c.contenido, "citaHoraInicio"),
+            "estado": _texto(c.contenido, "estadoCitaNombre"),
+            "especialidad": _texto(c.contenido, "especialidadNombre"),
+            "profesional": _texto(c.contenido, "profesionalNombre"),
+        }
+        for c in citas
+    ]
+
+
+def _texto(contenido: dict | None, clave: str) -> str | None:
+    valor = (contenido or {}).get(clave)
+    if valor is None:
+        return None
+    valor = str(valor).strip()
+    return valor or None
 
 
 def _farmacos_por_ingresos(db, ingreso_ids: list[int]) -> list[dict]:

@@ -5,6 +5,7 @@
  *  2. El Auditor ve el aviso pero no el botón.
  *  3. Con RUT/sexo/edad/región nulos no muestra "null" ni "undefined".
  *  4. Editar la ficha de un paciente sin edad no inventa un 0 ni envía datos inventados.
+ *  5. La pestaña SALUTEM lista las citas que el borrador ya tiene en SALUTEM (aún sin ingreso).
  */
 import { describe, it, expect, vi } from "vitest";
 import { http, HttpResponse } from "msw";
@@ -36,7 +37,7 @@ const BORRADOR = {
 
 const AVISO = /Este paciente viene de SALUTEM y le falta el folio para completar su registro/;
 
-function mockVista(paciente: object, ingresos: object[] = []) {
+function mockVista(paciente: object, ingresos: object[] = [], citas_salutem: object[] = []) {
   server.use(
     http.get(`${BASE}/api/v1/pacientes/:paciente_id/vista-360`, () =>
       HttpResponse.json({
@@ -46,6 +47,7 @@ function mockVista(paciente: object, ingresos: object[] = []) {
         licencias: [],
         controles: [],
         reintegro: [],
+        citas_salutem,
       }),
     ),
     http.get(`${BASE}/api/v1/fichas-clinicas/:folio`, () => HttpResponse.json([])),
@@ -174,5 +176,37 @@ describe("PatientSheet — paciente borrador", () => {
     await user.click(dialog.getByRole("button", { name: /Guardar cambios/i }));
     await waitFor(() => expect(dialog.getAllByText(/Requerido|fuera de rango/i).length).toBeGreaterThan(0));
     expect(putSpy).not.toHaveBeenCalled();
+  });
+
+  it("la pestaña SALUTEM lista las citas del borrador aunque no tenga ingreso", async () => {
+    mockVista(BORRADOR, [], [
+      {
+        cita_id: 16626042,
+        fecha: "2026-11-04",
+        hora: "10:30",
+        estado: "Recepcionado",
+        especialidad: "Contención Psicologíca",
+        profesional: "PROFESIONAL PRUEBA",
+      },
+    ]);
+    renderSheet(TOKENS.Auditor);
+
+    await userEvent.click(await screen.findByRole("tab", { name: "SALUTEM (1)" }));
+
+    const panel = screen.getByRole("tabpanel");
+    expect(within(panel).getByText(/Citas en SALUTEM/)).toBeInTheDocument();
+    expect(within(panel).getByText(/Contención Psicologíca · PROFESIONAL PRUEBA/)).toBeInTheDocument();
+    expect(within(panel).getByText(/04\/11\/2026 · 10:30/)).toBeInTheDocument();
+    expect(within(panel).getByText("Recepcionado")).toBeInTheDocument();
+    expect(panel.textContent).not.toMatch(/no tiene un ingreso con folio/);
+  });
+
+  it("un borrador sin citas en SALUTEM lo dice en la pestaña", async () => {
+    mockVista(BORRADOR);
+    renderSheet(TOKENS.Auditor);
+
+    await userEvent.click(await screen.findByRole("tab", { name: "SALUTEM (0)" }));
+
+    expect(within(screen.getByRole("tabpanel")).getByText(/Sin citas en SALUTEM/)).toBeInTheDocument();
   });
 });
