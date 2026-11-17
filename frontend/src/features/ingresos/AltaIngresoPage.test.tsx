@@ -42,6 +42,13 @@ describe("AltaIngresoPage", () => {
     expect(screen.getAllByRole("option", { name: /Ñuble|Metropolitana|Biobío/ })).toHaveLength(3);
   });
 
+  it("el tipo de ingreso se lee en palabras, no como código interno", () => {
+    renderPage();
+    const opcion = screen.getByRole("option", { name: "Consulta espontánea" });
+    expect(opcion).toHaveValue("consulta_espontanea");
+    expect(screen.queryByRole("option", { name: "consulta_espontanea" })).toBeNull();
+  });
+
   it("marca los obligatorios a simple vista y no los datos que se conocen después", () => {
     renderPage();
     expect(screen.getByText(/\* Campo obligatorio/i)).toBeInTheDocument();

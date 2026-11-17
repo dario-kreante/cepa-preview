@@ -1,4 +1,5 @@
 import { api } from "@/lib/apiClient";
+import { mensajeDelBackend } from "@/lib/apiError";
 import type { components } from "@/types/api";
 
 // ── Type exports ────────────────────────────────────────────────────────────
@@ -33,7 +34,7 @@ export async function crearCaso(
     if (response.status === 409)
       throw new Error("Ya existe un caso de reintegro para este ingreso.");
     if (response.status === 422)
-      throw new Error("Datos inválidos. Revisa los campos.");
+      throw new Error(mensajeDelBackend(error, "Datos inválidos. Revisa los campos."));
     throw new Error("No se pudo crear el caso de reintegro");
   }
   return data;
@@ -69,7 +70,7 @@ export async function actualizarCaso(
     body,
   });
   if (error || !data)
-    throw new Error("No se pudo actualizar el caso de reintegro");
+    throw new Error(mensajeDelBackend(error, "No se pudo actualizar el caso de reintegro"));
   return data;
 }
 
@@ -101,7 +102,7 @@ export async function crearReca(
     if (response.status === 409)
       throw new Error("Este caso ya tiene una RECA registrada.");
     if (response.status === 422)
-      throw new Error("Datos inválidos. Revisa fechas y campos de la RECA.");
+      throw new Error(mensajeDelBackend(error, "Datos inválidos. Revisa fechas y campos de la RECA."));
     throw new Error("No se pudo registrar la RECA");
   }
   return data;
@@ -116,7 +117,7 @@ export async function actualizarReca(
     "/api/v1/reintegros/{caso_id}/reca",
     { params: { path: { caso_id: casoId } }, body },
   );
-  if (error || !data) throw new Error("No se pudo actualizar la RECA");
+  if (error || !data) throw new Error(mensajeDelBackend(error, "No se pudo actualizar la RECA"));
   return data;
 }
 
@@ -134,7 +135,7 @@ export async function registrarCierre(
   if (error || !data) {
     if (response.status === 422)
       throw new Error(
-        "Datos de cierre inválidos (revisa coherencia de fechas y altas).",
+        mensajeDelBackend(error, "Datos de cierre inválidos (revisa fechas y altas)."),
       );
     throw new Error("No se pudo registrar el cierre del reintegro");
   }

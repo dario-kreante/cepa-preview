@@ -10,9 +10,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { opcionesRegion } from "@/lib/regiones";
+import { TIPOS_INGRESO } from "./tiposIngreso";
 
 const TIPOS_DERIVACION = ["DIEP", "DIAT", "PAPT a flujo AT", "Reingreso FUMP", "Reingreso SUSESO", "Reingreso ISL", "Convenio U.Clinica", "Proyecto", "Particular", "PAPT"];
-const TIPOS_INGRESO = ["consulta_espontanea", "convenio", "proyecto", "particular"];
 
 /**
  * Valores iniciales. Con un borrador de SALUTEM se precarga lo que ya se sabe; lo que
@@ -141,7 +141,9 @@ function AltaIngresoForm({ paciente }: { paciente?: PacienteRead }) {
       <div className="space-y-1">
         <Label htmlFor="tipo_ingreso">Tipo de ingreso *</Label>
         <select id="tipo_ingreso" {...register("tipo_ingreso")} className="w-full rounded-md border border-ink-300 px-3 py-2 text-sm">
-          {TIPOS_INGRESO.map((t) => <option key={t} value={t}>{t}</option>)}
+          {Object.entries(TIPOS_INGRESO).map(([valor, label]) => (
+            <option key={valor} value={valor}>{label}</option>
+          ))}
         </select>
       </div>
       <Button type="submit" disabled={crear.isPending}>{crear.isPending ? "Creando…" : "Crear ingreso"}</Button>

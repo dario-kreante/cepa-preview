@@ -68,7 +68,42 @@ describe("ReportesPage — pestaña Adherencia", () => {
 describe("ReportesPage — pestaña desde la URL", () => {
   it("?tab=odas abre la pestaña de ODAS vencidas", () => {
     renderPage("/reportes?tab=odas");
-    expect(screen.getByText(/ODAS con fecha de vencimiento pasada a hoy/)).toBeTruthy();
+    expect(screen.getByText(/con fecha de vencimiento pasada a hoy/)).toBeTruthy();
+  });
+});
+
+describe("ReportesPage — ODAS vencidas (QA-007)", () => {
+  it("muestra paciente, RUT, N° ISL y folio en vez de ids internos", async () => {
+    server.use(
+      http.get(`${BASE}/api/v1/reportes/odas-vencidas`, () =>
+        HttpResponse.json({
+          fecha_consulta: "2026-11-17",
+          total: 1,
+          items: [
+            {
+              id: 21,
+              folio_id: 14,
+              identificador: "395331",
+              folio: "F-2026-0057",
+              paciente_nombre: "Paciente Prueba Francisca Valladares",
+              paciente_rut: "11.111.111-1",
+              fecha_registro: "2026-10-14",
+              fecha_vencimiento: "2026-11-03",
+              programa: "DIEP",
+              region: "Maule",
+              comuna: null,
+            },
+          ],
+        }),
+      ),
+    );
+    renderPage("/reportes?tab=odas");
+    fireEvent.click(screen.getByTestId("btn-generar-reporte"));
+    expect(await screen.findByText("Paciente Prueba Francisca Valladares")).toBeTruthy();
+    expect(screen.getByText("395331")).toBeTruthy();
+    expect(screen.getByText("F-2026-0057")).toBeTruthy();
+    expect(screen.getByText("11.111.111-1")).toBeTruthy();
+    expect(screen.queryByText("21")).toBeNull();
   });
 });
 

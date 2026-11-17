@@ -1,6 +1,8 @@
 """CEPA-097 — Reporte de ODAS vencidas (D3).
 
 RN-1: vencida = fecha_vencimiento < fecha actual (estricto menor, NO <=).
+Solo cuentan las ODA vigentes (no reemplazadas por una carga ISL posterior) de
+casos activos: es el mismo universo que la tarjeta «ODA vencidas» del dashboard.
 RN-2: las ODAS son manuales y tienen fecha_vencimiento (D3).
 Deviación: modelo Oda (no ODA); fecha_registro nullable añadida EPIC-09 migración 09000.
 
@@ -18,6 +20,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.audit.service import record_audit
+from app.domain.enums import EstadoCaso
 from app.auth.deps import require_role
 from app.db.session import get_db
 from app.models.ingreso import Ingreso
@@ -52,7 +55,11 @@ def get_odas_vencidas(
         select(Oda, Ingreso, Paciente)
         .join(Ingreso, Oda.ingreso_id == Ingreso.id)
         .join(Paciente, Ingreso.paciente_id == Paciente.id)
-        .where(Oda.fecha_vencimiento < hoy)
+        .where(
+            Oda.fecha_vencimiento < hoy,
+            Oda.vigente.is_(True),
+            Ingreso.estado == EstadoCaso.ACTIVO.value,
+        )
     )
     if programa is not None:
         stmt = stmt.where(Ingreso.programa == programa)
@@ -67,6 +74,10 @@ def get_odas_vencidas(
         ODAVencidaItem(
             id=o.id,
             folio_id=o.ingreso_id,
+            identificador=o.identificador,
+            folio=ing.folio,
+            paciente_nombre=pac.nombre,
+            paciente_rut=pac.rut,
             fecha_registro=o.fecha_registro,
             fecha_vencimiento=o.fecha_vencimiento,
             programa=ing.programa,

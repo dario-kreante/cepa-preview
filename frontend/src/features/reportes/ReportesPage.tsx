@@ -356,7 +356,7 @@ function OdasTab() {
       <Card className="p-4">
         <div className="flex items-center justify-between">
           <p className="text-[13px] text-muted-foreground">
-            ODAS con fecha de vencimiento pasada a hoy.
+            ODAS vigentes de casos activos con fecha de vencimiento pasada a hoy.
           </p>
           <div className="flex gap-2">
             {puedeEscribir(rol as Rol) && (
@@ -380,10 +380,21 @@ function OdasTab() {
       <CargarReporteIslDialog open={cargaAbierta} onOpenChange={setCargaAbierta} />
       {m.data && (
         <Tabla
-          headers={["ODA", "Folio", "Registro", "Vencimiento", "Programa", "Región"]}
+          headers={[
+            "Paciente",
+            "RUT",
+            "N° ODA ISL",
+            "Folio",
+            "Registro",
+            "Vencimiento",
+            "Programa",
+            "Región",
+          ]}
           rows={m.data.items.map((it) => [
-            it.id,
-            it.folio_id,
+            it.paciente_nombre,
+            it.paciente_rut ?? "—",
+            it.identificador,
+            it.folio,
             it.fecha_registro ? fmtDate(it.fecha_registro) : "—",
             fmtDate(it.fecha_vencimiento),
             it.programa ?? "—",

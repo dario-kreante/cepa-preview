@@ -181,6 +181,12 @@ class ODAVencidaItem(BaseModel):
 
     id: int
     folio_id: int
+    # N° de la orden en ISL, el folio del CEPA y el paciente: lo que el equipo
+    # reconoce. `id` y `folio_id` son internos y no se muestran (QA-007).
+    identificador: str
+    folio: str
+    paciente_nombre: str
+    paciente_rut: str | None
     fecha_registro: date | None
     fecha_vencimiento: date
     programa: str | None

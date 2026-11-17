@@ -44,10 +44,10 @@ function PatientAvatar({ p }: { p: PacienteRead }) {
   );
 }
 
-/** "35 años · F · correo"; lo que falta se muestra como "—", nunca "null". */
+/** "35 años · F"; lo que falta se muestra como "—", nunca "null". */
 function resumenPersona(p: PacienteRead): string {
   const edad = p.edad != null ? `${p.edad} años` : "—";
-  return `${edad} · ${p.sexo ?? "—"}${p.correo ? ` · ${p.correo}` : ""}`;
+  return `${edad} · ${p.sexo ?? "—"}`;
 }
 
 function Th({ children }: { children: React.ReactNode }) {
@@ -237,7 +237,8 @@ export function IngresosListaPage() {
                   <Th>RUT</Th>
                   <Th>Región</Th>
                   <Th>Comuna</Th>
-                  <Th>Teléfono / Correo</Th>
+                  <Th>Teléfono</Th>
+                  <Th>Correo</Th>
                 </tr>
               </thead>
               <tbody>
@@ -247,7 +248,7 @@ export function IngresosListaPage() {
                     onClick={() => onOpenPatient(p)}
                     className="border-b hover:bg-muted/40 cursor-pointer transition-colors"
                   >
-                    {/* Paciente: avatar + nombre + edad·sexo·correo */}
+                    {/* Paciente: avatar + nombre + edad·sexo */}
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
                         <PatientAvatar p={p} />
@@ -276,13 +277,17 @@ export function IngresosListaPage() {
                     <td className="px-4 py-3 text-[12.5px]">
                       {p.comuna ?? <span className="text-muted-foreground">—</span>}
                     </td>
-                    {/* Teléfono / Correo */}
+                    {/* Teléfono */}
                     <td className="px-4 py-3 text-[12px] text-muted-foreground">
                       {p.telefono ? (
                         <span className="font-mono">{p.telefono}</span>
                       ) : (
                         <span>—</span>
                       )}
+                    </td>
+                    {/* Correo */}
+                    <td className="px-4 py-3 text-[12px] text-muted-foreground">
+                      {p.correo ?? <span>—</span>}
                     </td>
                   </tr>
                 ))}

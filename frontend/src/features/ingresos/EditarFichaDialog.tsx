@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useActualizarIngreso } from "./hooks";
+import { TIPOS_INGRESO } from "./tiposIngreso";
 import type { IngresoRead, IngresoUpdate, PacienteRead } from "./api";
 
 const TIPOS_DERIVACION = [
@@ -37,13 +38,6 @@ const TIPOS_DERIVACION = [
   "Particular",
   "PAPT",
 ] as const;
-
-const TIPOS_INGRESO = {
-  consulta_espontanea: "Consulta espontánea",
-  convenio: "Convenio",
-  proyecto: "Proyecto",
-  particular: "Particular",
-} as const;
 
 const edicionSchema = z.object({
   nombre: z.string().trim().min(1, "Requerido"),

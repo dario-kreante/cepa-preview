@@ -168,7 +168,7 @@ def test_coherencia_cierre_rechaza_fecha_reintegro_anterior_a_fecha_caso():
             tipo_alta="terapeutica",
         )
     assert exc_info.value.status_code == 422
-    assert "fecha_caso" in exc_info.value.detail
+    assert "fecha del caso" in exc_info.value.detail
 
 
 # fecha_reintegro >= fecha_caso (con RECA), todo OK
@@ -198,7 +198,7 @@ def test_coherencia_reca_rechaza_verifica_sin_fecha_verificacion():
             fecha_verificacion=None,
         )
     assert exc_info.value.status_code == 422
-    assert "fecha_verificacion" in exc_info.value.detail
+    assert "fecha de verificación" in exc_info.value.detail
 
 
 # (b) verifica_medidas=True con fecha_verificacion → OK

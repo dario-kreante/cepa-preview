@@ -4272,6 +4272,14 @@ export interface components {
             id: number;
             /** Folio Id */
             folio_id: number;
+            /** Identificador */
+            identificador: string;
+            /** Folio */
+            folio: string;
+            /** Paciente Nombre */
+            paciente_nombre: string;
+            /** Paciente Rut */
+            paciente_rut: string | null;
             /** Fecha Registro */
             fecha_registro: string | null;
             /**

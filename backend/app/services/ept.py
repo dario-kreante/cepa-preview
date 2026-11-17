@@ -167,13 +167,18 @@ def agregar_contacto_ept(db: Session, data: ContactoEptCreate) -> ContactoEpt:
 # ProcesoEpt
 # ──────────────────────────────────────────
 
+def _fmt(d: date) -> str:
+    """Fecha como la lee el usuario en pantalla (dd-mm-aaaa)."""
+    return d.strftime("%d-%m-%Y")
+
+
 def _validar_proceso(data, fecha_ingreso_ept: date) -> None:
     """Valida reglas de negocio del proceso EPT (CEPA-031)."""
     if data.hay_testigos is True and data.testigos_cantidad is not None:
         if data.testigos_cantidad < 1:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="Si hay testigos, la cantidad debe ser ≥ 1 (CEPA-031 RN-2).",
+                detail="Marcaste que hay testigos: indica al menos 1 en «Cantidad de testigos».",
             )
     if data.hay_testigos is False:
         # Se fuerza a 0 en el servicio; si el caller envía >0 con hay_testigos=False, se corrige.
@@ -181,18 +186,18 @@ def _validar_proceso(data, fecha_ingreso_ept: date) -> None:
     if data.num_entrevistas is not None and data.num_entrevistas < 0:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="El número de entrevistas debe ser ≥ 0 (CEPA-031 RN-3).",
+            detail="El número de entrevistas no puede ser negativo.",
         )
     for campo_fecha, nombre in [
-        (data.plazo_evid_denunciante, "plazo_evid_denunciante"),
-        (data.plazo_insumos_empresa, "plazo_insumos_empresa"),
+        (data.plazo_evid_denunciante, "El plazo de evidencias del denunciante"),
+        (data.plazo_insumos_empresa, "El plazo de insumos de la empresa"),
     ]:
         if campo_fecha is not None and campo_fecha < fecha_ingreso_ept:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail=(
                     f"{nombre} no puede ser anterior a la fecha de ingreso EPT "
-                    f"({fecha_ingreso_ept}) (CEPA-031 RN-4)."
+                    f"({_fmt(fecha_ingreso_ept)})."
                 ),
             )
 
@@ -201,7 +206,7 @@ def crear_proceso_ept(db: Session, data: ProcesoEptCreate, caso: CasoEpt) -> Pro
     if not caso.corresponde_ept:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="El caso EPT tiene corresponde_ept=False; no aplica gestión del proceso.",
+            detail="Este caso está marcado como «No corresponde EPT»: no lleva proceso.",
         )
     _validar_proceso(data, caso.fecha_ingreso_ept)
     cantidad = 0 if not data.hay_testigos else (data.testigos_cantidad or 0)
@@ -305,8 +310,8 @@ def _validar_plazo(data, caso: CasoEpt) -> None:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail=(
-                    "fecha_entrega_isl no puede ser anterior a la fecha de ingreso EPT "
-                    f"({caso.fecha_ingreso_ept}) (CEPA-032 RN-3)."
+                    "La fecha de entrega ISL no puede ser anterior a la fecha de ingreso "
+                    f"EPT ({_fmt(caso.fecha_ingreso_ept)})."
                 ),
             )
         pi = getattr(data, "plazo_informe_ept", None)
@@ -314,8 +319,8 @@ def _validar_plazo(data, caso: CasoEpt) -> None:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail=(
-                    "fecha_entrega_isl no puede ser anterior a plazo_informe_ept "
-                    f"({pi}) (CEPA-032 RN-3)."
+                    "La fecha de entrega ISL no puede ser anterior al plazo del informe "
+                    f"EPT ({_fmt(pi)})."
                 ),
             )
 
@@ -324,7 +329,7 @@ def crear_plazo_ept(db: Session, data: PlazoEptCreate, caso: CasoEpt) -> PlazoEp
     if not caso.corresponde_ept:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="El caso EPT tiene corresponde_ept=False; no aplica gestión de plazos.",
+            detail="Este caso está marcado como «No corresponde EPT»: no lleva plazos.",
         )
     _validar_plazo(data, caso)
     hoy = date.today()
