@@ -73,3 +73,39 @@ describe("AltaIngresoPage", () => {
     expect(lastBody.modelo_tratamiento).toBeNull();
   });
 });
+
+describe("AltaIngresoPage — programa del ingreso", () => {
+  it("ofrece Programa (opcional) con «Sin programa» y los tres programas", () => {
+    renderPage();
+    expect(screen.getByLabelText("Programa (opcional)")).toHaveValue("");
+    expect(screen.getByRole("option", { name: "Sin programa" })).toBeInTheDocument();
+    for (const programa of ["Programa Regular", "Ley Karin", "PIPT"]) {
+      expect(screen.getByRole("option", { name: programa })).toBeInTheDocument();
+    }
+  });
+
+  it("envía el programa elegido en el alta", async () => {
+    renderPage();
+    await userEvent.type(screen.getByLabelText(/^RUT/), "12.345.678-5");
+    await userEvent.type(screen.getByLabelText(/^Nombre/), "Ana");
+    await userEvent.type(screen.getByLabelText(/^Edad/), "35");
+    await userEvent.selectOptions(screen.getByLabelText(/^Región/), "Maule");
+    await userEvent.type(screen.getByLabelText(/^Fecha de ingreso/), "2026-11-05");
+    await userEvent.selectOptions(screen.getByLabelText("Programa (opcional)"), "Ley Karin");
+    await userEvent.click(screen.getByRole("button", { name: /crear/i }));
+    await waitFor(() => expect(lastBody).not.toBeNull());
+    expect(lastBody.programa).toBe("Ley Karin");
+  });
+
+  it("«Sin programa» se envía como null", async () => {
+    renderPage();
+    await userEvent.type(screen.getByLabelText(/^RUT/), "12.345.678-5");
+    await userEvent.type(screen.getByLabelText(/^Nombre/), "Ana");
+    await userEvent.type(screen.getByLabelText(/^Edad/), "35");
+    await userEvent.selectOptions(screen.getByLabelText(/^Región/), "Maule");
+    await userEvent.type(screen.getByLabelText(/^Fecha de ingreso/), "2026-11-05");
+    await userEvent.click(screen.getByRole("button", { name: /crear/i }));
+    await waitFor(() => expect(lastBody).not.toBeNull());
+    expect(lastBody.programa).toBeNull();
+  });
+});

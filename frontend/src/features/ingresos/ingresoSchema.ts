@@ -27,6 +27,8 @@ export const ingresoSchema = z.object({
   fecha_ingreso: z.string().min(1, "Requerido"),
   folio: z.string().optional(),
   es_reingreso: z.boolean().default(false),
+  // Opcional: "" = Sin programa (se envía como null).
+  programa: z.string().optional(),
 });
 
 /**

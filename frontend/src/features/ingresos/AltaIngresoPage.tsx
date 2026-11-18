@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { opcionesRegion } from "@/lib/regiones";
 import { TIPOS_INGRESO } from "./tiposIngreso";
+import { PROGRAMAS } from "./programas";
 
 const TIPOS_DERIVACION = ["DIEP", "DIAT", "PAPT a flujo AT", "Reingreso FUMP", "Reingreso SUSESO", "Reingreso ISL", "Convenio U.Clinica", "Proyecto", "Particular", "PAPT"];
 
@@ -55,6 +56,8 @@ function AltaIngresoForm({ paciente }: { paciente?: PacienteRead }) {
         folio,
         diagnostico: values.diagnostico?.trim() || null,
         modelo_tratamiento: values.modelo_tratamiento?.trim() || null,
+        // "Sin programa" (vacío) se guarda como null.
+        programa: values.programa?.trim() || null,
       };
       const body = (paciente
         ? { ...datos, paciente_id: paciente.id, rut: values.rut?.trim() || null }
@@ -136,6 +139,13 @@ function AltaIngresoForm({ paciente }: { paciente?: PacienteRead }) {
         <Label htmlFor="tipo_derivacion">Tipo de derivación *</Label>
         <select id="tipo_derivacion" {...register("tipo_derivacion")} className="w-full rounded-md border border-ink-300 px-3 py-2 text-sm">
           {TIPOS_DERIVACION.map((t) => <option key={t} value={t}>{t}</option>)}
+        </select>
+      </div>
+      <div className="space-y-1">
+        <Label htmlFor="programa">Programa (opcional)</Label>
+        <select id="programa" {...register("programa")} className="w-full rounded-md border border-ink-300 px-3 py-2 text-sm">
+          <option value="">Sin programa</option>
+          {PROGRAMAS.map((p) => <option key={p} value={p}>{p}</option>)}
         </select>
       </div>
       <div className="space-y-1">

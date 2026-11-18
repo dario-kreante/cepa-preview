@@ -696,6 +696,9 @@ export function PatientSheet({
                           {etiquetaEstadoCaso(primaryIngreso.estado, primaryIngreso.motivo_cierre)} · Ingreso {formatDate(primaryIngreso.fecha_ingreso)}
                           {primaryIngreso.folio ? ` · Folio ${primaryIngreso.folio}` : ""}
                         </div>
+                        <div className="text-[12px] text-muted-foreground mt-1">
+                          Programa: <span className="font-semibold text-foreground">{primaryIngreso.programa ?? "—"}</span>
+                        </div>
                       </CardContent>
                     </Card>
                   )}
