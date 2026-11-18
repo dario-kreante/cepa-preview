@@ -13,7 +13,7 @@ from app.models.paciente import Paciente
 from app.models.reintegro import CasoReintegro, Reca
 from app.services.alertas import ejecutar_job_alertas
 from app.services.alertas_cierre import resolver_alertas_de_ingreso
-from app.services.alertas_reca import CASO_TIPO, TIPO, alertar_reca_por_solicitar
+from app.services.alertas_reca import ANTIGUEDAD_MAXIMA_DIAS, CASO_TIPO, TIPO, alertar_reca_por_solicitar
 from app.services.reintegro import registrar_solicitud_reca
 
 FECHA_CASO = datetime.date(2026, 11, 2)
@@ -285,3 +285,30 @@ def test_el_contexto_de_la_alerta_abre_el_caso(db_session, as_coordinacion):
 
     assert r.status_code == 200
     assert (r.json()["ingreso_id"], r.json()["paciente_nombre"]) == (caso.ingreso_id, "Paciente 1")
+
+
+def test_un_caso_mas_antiguo_que_el_corte_no_alerta(db_session):
+    """Al desplegar no se inunda el panel con casos históricos sin solicitud ni RECA."""
+    _caso(db_session)
+    antiguo = FECHA_CASO + datetime.timedelta(days=ANTIGUEDAD_MAXIMA_DIAS + 1)
+
+    assert ejecutar_job_alertas(db_session, hoy=antiguo) == 0
+
+    assert _alertas(db_session) == []
+
+
+def test_el_caso_justo_en_el_corte_si_alerta(db_session):
+    _caso(db_session)
+
+    ejecutar_job_alertas(db_session, hoy=FECHA_CASO + datetime.timedelta(days=ANTIGUEDAD_MAXIMA_DIAS))
+
+    assert len(_alertas(db_session)) == 1
+
+
+def test_el_corte_no_resuelve_una_alerta_ya_abierta(db_session):
+    _caso(db_session)
+    ejecutar_job_alertas(db_session, hoy=DIA_5)
+
+    ejecutar_job_alertas(db_session, hoy=FECHA_CASO + datetime.timedelta(days=ANTIGUEDAD_MAXIMA_DIAS + 30))
+
+    assert [a.estado for a in _alertas(db_session)] == ["pendiente"]

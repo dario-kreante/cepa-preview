@@ -5,6 +5,8 @@ clienta debe confirmarlo; se edita en la configuración de alertas) desde su ``f
 fecha de solicitud de RECA ni RECA registrada avisa que hay que pedirla.
 
 - Activo = estado de reintegro distinto de «total» e ingreso no cerrado.
+- Solo casos de hasta ``ANTIGUEDAD_MAXIMA_DIAS`` (60) días desde su fecha: los más antiguos no
+  generan alerta (las ya abiertas no se tocan).
 - Una alerta por caso para siempre: si la encargada la resuelve a mano no reaparece.
 - Se resuelve sola al registrar la solicitud o la RECA (`resolver_alertas_reca`, desde los
   servicios del caso) y, en el job, al pasar a reintegro total o al cerrarse el ingreso.
@@ -24,6 +26,9 @@ from app.models.ingreso import Ingreso
 from app.models.reintegro import CasoReintegro, Reca
 
 CASO_TIPO = "caso_reintegro"
+# Corte de antigüedad: un caso con más de estos días corridos desde su fecha no genera la alerta.
+# Evita que, al desplegar, el panel se llene con casos históricos sin solicitud ni RECA.
+ANTIGUEDAD_MAXIMA_DIAS = 60
 TIPO = TipoAlerta.RECA_POR_SOLICITAR.value
 _ABIERTAS = (EstadoAlerta.PENDIENTE.value, EstadoAlerta.LEIDA.value)
 
@@ -105,7 +110,11 @@ def alertar_reca_por_solicitar(
     candidatos = db.execute(
         select(CasoReintegro.id, CasoReintegro.fecha_caso, CasoReintegro.ingreso_id)
         .join(Ingreso, Ingreso.id == CasoReintegro.ingreso_id)
-        .where(CasoReintegro.fecha_caso <= hoy - timedelta(days=dias), ~_no_requiere_solicitud())
+        .where(
+            CasoReintegro.fecha_caso <= hoy - timedelta(days=dias),
+            CasoReintegro.fecha_caso >= hoy - timedelta(days=ANTIGUEDAD_MAXIMA_DIAS),
+            ~_no_requiere_solicitud(),
+        )
         .order_by(CasoReintegro.id)
     ).all()
     creadas = 0
