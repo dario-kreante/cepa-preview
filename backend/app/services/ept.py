@@ -6,7 +6,7 @@ Reglas de negocio clave:
 - RN-4 (CEPA-031): plazos no pueden ser anteriores a fecha_ingreso_ept.
 - RN-2 (CEPA-031): testigos=True exige cantidad ≥ 1; testigos=False fuerza cantidad=0.
 - RN-3 (CEPA-031): num_entrevistas ≥ 0.
-- RN-3 (CEPA-032): fecha_entrega_isl no puede ser anterior a fecha_ingreso_ept ni a plazo_informe_ept.
+- RN-3 (CEPA-032): fecha_entrega_isl no puede ser anterior a fecha_ingreso_ept.
 """
 
 from datetime import date, datetime, timedelta, timezone
