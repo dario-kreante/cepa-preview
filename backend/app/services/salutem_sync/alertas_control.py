@@ -24,6 +24,7 @@ from app.integrations.salutem.senales import certificado_reposo, tiene_receta
 from app.models.alertas import AlertaNotif
 from app.models.control_medico import ControlMedico
 from app.services.alertas import _resolver_usuario
+from app.services.alertas_cierre import ingreso_cerrado
 from app.services.config_alertas import cargar_ventanas
 
 ACTOR = "sistema:salutem-sync"  # el mismo de controles.py y vinculacion.py
@@ -83,6 +84,8 @@ def _crear_alertas(
     senales: dict[str, bool], hoy: date, ya_alertados: set[str] = frozenset(),
 ) -> int:
     if fecha < hoy - timedelta(days=DIAS_NOVEDAD) or not any(senales.values()):
+        return 0
+    if ingreso_cerrado(db, ingreso_id):  # QA-011: un caso cerrado no genera alertas
         return 0
     ventanas = cargar_ventanas(db)
     existentes = _tipos_alertados(db, caso_tipo, caso_id) | set(ya_alertados)

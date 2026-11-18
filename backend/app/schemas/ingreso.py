@@ -1,8 +1,9 @@
-from datetime import date
+from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.domain.enums import (
+    MotivoCierre,
     EstadoCaso,
     Sexo,
     TipoAlta,
@@ -166,16 +167,28 @@ class IngresoRead(BaseModel):
     flag_revision: bool
     observaciones: str | None
     tratamiento_iniciado: bool
+    motivo_cierre: MotivoCierre | None = None
+    fecha_cierre: datetime | None = None
+    cierre_usuario: str | None = None
 
 
 class IngresoCierre(BaseModel):
     """Cierre/alta del caso (CEPA-014). Solo se permite estado cerrado o derivado."""
 
     estado: EstadoCaso
+    motivo_cierre: MotivoCierre | None = None
     tipo_alta: TipoAlta | None = None
     fecha_alta: date | None = None
     flag_revision: bool | None = None
     observaciones: str | None = None
+
+    @model_validator(mode="after")
+    def _motivo_obligatorio_al_cerrar(self) -> "IngresoCierre":
+        if self.estado == EstadoCaso.CERRADO and self.motivo_cierre is None:
+            raise ValueError("Debe indicar el motivo de cierre.")
+        if self.estado != EstadoCaso.CERRADO and self.motivo_cierre is not None:
+            raise ValueError("El motivo de cierre solo aplica al cerrar el caso.")
+        return self
 
     @field_validator("estado")
     @classmethod

@@ -61,6 +61,17 @@ class EstadoCaso(str, Enum):
     ENCUADRE = "encuadre"
 
 
+class MotivoCierre(str, Enum):
+    """Motivo con que se cierra un caso (QA-011). Lista propia, separada de ``TipoAlta``."""
+
+    RECA_EC = "reca_ec"
+    ALTA_MEDICA = "alta_medica"
+    ALTA_ADMINISTRATIVA = "alta_administrativa"
+    ABANDONO = "abandono"
+    DESISTE_PROCESO = "desiste_proceso"
+    CAMBIO_PRESTADOR = "cambio_prestador"
+
+
 class TipoAlta(str, Enum):
     """Tipos de alta válidos (§7.1.3, v4 D6)."""
 

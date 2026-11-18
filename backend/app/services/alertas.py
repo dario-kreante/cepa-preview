@@ -290,10 +290,12 @@ def _construir_hitos_licencias(db: Session, ventanas: dict[str, dict] | None = N
     Destinatario: ver _resolver_usuario (hoy None, panel general).
     """
     from app.models.licencia import LicenciaMedica  # local import
+    from app.services.alertas_cierre import ids_ingresos_cerrados  # local import
 
     ventana = (ventanas or VENTANAS_DEFAULT)[TipoAlerta.VENCIMIENTO_LICENCIA.value]
     if not ventana.get("activo", True):
         return []
+    cerrados = ids_ingresos_cerrados(db)  # QA-011: un caso cerrado no genera alertas
     filas = db.scalars(
         select(LicenciaMedica).where(
             LicenciaMedica.anulada == False,  # noqa: E712
@@ -302,6 +304,8 @@ def _construir_hitos_licencias(db: Session, ventanas: dict[str, dict] | None = N
     ).all()
     hitos = []
     for lm in filas:
+        if lm.ingreso_id in cerrados:
+            continue
         usuario_id = _resolver_usuario(lm.ingreso_id, db)
         hitos.append(
             HitoPlazos(
@@ -328,7 +332,9 @@ def _construir_hitos_ept(db: Session, ventanas: dict[str, dict] | None = None) -
     Destinatario: ver _resolver_usuario, vía CasoEpt.ingreso_id (hoy None).
     """
     from app.models.ept import CasoEpt, PlazoEpt  # local import
+    from app.services.alertas_cierre import ids_ingresos_cerrados  # local import
 
+    cerrados = ids_ingresos_cerrados(db)  # QA-011: un caso cerrado no genera alertas
     v_ept = (ventanas or VENTANAS_DEFAULT)[TipoAlerta.PLAZO_EPT.value]
     v_isl = (ventanas or VENTANAS_DEFAULT)[TipoAlerta.PLAZO_ISL.value]
 
@@ -336,7 +342,7 @@ def _construir_hitos_ept(db: Session, ventanas: dict[str, dict] | None = None) -
     hitos: list[HitoPlazos] = []
     for plazo_ept in filas:
         caso = db.get(CasoEpt, plazo_ept.caso_ept_id)
-        if caso is None:
+        if caso is None or caso.ingreso_id in cerrados:
             continue
         usuario_id = _resolver_usuario(caso.ingreso_id, db)
         informe, isl = plazo_ept.plazo_informe_ept, plazo_ept.plazo_portal_isl
@@ -372,6 +378,7 @@ def _construir_hitos_insumos_ept(db: Session, ventanas: dict[str, dict] | None =
     """
     from app.domain.enums_ept import EstadoEpt
     from app.models.ept import CasoEpt, ProcesoEpt  # local import
+    from app.services.alertas_cierre import ids_ingresos_cerrados  # local import
 
     ventana = (ventanas or VENTANAS_DEFAULT).get(
         TipoAlerta.PLAZO_INSUMOS_EPT.value, VENTANAS_DEFAULT[TipoAlerta.PLAZO_INSUMOS_EPT.value]
@@ -383,6 +390,7 @@ def _construir_hitos_insumos_ept(db: Session, ventanas: dict[str, dict] | None =
         .join(CasoEpt, CasoEpt.id == ProcesoEpt.caso_ept_id)
         .where(ProcesoEpt.plazo_insumos_empresa.is_not(None), CasoEpt.estado == EstadoEpt.ABIERTO.value)
     ).all()
+    cerrados = ids_ingresos_cerrados(db)  # QA-011: un caso cerrado no genera alertas
     return [
         HitoPlazos(
             tipo=TipoAlerta.PLAZO_INSUMOS_EPT.value,
@@ -394,6 +402,7 @@ def _construir_hitos_insumos_ept(db: Session, ventanas: dict[str, dict] | None =
             usar_dias_habiles=ventana["habiles"],
         )
         for caso_id, plazo, ingreso_id in filas
+        if ingreso_id not in cerrados
     ]
 
 
@@ -407,10 +416,12 @@ def _construir_hitos_consentimiento(db: Session, ventanas: dict[str, dict] | Non
     """
     from app.domain.enums import EstadoConsentimiento
     from app.models.consentimiento import Consentimiento  # local import
+    from app.services.alertas_cierre import ids_ingresos_cerrados  # local import
 
     ventana = (ventanas or VENTANAS_DEFAULT)[TipoAlerta.CONSENTIMIENTO_PENDIENTE.value]
     if not ventana.get("activo", True):
         return []
+    cerrados = ids_ingresos_cerrados(db)  # QA-011: un caso cerrado no genera alertas
     filas = db.scalars(
         select(Consentimiento).where(
             Consentimiento.estado != EstadoConsentimiento.FIRMADO.value
@@ -418,6 +429,8 @@ def _construir_hitos_consentimiento(db: Session, ventanas: dict[str, dict] | Non
     ).all()
     hitos = []
     for c in filas:
+        if c.ingreso_id in cerrados:
+            continue
         usuario_id = _resolver_usuario(c.ingreso_id, db)
         # plazo_objetivo = fecha de creación del consentimiento (dias_restantes <= 0
         # → siempre dentro de la ventana de 30 días, que es la intención del tipo)
@@ -518,10 +531,12 @@ def _construir_hitos_receta(db: Session, ventanas: dict[str, dict] | None = None
     Destinatario: ver _resolver_usuario, vía reg_farmacologico → ingreso_id (hoy None).
     """
     from app.models.farmacos import Receta, RegistroFarmacologico  # local import
+    from app.services.alertas_cierre import ids_ingresos_cerrados  # local import
 
     ventana = (ventanas or VENTANAS_DEFAULT)[TipoAlerta.RECETA_POR_RENOVAR.value]
     if not ventana.get("activo", True):
         return []
+    cerrados = ids_ingresos_cerrados(db)  # QA-011: un caso cerrado no genera alertas
     filas = db.scalars(
         select(Receta).where(
             Receta.fecha_revision.isnot(None),
@@ -533,6 +548,8 @@ def _construir_hitos_receta(db: Session, ventanas: dict[str, dict] | None = None
         # Resolver ingreso_id a través del registro farmacológico
         reg = db.get(RegistroFarmacologico, receta.registro_id)
         ingreso_id = reg.ingreso_id if reg else None
+        if ingreso_id in cerrados:
+            continue
         usuario_id = _resolver_usuario(ingreso_id, db)
         hitos.append(
             HitoPlazos(
@@ -561,6 +578,7 @@ def _construir_alertas_gaf(
     """
     from app.domain.gaf import tramo_que_contiene
     from app.models.licencia import LicenciaMedica  # local import
+    from app.services.alertas_cierre import ids_ingresos_cerrados
     from app.services.gaf_tramos import cargar_tramos
 
     config = ventanas.get(TipoAlerta.GAF_LICENCIA.value)
@@ -569,6 +587,7 @@ def _construir_alertas_gaf(
     umbral = config["dias"]
     tramos = cargar_tramos(db)
     por_etiqueta = {t.etiqueta: t for t in tramos}
+    cerrados = ids_ingresos_cerrados(db)  # QA-011: un caso cerrado no genera alertas
 
     filas = db.scalars(
         select(LicenciaMedica).where(
@@ -578,6 +597,8 @@ def _construir_alertas_gaf(
     ).all()
     resultados = []
     for lm in filas:
+        if lm.ingreso_id in cerrados:
+            continue
         tramo = por_etiqueta.get(lm.eeag_gaf_tramo) if lm.eeag_gaf_tramo else None
         if tramo is None and lm.eeag_gaf_tramo is None:
             tramo = tramo_que_contiene(lm.eeag_gaf, tramos)
