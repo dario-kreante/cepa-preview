@@ -5,6 +5,8 @@ import {
   crearCaso,
   crearReca,
   listarCasos,
+  listarCasosActivosDePaciente,
+  listarPacientesConCasosRepetidos,
   obtenerCaso,
   obtenerReca,
   registrarCierre,
@@ -22,6 +24,24 @@ export function useCasosPorIngreso(ingresoId: number | null) {
     queryKey: ["reintegro", "ingreso", ingresoId],
     queryFn: () => listarCasos(ingresoId ?? undefined),
     enabled: !!ingresoId,
+  });
+}
+
+/** Casos activos del paciente (todos sus ingresos), para avisar de un caso repetido. */
+export function useCasosActivosDePaciente(pacienteId: number | null) {
+  return useQuery({
+    queryKey: ["reintegro", "paciente", pacienteId, "activos"],
+    queryFn: () => listarCasosActivosDePaciente(pacienteId as number),
+    enabled: !!pacienteId,
+  });
+}
+
+/** Pacientes con más de un caso activo (revisión de duplicados). */
+export function usePacientesConCasosRepetidos(enabled = true) {
+  return useQuery({
+    queryKey: ["reintegro", "duplicados"],
+    queryFn: listarPacientesConCasosRepetidos,
+    enabled,
   });
 }
 
@@ -48,10 +68,13 @@ export function useCrearCaso() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (body: CasoReintegroCreate) => crearCaso(body),
-    onSuccess: (caso) =>
+    onSuccess: (caso) => {
       qc.invalidateQueries({
         queryKey: ["reintegro", "ingreso", caso.ingreso_id],
-      }),
+      });
+      qc.invalidateQueries({ queryKey: ["reintegro", "paciente"] });
+      qc.invalidateQueries({ queryKey: ["reintegro", "duplicados"] });
+    },
   });
 }
 

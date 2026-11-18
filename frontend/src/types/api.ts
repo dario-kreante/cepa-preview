@@ -849,6 +849,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/reintegros/duplicados": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Listar Duplicados */
+        get: operations["listar_duplicados_api_v1_reintegros_duplicados_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/reintegros/{caso_id}": {
         parameters: {
             query?: never;
@@ -2857,6 +2874,34 @@ export interface components {
             /** Razon Social */
             razon_social?: string | null;
             tipo_trabajador?: components["schemas"]["TipoTrabajador"] | null;
+        };
+        /** CasoActivoResumen */
+        CasoActivoResumen: {
+            /** Id */
+            id: number;
+            /** Ingreso Id */
+            ingreso_id: number;
+            /** Region */
+            region: string;
+            /** Razon Social */
+            razon_social: string | null;
+            /**
+             * Fecha Caso
+             * Format: date
+             */
+            fecha_caso: string;
+            estado_reintegro: components["schemas"]["EstadoReintegro"];
+        };
+        /** PacienteConCasosRepetidosRead */
+        PacienteConCasosRepetidosRead: {
+            /** Paciente Id */
+            paciente_id: number;
+            /** Rut */
+            rut: string | null;
+            /** Nombre */
+            nombre: string;
+            /** Casos */
+            casos: components["schemas"]["CasoActivoResumen"][];
         };
         /** CasoReintegroRead */
         CasoReintegroRead: {
@@ -7875,10 +7920,32 @@ export interface operations {
             };
         };
     };
+    listar_duplicados_api_v1_reintegros_duplicados_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PacienteConCasosRepetidosRead"][];
+                };
+            };
+        };
+    };
     listar_casos_api_v1_reintegros_get: {
         parameters: {
             query?: {
                 ingreso_id?: number | null;
+                paciente_id?: number | null;
+                solo_activos?: boolean;
             };
             header?: never;
             path?: never;
