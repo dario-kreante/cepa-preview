@@ -365,7 +365,10 @@ def test_migracion_1470_sube_y_baja_en_una_bd_propia():
     from sqlalchemy import create_engine, inspect, text
     from sqlalchemy.engine import make_url
 
-    url = make_url(os.environ["TEST_DATABASE_URL"])
+    # En CI solo existe DATABASE_URL; en local puede venir TEST_DATABASE_URL (conftest la copia).
+    url = make_url(os.environ["DATABASE_URL"])
+    if url.get_backend_name() != "postgresql":
+        pytest.skip("Crea una BD descartable con SQL de PostgreSQL; Oracle lo cubre el smoke de CI.")
     nombre = f"{url.database}_mig1470"
     admin = create_engine(url.set(database="postgres"), isolation_level="AUTOCOMMIT")
     with admin.connect() as c:
