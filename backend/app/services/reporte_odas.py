@@ -24,6 +24,7 @@ from openpyxl.styles import Font
 from sqlalchemy import and_, func, select, true
 from sqlalchemy.orm import Session
 
+from app.agendamiento.salutem import lotes
 from app.domain.enums import EstadoCaso
 from app.models.cita import Cita
 from app.models.ingreso import Ingreso
@@ -147,17 +148,18 @@ def construir_filas_vencidas(
 
     if resultado:
         minimo = min(desde_de.values())
-        citas = db.execute(
-            select(Cita.ingreso_id, Cita.fecha).where(
-                Cita.ingreso_id.in_(ingreso_ids),
-                Cita.estado == "realizada",
-                Cita.fecha >= minimo,
-                Cita.fecha <= hoy,
-            )
-        ).all()
         fechas_por_ingreso: dict[int, set[date]] = defaultdict(set)
-        for ingreso_id, fecha in citas:
-            fechas_por_ingreso[ingreso_id].add(fecha)
+        for lote in lotes(ingreso_ids):  # Oracle: máximo 1000 valores por IN
+            citas = db.execute(
+                select(Cita.ingreso_id, Cita.fecha).where(
+                    Cita.ingreso_id.in_(lote),
+                    Cita.estado == "realizada",
+                    Cita.fecha >= minimo,
+                    Cita.fecha <= hoy,
+                )
+            ).all()
+            for ingreso_id, fecha in citas:
+                fechas_por_ingreso[ingreso_id].add(fecha)
         for fila in resultado:
             desde = desde_de[fila.paciente.id]
             fechas = sorted(

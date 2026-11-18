@@ -409,3 +409,23 @@ def test_excel_neutraliza_formulas_en_el_texto(as_coordinacion, db_session):
     fila = next(f for f in filas if "HYPERLINK" in str(f[0]))
     assert fila[0].startswith("'=")
     assert fila[2] == "'+1234"
+
+
+def test_consultas_por_lotes_con_mas_de_un_lote(as_coordinacion, db_session, monkeypatch):
+    """Oracle rechaza >1000 valores en un IN: con lote de 2 y 5 pacientes hay 3 lotes."""
+    from app.agendamiento import salutem
+
+    monkeypatch.setattr(salutem, "_LOTE", 2)
+    for k in range(5):
+        ing = _caso(db_session, nombre=f"Lote {k}")
+        _oda(db_session, ing, f"7{_n}", _d(-40), _d(-20))
+        _cita(db_session, ing, _d(-30))
+        _cita(db_session, ing, _d(-5))
+    db_session.commit()
+    r = as_coordinacion.get("/api/v1/reportes/odas-vencidas")
+    filas = [i for i in r.json()["items"] if i["paciente_nombre"].startswith("Lote ")]
+    assert len(filas) == 5
+    for f in filas:
+        assert f["cobertura"] == "SOLICITAR"
+        assert len(f["fechas_atencion"]) == 2
+        assert len(f["ordenes"]) == 1
