@@ -16,12 +16,17 @@ from app.integrations.salutem.errors import (
 from app.models.ficha_clinica import FichaClinica
 from app.models.ingreso import Ingreso
 from app.schemas.ficha_clinica import FichaClinicaCreate
+from app.services.folio import ingreso_vigente_por_folio, ingresos_por_folio
 
 
 def _obtener_ingreso_por_folio(db: Session, folio: str) -> Ingreso:
-    ingreso = db.execute(
-        select(Ingreso).where(Ingreso.folio == folio)
-    ).scalar_one_or_none()
+    """Ingreso vigente (el más reciente) del folio; 404 si no existe.
+
+    El folio puede repetirse entre ingresos del mismo paciente (reingreso), por
+    eso no se asume una sola fila. Para asociar una atención a su ingreso según
+    fechas, ver `_ingreso_de_la_atencion`.
+    """
+    ingreso = ingreso_vigente_por_folio(db, folio)
     if ingreso is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -31,10 +36,18 @@ def _obtener_ingreso_por_folio(db: Session, folio: str) -> Ingreso:
 
 
 def crear_ficha(
-    db: Session, data: FichaClinicaCreate, *, salutem_cita_id: int | None = None
+    db: Session,
+    data: FichaClinicaCreate,
+    *,
+    salutem_cita_id: int | None = None,
+    ingreso: Ingreso | None = None,
 ) -> FichaClinica:
-    """Push: persiste datos clínicos recibidos en el dominio CEPA (D12)."""
-    ingreso = _obtener_ingreso_por_folio(db, data.folio)
+    """Push: persiste datos clínicos recibidos en el dominio CEPA (D12).
+
+    Sin `ingreso` explícito, la ficha va al ingreso vigente del folio.
+    """
+    if ingreso is None:
+        ingreso = _obtener_ingreso_por_folio(db, data.folio)
     ficha = FichaClinica(
         ingreso_id=ingreso.id,
         folio=data.folio,
@@ -75,6 +88,13 @@ def _en_ventana_del_ingreso(fecha, ingreso: Ingreso) -> bool:
     if fecha < ingreso.fecha_ingreso:
         return False
     return not (ingreso.fecha_alta is not None and fecha > ingreso.fecha_alta)
+
+
+def _ingreso_de_la_atencion(fecha, ingresos: list[Ingreso]) -> Ingreso | None:
+    """Ingreso del folio cuya ventana contiene la atención (el más reciente si hay
+    solapamiento); None si ninguno la reclama. `ingresos` viene del más reciente al
+    más antiguo."""
+    return next((i for i in ingresos if _en_ventana_del_ingreso(fecha, i)), None)
 
 
 def _cita_ids_ya_persistidos(db: Session, folio: str) -> set[int]:
@@ -138,11 +158,14 @@ def _pull_desde_salutem(db: Session, folio: str) -> list[FichaClinica]:
     ventana del ingreso y que no estuvieran ya guardadas. Devuelve las fichas
     nuevas; lista vacía si SALUTEM no tiene nada que aportar.
     """
-    ingreso = _obtener_ingreso_por_folio(db, folio)
+    ingresos = ingresos_por_folio(db, folio)
+    if not ingresos:
+        _obtener_ingreso_por_folio(db, folio)  # lanza el 404
     cliente = get_salutem_client()
 
     # Solo lectura sobre SALUTEM (D12): ningún método de este flujo escribe.
-    persona = cliente.resolver_persona(ingreso.paciente.rut)
+    # Los ingresos que comparten folio son del mismo paciente (mismo RUT).
+    persona = cliente.resolver_persona(ingresos[0].paciente.rut)
     if persona is None:
         return []
 
@@ -152,7 +175,8 @@ def _pull_desde_salutem(db: Session, folio: str) -> list[FichaClinica]:
     for cita in cliente.listar_atenciones(persona.salutem_id):
         if cita.cita_id in ya_guardados:
             continue
-        if not _en_ventana_del_ingreso(cita.fecha, ingreso):
+        ingreso = _ingreso_de_la_atencion(cita.fecha, ingresos)
+        if ingreso is None:
             continue
         atencion = cliente.obtener_atencion(persona.salutem_id, cita.cita_id)
         if atencion is None:
@@ -164,6 +188,7 @@ def _pull_desde_salutem(db: Session, folio: str) -> list[FichaClinica]:
                     folio=folio, origen="SALUTEM", contenido=atencion.contenido
                 ),
                 salutem_cita_id=cita.cita_id,
+                ingreso=ingreso,
             )
         )
 

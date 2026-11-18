@@ -14,8 +14,8 @@ from app.models.ingreso import Ingreso
 
 def _verificar_folio(db: Session, folio: str) -> None:
     existe = db.execute(
-        select(Ingreso.id).where(Ingreso.folio == folio)
-    ).scalar_one_or_none()
+        select(Ingreso.id).where(Ingreso.folio == folio).limit(1)
+    ).first()
     if existe is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

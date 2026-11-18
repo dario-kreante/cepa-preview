@@ -29,11 +29,10 @@ def obtener_licencias(folio: str, db: Session = Depends(get_db)) -> LicenciasRes
 
     Usa calcular_acumulado de EPIC-07 con ingreso_id. Si el folio no existe → 404.
     """
-    from app.models.ingreso import Ingreso
+    from app.services.folio import ingreso_vigente_por_folio
 
-    ingreso = db.execute(
-        select(Ingreso).where(Ingreso.folio == folio)
-    ).scalar_one_or_none()
+    # Un folio puede repetirse entre ingresos del mismo paciente: se informa el vigente.
+    ingreso = ingreso_vigente_por_folio(db, folio)
     if ingreso is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
