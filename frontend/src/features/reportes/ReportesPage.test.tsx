@@ -1,3 +1,4 @@
+import { StrictMode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { http, HttpResponse } from "msw";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
@@ -247,6 +248,32 @@ describe("ReportesPage — ODA por paciente (QA-006)", () => {
 // ── QA-007: pantalla de ODA vencidas ──────────────────────────────────────────
 
 describe("ReportesPage — ODA vencidas: carga, columnas, gestión, filtro y Excel (QA-007)", () => {
+  it("con StrictMode (como en main.tsx) la carga automática termina y consulta una sola vez", async () => {
+    let consultas = 0;
+    server.use(
+      http.get(`${BASE}/api/v1/reportes/odas-vencidas`, () => {
+        consultas += 1;
+        return HttpResponse.json(odasVencidasResp([ODA_VENCIDA]));
+      }),
+    );
+    tokenStore.setAccess(WRITER_TOKEN);
+    const qc = new QueryClient({ defaultOptions: { mutations: { retry: false } } });
+    render(
+      <StrictMode>
+        <QueryClientProvider client={qc}>
+          <MemoryRouter initialEntries={["/reportes?tab=odas"]}>
+            <AuthProvider>
+              <ReportesPage />
+            </AuthProvider>
+          </MemoryRouter>
+        </QueryClientProvider>
+      </StrictMode>,
+    );
+    expect(await screen.findByText("Paciente Prueba")).toBeTruthy();
+    expect(screen.queryByText("Consultando…")).toBeNull();
+    expect(consultas).toBe(1);
+  });
+
   it("al llegar por el enlace del dashboard (?tab=odas) carga sola, sin apretar Consultar", async () => {
     let llamadas = 0;
     server.use(

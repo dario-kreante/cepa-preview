@@ -4,7 +4,7 @@
  *  - «Vencidas» (QA-007): ODA vencidas con cobertura (CUBRE / SOLICITAR), gestión editable,
  *    filtro por programa y descarga en Excel.
  */
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Download, FileText, Upload } from "lucide-react";
 import { useAuth } from "@/lib/auth/AuthContext";
@@ -237,7 +237,6 @@ function Vencidas({ autoCargar }: { autoCargar: boolean }) {
   const [cargaAbierta, setCargaAbierta] = useState(false);
   // Gestión cambiada en esta sesión (se ve de inmediato; el backend es la fuente de verdad).
   const [gestion, setGestion] = useState<Record<number, EstadoGestion>>({});
-  const iniciado = useRef(false);
 
   async function consultar() {
     try {
@@ -250,10 +249,11 @@ function Vencidas({ autoCargar }: { autoCargar: boolean }) {
 
   useEffect(() => {
     // Llegar por el enlace del dashboard (?tab=odas) carga el informe sin apretar «Consultar».
-    if (autoCargar && !iniciado.current) {
-      iniciado.current = true;
-      void consultar();
-    }
+    // Se difiere y se cancela al desmontar: StrictMode monta dos veces, y una consulta lanzada
+    // en el primer montaje dejaría el botón en «Consultando…» para siempre.
+    if (!autoCargar) return;
+    const temporizador = setTimeout(() => void consultar(), 0);
+    return () => clearTimeout(temporizador);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

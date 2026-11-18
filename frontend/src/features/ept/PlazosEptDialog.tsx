@@ -3,7 +3,7 @@
  *
  * Gate: callers must only render this when canWrite === true.
  */
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
@@ -61,10 +61,8 @@ export function PlazosEptDialog({ casoId, plazos, open, onOpenChange }: Props) {
 
   const isCreate = plazos === null;
   const { data: caso } = useCaso(casoId);
-  const proyeccion = useMemo(
-    () => (caso?.fecha_ingreso_ept ? plazosAutomaticos(caso.fecha_ingreso_ept) : null),
-    [caso?.fecha_ingreso_ept],
-  );
+  const fechaIngreso = caso?.fecha_ingreso_ept;
+  const proyeccion = fechaIngreso ? plazosAutomaticos(fechaIngreso) : null;
 
   const {
     register,
@@ -79,11 +77,11 @@ export function PlazosEptDialog({ casoId, plazos, open, onOpenChange }: Props) {
   // Reset form whenever the dialog opens/closes or plazos changes
   useEffect(() => {
     if (open) {
-      reset(toDefaultValues(plazos, proyeccion));
+      reset(toDefaultValues(plazos, fechaIngreso ? plazosAutomaticos(fechaIngreso) : null));
     } else {
       reset(toDefaultValues(null));
     }
-  }, [open, plazos, proyeccion, reset]);
+  }, [open, plazos, fechaIngreso, reset]);
 
   async function onSubmit(values: PlazosEptForm) {
     // Coerce undefined optional dates to null for the API
