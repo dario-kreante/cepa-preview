@@ -74,6 +74,20 @@ describe("ConfigAlertasPage (COMP-2609-07)", () => {
     expect(within(fila).getByLabelText(/activo/i)).toBeInTheDocument();
   });
 
+  it("muestra «Paciente nuevo pendiente de folio» en palabras, no el código interno", async () => {
+    server.use(
+      http.get(`${BASE}/api/v1/config-alertas`, () =>
+        HttpResponse.json([
+          { tipo: "paciente_pendiente_folio", dias: 0, habiles: false, activo: true, actualizado_por: "migracion" },
+        ]),
+      ),
+    );
+    renderComo("Coordinacion");
+    const fila = await screen.findByTestId("fila-paciente_pendiente_folio");
+    expect(within(fila).getByText("Paciente nuevo pendiente de folio")).toBeInTheDocument();
+    expect(within(fila).queryByText("paciente_pendiente_folio")).toBeNull();
+  });
+
   it("QA-003: «RECA por solicitar» edita solo los días corridos, con aviso de plazo provisorio", async () => {
     const user = userEvent.setup();
     renderComo("Coordinacion");
