@@ -37,3 +37,19 @@ export const procesoEptSchema = z.object({
 });
 
 export type ProcesoEptForm = z.infer<typeof procesoEptSchema>;
+
+/** QA-002: «Insumos para el EPTista» y «Doc. incumplimiento» pasan a listas cerradas. */
+export const OPCIONES_INSUMOS_EISTA = ["Sí", "No", "Pendiente"] as const;
+export const OPCIONES_DOC_INCUMPLIMIENTO = ["Sí", "No"] as const;
+
+/**
+ * Opciones de una lista. La columna sigue siendo texto libre: un valor antiguo fuera de la
+ * lista (escrito a mano antes) se conserva como opción para verse y no perderse al editar.
+ */
+export function opcionesConValorActual(
+  base: readonly string[],
+  actual?: string | null,
+): string[] {
+  const valor = actual?.trim();
+  return valor && !base.includes(valor) ? [valor, ...base] : [...base];
+}

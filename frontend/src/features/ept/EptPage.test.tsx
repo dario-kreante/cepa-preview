@@ -204,7 +204,6 @@ describe("EptPage", () => {
     );
 
     // Fill required fields
-    await userEvent.type(screen.getByLabelText(/Mes/i), "Enero 2026");
     await userEvent.type(
       screen.getByLabelText(/Fecha de ingreso EPT/i),
       "2026-01-20"
@@ -217,7 +216,7 @@ describe("EptPage", () => {
       screen.getByLabelText(/RUT del trabajador/i),
       "12.345.678-9"
     );
-    await userEvent.type(
+    await userEvent.selectOptions(
       screen.getByLabelText(/Región del trabajador/i),
       "Metropolitana"
     );
@@ -245,6 +244,8 @@ describe("EptPage", () => {
       () => {
         expect(capturedBody).toBeDefined();
         expect((capturedBody as Record<string, unknown>).ingreso_id).toBe(10);
+        // QA-002: el mes se deriva de la fecha de ingreso EPT
+        expect((capturedBody as Record<string, unknown>).mes).toBe("Enero 2026");
         expect((capturedBody as Record<string, unknown>).factor_riesgo).toBe(
           "hostilidad_jefatura"
         );

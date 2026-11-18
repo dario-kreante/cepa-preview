@@ -28,9 +28,11 @@ import {
   FACTOR_RIESGO_LABELS,
   FACTORES_RIESGO,
   factoresAdicionales,
+  mesDesdeFecha,
   type CasoEptForm,
 } from "./casoEptSchema";
 import { useCrearCaso, useActualizarCaso } from "./hooks";
+import { opcionesRegion } from "@/lib/regiones";
 import type { CasoEptRead } from "./api";
 
 interface Props {
@@ -52,7 +54,6 @@ interface Props {
 // factor_riesgo starts empty: with 24 options a preselected default would be
 // saved by accident. The placeholder option forces an explicit choice.
 const DEFAULT_VALUES: DefaultValues<CasoEptForm> = {
-  mes: "",
   fecha_ingreso_ept: "",
   nombre_trabajador: "",
   rut_trabajador: "",
@@ -92,6 +93,10 @@ export function NuevoCasoEptDialog({
   });
 
   const correspondeEpt = watch("corresponde_ept");
+  const fechaIngreso = watch("fecha_ingreso_ept");
+  const mesDerivado = mesDesdeFecha(fechaIngreso ?? "");
+  // Un valor antiguo escrito a mano se mantiene como opción para no perderlo al editar.
+  const regiones = opcionesRegion(initialValues?.region_trabajador);
 
   // Reset form when dialog closes or initialValues change
   useEffect(() => {
@@ -109,7 +114,7 @@ export function NuevoCasoEptDialog({
         caso = await actualizarMutation.mutateAsync({
           casoId: casoId!,
           body: {
-            mes: values.mes,
+            mes: mesDesdeFecha(values.fecha_ingreso_ept),
             fecha_ingreso_ept: values.fecha_ingreso_ept,
             nombre_trabajador: values.nombre_trabajador,
             rut_trabajador: values.rut_trabajador,
@@ -126,7 +131,7 @@ export function NuevoCasoEptDialog({
       } else {
         caso = await crearMutation.mutateAsync({
           ingreso_id: ingresoId,
-          mes: values.mes,
+          mes: mesDesdeFecha(values.fecha_ingreso_ept),
           fecha_ingreso_ept: values.fecha_ingreso_ept,
           nombre_trabajador: values.nombre_trabajador,
           rut_trabajador: values.rut_trabajador,
@@ -164,22 +169,6 @@ export function NuevoCasoEptDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 py-2">
-          {/* Mes */}
-          <div>
-            <Label htmlFor="mes">Mes</Label>
-            <Input
-              id="mes"
-              type="text"
-              placeholder="Ej. Enero 2026"
-              {...register("mes")}
-            />
-            {errors.mes && (
-              <p className="text-[11.5px] text-destructive mt-1">
-                {errors.mes.message}
-              </p>
-            )}
-          </div>
-
           {/* Fecha ingreso EPT */}
           <div>
             <Label htmlFor="fecha_ingreso_ept">Fecha de ingreso EPT</Label>
@@ -188,6 +177,9 @@ export function NuevoCasoEptDialog({
               type="date"
               {...register("fecha_ingreso_ept")}
             />
+            <p className="text-[11.5px] text-muted-foreground mt-1" data-testid="mes-derivado">
+              Mes: {mesDerivado || "se completa al elegir la fecha"}
+            </p>
             {errors.fecha_ingreso_ept && (
               <p className="text-[11.5px] text-destructive mt-1">
                 {errors.fecha_ingreso_ept.message}
@@ -230,12 +222,18 @@ export function NuevoCasoEptDialog({
           {/* Región trabajador */}
           <div>
             <Label htmlFor="region_trabajador">Región del trabajador</Label>
-            <Input
+            <select
               id="region_trabajador"
-              type="text"
-              placeholder="Ej. Metropolitana"
               {...register("region_trabajador")}
-            />
+              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-[13px] shadow-sm transition-colors focus:outline-none focus:ring-1 focus:ring-ring"
+            >
+              <option value="">Selecciona una región…</option>
+              {regiones.map((r) => (
+                <option key={r} value={r}>
+                  {r}
+                </option>
+              ))}
+            </select>
             {errors.region_trabajador && (
               <p className="text-[11.5px] text-destructive mt-1">
                 {errors.region_trabajador.message}

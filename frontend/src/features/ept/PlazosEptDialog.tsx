@@ -3,7 +3,7 @@
  *
  * Gate: callers must only render this when canWrite === true.
  */
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
@@ -16,8 +16,13 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { plazosEptSchema, type PlazosEptForm } from "./plazosEptSchema";
-import { useCrearPlazos, useActualizarPlazos } from "./hooks";
+import { fmtDate } from "@/lib/utils";
+import {
+  plazosAutomaticos,
+  plazosEptSchema,
+  type PlazosEptForm,
+} from "./plazosEptSchema";
+import { useCaso, useCrearPlazos, useActualizarPlazos } from "./hooks";
 import type { PlazoEptRead } from "./api";
 
 interface Props {
@@ -27,11 +32,17 @@ interface Props {
   onOpenChange: (open: boolean) => void;
 }
 
-function toDefaultValues(plazos: PlazoEptRead | null): PlazosEptForm {
+type Proyeccion = ReturnType<typeof plazosAutomaticos>;
+
+function toDefaultValues(
+  plazos: PlazoEptRead | null,
+  proyeccion: Proyeccion | null = null,
+): PlazosEptForm {
   if (!plazos) {
+    // Plazos nuevos: se proponen ya calculados y se pueden ajustar (QA-005).
     return {
-      plazo_informe_ept: undefined,
-      plazo_portal_isl: undefined,
+      plazo_informe_ept: proyeccion?.plazo_informe_ept,
+      plazo_portal_isl: proyeccion?.plazo_portal_isl,
       fecha_entrega_isl: undefined,
       fecha_envio: undefined,
     };
@@ -49,6 +60,11 @@ export function PlazosEptDialog({ casoId, plazos, open, onOpenChange }: Props) {
   const actualizarMutation = useActualizarPlazos();
 
   const isCreate = plazos === null;
+  const { data: caso } = useCaso(casoId);
+  const proyeccion = useMemo(
+    () => (caso?.fecha_ingreso_ept ? plazosAutomaticos(caso.fecha_ingreso_ept) : null),
+    [caso?.fecha_ingreso_ept],
+  );
 
   const {
     register,
@@ -63,11 +79,11 @@ export function PlazosEptDialog({ casoId, plazos, open, onOpenChange }: Props) {
   // Reset form whenever the dialog opens/closes or plazos changes
   useEffect(() => {
     if (open) {
-      reset(toDefaultValues(plazos));
+      reset(toDefaultValues(plazos, proyeccion));
     } else {
       reset(toDefaultValues(null));
     }
-  }, [open, plazos, reset]);
+  }, [open, plazos, proyeccion, reset]);
 
   async function onSubmit(values: PlazosEptForm) {
     // Coerce undefined optional dates to null for the API
@@ -83,6 +99,11 @@ export function PlazosEptDialog({ casoId, plazos, open, onOpenChange }: Props) {
           fecha_entrega_isl: nullify(values.fecha_entrega_isl),
         };
         await crearMutation.mutateAsync({ casoId, body });
+        // El envío no viaja en el alta: si ya se registró, se guarda a continuación.
+        const envio = nullify(values.fecha_envio);
+        if (envio) {
+          await actualizarMutation.mutateAsync({ casoId, body: { fecha_envio: envio } });
+        }
         toast.success("Plazos EPT registrados");
       } else {
         const body = {
@@ -168,23 +189,31 @@ export function PlazosEptDialog({ casoId, plazos, open, onOpenChange }: Props) {
             )}
           </div>
 
-          {/* Fecha envío (only on edit — not in PlazoEptCreate) */}
-          {!isCreate && (
-            <div>
-              <Label htmlFor="fecha_envio">Fecha envío</Label>
-              <input
-                id="fecha_envio"
-                type="date"
-                {...register("fecha_envio")}
-                className={inputClass}
-              />
-              {errors.fecha_envio && (
-                <p className="text-[11.5px] text-destructive mt-1">
-                  {errors.fecha_envio.message}
-                </p>
-              )}
-            </div>
-          )}
+          {/* Envío real a ISL: al registrarlo cesan las alertas (QA-005) */}
+          <div className="rounded-md border border-border bg-muted/20 p-3 space-y-2">
+            {proyeccion && (
+              <p className="text-[12px] text-muted-foreground" data-testid="proyeccion-plazos">
+                Proyección automática (días corridos desde el ingreso EPT): informe{" "}
+                {fmtDate(proyeccion.plazo_informe_ept)} · portal ISL{" "}
+                {fmtDate(proyeccion.plazo_portal_isl)} (último día de envío).
+              </p>
+            )}
+            <Label htmlFor="fecha_envio">Fecha de envío</Label>
+            <input
+              id="fecha_envio"
+              type="date"
+              {...register("fecha_envio")}
+              className={inputClass}
+            />
+            <p className="text-[11.5px] text-muted-foreground">
+              Fecha en que se envió el informe a ISL. Al registrarla se apagan las alertas de plazo.
+            </p>
+            {errors.fecha_envio && (
+              <p className="text-[11.5px] text-destructive mt-1">
+                {errors.fecha_envio.message}
+              </p>
+            )}
+          </div>
 
           <DialogFooter className="pt-2">
             <Button

@@ -61,6 +61,10 @@ class HitoPlazos:
     plazo_objetivo:    date del plazo perentorio
     ventana_dias:      días de anticipación configurados
     usar_dias_habiles: True → cálculo en días hábiles; False → días calendario
+    desde / hasta:     rango fijo de fechas (ambas inclusivas). Si ``desde`` viene, la alerta
+                       rige entre ``desde`` y ``hasta`` (o ``plazo_objetivo`` si falta) y
+                       ``ventana_dias`` solo se guarda como dato. Lo usa el plazo EPT/ISL
+                       (QA-005: del día 18 al 20 posterior al ingreso, días corridos).
     """
 
     tipo: str
@@ -70,6 +74,8 @@ class HitoPlazos:
     plazo_objetivo: date
     ventana_dias: int
     usar_dias_habiles: bool = False
+    desde: date | None = None
+    hasta: date | None = None
 
 
 @dataclass
@@ -149,12 +155,16 @@ def evaluar_plazos(
         if clave in alertas_activas:
             continue  # idempotencia: ya existe alerta activa para este (caso, tipo, plazo)
 
-        if hito.usar_dias_habiles:
-            dias_restantes = dias_habiles_hasta(hoy, hito.plazo_objetivo, festivos)
+        if hito.desde is not None:
+            en_ventana = hito.desde <= hoy <= (hito.hasta or hito.plazo_objetivo)
         else:
-            dias_restantes = (hito.plazo_objetivo - hoy).days
+            if hito.usar_dias_habiles:
+                dias_restantes = dias_habiles_hasta(hoy, hito.plazo_objetivo, festivos)
+            else:
+                dias_restantes = (hito.plazo_objetivo - hoy).days
+            en_ventana = 0 <= dias_restantes <= hito.ventana_dias
 
-        if 0 <= dias_restantes <= hito.ventana_dias:
+        if en_ventana:
             resultados.append(
                 ResultadoAlerta(
                     tipo=hito.tipo,
@@ -310,9 +320,11 @@ def _construir_hitos_licencias(db: Session, ventanas: dict[str, dict] | None = N
 def _construir_hitos_ept(db: Session, ventanas: dict[str, dict] | None = None) -> list[HitoPlazos]:
     """Construye HitoPlazos desde plazo_ept JOIN caso_ept (EPIC-03) via ORM.
 
-    Genera un hito por cada plazo no nulo:
-      - plazo_informe_ept → TipoAlerta.PLAZO_EPT
-      - plazo_portal_isl  → TipoAlerta.PLAZO_ISL
+    QA-005: mientras no haya ``fecha_envio``, con ambos plazos cargados la alerta rige del
+    plazo del informe (día 18 posterior al ingreso) al plazo del portal ISL (día 20), días
+    corridos; ambas alertas (informe e ISL) comparten ese rango. La configuración de alertas
+    solo las enciende o apaga. Con un plazo registrado en el envío no se genera nada.
+    Si falta alguno de los dos plazos (casos antiguos) se mantiene la ventana configurada.
     Destinatario: ver _resolver_usuario, vía CasoEpt.ingreso_id (hoy None).
     """
     from app.models.ept import CasoEpt, PlazoEpt  # local import
@@ -320,18 +332,18 @@ def _construir_hitos_ept(db: Session, ventanas: dict[str, dict] | None = None) -
     v_ept = (ventanas or VENTANAS_DEFAULT)[TipoAlerta.PLAZO_EPT.value]
     v_isl = (ventanas or VENTANAS_DEFAULT)[TipoAlerta.PLAZO_ISL.value]
 
-    filas = db.scalars(
-        select(PlazoEpt)
-    ).all()
+    filas = db.scalars(select(PlazoEpt).where(PlazoEpt.fecha_envio.is_(None))).all()
     hitos: list[HitoPlazos] = []
     for plazo_ept in filas:
         caso = db.get(CasoEpt, plazo_ept.caso_ept_id)
         if caso is None:
             continue
         usuario_id = _resolver_usuario(caso.ingreso_id, db)
+        informe, isl = plazo_ept.plazo_informe_ept, plazo_ept.plazo_portal_isl
+        rango = {"desde": informe, "hasta": isl} if informe and isl and informe < isl else {}
         for campo_date, tipo, ventana in [
-            (plazo_ept.plazo_informe_ept, TipoAlerta.PLAZO_EPT.value, v_ept),
-            (plazo_ept.plazo_portal_isl, TipoAlerta.PLAZO_ISL.value, v_isl),
+            (informe, TipoAlerta.PLAZO_EPT.value, v_ept),
+            (isl, TipoAlerta.PLAZO_ISL.value, v_isl),
         ]:
             if campo_date is None or not ventana.get("activo", True):
                 continue
@@ -344,6 +356,7 @@ def _construir_hitos_ept(db: Session, ventanas: dict[str, dict] | None = None) -
                     plazo_objetivo=campo_date,
                     ventana_dias=ventana["dias"],
                     usar_dias_habiles=ventana["habiles"],
+                    **rango,
                 )
             )
     hitos.extend(_construir_hitos_insumos_ept(db, ventanas))

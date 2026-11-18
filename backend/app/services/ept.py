@@ -9,7 +9,7 @@ Reglas de negocio clave:
 - RN-3 (CEPA-032): fecha_entrega_isl no puede ser anterior a fecha_ingreso_ept ni a plazo_informe_ept.
 """
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
@@ -325,21 +325,60 @@ def _validar_plazo(data, caso: CasoEpt) -> None:
             )
 
 
+# QA-005 (16-11): días corridos (feriados y fines de semana cuentan) desde el ingreso EPT.
+DIAS_PLAZO_INFORME = 18
+DIAS_PLAZO_PORTAL_ISL = 20  # último día posible de envío
+
+
+def plazos_automaticos(fecha_ingreso_ept: date) -> tuple[date, date]:
+    """(plazo del informe EPT, plazo del portal ISL) a partir de la fecha de ingreso EPT."""
+    return (
+        fecha_ingreso_ept + timedelta(days=DIAS_PLAZO_INFORME),
+        fecha_ingreso_ept + timedelta(days=DIAS_PLAZO_PORTAL_ISL),
+    )
+
+
+def _resolver_alertas_plazo(db: Session, plazo: PlazoEpt) -> None:
+    """Al registrar el envío cesan las alertas de plazo del caso (QA-005)."""
+    abiertas = db.scalars(
+        select(AlertaNotif).where(
+            AlertaNotif.caso_tipo == "ept",
+            AlertaNotif.caso_id == plazo.id,
+            AlertaNotif.estado != EstadoAlerta.RESUELTA.value,
+        )
+    )
+    for alerta in abiertas:
+        alerta.estado = EstadoAlerta.RESUELTA.value
+        alerta.resuelta_en = datetime.now(timezone.utc)
+
+
 def crear_plazo_ept(db: Session, data: PlazoEptCreate, caso: CasoEpt) -> PlazoEpt:
     if not caso.corresponde_ept:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Este caso está marcado como «No corresponde EPT»: no lleva plazos.",
         )
-    _validar_plazo(data, caso)
     hoy = date.today()
+    # Los plazos vacíos se calculan desde el ingreso; los que vienen (ajustados) se respetan.
+    auto_informe, auto_isl = plazos_automaticos(caso.fecha_ingreso_ept)
+    plazo_informe = data.plazo_informe_ept or auto_informe
+
+    from types import SimpleNamespace
+
+    # RN-3 se valida contra el plazo ya resuelto, también cuando lo calculó el sistema.
+    _validar_plazo(
+        SimpleNamespace(
+            fecha_entrega_isl=data.fecha_entrega_isl, plazo_informe_ept=plazo_informe
+        ),
+        caso,
+    )
     plazo = PlazoEpt(
         caso_ept_id=caso.id,
-        plazo_informe_ept=data.plazo_informe_ept,
-        plazo_portal_isl=data.plazo_portal_isl,
+        plazo_informe_ept=plazo_informe,
+        plazo_portal_isl=data.plazo_portal_isl or auto_isl,
         fecha_entrega_isl=data.fecha_entrega_isl,
         estado_informe=calcular_estado_cumplimiento(
-            data.plazo_informe_ept, None, hoy
+            plazo_informe, None, hoy
         ).value,
         estado_entrega_isl=calcular_estado_cumplimiento(
             data.fecha_entrega_isl, None, hoy
@@ -391,5 +430,7 @@ def actualizar_plazo_ept(
     plazo.estado_entrega_isl = calcular_estado_cumplimiento(
         plazo.fecha_entrega_isl, plazo.fecha_envio, hoy
     ).value
+    if plazo.fecha_envio is not None:
+        _resolver_alertas_plazo(db, plazo)
     db.flush()
     return plazo
