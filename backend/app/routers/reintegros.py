@@ -1,18 +1,17 @@
 """Router del módulo de Seguimiento de Reintegro — /api/v1/reintegros (EPIC-04)."""
 
 from fastapi import APIRouter, Depends, Query, status
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.audit.service import record_audit
 from app.auth.deps import get_current_user, require_role
 from app.db.session import get_db
-from app.models.reintegro import CasoReintegro
 from app.schemas.reintegro import (
     CasoReintegroCreate,
     CasoReintegroRead,
     CasoReintegroUpdate,
     CierreReintegroUpdate,
+    PacienteConCasosRepetidosRead,
     RecaCreate,
     RecaRead,
     RecaUpdate,
@@ -23,7 +22,9 @@ from app.services.reintegro import (
     actualizar_reca,
     cerrar_caso_reintegro,
     crear_caso_reintegro,
+    consulta_casos,
     crear_reca,
+    listar_pacientes_con_casos_repetidos,
 )
 
 router = APIRouter(prefix="/api/v1/reintegros", tags=["reintegros"])
@@ -65,12 +66,25 @@ def crear_caso(
 )
 def listar_casos(
     ingreso_id: int | None = Query(default=None),
+    paciente_id: int | None = Query(default=None),
+    solo_activos: bool = Query(default=False),
     db: Session = Depends(get_db),
 ) -> list[CasoReintegroRead]:
-    stmt = select(CasoReintegro)
-    if ingreso_id is not None:
-        stmt = stmt.where(CasoReintegro.ingreso_id == ingreso_id)
-    return list(db.scalars(stmt.order_by(CasoReintegro.id)))
+    """Lista casos. `paciente_id` abarca todos los ingresos del paciente; `solo_activos`
+    deja los que no están en reintegro total (QA-003)."""
+    return list(db.scalars(consulta_casos(ingreso_id, paciente_id, solo_activos)))
+
+
+@router.get(
+    "/duplicados",
+    response_model=list[PacienteConCasosRepetidosRead],
+    dependencies=[Depends(_reader)],
+)
+def listar_duplicados(
+    db: Session = Depends(get_db),
+) -> list[PacienteConCasosRepetidosRead]:
+    """Pacientes con más de un caso activo, para revisarlos a mano (solo lectura)."""
+    return listar_pacientes_con_casos_repetidos(db)
 
 
 @router.get(
