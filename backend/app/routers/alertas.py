@@ -10,7 +10,7 @@ from app.agendamiento.salutem import lotes
 from app.audit.service import record_audit
 from app.auth.deps import get_current_user, require_role
 from app.db.session import get_db
-from app.domain.enums_alertas import EstadoAlerta
+from app.domain.enums_alertas import EstadoAlerta, TipoAlerta
 from app.models.alertas import AlertaNotif
 from app.models.cita import Cita
 from app.models.control_medico import ControlMedico
@@ -19,6 +19,7 @@ from app.models.ingreso import Ingreso
 from app.models.licencia import LicenciaMedica
 from app.models.oda import Oda
 from app.models.paciente import Paciente
+from app.models.reintegro import CasoReintegro
 from app.schemas.alertas import AlertaRead, AlertaUpdate, JobResultado
 from app.services.alertas import ejecutar_job_alertas
 from app.services.alertas_contexto import AlertaContextoRead, contexto_de_alerta
@@ -81,6 +82,7 @@ def listar_alertas(
     pacientes = _pacientes_de_casos(db, alertas)
     casos_ept = _casos_ept_de_alertas(db, alertas)
     nombres = _nombres_de_pacientes(db, set(pacientes.values()))
+    detalles = _detalles_de_alertas(db, alertas)
     resultado = []
     for a in alertas:
         paciente_id = pacientes.get((a.caso_tipo, a.caso_id))
@@ -90,10 +92,31 @@ def listar_alertas(
                     "paciente_id": paciente_id,
                     "paciente_nombre": nombres.get(paciente_id),
                     "caso_ept_id": casos_ept.get((a.caso_tipo, a.caso_id)),
+                    "detalle": detalles.get(a.id),
                 }
             )
         )
     return resultado
+
+
+def _detalles_de_alertas(db: Session, alertas: list[AlertaNotif]) -> dict[int, str]:
+    """Texto propio de cada alerta que lo tiene: la proyección de reintegro del control.
+
+    ``alerta_notif`` no guarda el valor: se lee del control al listar. Si el médico corrigió
+    la proyección, la alerta del valor anterior ya quedó resuelta (ver alertas_control).
+    """
+    de_proyeccion = [
+        a for a in alertas
+        if a.tipo == TipoAlerta.PROYECCION_REINTEGRO.value and a.caso_tipo == "control_medico"
+    ]
+    valores: dict[int, str | None] = {}
+    for lote in lotes({a.caso_id for a in de_proyeccion}):
+        valores.update(
+            db.execute(
+                select(ControlMedico.id, ControlMedico.proyeccion_reintegro).where(ControlMedico.id.in_(lote))
+            ).all()
+        )
+    return {a.id: valores[a.caso_id] for a in de_proyeccion if valores.get(a.caso_id)}
 
 
 def _casos_ept_de_alertas(db: Session, alertas: list[AlertaNotif]) -> dict[tuple[str, int], int]:
@@ -143,8 +166,12 @@ def _pacientes_de_casos(db: Session, alertas: list[AlertaNotif]) -> dict[tuple[s
         pacientes.update(
             {clave: por_caso[caso_id] for clave, caso_id in casos_ept.items() if caso_id in por_caso}
         )
-    # Casos con ingreso propio: licencia y control médico.
-    for tipo, modelo in (("licencia", LicenciaMedica), ("control_medico", ControlMedico)):
+    # Casos con ingreso propio: licencia, control médico y caso de reintegro (QA-003).
+    for tipo, modelo in (
+        ("licencia", LicenciaMedica),
+        ("control_medico", ControlMedico),
+        ("caso_reintegro", CasoReintegro),
+    ):
         ids = {a.caso_id for a in alertas if a.caso_tipo == tipo}
         for lote in lotes(ids):
             filas = db.execute(

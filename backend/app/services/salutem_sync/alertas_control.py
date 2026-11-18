@@ -12,6 +12,7 @@ se repite, y si la encargada la resolvió no reaparece. Solo para controles reci
 llenaría el panel con controles de hace meses.
 """
 
+import zlib
 from datetime import date, datetime, time, timedelta, timezone
 from typing import Any
 
@@ -19,6 +20,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.audit.service import record_audit
+from app.config import clave_especialidad
 from app.domain.enums_alertas import EstadoAlerta, TipoAlerta
 from app.integrations.salutem.senales import certificado_reposo, tiene_receta
 from app.models.alertas import AlertaNotif
@@ -32,6 +34,10 @@ CASO_TIPO = "control_medico"
 CASO_ATENCION = "salutem_atencion"
 DIAS_NOVEDAD = 14
 TIPOS = (TipoAlerta.LICENCIA_EN_CONTROL.value, TipoAlerta.RECETA_EN_CONTROL.value)
+TIPO_PROYECCION = TipoAlerta.PROYECCION_REINTEGRO.value
+# El ambiente de capacitación de SALUTEM rellena los campos con este texto: no es una proyección.
+_RELLENO_CAPACITACION = "antecedente de prueba"
+_ABIERTAS = (EstadoAlerta.PENDIENTE.value, EstadoAlerta.LEIDA.value)
 
 
 def alertar_control(db: Session, control: ControlMedico, contenido: dict[str, Any], hoy: date) -> int:
@@ -48,10 +54,11 @@ def alertar_control(db: Session, control: ControlMedico, contenido: dict[str, An
         if control.salutem_cita_id is not None
         else set()
     )
-    return _crear_alertas(
+    creadas = _crear_alertas(
         db, CASO_TIPO, control.id, control.ingreso_id, control.fecha_control, senales, hoy,
         ya_alertados=ya_alertados,
     )
+    return creadas + alertar_proyeccion(db, control, hoy)
 
 
 def alertar_atencion(
@@ -64,6 +71,70 @@ def alertar_atencion(
         TipoAlerta.RECETA_EN_CONTROL.value: tiene_receta(contenido),
     }
     return _crear_alertas(db, CASO_ATENCION, cita_id, ingreso_id, fecha, senales, hoy)
+
+
+def proyeccion_real(valor: str | None) -> str | None:
+    """La proyección sin espacios sobrantes, o None si está vacía o es el relleno de capacitación."""
+    texto = (valor or "").strip()
+    if not texto or _RELLENO_CAPACITACION in clave_especialidad(texto):
+        return None
+    return texto
+
+
+def huella_proyeccion(valor: str) -> int:
+    """Huella estable del valor (sin tildes ni mayúsculas), que cabe en ``ventana_dias``.
+
+    ``alerta_notif`` no tiene dónde guardar el texto: la huella distingue «una alerta por
+    control y valor» sin agregar columnas. El texto se lee del control al listar.
+    """
+    return zlib.crc32(clave_especialidad(valor).encode("utf-8")) & 0x7FFFFFFF
+
+
+def alertar_proyeccion(db: Session, control: ControlMedico, hoy: date) -> int:
+    """Alerta «Proyección de reintegro registrada»: una por control y valor. Devuelve 1 si la creó.
+
+    Con otro valor que el de la alerta abierta (el médico corrigió la proyección) la anterior
+    queda resuelta y se avisa de nuevo; si el valor pasa a vacío o a relleno, se resuelve. Un
+    valor ya alertado antes (aunque se resolviera a mano) no reaparece.
+    """
+    valor = proyeccion_real(control.proyeccion_reintegro)
+    huella = huella_proyeccion(valor) if valor is not None else None
+    previas = db.scalars(
+        select(AlertaNotif).where(
+            AlertaNotif.caso_tipo == CASO_TIPO,
+            AlertaNotif.caso_id == control.id,
+            AlertaNotif.tipo == TIPO_PROYECCION,
+        )
+    ).all()
+    ahora = datetime.now(timezone.utc)
+    for previa in previas:
+        if previa.estado in _ABIERTAS and previa.ventana_dias != huella:
+            previa.estado = EstadoAlerta.RESUELTA.value
+            previa.resuelta_en = ahora
+    if valor is None or any(p.ventana_dias == huella for p in previas):
+        db.flush()
+        return 0
+    if control.fecha_control < hoy - timedelta(days=DIAS_NOVEDAD):
+        return 0
+    if ingreso_cerrado(db, control.ingreso_id):  # QA-011: un caso cerrado no genera alertas
+        return 0
+    if not cargar_ventanas(db).get(TIPO_PROYECCION, {}).get("activo", True):
+        return 0
+    db.add(
+        AlertaNotif(
+            tipo=TIPO_PROYECCION,
+            estado=EstadoAlerta.PENDIENTE.value,
+            caso_id=control.id,
+            caso_tipo=CASO_TIPO,
+            usuario_id=_resolver_usuario(control.ingreso_id, db),
+            plazo_objetivo=datetime.combine(control.fecha_control, time.min, tzinfo=timezone.utc),
+            ventana_dias=huella,
+            email_enviado=False,
+        )
+    )
+    db.flush()
+    record_audit(db, actor=ACTOR, action="CREATE", entity="alerta_notif", entity_id=f"proyeccion:{control.id}")
+    return 1
 
 
 def _tipos_alertados(db: Session, caso_tipo: str, caso_id: int) -> set[str]:
@@ -120,7 +191,7 @@ def resolver_alertas_control(db: Session, control_id: int, caso_tipo: str = CASO
         select(AlertaNotif).where(
             AlertaNotif.caso_tipo == caso_tipo,
             AlertaNotif.caso_id == control_id,
-            AlertaNotif.tipo.in_(TIPOS),
+            AlertaNotif.tipo.in_((*TIPOS, TIPO_PROYECCION)),
             AlertaNotif.estado != EstadoAlerta.RESUELTA.value,
         )
     ):

@@ -6,6 +6,7 @@ convertirá la excepción en una respuesta 422 JSON sin código adicional.
 """
 
 import datetime
+from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException, status
 from sqlalchemy import Select, func, select
@@ -25,6 +26,15 @@ from app.schemas.reintegro import (
     RecaCreate,
     RecaUpdate,
 )
+from app.services.alertas_reca import resolver_alertas_reca
+
+
+_SANTIAGO = ZoneInfo("America/Santiago")
+
+
+def hoy_chile() -> datetime.date:
+    """Hoy en Chile: el servidor corre en UTC y de noche ya estaría en el día siguiente."""
+    return datetime.datetime.now(_SANTIAGO).date()
 
 
 # ── Validaciones puras (sin sesión) ───────────────────────────────────────
@@ -153,6 +163,25 @@ def validar_coherencia_cierre(
                 ),
             )
     # estado=parcial o pendiente: no hay restricciones adicionales aquí
+
+
+def validar_fecha_solicitud_reca(
+    fecha: datetime.date, fecha_caso: datetime.date, hoy: datetime.date
+) -> None:
+    """QA-003: la solicitud de RECA no puede ser futura ni anterior a la fecha del caso."""
+    if fecha > hoy:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"La fecha de solicitud de la RECA ({_fmt(fecha)}) no puede ser futura.",
+        )
+    if fecha < fecha_caso:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=(
+                f"La fecha de solicitud de la RECA ({_fmt(fecha)}) no puede ser anterior "
+                f"a la fecha del caso ({_fmt(fecha_caso)})."
+            ),
+        )
 
 
 # ── Casos activos y duplicados (QA-003) ───────────────────────────────────
@@ -293,6 +322,20 @@ def _obtener_caso_o_404(db: Session, caso_id: int) -> CasoReintegro:
     return caso
 
 
+def registrar_solicitud_reca(
+    db: Session, caso: CasoReintegro, fecha: datetime.date, hoy: datetime.date | None = None
+) -> CasoReintegro:
+    """Registra o corrige la fecha de solicitud de la RECA (QA-003).
+
+    Resuelve la alerta «RECA por solicitar» del caso. La auditoría la escribe el router.
+    """
+    validar_fecha_solicitud_reca(fecha, caso.fecha_caso, hoy or hoy_chile())
+    caso.fecha_solicitud_reca = fecha
+    db.flush()
+    resolver_alertas_reca(db, caso.id)
+    return caso
+
+
 def crear_reca(db: Session, caso_id: int, data: RecaCreate) -> Reca:
     """Registra la RECA asociada al caso (CEPA-041).
 
@@ -341,6 +384,7 @@ def crear_reca(db: Session, caso_id: int, data: RecaCreate) -> Reca:
     )
     db.add(reca)
     db.flush()
+    resolver_alertas_reca(db, caso.id)  # con la RECA registrada ya no hay nada que solicitar
     return reca
 
 
@@ -398,4 +442,6 @@ def cerrar_caso_reintegro(
     caso.tipo_alta = data.tipo_alta.value if data.tipo_alta else None
     caso.observaciones = data.observaciones
     db.flush()
+    if data.estado_reintegro == EstadoReintegro.TOTAL:
+        resolver_alertas_reca(db, caso.id)
     return caso

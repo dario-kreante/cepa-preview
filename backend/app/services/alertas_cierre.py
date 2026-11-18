@@ -21,6 +21,7 @@ from app.models.farmacos import Alerta, Receta, RegistroFarmacologico
 from app.models.ingreso import Ingreso
 from app.models.licencia import LicenciaMedica
 from app.models.oda import Oda
+from app.models.reintegro import CasoReintegro
 
 _ABIERTAS = (EstadoAlerta.PENDIENTE.value, EstadoAlerta.LEIDA.value)
 
@@ -46,6 +47,8 @@ def resolver_alertas_de_ingreso(db: Session, ingreso_id: int) -> int:
         "oda": select(Oda.id).where(Oda.ingreso_id == ingreso_id),
         "licencia": select(LicenciaMedica.id).where(LicenciaMedica.ingreso_id == ingreso_id),
         "control_medico": select(ControlMedico.id).where(ControlMedico.ingreso_id == ingreso_id),
+        # QA-003: alerta «RECA por solicitar», cuelga del caso de reintegro del ingreso.
+        "caso_reintegro": select(CasoReintegro.id).where(CasoReintegro.ingreso_id == ingreso_id),
         "caso_ept": select(CasoEpt.id).where(CasoEpt.ingreso_id == ingreso_id),
         "ept": select(PlazoEpt.id)
         .join(CasoEpt, CasoEpt.id == PlazoEpt.caso_ept_id)

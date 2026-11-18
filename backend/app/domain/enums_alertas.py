@@ -34,6 +34,10 @@ class TipoAlerta(str, Enum):
     CITA_FUERA_DE_ODA = "cita_fuera_de_oda"
     # Reunión 29-10 (D10): plazo en que el empleador entrega los insumos del informe EPT.
     PLAZO_INSUMOS_EPT = "plazo_insumos_ept"
+    # QA-003 (18-11): el caso de reintegro lleva días sin solicitar la RECA (plazo provisional).
+    RECA_POR_SOLICITAR = "reca_por_solicitar"
+    # QA-003 (18-11): el médico registró la proyección de reintegro laboral en un control.
+    PROYECCION_REINTEGRO = "proyeccion_reintegro"
 
 
 class EstadoAlerta(str, Enum):

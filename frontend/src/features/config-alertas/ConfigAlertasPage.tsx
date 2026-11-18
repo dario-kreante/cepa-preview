@@ -23,7 +23,7 @@ import {
   useFestivos,
   useGuardarConfig,
 } from "./hooks";
-import { TIPO_GAF, TIPO_LABELS, TIPOS_SIN_DIAS, type ConfigAlertaItem, type ConfigAlertaRead } from "./api";
+import { TIPO_GAF, TIPO_LABELS, TIPOS_DIAS_CORRIDOS, TIPOS_SIN_DIAS, type ConfigAlertaItem, type ConfigAlertaRead } from "./api";
 import { useGafTramos } from "@/features/gaf-tramos/hooks";
 
 function Th({ children }: { children: React.ReactNode }) {
@@ -117,6 +117,7 @@ function UmbralesForm({ inicial }: { inicial: ConfigAlertaRead[] }) {
               const nombre = TIPO_LABELS[f.tipo] ?? f.tipo;
               const esGaf = f.tipo === TIPO_GAF;
               const sinDias = TIPOS_SIN_DIAS.has(f.tipo);
+              const soloCorridos = TIPOS_DIAS_CORRIDOS.has(f.tipo);
               return (
                 <tr key={f.tipo} className="border-b" data-testid={`fila-${f.tipo}`}>
                   <td className="px-4 py-3 font-medium">
@@ -129,6 +130,12 @@ function UmbralesForm({ inicial }: { inicial: ConfigAlertaRead[] }) {
                     {sinDias && (
                       <p className="text-[11.5px] font-normal text-muted-foreground">
                         Llega cuando el sync de SALUTEM trae un control con esta indicación
+                      </p>
+                    )}
+                    {soloCorridos && (
+                      <p className="text-[11.5px] font-normal text-muted-foreground">
+                        Plazo provisorio (la clienta aún debe confirmarlo), en días corridos desde la
+                        fecha del caso: avisa si sigue sin solicitud ni RECA
                       </p>
                     )}
                   </td>
@@ -161,7 +168,7 @@ function UmbralesForm({ inicial }: { inicial: ConfigAlertaRead[] }) {
                     )}
                   </td>
                   <td className="px-4 py-3">
-                    {esGaf || sinDias ? (
+                    {esGaf || sinDias || soloCorridos ? (
                       <span className="text-[13px] text-muted-foreground">—</span>
                     ) : (
                       <input

@@ -15,6 +15,8 @@ export type RecaUpdate = components["schemas"]["RecaUpdate"];
 export type CierreReintegroUpdate =
   components["schemas"]["CierreReintegroUpdate"];
 
+export type EstadoSolicitudReca = components["schemas"]["EstadoSolicitudReca"];
+
 export type CasoActivoResumen = components["schemas"]["CasoActivoResumen"];
 export type PacienteConCasosRepetidos =
   components["schemas"]["PacienteConCasosRepetidosRead"];
@@ -166,6 +168,25 @@ export async function registrarCierre(
         mensajeDelBackend(error, "Datos de cierre inválidos (revisa fechas y altas)."),
       );
     throw new Error("No se pudo registrar el cierre del reintegro");
+  }
+  return data;
+}
+
+// ── QA-003: solicitud de RECA ────────────────────────────────────────────────
+
+/** PATCH /api/v1/reintegros/{caso_id}/solicitud-reca — registra o corrige la fecha. */
+export async function registrarSolicitudReca(
+  casoId: number,
+  fecha: string,
+): Promise<CasoReintegroRead> {
+  const { data, error, response } = await api.PATCH(
+    "/api/v1/reintegros/{caso_id}/solicitud-reca",
+    { params: { path: { caso_id: casoId } }, body: { fecha_solicitud_reca: fecha } },
+  );
+  if (error || !data) {
+    if (response.status === 422)
+      throw new Error(mensajeDelBackend(error, "La fecha de solicitud no es válida."));
+    throw new Error("No se pudo registrar la solicitud de RECA");
   }
   return data;
 }

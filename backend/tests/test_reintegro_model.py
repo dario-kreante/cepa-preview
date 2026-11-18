@@ -31,6 +31,7 @@ def test_caso_reintegro_tabla_y_columnas():
         "fecha_alta_psico",
         "tipo_alta",
         "observaciones",
+        "fecha_solicitud_reca",
         "created_at",
         "updated_at",
     }
