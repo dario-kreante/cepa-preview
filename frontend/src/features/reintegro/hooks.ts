@@ -123,7 +123,12 @@ export function useRegistrarCierre() {
       casoId: number;
       body: CierreReintegroUpdate;
     }) => registrarCierre(casoId, body),
-    onSuccess: (_data, { casoId }) =>
-      qc.invalidateQueries({ queryKey: ["reintegro", casoId] }),
+    onSuccess: (caso, { casoId }) => {
+      // Pasar a reintegro total saca al caso de los activos: refresca aviso y duplicados.
+      qc.invalidateQueries({ queryKey: ["reintegro", casoId] });
+      qc.invalidateQueries({ queryKey: ["reintegro", "ingreso", caso.ingreso_id] });
+      qc.invalidateQueries({ queryKey: ["reintegro", "paciente"] });
+      qc.invalidateQueries({ queryKey: ["reintegro", "duplicados"] });
+    },
   });
 }

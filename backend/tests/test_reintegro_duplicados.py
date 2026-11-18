@@ -150,3 +150,39 @@ def test_consulta_compila_en_oracle():
         consulta_pacientes_con_casos_activos_repetidos().compile(dialect=oracle.dialect())
     )
     assert "HAVING" in sql.upper()
+
+
+def test_caso_pendiente_de_ingreso_cerrado_no_cuenta_como_activo(as_admin, db_session):
+    db = db_session
+    p = _paciente(db, "999999991", "Ingreso Cerrado")
+    cerrado = _ingreso(db, p, "F-IC-1")
+    cerrado.estado = "cerrado"
+    activo = _ingreso(db, p, "F-IC-2")
+    _caso(db, cerrado, p)
+    vigente = _caso(db, activo, p)
+    db.commit()
+
+    assert [r.paciente_id for r in listar_pacientes_con_casos_repetidos(db)] == []
+    r = as_admin.get(f"/api/v1/reintegros?paciente_id={p.id}&solo_activos=true")
+    assert [c["id"] for c in r.json()] == [vigente.id]
+    assert len(as_admin.get(f"/api/v1/reintegros?paciente_id={p.id}").json()) == 2
+
+
+def test_dos_casos_en_ingresos_activos_siguen_siendo_duplicado(db_session):
+    db = db_session
+    p = _paciente(db, "999999992", "Dos Activos Y Un Cerrado")
+    ing_a = _ingreso(db, p, "F-DA-1")
+    ing_b = _ingreso(db, p, "F-DA-2")
+    ing_c = _ingreso(db, p, "F-DA-3")
+    ing_c.estado = "cerrado"
+    a, b = _caso(db, ing_a, p), _caso(db, ing_b, p)
+    _caso(db, ing_c, p)
+    resultado = listar_pacientes_con_casos_repetidos(db)
+    assert [c.id for c in resultado[0].casos] == [a.id, b.id]
+
+
+def test_consulta_casos_activos_compila_en_oracle():
+    from app.services.reintegro import consulta_casos
+
+    sql = str(consulta_casos(paciente_id=1, solo_activos=True).compile(dialect=oracle.dialect()))
+    assert "ingreso.estado" in sql.lower()

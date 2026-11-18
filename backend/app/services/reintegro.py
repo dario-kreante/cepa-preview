@@ -11,6 +11,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import Select, func, select
 from sqlalchemy.orm import Session
 
+from app.domain.enums import EstadoCaso
 from app.domain.reintegro_enums import EstadoReintegro
 from app.models.ingreso import Ingreso
 from app.models.paciente import Paciente
@@ -160,7 +161,11 @@ def validar_coherencia_cierre(
 # estado de cierre del caso (diálogo «Reintegro y cierre del caso»); pendiente y parcial
 # siguen abiertos. La pantalla no tiene otro indicador de vigencia.
 
-_ACTIVO = CasoReintegro.estado_reintegro != EstadoReintegro.TOTAL.value
+# Un caso de un ingreso cerrado tampoco cuenta como activo, aunque siga pendiente.
+_ACTIVO = (
+    CasoReintegro.estado_reintegro != EstadoReintegro.TOTAL.value,
+    Ingreso.estado != EstadoCaso.CERRADO.value,
+)
 
 
 def consulta_casos(
@@ -169,14 +174,14 @@ def consulta_casos(
     solo_activos: bool = False,
 ) -> Select:
     stmt = select(CasoReintegro)
+    if paciente_id is not None or solo_activos:
+        stmt = stmt.join(Ingreso, Ingreso.id == CasoReintegro.ingreso_id)
     if paciente_id is not None:
-        stmt = stmt.join(Ingreso, Ingreso.id == CasoReintegro.ingreso_id).where(
-            Ingreso.paciente_id == paciente_id
-        )
+        stmt = stmt.where(Ingreso.paciente_id == paciente_id)
     if ingreso_id is not None:
         stmt = stmt.where(CasoReintegro.ingreso_id == ingreso_id)
     if solo_activos:
-        stmt = stmt.where(_ACTIVO)
+        stmt = stmt.where(*_ACTIVO)
     return stmt.order_by(CasoReintegro.id)
 
 
@@ -185,7 +190,7 @@ def consulta_pacientes_con_casos_activos_repetidos() -> Select:
     return (
         select(Ingreso.paciente_id)
         .join(CasoReintegro, CasoReintegro.ingreso_id == Ingreso.id)
-        .where(_ACTIVO)
+        .where(*_ACTIVO)
         .group_by(Ingreso.paciente_id)
         .having(func.count(CasoReintegro.id) > 1)
     )
@@ -202,7 +207,7 @@ def listar_pacientes_con_casos_repetidos(
     filas = db.execute(
         select(CasoReintegro, Ingreso.paciente_id)
         .join(Ingreso, Ingreso.id == CasoReintegro.ingreso_id)
-        .where(_ACTIVO, Ingreso.paciente_id.in_(ids))
+        .where(*_ACTIVO, Ingreso.paciente_id.in_(ids))
         .order_by(CasoReintegro.id)
     ).all()
     casos_por_paciente: dict[int, list[CasoActivoResumen]] = {}
