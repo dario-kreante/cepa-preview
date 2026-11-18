@@ -1,3 +1,4 @@
+from typing import Literal
 from datetime import date
 
 from pydantic import BaseModel, ConfigDict
@@ -18,6 +19,17 @@ class OdaRead(BaseModel):
     identificador: str
     fecha_vencimiento: date
     vigente: bool
+
+
+class OdaGestionUpdate(BaseModel):
+    estado_gestion: Literal["pendiente", "solicitada", "recibida"]
+
+
+class OdaGestionRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    estado_gestion: str
 
 
 class OdaAlerta(BaseModel):

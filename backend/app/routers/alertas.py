@@ -13,8 +13,12 @@ from app.db.session import get_db
 from app.domain.enums_alertas import EstadoAlerta
 from app.models.alertas import AlertaNotif
 from app.models.cita import Cita
+from app.models.control_medico import ControlMedico
+from app.models.ept import CasoEpt, PlazoEpt
 from app.models.ingreso import Ingreso
+from app.models.licencia import LicenciaMedica
 from app.models.oda import Oda
+from app.models.paciente import Paciente
 from app.schemas.alertas import AlertaRead, AlertaUpdate, JobResultado
 from app.services.alertas import ejecutar_job_alertas
 from app.services.alertas_contexto import AlertaContextoRead, contexto_de_alerta
@@ -75,12 +79,41 @@ def listar_alertas(
     stmt = stmt.order_by(AlertaNotif.generada_en.desc())
     alertas = list(db.scalars(stmt))
     pacientes = _pacientes_de_casos(db, alertas)
-    return [
-        AlertaRead.model_validate(a).model_copy(
-            update={"paciente_id": pacientes.get((a.caso_tipo, a.caso_id))}
+    casos_ept = _casos_ept_de_alertas(db, alertas)
+    nombres = _nombres_de_pacientes(db, set(pacientes.values()))
+    resultado = []
+    for a in alertas:
+        paciente_id = pacientes.get((a.caso_tipo, a.caso_id))
+        resultado.append(
+            AlertaRead.model_validate(a).model_copy(
+                update={
+                    "paciente_id": paciente_id,
+                    "paciente_nombre": nombres.get(paciente_id),
+                    "caso_ept_id": casos_ept.get((a.caso_tipo, a.caso_id)),
+                }
+            )
         )
-        for a in alertas
-    ]
+    return resultado
+
+
+def _casos_ept_de_alertas(db: Session, alertas: list[AlertaNotif]) -> dict[tuple[str, int], int]:
+    """Caso EPT real de cada alerta: las de plazo (caso_tipo "ept") guardan el id del PlazoEpt;
+    las de insumos (caso_tipo "caso_ept") ya guardan el id del CasoEpt."""
+    casos: dict[tuple[str, int], int] = {}
+    for lote in lotes({a.caso_id for a in alertas if a.caso_tipo == "ept"}):
+        filas = db.execute(select(PlazoEpt.id, PlazoEpt.caso_ept_id).where(PlazoEpt.id.in_(lote)))
+        casos.update({("ept", plazo_id): caso_id for plazo_id, caso_id in filas})
+    for lote in lotes({a.caso_id for a in alertas if a.caso_tipo == "caso_ept"}):
+        existentes = db.scalars(select(CasoEpt.id).where(CasoEpt.id.in_(lote)))
+        casos.update({("caso_ept", caso_id): caso_id for caso_id in existentes})
+    return casos
+
+
+def _nombres_de_pacientes(db: Session, ids: set[int]) -> dict[int, str]:
+    nombres: dict[int, str] = {}
+    for lote in lotes(ids):
+        nombres.update(db.execute(select(Paciente.id, Paciente.nombre).where(Paciente.id.in_(lote))).all())
+    return nombres
 
 
 def _pacientes_de_casos(db: Session, alertas: list[AlertaNotif]) -> dict[tuple[str, int], int]:
@@ -98,6 +131,28 @@ def _pacientes_de_casos(db: Session, alertas: list[AlertaNotif]) -> dict[tuple[s
     if ingresos:
         filas = db.execute(select(Ingreso.id, Ingreso.paciente_id).where(Ingreso.id.in_(ingresos)))
         pacientes.update({("ingreso", ing_id): pid for ing_id, pid in filas})
+    # Casos EPT (por plazo o por caso, ver _casos_ept_de_alertas): paciente vía el ingreso del caso.
+    casos_ept = _casos_ept_de_alertas(db, alertas)
+    for lote in lotes(set(casos_ept.values())):
+        filas = db.execute(
+            select(CasoEpt.id, Ingreso.paciente_id)
+            .join(Ingreso, Ingreso.id == CasoEpt.ingreso_id)
+            .where(CasoEpt.id.in_(lote))
+        )
+        por_caso = dict(filas.all())
+        pacientes.update(
+            {clave: por_caso[caso_id] for clave, caso_id in casos_ept.items() if caso_id in por_caso}
+        )
+    # Casos con ingreso propio: licencia y control médico.
+    for tipo, modelo in (("licencia", LicenciaMedica), ("control_medico", ControlMedico)):
+        ids = {a.caso_id for a in alertas if a.caso_tipo == tipo}
+        for lote in lotes(ids):
+            filas = db.execute(
+                select(modelo.id, Ingreso.paciente_id)
+                .join(Ingreso, Ingreso.id == modelo.ingreso_id)
+                .where(modelo.id.in_(lote))
+            )
+            pacientes.update({(tipo, caso_id): pid for caso_id, pid in filas})
     citas_salutem = {a.caso_id for a in alertas if a.caso_tipo == "salutem_cita"}
     for lote in lotes(citas_salutem):
         filas = db.execute(

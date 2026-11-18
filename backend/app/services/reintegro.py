@@ -26,6 +26,11 @@ from app.schemas.reintegro import (
 
 # ── Validaciones puras (sin sesión) ───────────────────────────────────────
 
+def _fmt(d: datetime.date) -> str:
+    """Fecha como la lee el usuario en pantalla (dd-mm-aaaa)."""
+    return d.strftime("%d-%m-%Y")
+
+
 def validar_coherencia_reca(
     solicita_medidas: bool,
     detalle_medidas: str | None,
@@ -42,17 +47,17 @@ def validar_coherencia_reca(
         if not detalle_medidas:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="detalle_medidas es obligatorio cuando solicita_medidas=True (RN-2).",
+                detail="Si solicita medidas correctivas, describe cuáles son.",
             )
         if fecha_medidas is None:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="fecha_medidas es obligatoria cuando solicita_medidas=True (RN-2).",
+                detail="Si solicita medidas correctivas, indica la fecha de las medidas.",
             )
     if verifica_medidas and fecha_verificacion is None:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="fecha_verificacion es obligatoria cuando verifica_medidas=True (RN-4).",
+            detail="Si verifica las medidas, indica la fecha de verificación.",
         )
 
 
@@ -66,8 +71,8 @@ def validar_coherencia_medidas(
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=(
-                f"fecha_medidas ({fecha_medidas}) debe ser igual o posterior "
-                f"a fecha_reca ({fecha_reca}) (RN-3)."
+                f"La fecha de las medidas ({_fmt(fecha_medidas)}) no puede ser anterior "
+                f"a la fecha de la RECA ({_fmt(fecha_reca)})."
             ),
         )
     if fecha_verificacion is not None and fecha_medidas is not None:
@@ -75,8 +80,8 @@ def validar_coherencia_medidas(
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail=(
-                    f"fecha_verificacion ({fecha_verificacion}) debe ser igual o posterior "
-                    f"a fecha_medidas ({fecha_medidas}) (RN-3)."
+                    f"La fecha de verificación ({_fmt(fecha_verificacion)}) no puede ser "
+                    f"anterior a la fecha de las medidas ({_fmt(fecha_medidas)})."
                 ),
             )
 
@@ -101,33 +106,33 @@ def validar_coherencia_cierre(
         if fecha_reintegro is None:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="fecha_reintegro es obligatoria cuando estado=total (RN-1).",
+                detail="Para un reintegro total, indica la fecha de reintegro.",
             )
         if fecha_reca is not None and fecha_reintegro < fecha_reca:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail=(
-                    f"fecha_reintegro ({fecha_reintegro}) no puede ser anterior "
-                    f"a fecha_reca ({fecha_reca}) (RN-2)."
+                    f"La fecha de reintegro ({_fmt(fecha_reintegro)}) no puede ser anterior "
+                    f"a la fecha de la RECA ({_fmt(fecha_reca)})."
                 ),
             )
         if fecha_caso is not None and fecha_reintegro < fecha_caso:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail=(
-                    f"fecha_reintegro ({fecha_reintegro}) no puede ser anterior "
-                    f"a fecha_caso ({fecha_caso}) (RN-2)."
+                    f"La fecha de reintegro ({_fmt(fecha_reintegro)}) no puede ser anterior "
+                    f"a la fecha del caso ({_fmt(fecha_caso)})."
                 ),
             )
         if not alta_medica and not alta_psicologica:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="Para cerrar el caso se requiere al menos alta_medica o alta_psicologica (RN-4).",
+                detail="Para un reintegro total, marca el alta médica, el alta psicológica o ambas.",
             )
         if not tipo_alta:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="tipo_alta es obligatorio para cerrar el caso (RN-4).",
+                detail="Para un reintegro total, elige el tipo de alta.",
             )
     # estado=parcial o pendiente: no hay restricciones adicionales aquí
 

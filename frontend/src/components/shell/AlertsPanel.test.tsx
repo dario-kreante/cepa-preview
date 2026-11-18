@@ -182,8 +182,13 @@ describe("AlertsPanel: alerta de inasistencia", () => {
 });
 
 describe("routeForCaso", () => {
-  it("enruta EPT con deep-link por caso_id", () => {
-    expect(routeForCaso("ept", 42)).toBe("/ept?caso=42");
+  it("enruta EPT al caso real, no al id del plazo que trae caso_id", () => {
+    expect(routeForCaso("ept", 900, null, 42)).toBe("/ept?caso=42");
+    expect(routeForCaso("ept", 900)).toBe("/ept");
+  });
+
+  it("enruta las alertas de insumos (caso_ept) por el id del caso", () => {
+    expect(routeForCaso("caso_ept", 42)).toBe("/ept?caso=42");
   });
 
   it("EPT sin caso_id cae a la página del módulo", () => {

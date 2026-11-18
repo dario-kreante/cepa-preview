@@ -60,6 +60,12 @@ function makeQC() {
 
 function renderPlazos(canWrite: boolean, token = ADMIN_TOKEN) {
   tokenStore.setAccess(token);
+  // El diálogo lee la fecha de ingreso del caso para proponer los plazos (QA-005).
+  server.use(
+    http.get(`${BASE}/api/v1/casos-ept/:casoId`, () =>
+      HttpResponse.json({ id: CASO_ID, fecha_ingreso_ept: "2026-01-10" })
+    )
+  );
   const qc = makeQC();
   return render(
     <QueryClientProvider client={qc}>

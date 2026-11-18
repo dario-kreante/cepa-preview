@@ -235,3 +235,103 @@ def test_listado_trae_paciente_de_la_cita_salutem(as_admin: TestClient, db_sessi
     data = {a["id"]: a for a in as_admin.get("/api/v1/alertas").json()}
     assert data[con_cita.id]["paciente_id"] == ingreso["paciente_id"]
     assert data[huerfana.id]["paciente_id"] is None
+
+
+# QA-001: el listado trae el paciente y el caso EPT reales de las alertas que genera el job.
+def _ingreso_api(client: TestClient, rut: str, nombre: str) -> dict:
+    return client.post(
+        "/api/v1/ingresos",
+        json={
+            "rut": rut, "nombre": nombre, "sexo": "F", "edad": 33,
+            "region": "Maule", "diagnostico": "x", "tipo_derivacion": "DIAT",
+            "tipo_ingreso": "convenio", "modelo_tratamiento": "ambulatorio",
+            "fecha_ingreso": "2026-06-10",
+        },
+    ).json()
+
+
+def _caso_ept(db: Session, ingreso_id: int):
+    from datetime import date
+
+    from app.models.ept import CasoEpt
+
+    caso = CasoEpt(
+        ingreso_id=ingreso_id, mes="Junio 2026", fecha_ingreso_ept=date(2026, 6, 20),
+        nombre_trabajador="Trabajador", rut_trabajador="12.345.678-5", region_trabajador="Maule",
+        eista="E", factor_riesgo="carga_fisica", corresponde_ept=True, estado="abierto",
+    )
+    db.add(caso)
+    db.flush()
+    return caso
+
+
+def test_alerta_de_plazo_ept_trae_el_paciente_y_el_caso_no_el_id_del_plazo(
+    as_admin: TestClient, db_session: Session
+):
+    from datetime import date, timedelta
+
+    from app.models.ept import PlazoEpt
+    from app.services.alertas import ejecutar_job_alertas
+
+    ana = _ingreso_api(as_admin, "11.111.111-1", "Ana SinPlazos")
+    bea = _ingreso_api(as_admin, "22.222.222-2", "Bea ConPlazo")
+    caso_ana = _caso_ept(db_session, ana["id"])
+    caso_bea = _caso_ept(db_session, bea["id"])
+    # id del plazo distinto al del caso (y igual al caso de Ana, que no tiene plazos): el error
+    # de resolver caso_id como CasoEpt.id le asignaría la alerta a Ana.
+    db_session.add(PlazoEpt(id=caso_ana.id, caso_ept_id=caso_bea.id,
+                            plazo_informe_ept=date.today() + timedelta(days=2)))
+    db_session.commit()
+    assert caso_ana.id != caso_bea.id
+
+    ejecutar_job_alertas(db_session, actor="test")
+
+    alertas = [a for a in as_admin.get("/api/v1/alertas").json() if a["caso_tipo"] == "ept"]
+    assert alertas
+    for a in alertas:
+        assert a["caso_id"] == caso_ana.id  # es el id del plazo
+        assert a["caso_ept_id"] == caso_bea.id
+        assert a["paciente_id"] == bea["paciente_id"]
+        assert a["paciente_nombre"] == "Bea ConPlazo"
+
+
+def test_alerta_de_insumos_ept_trae_el_paciente_y_el_caso(as_admin: TestClient, db_session: Session):
+    from datetime import date
+
+    from app.models.ept import ProcesoEpt
+    from app.services.alertas import ejecutar_job_alertas
+
+    ana = _ingreso_api(as_admin, "11.111.111-1", "Ana Insumos")
+    caso = _caso_ept(db_session, ana["id"])
+    hoy = date(2026, 10, 20)
+    db_session.add(ProcesoEpt(caso_ept_id=caso.id, plazo_insumos_empresa=hoy))
+    db_session.commit()
+
+    ejecutar_job_alertas(db_session, actor="test", hoy=hoy)
+
+    alertas = [a for a in as_admin.get("/api/v1/alertas").json() if a["caso_tipo"] == "caso_ept"]
+    assert len(alertas) == 1
+    assert alertas[0]["caso_ept_id"] == caso.id
+    assert alertas[0]["paciente_nombre"] == "Ana Insumos"
+
+
+def test_listado_trae_paciente_de_la_licencia(as_admin: TestClient, db_session: Session):
+    from datetime import date
+
+    from app.models.licencia import LicenciaMedica
+
+    ana = _ingreso_api(as_admin, "11.111.111-1", "Ana González")
+    licencia = LicenciaMedica(
+        ingreso_id=ana["id"], tipo_lm="1", tipo_reposo="total",
+        fecha_inicio=date(2026, 6, 10), fecha_termino=date(2026, 6, 19),
+        fecha_emision=date(2026, 6, 10), inicio_reposo=date(2026, 6, 10),
+        fin_reposo=date(2026, 6, 19), cantidad_dias=10, diagnostico="x",
+    )
+    db_session.add(licencia)
+    db_session.flush()
+    a = _alerta_en_bd(db_session, usuario_id=None, tipo="vencimiento_licencia")
+    a.caso_tipo, a.caso_id = "licencia", licencia.id
+    db_session.commit()
+
+    data = {x["id"]: x for x in as_admin.get("/api/v1/alertas").json()}
+    assert data[a.id]["paciente_nombre"] == "Ana González"

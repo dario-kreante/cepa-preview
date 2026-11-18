@@ -1,4 +1,5 @@
 import { api } from "@/lib/apiClient";
+import { mensajeDelBackend } from "@/lib/apiError";
 import type { components } from "@/types/api";
 
 // ── Type exports ────────────────────────────────────────────────────────────
@@ -33,8 +34,8 @@ export async function crearCaso(body: CasoEptCreate): Promise<CasoEptRead> {
     if (response.status === 409)
       throw new Error("Ya existe un caso EPT para este ingreso.");
     if (response.status === 422)
-      throw new Error("Datos inválidos. Revisa los campos.");
-    throw new Error("No se pudo crear el caso EPT");
+      throw new Error(mensajeDelBackend(error, "Datos inválidos. Revisa los campos."));
+    throw new Error(mensajeDelBackend(error, "No se pudo crear el caso EPT"));
   }
   return data;
 }
@@ -80,7 +81,7 @@ export async function actualizarCaso(
     params: { path: { caso_id: casoId } },
     body,
   });
-  if (error || !data) throw new Error("No se pudo actualizar el caso EPT");
+  if (error || !data) throw new Error(mensajeDelBackend(error, "No se pudo actualizar el caso EPT"));
   return data;
 }
 
@@ -96,7 +97,7 @@ export async function agregarContacto(
       body,
     },
   );
-  if (error || !data) throw new Error("No se pudo agregar el contacto EPT");
+  if (error || !data) throw new Error(mensajeDelBackend(error, "No se pudo agregar el contacto EPT"));
   return data;
 }
 
@@ -129,7 +130,7 @@ export async function crearProceso(
       body,
     },
   );
-  if (error || !data) throw new Error("No se pudo crear el proceso EPT");
+  if (error || !data) throw new Error(mensajeDelBackend(error, "No se pudo crear el proceso EPT"));
   return data;
 }
 
@@ -145,7 +146,7 @@ export async function actualizarProceso(
       body,
     },
   );
-  if (error || !data) throw new Error("No se pudo actualizar el proceso EPT");
+  if (error || !data) throw new Error(mensajeDelBackend(error, "No se pudo actualizar el proceso EPT"));
   return data;
 }
 
@@ -178,7 +179,7 @@ export async function crearPlazos(
       body,
     },
   );
-  if (error || !data) throw new Error("No se pudieron crear los plazos EPT");
+  if (error || !data) throw new Error(mensajeDelBackend(error, "No se pudieron crear los plazos EPT"));
   return data;
 }
 
@@ -195,6 +196,6 @@ export async function actualizarPlazos(
     },
   );
   if (error || !data)
-    throw new Error("No se pudieron actualizar los plazos EPT");
+    throw new Error(mensajeDelBackend(error, "No se pudieron actualizar los plazos EPT"));
   return data;
 }

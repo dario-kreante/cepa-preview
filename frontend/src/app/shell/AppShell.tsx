@@ -4,6 +4,7 @@ import { Sidebar } from "@/components/shell/Sidebar";
 import { Topbar } from "@/components/shell/Topbar";
 import { AlertsPanel, alertasSinLeer } from "@/components/shell/AlertsPanel";
 import { useAlertas } from "@/features/alertas/hooks";
+import { alertasPendientesDeModulo } from "@/features/alertas/modulo";
 import { usePendientesFolio } from "@/features/pacientes-borrador/hooks";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { puedeEscribir, type Rol } from "@/lib/rbac";
@@ -46,15 +47,9 @@ export function AppShell() {
   const { data: pendientesFolio = [] } = usePendientesFolio(puedeEscribir(rol as Rol));
 
   // Compute sidebar badges from real alert data
-  const pendientes = alertas.filter((a) => a.estado === "pendiente");
-
   const badges: Record<string, number> = {
-    licencias: pendientes.filter((a) =>
-      a.tipo.toLowerCase().includes("licencia"),
-    ).length,
-    ept: pendientes.filter(
-      (a) => ["ept", "caso_ept"].includes(a.caso_tipo?.toLowerCase() ?? ""),
-    ).length,
+    licencias: alertasPendientesDeModulo(alertas, "licencias").length,
+    ept: alertasPendientesDeModulo(alertas, "ept").length,
     pendientes_folio: pendientesFolio.length,
   };
 

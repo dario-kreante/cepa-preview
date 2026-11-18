@@ -404,3 +404,27 @@ def test_endpoint_rechaza_archivo_mayor_a_10mb(as_admin, monkeypatch):
 
 def test_auditor_no_puede_importar(as_auditor):
     assert _subir(as_auditor, FIXTURE.read_bytes(), dry_run=True).status_code == 403
+
+
+# ── QA-007: la carga guarda el tipo de orden (Ambulatoria = ODA; OPA/OPAEP = OPA) ──
+
+
+def test_la_carga_guarda_el_tipo_de_orden_y_lo_completa_al_recargar(db_session: Session):
+    ing = _ingreso(db_session, siniestro="777001")
+    # Una orden ya cargada antes de que existiera la columna: sin tipo.
+    antigua = Oda(
+        ingreso_id=ing.id, identificador="T-1", fecha_registro=HOY - timedelta(days=6),
+        fecha_vencimiento=HOY, vigente=True,
+    )
+    db_session.add(antigua)
+    db_session.flush()
+    assert antigua.tipo_orden is None
+    assert antigua.estado_gestion == "pendiente"
+
+    contenido = _xlsx([
+        _fila("T-1", "777001", HOY, tipo="Ambulatoria"),
+        _fila("T-2", "777001", HOY + timedelta(days=7), tipo="OPAEP"),
+    ])
+    importar_reporte(db_session, contenido)
+    tipos = {o.identificador: o.tipo_orden for o in db_session.scalars(select(Oda).where(Oda.ingreso_id == ing.id))}
+    assert tipos == {"T-1": "Ambulatoria", "T-2": "OPAEP"}

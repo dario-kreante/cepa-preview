@@ -18,7 +18,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { procesoEptSchema, type ProcesoEptForm } from "./procesoEptSchema";
+import {
+  procesoEptSchema,
+  OPCIONES_DOC_INCUMPLIMIENTO,
+  OPCIONES_INSUMOS_EISTA,
+  opcionesConValorActual,
+  type ProcesoEptForm,
+} from "./procesoEptSchema";
 import { useCrearProceso, useActualizarProceso } from "./hooks";
 import type { ProcesoEptRead } from "./api";
 
@@ -231,23 +237,35 @@ export function ProcesoEptDialog({ casoId, proceso, open, onOpenChange }: Props)
           {/* Insumos para el EPTista */}
           <div>
             <Label htmlFor="insumos_eista">Insumos para el EPTista</Label>
-            <input
+            <select
               id="insumos_eista"
-              type="text"
               {...register("insumos_eista")}
               className={inputClass}
-            />
+            >
+              <option value="">Sin indicar</option>
+              {opcionesConValorActual(OPCIONES_INSUMOS_EISTA, proceso?.insumos_eista).map((o) => (
+                <option key={o} value={o}>
+                  {o}
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* Doc incumplimiento */}
           <div>
             <Label htmlFor="doc_incumplimiento">Doc. incumplimiento</Label>
-            <input
+            <select
               id="doc_incumplimiento"
-              type="text"
               {...register("doc_incumplimiento")}
               className={inputClass}
-            />
+            >
+              <option value="">Sin indicar</option>
+              {opcionesConValorActual(OPCIONES_DOC_INCUMPLIMIENTO, proceso?.doc_incumplimiento).map((o) => (
+                <option key={o} value={o}>
+                  {o}
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* Observaciones */}

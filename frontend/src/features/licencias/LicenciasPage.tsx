@@ -19,6 +19,7 @@ import type { LicenciaReadSlim } from "./api";
 import { AltaLicenciaDialog } from "./AltaLicenciaDialog";
 import { AnularLicenciaDialog } from "./AnularLicenciaDialog";
 import { IslLicenciaDialog } from "./IslLicenciaDialog";
+import { AlertasPendientesModulo } from "@/features/alertas/AlertasPendientesModulo";
 import { useBuscarPacientes, useVista360 } from "@/features/ingresos/hooks";
 import { DocumentosSalutemPaciente } from "@/features/controles/DocumentosSalutem";
 import type { PacienteRead } from "@/features/ingresos/api";
@@ -221,6 +222,8 @@ export function LicenciasPage() {
   const [inputQ, setInputQ] = useState("");
   const [q, setQ] = useState("");
   const [seleccionado, setSeleccionado] = useState<PacienteRead | null>(null);
+  // Paciente al que se llegó desde una alerta pendiente (sin pasar por el buscador).
+  const [pacienteAlerta, setPacienteAlerta] = useState<{ id: number; nombre: string | null } | null>(null);
 
   // Dialog state
   const [altaOpen, setAltaOpen] = useState(false);
@@ -246,7 +249,10 @@ export function LicenciasPage() {
 
   const { data: pacientes = [], isFetching: buscando } = useBuscarPacientes(q);
   // Con un solo resultado (p. ej. al buscar por folio o RUT) se abre directo.
-  const paciente = seleccionado ?? (pacientes.length === 1 ? pacientes[0] : null);
+  const paciente: Pick<PacienteRead, "id" | "nombre"> | null =
+    seleccionado ??
+    (pacientes.length === 1 ? pacientes[0] : null) ??
+    (pacienteAlerta ? { id: pacienteAlerta.id, nombre: pacienteAlerta.nombre ?? "" } : null);
   const { data: vista, isLoading: vistaCargando } = useVista360(paciente?.id ?? null);
   // Las licencias se listan por el folio del ingreso principal del paciente.
   const folio = vista?.ingresos?.[0]?.folio ?? "";
@@ -419,6 +425,18 @@ export function LicenciasPage() {
         )}
       </div>
 
+      {/* Alertas pendientes (mismo número que el menú) */}
+      <AlertasPendientesModulo
+        modulo="licencias"
+        onAbrir={(_, p) => {
+          setInputQ("");
+          setQ("");
+          setSeleccionado(null);
+          setSelectedIds(new Set());
+          setPacienteAlerta(p);
+        }}
+      />
+
       {/* Filters bar */}
       <div className="flex flex-wrap items-center gap-2">
         {/* Buscador de pacientes */}
@@ -426,7 +444,10 @@ export function LicenciasPage() {
           <Search className="absolute left-2.5 top-2.5 size-3.5 text-muted-foreground pointer-events-none" />
           <Input
             value={inputQ}
-            onChange={(e) => setInputQ(e.target.value)}
+            onChange={(e) => {
+              setInputQ(e.target.value);
+              setPacienteAlerta(null);
+            }}
             placeholder="Buscar por RUT, folio, nombre o ID SALUTEM"
             className="h-9 pl-8 text-[13px]"
             aria-label="Buscar pacientes"
@@ -492,7 +513,7 @@ export function LicenciasPage() {
       </div>
 
       {/* States */}
-      {!q && !isFetching && (
+      {!q && !pacienteAlerta && !isFetching && (
         <div className="rounded-lg border border-dashed border-border bg-muted/20 px-6 py-12 text-center">
           <Search className="mx-auto mb-3 size-8 text-muted-foreground/50" />
           <p className="text-[13.5px] text-muted-foreground">

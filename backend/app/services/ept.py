@@ -9,7 +9,7 @@ Reglas de negocio clave:
 - RN-3 (CEPA-032): fecha_entrega_isl no puede ser anterior a fecha_ingreso_ept ni a plazo_informe_ept.
 """
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
@@ -167,13 +167,18 @@ def agregar_contacto_ept(db: Session, data: ContactoEptCreate) -> ContactoEpt:
 # ProcesoEpt
 # ──────────────────────────────────────────
 
+def _fmt(d: date) -> str:
+    """Fecha como la lee el usuario en pantalla (dd-mm-aaaa)."""
+    return d.strftime("%d-%m-%Y")
+
+
 def _validar_proceso(data, fecha_ingreso_ept: date) -> None:
     """Valida reglas de negocio del proceso EPT (CEPA-031)."""
     if data.hay_testigos is True and data.testigos_cantidad is not None:
         if data.testigos_cantidad < 1:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="Si hay testigos, la cantidad debe ser ≥ 1 (CEPA-031 RN-2).",
+                detail="Marcaste que hay testigos: indica al menos 1 en «Cantidad de testigos».",
             )
     if data.hay_testigos is False:
         # Se fuerza a 0 en el servicio; si el caller envía >0 con hay_testigos=False, se corrige.
@@ -181,18 +186,18 @@ def _validar_proceso(data, fecha_ingreso_ept: date) -> None:
     if data.num_entrevistas is not None and data.num_entrevistas < 0:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="El número de entrevistas debe ser ≥ 0 (CEPA-031 RN-3).",
+            detail="El número de entrevistas no puede ser negativo.",
         )
     for campo_fecha, nombre in [
-        (data.plazo_evid_denunciante, "plazo_evid_denunciante"),
-        (data.plazo_insumos_empresa, "plazo_insumos_empresa"),
+        (data.plazo_evid_denunciante, "El plazo de evidencias del denunciante"),
+        (data.plazo_insumos_empresa, "El plazo de insumos de la empresa"),
     ]:
         if campo_fecha is not None and campo_fecha < fecha_ingreso_ept:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail=(
                     f"{nombre} no puede ser anterior a la fecha de ingreso EPT "
-                    f"({fecha_ingreso_ept}) (CEPA-031 RN-4)."
+                    f"({_fmt(fecha_ingreso_ept)})."
                 ),
             )
 
@@ -201,7 +206,7 @@ def crear_proceso_ept(db: Session, data: ProcesoEptCreate, caso: CasoEpt) -> Pro
     if not caso.corresponde_ept:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="El caso EPT tiene corresponde_ept=False; no aplica gestión del proceso.",
+            detail="Este caso está marcado como «No corresponde EPT»: no lleva proceso.",
         )
     _validar_proceso(data, caso.fecha_ingreso_ept)
     cantidad = 0 if not data.hay_testigos else (data.testigos_cantidad or 0)
@@ -305,8 +310,8 @@ def _validar_plazo(data, caso: CasoEpt) -> None:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail=(
-                    "fecha_entrega_isl no puede ser anterior a la fecha de ingreso EPT "
-                    f"({caso.fecha_ingreso_ept}) (CEPA-032 RN-3)."
+                    "La fecha de entrega ISL no puede ser anterior a la fecha de ingreso "
+                    f"EPT ({_fmt(caso.fecha_ingreso_ept)})."
                 ),
             )
         pi = getattr(data, "plazo_informe_ept", None)
@@ -314,27 +319,66 @@ def _validar_plazo(data, caso: CasoEpt) -> None:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail=(
-                    "fecha_entrega_isl no puede ser anterior a plazo_informe_ept "
-                    f"({pi}) (CEPA-032 RN-3)."
+                    "La fecha de entrega ISL no puede ser anterior al plazo del informe "
+                    f"EPT ({_fmt(pi)})."
                 ),
             )
+
+
+# QA-005 (16-11): días corridos (feriados y fines de semana cuentan) desde el ingreso EPT.
+DIAS_PLAZO_INFORME = 18
+DIAS_PLAZO_PORTAL_ISL = 20  # último día posible de envío
+
+
+def plazos_automaticos(fecha_ingreso_ept: date) -> tuple[date, date]:
+    """(plazo del informe EPT, plazo del portal ISL) a partir de la fecha de ingreso EPT."""
+    return (
+        fecha_ingreso_ept + timedelta(days=DIAS_PLAZO_INFORME),
+        fecha_ingreso_ept + timedelta(days=DIAS_PLAZO_PORTAL_ISL),
+    )
+
+
+def _resolver_alertas_plazo(db: Session, plazo: PlazoEpt) -> None:
+    """Al registrar el envío cesan las alertas de plazo del caso (QA-005)."""
+    abiertas = db.scalars(
+        select(AlertaNotif).where(
+            AlertaNotif.caso_tipo == "ept",
+            AlertaNotif.caso_id == plazo.id,
+            AlertaNotif.estado != EstadoAlerta.RESUELTA.value,
+        )
+    )
+    for alerta in abiertas:
+        alerta.estado = EstadoAlerta.RESUELTA.value
+        alerta.resuelta_en = datetime.now(timezone.utc)
 
 
 def crear_plazo_ept(db: Session, data: PlazoEptCreate, caso: CasoEpt) -> PlazoEpt:
     if not caso.corresponde_ept:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="El caso EPT tiene corresponde_ept=False; no aplica gestión de plazos.",
+            detail="Este caso está marcado como «No corresponde EPT»: no lleva plazos.",
         )
-    _validar_plazo(data, caso)
     hoy = date.today()
+    # Los plazos vacíos se calculan desde el ingreso; los que vienen (ajustados) se respetan.
+    auto_informe, auto_isl = plazos_automaticos(caso.fecha_ingreso_ept)
+    plazo_informe = data.plazo_informe_ept or auto_informe
+
+    from types import SimpleNamespace
+
+    # RN-3 se valida contra el plazo ya resuelto, también cuando lo calculó el sistema.
+    _validar_plazo(
+        SimpleNamespace(
+            fecha_entrega_isl=data.fecha_entrega_isl, plazo_informe_ept=plazo_informe
+        ),
+        caso,
+    )
     plazo = PlazoEpt(
         caso_ept_id=caso.id,
-        plazo_informe_ept=data.plazo_informe_ept,
-        plazo_portal_isl=data.plazo_portal_isl,
+        plazo_informe_ept=plazo_informe,
+        plazo_portal_isl=data.plazo_portal_isl or auto_isl,
         fecha_entrega_isl=data.fecha_entrega_isl,
         estado_informe=calcular_estado_cumplimiento(
-            data.plazo_informe_ept, None, hoy
+            plazo_informe, None, hoy
         ).value,
         estado_entrega_isl=calcular_estado_cumplimiento(
             data.fecha_entrega_isl, None, hoy
@@ -386,5 +430,7 @@ def actualizar_plazo_ept(
     plazo.estado_entrega_isl = calcular_estado_cumplimiento(
         plazo.fecha_entrega_isl, plazo.fecha_envio, hoy
     ).value
+    if plazo.fecha_envio is not None:
+        _resolver_alertas_plazo(db, plazo)
     db.flush()
     return plazo

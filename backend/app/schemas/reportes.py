@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import date
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict
 
@@ -138,6 +138,7 @@ class ReporteCargaLaboralResponse(BaseModel):
 
 class LicenciaAcumuladaItem(BaseModel):
     folio_id: int
+    folio: str | None = None  # folio real del CEPA; `folio_id` es el id interno
     rut_paciente: str | None
     total_dias_acumulados: int
     licencias_internas: int
@@ -176,19 +177,64 @@ class ReporteAdherenciaResponse(BaseModel):
 
 # ── ODAS vencidas (CEPA-097) ──────────────────────────────────────────────────
 
+class OrdenCobertura(BaseModel):
+    """Una orden (ODA u OPA) del paciente dentro del período del cruce de cobertura."""
+
+    identificador: str
+    # «ODA» (Ambulatoria) | «OPA» (OPA/OPAEP); None si la orden se cargó antes de guardar el tipo.
+    tipo: str | None
+    fecha_inicio: date | None
+    fecha_termino: date
+
+
 class ODAVencidaItem(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
+    # `id` es la ODA vencida sobre la que se gestiona (PATCH /odas/{id}/gestion).
     id: int
     folio_id: int
+    # N° de la orden en ISL, el folio del CEPA y el paciente: lo que el equipo
+    # reconoce. `id` y `folio_id` son internos y no se muestran (QA-007).
+    identificador: str
+    folio: str
+    paciente_nombre: str
+    paciente_rut: str | None
     fecha_registro: date | None
     fecha_vencimiento: date
     programa: str | None
     region: str | None
     comuna: str | None
+    # QA-007: cruce de cobertura (una fila por paciente; varias órdenes → varias entradas).
+    ordenes: list[OrdenCobertura] = []
+    fechas_atencion: list[date] = []
+    cobertura: Literal["CUBRE", "SOLICITAR"] = "SOLICITAR"
+    estado_gestion: Literal["pendiente", "solicitada", "recibida"] = "pendiente"
 
 
 class ReporteODASVencidasResponse(BaseModel):
     fecha_consulta: date
     total: int
     items: list[ODAVencidaItem]
+
+
+# ── Estado de ODA por paciente (QA-006) ────────────────────────────────────────
+
+class ODAEstadoItem(BaseModel):
+    ingreso_id: int
+    folio: str
+    paciente_nombre: str
+    paciente_rut: str | None
+    fecha_ingreso: date
+    estado_caso: str
+    programa: str | None
+    estado_oda: Literal["vigente", "por_vencer", "vencida", "sin_oda"]
+    fecha_vencimiento: date | None
+    # Días hasta el vencimiento; negativo = vencida hace N días; None = sin ODA.
+    dias_para_vencer: int | None
+
+
+class ReporteODAEstadoResponse(BaseModel):
+    fecha_consulta: date
+    total: int
+    dias_por_vencer: int
+    items: list[ODAEstadoItem]

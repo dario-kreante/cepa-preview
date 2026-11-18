@@ -120,4 +120,4 @@ def test_proceso_rechazado_si_no_corresponde(as_admin, ingreso_fixture):
         json=_proceso_base(caso_id),
     )
     assert r.status_code == 400
-    assert "corresponde_ept" in r.text.lower()
+    assert "no corresponde ept" in r.json()["detail"].lower()

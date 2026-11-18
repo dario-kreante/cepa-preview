@@ -26,3 +26,24 @@ export const plazosEptSchema = z.object({
 });
 
 export type PlazosEptForm = z.infer<typeof plazosEptSchema>;
+
+/** QA-005: días corridos desde el ingreso EPT (feriados y fines de semana cuentan). */
+export const DIAS_PLAZO_INFORME = 18;
+export const DIAS_PLAZO_PORTAL_ISL = 20; // último día posible de envío
+
+function sumarDias(iso: string, dias: number): string {
+  const [a, m, d] = iso.split("-").map(Number);
+  // UTC para que el cambio de hora no mueva el día.
+  return new Date(Date.UTC(a, m - 1, d + dias)).toISOString().slice(0, 10);
+}
+
+/** Plazos que el sistema propone a partir de la fecha de ingreso EPT (YYYY-MM-DD). */
+export function plazosAutomaticos(fechaIngresoEpt: string): {
+  plazo_informe_ept: string;
+  plazo_portal_isl: string;
+} {
+  return {
+    plazo_informe_ept: sumarDias(fechaIngresoEpt, DIAS_PLAZO_INFORME),
+    plazo_portal_isl: sumarDias(fechaIngresoEpt, DIAS_PLAZO_PORTAL_ISL),
+  };
+}

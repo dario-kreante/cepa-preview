@@ -93,6 +93,29 @@ describe("IngresosListaPage", () => {
     expect(screen.getByText("Metropolitana")).toBeInTheDocument();
   });
 
+  it("teléfono y correo van en columnas separadas (QA-012)", async () => {
+    server.use(
+      http.get(`${BASE}/api/v1/pacientes/buscar`, () => HttpResponse.json([MOCK_PACIENTE]))
+    );
+
+    renderPage();
+    await userEvent.type(
+      screen.getByPlaceholderText("Buscar por RUT, folio, nombre o ID SALUTEM"),
+      "María"
+    );
+    await waitFor(() => expect(screen.getByText("María González")).toBeInTheDocument());
+
+    const encabezados = screen.getAllByRole("columnheader").map((th) => th.textContent);
+    expect(encabezados).toContain("Teléfono");
+    expect(encabezados).toContain("Correo");
+    const celdas = screen.getAllByRole("cell");
+    const indice = (titulo: string) => encabezados.indexOf(titulo);
+    expect(celdas[indice("Teléfono")]).toHaveTextContent("+56912345678");
+    expect(celdas[indice("Correo")]).toHaveTextContent("mgonzalez@example.com");
+    // El correo ya no se repite bajo el nombre.
+    expect(screen.getAllByText(/mgonzalez@example\.com/)).toHaveLength(1);
+  });
+
   it("muestra 'Sin resultados.' cuando la búsqueda no devuelve nada", async () => {
     server.use(
       http.get(`${BASE}/api/v1/pacientes/buscar`, () => HttpResponse.json([]))

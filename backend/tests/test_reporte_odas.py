@@ -90,3 +90,52 @@ def test_odas_vencidas_auditor(as_auditor, datos_odas):
 def test_odas_vencidas_sin_auth_rechaza(client):
     resp = client.get("/api/v1/reportes/odas-vencidas")
     assert resp.status_code == 401
+
+
+# ── QA-007 (16-11): el reporte muestra lo que el CEPA reconoce ───────────────
+
+def test_odas_vencidas_muestra_numero_isl_folio_y_paciente(as_coordinacion, datos_odas):
+    """La fila trae el N° de orden ISL, el folio real y el paciente, no ids internos."""
+    body = as_coordinacion.get("/api/v1/reportes/odas-vencidas").json()
+    fila = next(i for i in body["items"] if i["identificador"] == "ODA-001")
+    assert fila["folio"] == "F-ODA-001"
+    assert fila["paciente_nombre"] == "Test ODA"
+    assert fila["paciente_rut"] == "66666666-6"
+
+
+def test_odas_vencidas_excluye_reemplazadas_y_casos_cerrados(as_coordinacion, db_session):
+    """Cuadra con la tarjeta del dashboard: solo ODA vigentes de casos activos."""
+    from app.models.ingreso import Ingreso
+    from app.models.oda import Oda
+    from app.models.paciente import Paciente
+
+    hace_10 = date.today() - timedelta(days=10)
+    pac = Paciente(rut="77777777-7", nombre="Test ODA 2", sexo="M", edad=30, region="Maule")
+    db_session.add(pac)
+    db_session.flush()
+
+    def ingreso(folio: str, estado: str) -> Ingreso:
+        ing = Ingreso(
+            paciente_id=pac.id, folio=folio, folio_manual=True, programa="DIEP",
+            fecha_ingreso=date(2026, 1, 1), tipo_derivacion="DIAT", tipo_ingreso="convenio",
+            estado=estado,
+        )
+        db_session.add(ing)
+        db_session.flush()
+        return ing
+
+    activo = ingreso("F-ODA-ACT", "activo")
+    cerrado = ingreso("F-ODA-CER", "cerrado")
+    db_session.add_all([
+        Oda(ingreso_id=activo.id, identificador="ODA-VIGENTE", fecha_vencimiento=hace_10),
+        Oda(ingreso_id=activo.id, identificador="ODA-REEMPLAZADA",
+            fecha_vencimiento=hace_10, vigente=False),
+        Oda(ingreso_id=cerrado.id, identificador="ODA-CERRADO", fecha_vencimiento=hace_10),
+    ])
+    db_session.commit()
+
+    ids = {i["identificador"] for i in
+           as_coordinacion.get("/api/v1/reportes/odas-vencidas").json()["items"]}
+    assert "ODA-VIGENTE" in ids
+    assert "ODA-REEMPLAZADA" not in ids
+    assert "ODA-CERRADO" not in ids
