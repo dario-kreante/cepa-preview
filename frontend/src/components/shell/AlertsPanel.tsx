@@ -143,15 +143,21 @@ export function routeForCaso(
   casoTipo: string | null | undefined,
   casoId: number | null | undefined,
   pacienteId?: number | null,
+  casoEptId?: number | null,
 ): string {
   if (pacienteId && casoTipo === "oda") return `/ingresos?paciente=${pacienteId}&tab=odas`;
   if (pacienteId && (casoTipo === "ingreso" || casoTipo === "salutem_cita"))
     return `/ingresos?paciente=${pacienteId}`;
   switch (casoTipo) {
-    case "ept":
-      return casoId ? `/ept?caso=${casoId}` : "/ept";
-    case "caso_ept":
-      return casoId ? `/ept?caso=${casoId}` : "/ept";
+    // En las alertas de plazo (caso_tipo "ept") caso_id es el id del plazo, no del caso:
+    // el caso viene aparte (caso_ept_id). Las de insumos ("caso_ept") sí guardan el id del caso.
+    case "ept": {
+      return casoEptId ? `/ept?caso=${casoEptId}` : "/ept";
+    }
+    case "caso_ept": {
+      const id = casoEptId ?? casoId;
+      return id ? `/ept?caso=${id}` : "/ept";
+    }
     case "control_medico":
       return "/controles";
     case "salutem_cita":
@@ -427,7 +433,7 @@ export function AlertsPanel({ onClose }: AlertsPanelProps = {}) {
       setAlertaControl(a);
       return;
     }
-    ir(routeForCaso(a.caso_tipo, a.caso_id, a.paciente_id));
+    ir(routeForCaso(a.caso_tipo, a.caso_id, a.paciente_id, a.caso_ept_id));
   };
 
   const handleTareaClick = (t: TareaItemRead) => {

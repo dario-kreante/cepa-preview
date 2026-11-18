@@ -467,7 +467,7 @@ export function EptPage() {
       </div>
 
       {/* ── Alertas pendientes (mismo número que el menú) ── */}
-      <AlertasPendientesModulo modulo="ept" onAbrir={(a) => setCasoId(a.caso_id)} />
+      <AlertasPendientesModulo modulo="ept" onAbrir={(a) => a.caso_ept_id != null && setCasoId(a.caso_ept_id)} />
 
       {/* ── Cargar por caso_id ── */}
       <div className="flex items-center gap-2">

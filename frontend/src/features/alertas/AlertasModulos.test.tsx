@@ -24,7 +24,9 @@ function alerta(id: number, o: Record<string, unknown> = {}) {
     id,
     tipo: "plazo_insumos_ept",
     estado: "pendiente",
-    caso_id: 100 + id,
+    // En las alertas de plazo caso_id es el id del PlazoEpt; el caso real va en caso_ept_id.
+    caso_id: 900 + id,
+    caso_ept_id: 100 + id,
     caso_tipo: "ept",
     usuario_id: null,
     plazo_objetivo: "2026-11-20T00:00:00Z",
@@ -41,7 +43,7 @@ function alerta(id: number, o: Record<string, unknown> = {}) {
 // 2 EPT pendientes, 1 EPT resuelta, 2 de licencia pendientes (una en un control), 1 de ODA.
 const ALERTAS = [
   alerta(1),
-  alerta(2, { paciente_nombre: "Pedro Soto", paciente_id: 8, caso_id: 202 }),
+  alerta(2, { paciente_nombre: "Pedro Soto", paciente_id: 8, caso_ept_id: 202 }),
   alerta(3, { estado: "resuelta" }),
   alerta(4, { tipo: "vencimiento_licencia", caso_tipo: "licencia", caso_id: 44 }),
   alerta(5, { tipo: "licencia_en_control", caso_tipo: "control_medico", caso_id: 55, paciente_nombre: "Pedro Soto", paciente_id: 8 }),

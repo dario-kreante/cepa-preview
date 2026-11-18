@@ -26,6 +26,8 @@ class AlertaRead(BaseModel):
     paciente_id: int | None = None
     # Nombre de ese paciente, para listar las alertas en su módulo (EPT, licencias) sin pedir cada caso.
     paciente_nombre: str | None = None
+    # Caso EPT real de la alerta: caso_id guarda el id del plazo en las alertas de plazo EPT.
+    caso_ept_id: int | None = None
 
 
 class AlertaUpdate(BaseModel):
