@@ -1,7 +1,7 @@
 /**
  * Pestaña ODAS de Reportería.
  *  - «Estado por paciente» (QA-006): todos los pacientes con el estado del caso y de la ODA.
- *  - «Vencidas» (QA-007): ODA vencidas con cobertura (CUBRE / SOLICITAR), gestión editable,
+ *  - «Vencidas» (QA-007): ODA vencidas y atendidos sin ODA, con cobertura (CUBRE / SOLICITAR), gestión editable,
  *    filtro por programa y descarga en Excel.
  */
 import { useEffect, useState } from "react";
@@ -187,9 +187,13 @@ function FilaVencida({
   editable: boolean;
   onCambiar: (odaId: number, estado: EstadoGestion) => void;
 }) {
+  // Sin id no hay ODA donde guardar la gestión (atendido sin ODA): se muestra «—».
+  const odaId = it.id;
   const ordenes = it.ordenes?.length
     ? it.ordenes
-    : [{ identificador: it.identificador, tipo: null, fecha_inicio: it.fecha_registro, fecha_termino: it.fecha_vencimiento }];
+    : it.identificador == null
+      ? []
+      : [{ identificador: it.identificador, tipo: null, fecha_inicio: it.fecha_registro, fecha_termino: it.fecha_vencimiento ?? SIN_DATO }];
   const cubre = (it.cobertura ?? "SOLICITAR") === "CUBRE";
   return (
     <tr className="border-b">
@@ -204,12 +208,14 @@ function FilaVencida({
         <Badge variant={cubre ? "success" : "destructive"}>{cubre ? "CUBRE" : "SOLICITAR"}</Badge>
       </td>
       <td className="px-4 py-2.5 text-[13px]">
-        {editable ? (
+        {odaId == null ? (
+          SIN_DATO
+        ) : editable ? (
           <select
-            data-testid={`gestion-${it.id}`}
+            data-testid={`gestion-${odaId}`}
             aria-label={`Estado de gestión de ${it.paciente_nombre}`}
             value={gestion}
-            onChange={(e) => onCambiar(it.id, e.target.value as EstadoGestion)}
+            onChange={(e) => onCambiar(odaId, e.target.value as EstadoGestion)}
             className={SELECT_CLS}
           >
             {GESTION.map(([v, t]) => (
@@ -219,7 +225,7 @@ function FilaVencida({
             ))}
           </select>
         ) : (
-          <span data-testid={`gestion-${it.id}`}>
+          <span data-testid={`gestion-${odaId}`}>
             {GESTION.find(([v]) => v === gestion)?.[1] ?? gestion}
           </span>
         )}
@@ -297,8 +303,9 @@ function Vencidas({ autoCargar }: { autoCargar: boolean }) {
               </select>
             </div>
             <p className="max-w-md text-[12.5px] text-muted-foreground">
-              ODAS vigentes de casos activos con fecha de vencimiento pasada a hoy. CUBRE = todas
-              las atenciones tienen una ODA/OPA vigente ese día.
+              ODAS vigentes de casos activos con fecha de vencimiento pasada a hoy. También incluye a
+              los pacientes atendidos sin ODA registrada (SOLICITAR, sin gestión). CUBRE = todas las
+              atenciones tienen una ODA/OPA vigente ese día.
             </p>
           </div>
           <div className="flex gap-2">
@@ -333,7 +340,7 @@ function Vencidas({ autoCargar }: { autoCargar: boolean }) {
       <CargarReporteIslDialog open={cargaAbierta} onOpenChange={setCargaAbierta} />
       {m.data &&
         (m.data.items.length === 0 ? (
-          <Vacio texto="No hay ODAS vencidas." />
+          <Vacio texto="No hay ODAS vencidas ni pacientes atendidos sin ODA." />
         ) : (
           <Card className="overflow-hidden p-0">
             <div className="overflow-x-auto">
@@ -350,9 +357,9 @@ function Vencidas({ autoCargar }: { autoCargar: boolean }) {
                 <tbody>
                   {m.data.items.map((it) => (
                     <FilaVencida
-                      key={it.id}
+                      key={`${it.folio_id}-${it.id ?? "sin-oda"}`}
                       it={it}
-                      gestion={gestion[it.id] ?? it.estado_gestion ?? "pendiente"}
+                      gestion={(it.id != null ? gestion[it.id] : undefined) ?? it.estado_gestion ?? "pendiente"}
                       editable={editable}
                       onCambiar={cambiarGestion}
                     />

@@ -304,25 +304,18 @@ def calcular_estado_cumplimiento(
 
 
 def _validar_plazo(data, caso: CasoEpt) -> None:
-    """Valida que fecha_entrega_isl no sea anterior a fecha_ingreso ni a plazo_informe (RN-3)."""
-    if data.fecha_entrega_isl is not None:
-        if data.fecha_entrega_isl < caso.fecha_ingreso_ept:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=(
-                    "La fecha de entrega ISL no puede ser anterior a la fecha de ingreso "
-                    f"EPT ({_fmt(caso.fecha_ingreso_ept)})."
-                ),
-            )
-        pi = getattr(data, "plazo_informe_ept", None)
-        if pi is not None and data.fecha_entrega_isl < pi:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=(
-                    "La fecha de entrega ISL no puede ser anterior al plazo del informe "
-                    f"EPT ({_fmt(pi)})."
-                ),
-            )
+    """Valida que fecha_entrega_isl no sea anterior a fecha_ingreso (RN-3).
+
+    Una entrega anterior al plazo del informe es válida (18-11): entregar antes es lo deseable.
+    """
+    if data.fecha_entrega_isl is not None and data.fecha_entrega_isl < caso.fecha_ingreso_ept:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=(
+                "La fecha de entrega ISL no puede ser anterior a la fecha de ingreso "
+                f"EPT ({_fmt(caso.fecha_ingreso_ept)})."
+            ),
+        )
 
 
 # QA-005 (16-11): días corridos (feriados y fines de semana cuentan) desde el ingreso EPT.
@@ -365,7 +358,7 @@ def crear_plazo_ept(db: Session, data: PlazoEptCreate, caso: CasoEpt) -> PlazoEp
 
     from types import SimpleNamespace
 
-    # RN-3 se valida contra el plazo ya resuelto, también cuando lo calculó el sistema.
+    # RN-3: la entrega no puede ser anterior al ingreso (sí al plazo del informe).
     _validar_plazo(
         SimpleNamespace(
             fecha_entrega_isl=data.fecha_entrega_isl, plazo_informe_ept=plazo_informe

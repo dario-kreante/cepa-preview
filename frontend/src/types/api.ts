@@ -4434,11 +4434,11 @@ export interface components {
         /** ODAVencidaItem */
         ODAVencidaItem: {
             /** Id */
-            id: number;
+            id: number | null;
             /** Folio Id */
             folio_id: number;
             /** Identificador */
-            identificador: string;
+            identificador: string | null;
             /** Folio */
             folio: string;
             /** Paciente Nombre */
@@ -4447,11 +4447,8 @@ export interface components {
             paciente_rut: string | null;
             /** Fecha Registro */
             fecha_registro: string | null;
-            /**
-             * Fecha Vencimiento
-             * Format: date
-             */
-            fecha_vencimiento: string;
+            /** Fecha Vencimiento */
+            fecha_vencimiento: string | null;
             /** Programa */
             programa: string | null;
             /** Region */
@@ -4461,7 +4458,7 @@ export interface components {
             ordenes?: components["schemas"]["OrdenCobertura"][];
             fechas_atencion?: string[];
             cobertura?: "CUBRE" | "SOLICITAR";
-            estado_gestion?: "pendiente" | "solicitada" | "recibida";
+            estado_gestion?: ("pendiente" | "solicitada" | "recibida") | null;
         };
         /** OdaAlerta */
         OdaAlerta: {

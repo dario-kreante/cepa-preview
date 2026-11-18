@@ -1,6 +1,7 @@
 """Reporte de ODA (QA-006 / QA-007, registro de pruebas del 16-11-2026).
 
-- ``construir_filas_vencidas``: ODA vencidas con el cruce de cobertura del anexo de la clienta.
+- ``construir_filas_vencidas``: ODA vencidas con el cruce de cobertura del anexo de la clienta,
+  más los pacientes atendidos que no tienen ninguna orden (también SOLICITAR).
 - ``listar_estado_odas``: listado por paciente con el estado del caso y de la ODA.
 - ``generar_excel``: la misma tabla de vencidas en xlsx.
 
@@ -22,7 +23,7 @@ from typing import Literal
 from openpyxl import Workbook
 from openpyxl.styles import Font
 from sqlalchemy import and_, func, select, true
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, aliased
 
 from app.agendamiento.salutem import lotes
 from app.domain.enums import EstadoCaso
@@ -74,7 +75,8 @@ class OrdenFila:
 
 @dataclass
 class FilaVencida:
-    oda: Oda  # la ODA vencida sobre la que se gestiona
+    # La ODA vencida sobre la que se gestiona; None = paciente atendido sin ninguna orden.
+    oda: Oda | None
     ingreso: Ingreso
     paciente: Paciente
     ordenes: list[OrdenFila] = field(default_factory=list)
@@ -171,7 +173,78 @@ def construir_filas_vencidas(
             fila.cobertura = "CUBRE" if cubierto else "SOLICITAR"
 
     resultado.sort(key=lambda f: (f.oda.fecha_vencimiento, f.oda.id))
+    resultado.extend(
+        _filas_atendidos_sin_oda(db, hoy, programa=programa, region=region, comuna=comuna)
+    )
     return resultado
+
+
+def _filas_atendidos_sin_oda(
+    db: Session,
+    hoy: date,
+    *,
+    programa: str | None,
+    region: str | None,
+    comuna: str | None,
+) -> list[FilaVencida]:
+    """Pacientes con ingreso activo y alguna cita realizada, sin ninguna ODA/OPA registrada.
+
+    El anexo de la clienta también pide SOLICITAR cuando el paciente fue atendido y no tiene
+    orden en el reporte ISL. «Registrada» cuenta cualquier orden, en cualquiera de los ingresos
+    del paciente, vigente o no: así no se duplica a quien ya aparece por una ODA vencida.
+    """
+    otro = aliased(Ingreso)
+    con_orden = (
+        select(Oda.id)
+        .join(otro, Oda.ingreso_id == otro.id)
+        .where(otro.paciente_id == Paciente.id)
+        .exists()
+    )
+    realizada = (
+        select(Cita.id)
+        .where(Cita.ingreso_id == Ingreso.id, Cita.estado == "realizada", Cita.fecha <= hoy)
+        .exists()
+    )
+    stmt = (
+        select(Ingreso, Paciente)
+        .join(Paciente, Ingreso.paciente_id == Paciente.id)
+        .where(Ingreso.estado == EstadoCaso.ACTIVO.value, realizada, ~con_orden)
+    )
+    stmt = aplicar_programa(stmt, programa)
+    if region is not None:
+        stmt = stmt.where(Paciente.region == region)
+    if comuna is not None:
+        stmt = stmt.where(Paciente.comuna == comuna)
+    rows = db.execute(stmt.order_by(Paciente.nombre.asc(), Ingreso.id.asc())).all()
+
+    # Una fila por paciente: si tiene varios ingresos activos atendidos, el más reciente.
+    por_paciente: dict[int, tuple[Ingreso, Paciente]] = {}
+    for ing, pac in rows:
+        por_paciente[pac.id] = (ing, pac)  # el id mayor queda al final
+    if not por_paciente:
+        return []
+
+    ingreso_ids = {ing.id for ing, _ in por_paciente.values()}
+    fechas_por_ingreso: dict[int, set[date]] = defaultdict(set)
+    for lote in lotes(ingreso_ids):  # Oracle: máximo 1000 valores por IN
+        citas = db.execute(
+            select(Cita.ingreso_id, Cita.fecha).where(
+                Cita.ingreso_id.in_(lote), Cita.estado == "realizada", Cita.fecha <= hoy
+            )
+        ).all()
+        for ingreso_id, fecha in citas:
+            fechas_por_ingreso[ingreso_id].add(fecha)
+
+    return [
+        FilaVencida(
+            oda=None,
+            ingreso=ing,
+            paciente=pac,
+            fechas_atencion=sorted(fechas_por_ingreso.get(ing.id, ())),
+            cobertura="SOLICITAR",
+        )
+        for ing, pac in por_paciente.values()
+    ]
 
 
 # ── Excel ──────────────────────────────────────────────────────────────────────
@@ -212,7 +285,7 @@ def generar_excel(filas: list[FilaVencida]) -> bytes:
                 _unir([_fecha(o.fecha_termino) for o in f.ordenes]),
                 _unir([_fecha(d) for d in f.fechas_atencion]),
                 f.cobertura,
-                f.oda.estado_gestion.capitalize(),
+                f.oda.estado_gestion.capitalize() if f.oda else SIN_DATO,
         ]
         ws.append([_seguro(str(v)) for v in fila])
     for col, ancho in zip("ABCDEFGHI", (34, 14, 24, 14, 26, 26, 34, 12, 18)):
