@@ -16,6 +16,7 @@ from app.models.alertas import AlertaNotif
 from app.models.control_medico import ControlMedico
 from app.models.ingreso import Ingreso
 from app.models.paciente import Paciente
+from app.models.reintegro import CasoReintegro
 from app.models.salutem_copia import SalutemAtencion, SalutemPersona
 from app.services.ficha_clinica import _en_ventana_del_ingreso
 from app.services.salutem_sync.filtro import cruce_con_paciente
@@ -51,6 +52,9 @@ def contexto_de_alerta(db: Session, alerta: AlertaNotif) -> AlertaContextoRead:
         return AlertaContextoRead(paciente_id=paciente.id, paciente_nombre=paciente.nombre)
     if alerta.caso_tipo == "ingreso":
         return _con_ingreso(db.get(Ingreso, alerta.caso_id), None, None)
+    if alerta.caso_tipo == "caso_reintegro":  # QA-003: «RECA por solicitar»
+        caso = db.get(CasoReintegro, alerta.caso_id)
+        return _con_ingreso(db.get(Ingreso, caso.ingreso_id) if caso else None, None, caso.fecha_caso if caso else None)
     return AlertaContextoRead()
 
 

@@ -41,3 +41,16 @@ describe("ingresoSchema · mensajes en español", () => {
     expect(ingresoSchema.safeParse(VALIDO).success).toBe(true);
   });
 });
+
+describe("ingresoSchema · programa", () => {
+  it("acepta un programa de la lista y lo conserva", () => {
+    const r = ingresoSchema.safeParse({ ...VALIDO, programa: "Ley Karin" });
+    expect(r.success).toBe(true);
+    expect(r.success && r.data.programa).toBe("Ley Karin");
+  });
+
+  it("el programa es opcional", () => {
+    const r = ingresoSchema.safeParse(VALIDO);
+    expect(r.success).toBe(true);
+  });
+});

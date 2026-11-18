@@ -56,7 +56,7 @@ class IngresoCreate(BaseModel):
     especialidad: str | None = None
     tipo_atencion: str | None = None
 
-    _blanco_es_vacio = field_validator("diagnostico", "modelo_tratamiento")(_texto_o_none)
+    _blanco_es_vacio = field_validator("diagnostico", "modelo_tratamiento", "programa")(_texto_o_none)
 
     @field_validator("rut")
     @classmethod
@@ -108,8 +108,10 @@ class IngresoUpdate(BaseModel):
     fecha_diep_diat: date | None = None
     razon_social: str | None = None
     numero_siniestro: str | None = None
+    # Programa del ingreso. Sin lista cerrada: un valor antiguo se conserva al editar.
+    programa: str | None = None
 
-    _blanco_es_vacio = field_validator("diagnostico", "modelo_tratamiento")(_texto_o_none)
+    _blanco_es_vacio = field_validator("diagnostico", "modelo_tratamiento", "programa")(_texto_o_none)
 
     @field_validator("edad")
     @classmethod
@@ -161,6 +163,7 @@ class IngresoRead(BaseModel):
     modelo_tratamiento: str | None
     diagnostico: str | None
     razon_social: str | None
+    programa: str | None = None
     estado: EstadoCaso
     tipo_alta: TipoAlta | None
     fecha_alta: date | None

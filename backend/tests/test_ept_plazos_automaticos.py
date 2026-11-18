@@ -181,19 +181,33 @@ def test_plazos_legados_sin_plazo_isl_conservan_la_ventana_configurada(db_sessio
     assert _alertas(db_session, plazo) == {"plazo_ept"}
 
 
-def test_rn3_se_valida_contra_el_plazo_calculado(as_admin, ingreso_fixture):
-    """Entrega ISL anterior al plazo del informe calculado (día 18) → 422, no se salta la regla."""
+def test_entrega_isl_anticipada_se_acepta(as_admin, ingreso_fixture):
+    """Entrega al ISL antes del plazo del informe calculado (día 18): es lo deseable, no se rechaza."""
     caso_id = _crear_caso(as_admin, ingreso_fixture.id)  # ingreso 2026-01-10 → informe 2026-01-28
-    r = as_admin.post(
+    ok = as_admin.post(
         f"/api/v1/casos-ept/{caso_id}/plazos",
         json={"caso_ept_id": caso_id, "fecha_entrega_isl": "2026-01-15"},
     )
-    assert r.status_code == 422, r.text
-    ok = as_admin.post(
-        f"/api/v1/casos-ept/{caso_id}/plazos",
-        json={"caso_ept_id": caso_id, "fecha_entrega_isl": "2026-01-28"},
-    )
     assert ok.status_code == 201, ok.text
+    assert ok.json()["fecha_entrega_isl"] == "2026-01-15"
+    # Edición: también se acepta una entrega anterior al plazo del informe.
+    r = as_admin.patch(
+        f"/api/v1/casos-ept/{caso_id}/plazos", json={"fecha_entrega_isl": "2026-01-12"}
+    )
+    assert r.status_code == 200, r.text
+
+
+def test_entrega_isl_anterior_al_ingreso_se_rechaza_al_editar(as_admin, ingreso_fixture):
+    caso_id = _crear_caso(as_admin, ingreso_fixture.id)
+    as_admin.post(
+        f"/api/v1/casos-ept/{caso_id}/plazos",
+        json={"caso_ept_id": caso_id, "fecha_entrega_isl": "2026-01-15"},
+    )
+    r = as_admin.patch(
+        f"/api/v1/casos-ept/{caso_id}/plazos", json={"fecha_entrega_isl": "2026-01-05"}
+    )
+    assert r.status_code == 422, r.text
+    assert "ingreso" in r.text.lower()
 
 
 def test_plazos_antiguos_iguales_conservan_la_ventana_configurada(db_session: Session):

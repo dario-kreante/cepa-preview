@@ -89,10 +89,15 @@ export const TITULOS_ALERTA: Record<string, string> = {
   posible_encuadre: "Posible encuadre: 2 o más inasistencias",
   cita_fuera_de_oda: "Cita fuera de la vigencia de la ODA",
   plazo_insumos_ept: "Plazo de insumos EPT (hoy)",
+  reca_por_solicitar: "RECA por solicitar",
+  proyeccion_reintegro: "Proyección de reintegro registrada",
 };
 
 /** Alertas de un control médico: al hacer clic abren sus documentos en un diálogo. */
 const TIPOS_DE_CONTROL = ["licencia_en_control", "receta_en_control"];
+
+/** QA-003: el médico registró una proyección de reintegro en un control. */
+const TIPO_PROYECCION = "proyeccion_reintegro";
 
 /** Alertas de una atención médica que no es control (Evaluación médica, psiquiátrica…). */
 const CASO_ATENCION = "salutem_atencion";
@@ -109,6 +114,7 @@ export function tituloAlerta(tipo: string, casoTipo?: string | null): string {
 
 const ETIQUETAS_CASO: Record<string, string> = {
   control_medico: "Control",
+  caso_reintegro: "Caso de reintegro",
   [CASO_ATENCION]: "Atención SALUTEM",
   salutem_cita: "Cita SALUTEM",
   paciente: "Paciente",
@@ -117,6 +123,12 @@ const ETIQUETAS_CASO: Record<string, string> = {
 function subtituloCaso(casoTipo: string | null | undefined, casoId: number | null | undefined): string {
   if (!casoTipo || !casoId) return "—";
   return `${ETIQUETAS_CASO[casoTipo] ?? casoTipo} #${casoId}`;
+}
+
+/** Subtítulo de la alerta: la proyección de reintegro muestra el valor que registró el médico. */
+export function subtituloAlerta(a: Pick<AlertaRead, "tipo" | "caso_tipo" | "caso_id" | "detalle">): string {
+  if (a.tipo === TIPO_PROYECCION && a.detalle) return `Proyección: ${a.detalle}`;
+  return subtituloCaso(a.caso_tipo, a.caso_id);
 }
 
 /**
@@ -160,6 +172,9 @@ export function routeForCaso(
     }
     case "control_medico":
       return "/controles";
+    // QA-003: «RECA por solicitar» abre el caso en Seguimiento de reintegro.
+    case "caso_reintegro":
+      return casoId ? `/reintegro?caso=${casoId}` : "/reintegro";
     case "salutem_cita":
       return "/ingresos";
     case "receta":
@@ -207,6 +222,8 @@ function metaAlerta(
   if (!a.plazo_objetivo) return formatDate(a.generada_en);
   if (a.tipo === "inasistencia" || a.tipo === "posible_encuadre" || a.tipo === "cita_fuera_de_oda")
     return `Cita: ${formatDate(a.plazo_objetivo, "UTC")}`;
+  // plazo_objetivo es la fecha a medianoche UTC: en hora local de Chile caería el día anterior.
+  if (a.tipo === "reca_por_solicitar") return `Plazo: ${formatDate(a.plazo_objetivo, "UTC")}`;
   if (esDeControl) {
     const etiqueta = a.caso_tipo === CASO_ATENCION ? "Atención" : "Control";
     return `${etiqueta}: ${formatDate(a.plazo_objetivo, "UTC")}`;
@@ -433,6 +450,11 @@ export function AlertsPanel({ onClose }: AlertsPanelProps = {}) {
       setAlertaControl(a);
       return;
     }
+    // La proyección de reintegro abre los controles del paciente en su ficha.
+    if (a.tipo === TIPO_PROYECCION && a.paciente_id) {
+      ir(`/ingresos?paciente=${a.paciente_id}&tab=controles`);
+      return;
+    }
     ir(routeForCaso(a.caso_tipo, a.caso_id, a.paciente_id, a.caso_ept_id));
   };
 
@@ -506,10 +528,11 @@ export function AlertsPanel({ onClose }: AlertsPanelProps = {}) {
         {displayAlertas.map((a) => {
           const bucket = alertaTipoBucket(a);
           const title = tituloAlerta(a.tipo, a.caso_tipo);
-          const subtitle = subtituloCaso(a.caso_tipo, a.caso_id);
+          const subtitle = subtituloAlerta(a);
           // En licencia/receta de un control, plazo_objetivo es la fecha del control a medianoche
           // UTC: en hora local de Chile caería el día anterior.
-          const esDeControl = a.tipo === "licencia_en_control" || a.tipo === "receta_en_control";
+          const esDeControl =
+            a.tipo === "licencia_en_control" || a.tipo === "receta_en_control" || a.tipo === TIPO_PROYECCION;
           const meta = metaAlerta(a, esDeControl);
 
           return (

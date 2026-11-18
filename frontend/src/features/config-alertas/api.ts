@@ -21,6 +21,8 @@ export const TIPO_LABELS: Record<string, string> = {
   posible_encuadre: "Posible encuadre (2 o más inasistencias)",
   cita_fuera_de_oda: "Cita fuera de ODA (días hacia adelante que se revisan)",
   plazo_insumos_ept: "Plazo de insumos EPT",
+  reca_por_solicitar: "RECA por solicitar",
+  proyeccion_reintegro: "Proyección de reintegro registrada",
 };
 
 /** Alertas del sync de SALUTEM: no tienen plazo, solo se encienden o apagan. */
@@ -29,7 +31,11 @@ export const TIPOS_SIN_DIAS = new Set([
   "receta_en_control",
   "inasistencia",
   "posible_encuadre",
+  "proyeccion_reintegro",
 ]);
+
+/** Plazos que siempre se cuentan en días corridos: no tienen la opción de días hábiles. */
+export const TIPOS_DIAS_CORRIDOS = new Set(["reca_por_solicitar"]);
 
 /** Tipo cuyo "dias" es el límite superior del tramo de GAF umbral (CEPA-075). */
 export const TIPO_GAF = "gaf_licencia";

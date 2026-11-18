@@ -202,3 +202,20 @@ describe("AltaIngresoPage — completar un paciente borrador", () => {
     expect(screen.queryByRole("button", { name: /crear ingreso/i })).not.toBeInTheDocument();
   });
 });
+
+describe("AltaIngresoPage — programa al completar un borrador", () => {
+  it("envía el programa junto a paciente_id", async () => {
+    const enviados = mockAlta();
+    renderPage("/ingresos/nuevo?paciente=7");
+    const user = userEvent.setup();
+
+    await waitFor(() => expect(screen.getByLabelText(/^Nombre/)).toHaveValue("JUAN PEREZ SOTO"));
+    await completarCampos(user);
+    await user.selectOptions(screen.getByLabelText("Programa (opcional)"), "PIPT");
+    await user.click(screen.getByRole("button", { name: /crear ingreso/i }));
+
+    await waitFor(() => expect(enviados).toHaveLength(1));
+    expect(enviados[0].paciente_id).toBe(7);
+    expect(enviados[0].programa).toBe("PIPT");
+  });
+});

@@ -10,6 +10,7 @@ import {
   obtenerCaso,
   obtenerReca,
   registrarCierre,
+  registrarSolicitudReca,
   type CasoReintegroCreate,
   type CasoReintegroUpdate,
   type CierreReintegroUpdate,
@@ -98,8 +99,12 @@ export function useCrearReca() {
   return useMutation({
     mutationFn: ({ casoId, body }: { casoId: number; body: RecaCreate }) =>
       crearReca(casoId, body),
-    onSuccess: (_data, { casoId }) =>
-      qc.invalidateQueries({ queryKey: ["reintegro", casoId, "reca"] }),
+    // Con la RECA el estado de la solicitud pasa a «recibida» y se resuelve la alerta
+    // «RECA por solicitar»: se refresca el caso (prefijo ["reintegro", casoId]) y las alertas.
+    onSuccess: (_data, { casoId }) => {
+      qc.invalidateQueries({ queryKey: ["reintegro", casoId] });
+      qc.invalidateQueries({ queryKey: ["alertas"] });
+    },
   });
 }
 
@@ -129,6 +134,22 @@ export function useRegistrarCierre() {
       qc.invalidateQueries({ queryKey: ["reintegro", "ingreso", caso.ingreso_id] });
       qc.invalidateQueries({ queryKey: ["reintegro", "paciente"] });
       qc.invalidateQueries({ queryKey: ["reintegro", "duplicados"] });
+      // El reintegro total resuelve la alerta «RECA por solicitar».
+      qc.invalidateQueries({ queryKey: ["alertas"] });
+    },
+  });
+}
+
+/** Registra o corrige la fecha de solicitud de RECA; resuelve la alerta «RECA por solicitar». */
+export function useRegistrarSolicitudReca() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ casoId, fecha }: { casoId: number; fecha: string }) =>
+      registrarSolicitudReca(casoId, fecha),
+    onSuccess: (caso, { casoId }) => {
+      qc.invalidateQueries({ queryKey: ["reintegro", casoId] });
+      qc.invalidateQueries({ queryKey: ["reintegro", "ingreso", caso.ingreso_id] });
+      qc.invalidateQueries({ queryKey: ["alertas"] });
     },
   });
 }

@@ -903,6 +903,23 @@ export interface paths {
         patch: operations["actualizar_reca_endpoint_api_v1_reintegros__caso_id__reca_patch"];
         trace?: never;
     };
+    "/api/v1/reintegros/{caso_id}/solicitud-reca": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Registra o corrige la fecha en que se solicitó la RECA */
+        patch: operations["registrar_solicitud_api_v1_reintegros__caso_id__solicitud_reca_patch"];
+        trace?: never;
+    };
     "/api/v1/reintegros/{caso_id}/cierre": {
         parameters: {
             query?: never;
@@ -2948,6 +2965,18 @@ export interface components {
             tipo_alta: components["schemas"]["TipoAlta"] | null;
             /** Observaciones */
             observaciones: string | null;
+            /** Fecha Solicitud Reca */
+            fecha_solicitud_reca?: string | null;
+            /** Estado derivado de la solicitud de RECA (QA-003). */
+            estado_solicitud_reca?: components["schemas"]["EstadoSolicitudReca"];
+        };
+        /** SolicitudRecaUpdate */
+        SolicitudRecaUpdate: {
+            /**
+             * Fecha Solicitud Reca
+             * Format: date
+             */
+            fecha_solicitud_reca: string;
         };
         /**
          * CasoReintegroUpdate
@@ -3530,6 +3559,8 @@ export interface components {
          * @enum {string}
          */
         EstadoReintegro: "pendiente" | "parcial" | "total";
+        /** EstadoSolicitudReca */
+        EstadoSolicitudReca: "pendiente" | "solicitada" | "recibida";
         /** EstadoSyncRead */
         EstadoSyncRead: {
             /** Ultimas */
@@ -4170,6 +4201,8 @@ export interface components {
             fecha_cierre?: string | null;
             /** Cierre Usuario */
             cierre_usuario?: string | null;
+            /** Programa */
+            programa?: string | null;
         };
         /**
          * IngresoUpdate
@@ -4206,6 +4239,8 @@ export interface components {
             razon_social?: string | null;
             /** Numero Siniestro */
             numero_siniestro?: string | null;
+            /** Programa */
+            programa?: string | null;
         };
         /**
          * IngresosActivos
@@ -4434,11 +4469,11 @@ export interface components {
         /** ODAVencidaItem */
         ODAVencidaItem: {
             /** Id */
-            id: number;
+            id: number | null;
             /** Folio Id */
             folio_id: number;
             /** Identificador */
-            identificador: string;
+            identificador: string | null;
             /** Folio */
             folio: string;
             /** Paciente Nombre */
@@ -4447,11 +4482,8 @@ export interface components {
             paciente_rut: string | null;
             /** Fecha Registro */
             fecha_registro: string | null;
-            /**
-             * Fecha Vencimiento
-             * Format: date
-             */
-            fecha_vencimiento: string;
+            /** Fecha Vencimiento */
+            fecha_vencimiento: string | null;
             /** Programa */
             programa: string | null;
             /** Region */
@@ -4461,7 +4493,7 @@ export interface components {
             ordenes?: components["schemas"]["OrdenCobertura"][];
             fechas_atencion?: string[];
             cobertura?: "CUBRE" | "SOLICITAR";
-            estado_gestion?: "pendiente" | "solicitada" | "recibida";
+            estado_gestion?: ("pendiente" | "solicitada" | "recibida") | null;
         };
         /** OdaAlerta */
         OdaAlerta: {
@@ -5664,7 +5696,7 @@ export interface components {
          * @description Tipos de alerta del motor: los 7 de CEPA-100 más el GAF de licencia (CEPA-075).
          * @enum {string}
          */
-        TipoAlerta: "control_medico" | "vencimiento_licencia" | "plazo_ept" | "plazo_isl" | "consentimiento_pendiente" | "receta_por_renovar" | "oda_por_vencer" | "gaf_licencia" | "licencia_en_control" | "receta_en_control" | "paciente_pendiente_folio" | "inasistencia" | "posible_encuadre" | "cita_fuera_de_oda" | "plazo_insumos_ept";
+        TipoAlerta: "control_medico" | "vencimiento_licencia" | "plazo_ept" | "plazo_isl" | "consentimiento_pendiente" | "receta_por_renovar" | "oda_por_vencer" | "gaf_licencia" | "licencia_en_control" | "receta_en_control" | "paciente_pendiente_folio" | "inasistencia" | "posible_encuadre" | "cita_fuera_de_oda" | "plazo_insumos_ept" | "reca_por_solicitar" | "proyeccion_reintegro";
         /**
          * TipoAlta
          * @description Tipos de alta válidos (§7.1.3, v4 D6).
@@ -5930,6 +5962,8 @@ export interface components {
             paciente_nombre?: string | null;
             /** Caso Ept Id */
             caso_ept_id?: number | null;
+            /** Detalle propio del tipo (p. ej. la proyección de reintegro del médico). */
+            detalle?: string | null;
         };
         /** AlertaRead */
         app__schemas__farmacos__AlertaRead: {
@@ -8173,6 +8207,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RecaRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    registrar_solicitud_api_v1_reintegros__caso_id__solicitud_reca_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                caso_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SolicitudRecaUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CasoReintegroRead"];
                 };
             };
             /** @description Validation Error */

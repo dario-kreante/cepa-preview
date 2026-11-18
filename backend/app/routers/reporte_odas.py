@@ -44,16 +44,16 @@ XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 
 def _item(f: FilaVencida) -> ODAVencidaItem:
-    o = f.oda
+    o = f.oda  # None = atendido sin ODA: los campos propios de la orden van vacíos
     return ODAVencidaItem(
-        id=o.id,
-        folio_id=o.ingreso_id,
-        identificador=o.identificador,
+        id=o.id if o else None,
+        folio_id=f.ingreso.id,
+        identificador=o.identificador if o else None,
         folio=f.ingreso.folio,
         paciente_nombre=f.paciente.nombre,
         paciente_rut=f.paciente.rut,
-        fecha_registro=o.fecha_registro,
-        fecha_vencimiento=o.fecha_vencimiento,
+        fecha_registro=o.fecha_registro if o else None,
+        fecha_vencimiento=o.fecha_vencimiento if o else None,
         programa=f.ingreso.programa,
         region=f.paciente.region,
         comuna=f.paciente.comuna,
@@ -68,7 +68,7 @@ def _item(f: FilaVencida) -> ODAVencidaItem:
         ],
         fechas_atencion=f.fechas_atencion,
         cobertura=f.cobertura,
-        estado_gestion=o.estado_gestion,
+        estado_gestion=o.estado_gestion if o else None,
     )
 
 
@@ -86,6 +86,7 @@ def get_odas_vencidas(
 
     TC-097-02: ODA que vence exactamente hoy NO aparece (condición estricta < hoy).
     QA-007: una fila por paciente, con el cruce de cobertura y el estado de gestión.
+    También incluye a los atendidos sin ninguna ODA (SOLICITAR, sin gestión).
     """
 
     # Fecha operacional local (convención del resto del sistema: date.today();

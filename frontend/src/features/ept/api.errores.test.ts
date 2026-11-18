@@ -21,7 +21,7 @@ describe("errores de EPT y reintegro muestran el motivo del backend", () => {
   });
 
   it("plazos EPT", async () => {
-    const motivo = "La fecha de entrega ISL no puede ser anterior al plazo del informe EPT (30-11-2026).";
+    const motivo = "La fecha de entrega ISL no puede ser anterior a la fecha de ingreso EPT (30-11-2026).";
     server.use(
       http.post(`${BASE}/api/v1/casos-ept/:id/plazos`, () =>
         HttpResponse.json({ detail: motivo }, { status: 422 }),

@@ -187,3 +187,72 @@ describe("PatientSheet — accesos rápidos del ingreso", () => {
     expect(await screen.findByRole("dialog", { name: /Nuevo control médico/i })).toBeInTheDocument();
   });
 });
+
+describe("PatientSheet — programa en la edición de la ficha", () => {
+  it("muestra un programa antiguo fuera de la lista y lo conserva al guardar", async () => {
+    mocksBase();
+    server.use(
+      http.get(`${BASE}/api/v1/pacientes/:paciente_id/vista-360`, () =>
+        HttpResponse.json({
+          paciente: PACIENTE,
+          ingresos: [{ ...INGRESO, programa: "DIEP" }],
+          farmacos: [],
+          licencias: [],
+          controles: [],
+          reintegro: [],
+        }),
+      ),
+    );
+    const putSpy = vi.fn();
+    server.use(
+      http.put(`${BASE}/api/v1/ingresos/:ingreso_id`, async ({ request }) => {
+        putSpy((await request.json()) as Record<string, unknown>);
+        return HttpResponse.json({ ...INGRESO, programa: "DIEP" });
+      }),
+    );
+    const { user, dialog } = await abrirEdicion();
+
+    const programa = dialog.getByLabelText(/Programa \(opcional\)/i);
+    expect(programa).toHaveValue("DIEP");
+    expect(within(programa).getByRole("option", { name: /DIEP.*valor anterior/ })).toBeInTheDocument();
+
+    await user.click(dialog.getByRole("button", { name: /Guardar cambios/i }));
+    await waitFor(() => expect(putSpy).toHaveBeenCalledOnce());
+    expect(putSpy.mock.calls[0][0].programa).toBe("DIEP");
+  });
+
+  it("cambia el programa a Ley Karin y envía el valor", async () => {
+    mocksBase();
+    const putSpy = vi.fn();
+    server.use(
+      http.put(`${BASE}/api/v1/ingresos/:ingreso_id`, async ({ request }) => {
+        putSpy((await request.json()) as Record<string, unknown>);
+        return HttpResponse.json({ ...INGRESO, programa: "Ley Karin" });
+      }),
+    );
+    const { user, dialog } = await abrirEdicion();
+
+    await user.selectOptions(dialog.getByLabelText(/Programa \(opcional\)/i), "Ley Karin");
+    await user.click(dialog.getByRole("button", { name: /Guardar cambios/i }));
+    await waitFor(() => expect(putSpy).toHaveBeenCalledOnce());
+    expect(putSpy.mock.calls[0][0].programa).toBe("Ley Karin");
+  });
+
+  it("«Sin programa» guarda null", async () => {
+    mocksBase();
+    const putSpy = vi.fn();
+    server.use(
+      http.put(`${BASE}/api/v1/ingresos/:ingreso_id`, async ({ request }) => {
+        putSpy((await request.json()) as Record<string, unknown>);
+        return HttpResponse.json({ ...INGRESO, programa: null });
+      }),
+    );
+    const { user, dialog } = await abrirEdicion();
+
+    await user.selectOptions(dialog.getByLabelText(/Programa \(opcional\)/i), "PIPT");
+    await user.selectOptions(dialog.getByLabelText(/Programa \(opcional\)/i), "");
+    await user.click(dialog.getByRole("button", { name: /Guardar cambios/i }));
+    await waitFor(() => expect(putSpy).toHaveBeenCalledOnce());
+    expect(putSpy.mock.calls[0][0].programa).toBeNull();
+  });
+});

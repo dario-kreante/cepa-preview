@@ -7,6 +7,7 @@ TipoReca es el catálogo de calificación RECA fijado en Decisiones v5 D20. El
 control médico (CEPA-062) lo usa también como `EstadoReca`.
 """
 
+from datetime import date
 from enum import Enum
 
 from app.domain.enums import TipoAlta  # noqa: F401
@@ -18,6 +19,23 @@ class EstadoReintegro(str, Enum):
     PENDIENTE = "pendiente"
     PARCIAL = "parcial"
     TOTAL = "total"
+
+
+class EstadoSolicitudReca(str, Enum):
+    """Estado de la solicitud de RECA, derivado (QA-003, PRD v5 §7.4.2): no se guarda."""
+
+    PENDIENTE = "pendiente"
+    SOLICITADA = "solicitada"
+    RECIBIDA = "recibida"
+
+
+def estado_solicitud_reca(fecha_solicitud: "date | None", tiene_reca: bool) -> EstadoSolicitudReca:
+    """«Recibida» si el caso tiene RECA; si no, «solicitada» con fecha de solicitud, o «pendiente»."""
+    if tiene_reca:
+        return EstadoSolicitudReca.RECIBIDA
+    if fecha_solicitud is not None:
+        return EstadoSolicitudReca.SOLICITADA
+    return EstadoSolicitudReca.PENDIENTE
 
 
 class TipoTrabajador(str, Enum):

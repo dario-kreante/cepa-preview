@@ -209,6 +209,11 @@ VENTANAS_DEFAULT: dict[str, dict] = {
     TipoAlerta.CITA_FUERA_DE_ODA.value: {"dias": 30, "habiles": False},
     # El mismo día del plazo (D10): Sasha envía los insumos al EPTista esa mañana.
     TipoAlerta.PLAZO_INSUMOS_EPT.value: {"dias": 0, "habiles": False},
+    # QA-003: "dias" = días corridos desde la fecha del caso para solicitar la RECA. 5 es
+    # provisional: la clienta aún debe confirmarlo (se edita en la configuración de alertas).
+    TipoAlerta.RECA_POR_SOLICITAR.value: {"dias": 5, "habiles": False},
+    # Sin plazo: la crea el sync al vincular el control; aquí solo se enciende o apaga.
+    TipoAlerta.PROYECCION_REINTEGRO.value: {"dias": 0, "habiles": False},
 }
 
 
@@ -646,6 +651,11 @@ def ejecutar_job_alertas(
     fuera_de_oda, resueltas_oda = alertar_citas_fuera_de_oda(db, hoy, ventanas, actor)
     resueltas += resueltas_oda
 
+    from app.services.alertas_reca import alertar_reca_por_solicitar
+
+    reca_por_solicitar, resueltas_reca = alertar_reca_por_solicitar(db, hoy, ventanas, actor)
+    resueltas += resueltas_reca
+
     hitos: list[HitoPlazos] = []
     hitos.extend(_construir_hitos_oda(db, ventanas))
     hitos.extend(_construir_hitos_licencias(db, ventanas))
@@ -684,11 +694,11 @@ def ejecutar_job_alertas(
             entity="alerta_notif",
             entity_id=f"job:{len(resultados)}",
         )
-    if resultados or resueltas or fuera_de_oda:
+    if resultados or resueltas or fuera_de_oda or reca_por_solicitar:
         # Las resoluciones por hora vigente solo se flushean: sin alertas nuevas igual hay que persistirlas.
         db.commit()
 
-    return len(resultados) + fuera_de_oda
+    return len(resultados) + fuera_de_oda + reca_por_solicitar
 
 
 def enviar_correos_alertas(
