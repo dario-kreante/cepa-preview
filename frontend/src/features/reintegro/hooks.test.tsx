@@ -1,10 +1,17 @@
 import { describe, expect, it, vi } from "vitest";
 import { http, HttpResponse } from "msw";
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { server } from "@/test/msw/server";
-import { useCaso, useCasosPorIngreso, useReca, useRegistrarCierre } from "./hooks";
+import {
+  useCaso,
+  useCasosPorIngreso,
+  useCrearReca,
+  useReca,
+  useRegistrarCierre,
+  useRegistrarSolicitudReca,
+} from "./hooks";
 
 const BASE = import.meta.env.VITE_API_BASE_URL;
 
@@ -99,5 +106,49 @@ describe("useRegistrarCierre", () => {
     expect(keys).toContain(JSON.stringify(["reintegro", "paciente"]));
     expect(keys).toContain(JSON.stringify(["reintegro", "duplicados"]));
     expect(keys).toContain(JSON.stringify(["reintegro", "ingreso", 10]));
+  });
+});
+
+describe("invalidaciones que refrescan el estado de RECA y las alertas (QA-003)", () => {
+  function conCliente() {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const spy = vi.spyOn(qc, "invalidateQueries");
+    const claves = () => spy.mock.calls.map((c) => (c[0] as { queryKey: unknown[] }).queryKey);
+    const w = ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={qc}>{children}</QueryClientProvider>
+    );
+    return { claves, w };
+  }
+
+  it("registrar la RECA invalida el caso y las alertas", async () => {
+    server.use(http.post(`${BASE}/api/v1/reintegros/1/reca`, () => HttpResponse.json({ id: 1 }, { status: 201 })));
+    const { claves, w } = conCliente();
+    const { result } = renderHook(() => useCrearReca(), { wrapper: w });
+    await act(async () => {
+      await result.current.mutateAsync({ casoId: 1, body: {} as never });
+    });
+    expect(claves()).toContainEqual(["reintegro", 1]);
+    expect(claves()).toContainEqual(["alertas"]);
+  });
+
+  it("registrar el cierre invalida las alertas", async () => {
+    server.use(http.patch(`${BASE}/api/v1/reintegros/1/cierre`, () => HttpResponse.json(CASO)));
+    const { claves, w } = conCliente();
+    const { result } = renderHook(() => useRegistrarCierre(), { wrapper: w });
+    await act(async () => {
+      await result.current.mutateAsync({ casoId: 1, body: {} as never });
+    });
+    expect(claves()).toContainEqual(["alertas"]);
+  });
+
+  it("registrar la solicitud invalida el caso y las alertas", async () => {
+    server.use(http.patch(`${BASE}/api/v1/reintegros/1/solicitud-reca`, () => HttpResponse.json(CASO)));
+    const { claves, w } = conCliente();
+    const { result } = renderHook(() => useRegistrarSolicitudReca(), { wrapper: w });
+    await act(async () => {
+      await result.current.mutateAsync({ casoId: 1, fecha: "2026-06-25" });
+    });
+    expect(claves()).toContainEqual(["reintegro", 1]);
+    expect(claves()).toContainEqual(["alertas"]);
   });
 });
