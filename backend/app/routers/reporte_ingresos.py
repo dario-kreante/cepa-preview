@@ -13,7 +13,7 @@ los pendientes bajo etiquetas propias («Pendiente de folio», «Sin región»�
 from __future__ import annotations
 
 from collections import Counter
-from datetime import date, datetime, time, timedelta
+from datetime import date, datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -50,9 +50,12 @@ def _consulta_ingresos(desde: date, hasta: date):
 
 
 def _limites_utc(desde: date, hasta: date) -> tuple[datetime, datetime]:
-    """[inicio, fin) del período en hora de Chile, como instantes con zona."""
-    inicio = datetime.combine(desde, time.min, tzinfo=_SANTIAGO)
-    fin = datetime.combine(hasta + timedelta(days=1), time.min, tzinfo=_SANTIAGO)
+    """[inicio, fin) del período en hora de Chile, expresado en UTC.
+
+    Se convierte a UTC antes de enlazar: el driver de Oracle puede descartar la zona.
+    """
+    inicio = datetime.combine(desde, time.min, tzinfo=_SANTIAGO).astimezone(timezone.utc)
+    fin = datetime.combine(hasta + timedelta(days=1), time.min, tzinfo=_SANTIAGO).astimezone(timezone.utc)
     return inicio, fin
 
 

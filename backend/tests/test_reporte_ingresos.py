@@ -162,3 +162,30 @@ def test_compila_en_oracle():
     d, h = date(2026, 11, 9), date(2026, 11, 15)
     for stmt in (_consulta_ingresos(d, h), _consulta_pendientes(d, h)):
         str(stmt.compile(dialect=oracle.dialect()))
+
+
+def test_limites_en_utc():
+    from datetime import timezone
+    from app.routers.reporte_ingresos import _limites_utc
+
+    inicio, fin = _limites_utc(date(2026, 11, 9), date(2026, 11, 15))
+    assert inicio.utcoffset() == timezone.utc.utcoffset(None)
+    assert fin.utcoffset() == timezone.utc.utcoffset(None)
+    assert inicio == datetime(2026, 11, 9, 3, 0, tzinfo=timezone.utc)  # Chile UTC-3 en noviembre
+    assert fin == datetime(2026, 11, 16, 3, 0, tzinfo=timezone.utc)
+
+
+def test_pendiente_cerca_de_medianoche_de_chile(as_coordinacion, db_session):
+    # 02:30 UTC del 16-11 = 23:30 del 15-11 en Chile → dentro; 03:30 UTC = 00:30 del 16-11 → fuera.
+    _paciente(db_session, None, "Dentro 2330", estado="pendiente_folio",
+              creado=datetime(2026, 11, 16, 2, 30, tzinfo=timezone.utc))
+    _paciente(db_session, None, "Fuera 0030", estado="pendiente_folio",
+              creado=datetime(2026, 11, 16, 3, 30, tzinfo=timezone.utc))
+    # 02:30 UTC del 9-11 = 23:30 del 8-11 en Chile → fuera; 03:30 UTC = 00:30 del 9-11 → dentro.
+    _paciente(db_session, None, "Fuera 2330 previo", estado="pendiente_folio",
+              creado=datetime(2026, 11, 9, 2, 30, tzinfo=timezone.utc))
+    _paciente(db_session, None, "Dentro 0030 inicio", estado="pendiente_folio",
+              creado=datetime(2026, 11, 9, 3, 30, tzinfo=timezone.utc))
+    db_session.commit()
+    nombres = {i["paciente_nombre"] for i in _get(as_coordinacion).json()["items"]}
+    assert nombres == {"Dentro 2330", "Dentro 0030 inicio"}
