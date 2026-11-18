@@ -16,7 +16,7 @@ from __future__ import annotations
 from datetime import date
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import select
+from sqlalchemy import select, true
 from sqlalchemy.orm import Session
 
 from app.audit.service import record_audit
@@ -57,7 +57,8 @@ def get_odas_vencidas(
         .join(Paciente, Ingreso.paciente_id == Paciente.id)
         .where(
             Oda.fecha_vencimiento < hoy,
-            Oda.vigente.is_(True),
+            # `== true()` y no `.is_(True)`: Oracle rechaza "IS 1" (ORA-00908).
+            Oda.vigente == true(),
             Ingreso.estado == EstadoCaso.ACTIVO.value,
         )
     )
