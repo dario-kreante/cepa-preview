@@ -7,16 +7,17 @@ por su propia relación.
 
 from datetime import datetime, timezone
 
-from sqlalchemy import select
+from sqlalchemy import false, select, true
 from sqlalchemy.orm import Session
 
 from app.domain.enums import EstadoCaso
 from app.domain.enums_alertas import EstadoAlerta
+from app.models.alerta_licencia import AlertaLicencia
 from app.models.alertas import AlertaNotif
 from app.models.cita import Cita
 from app.models.control_medico import ControlMedico
 from app.models.ept import CasoEpt, PlazoEpt
-from app.models.farmacos import Receta, RegistroFarmacologico
+from app.models.farmacos import Alerta, Receta, RegistroFarmacologico
 from app.models.ingreso import Ingreso
 from app.models.licencia import LicenciaMedica
 from app.models.oda import Oda
@@ -74,6 +75,26 @@ def resolver_alertas_de_ingreso(db: Session, ingreso_id: int) -> int:
             alerta.estado = EstadoAlerta.RESUELTA.value
             alerta.resuelta_en = ahora
             resueltas += 1
+    # Motores aparte (tablas propias). AlertaLicencia no tiene fecha de resolución: se apaga con
+    # ``activa = false``. La Alerta de fármacos solo tiene ``leida``: se da por leída (no existe
+    # un estado «resuelta»).
+    for alerta in db.scalars(
+        select(AlertaLicencia).where(
+            AlertaLicencia.ingreso_id == ingreso_id, AlertaLicencia.activa == true()
+        )
+    ):
+        alerta.activa = False
+        resueltas += 1
+    recetas = (
+        select(Receta.id)
+        .join(RegistroFarmacologico, RegistroFarmacologico.id == Receta.registro_id)
+        .where(RegistroFarmacologico.ingreso_id == ingreso_id)
+    )
+    for alerta in db.scalars(
+        select(Alerta).where(Alerta.receta_id.in_(recetas), Alerta.leida == false())
+    ):
+        alerta.leida = True
+        resueltas += 1
     if resueltas:
         db.flush()
     return resueltas
