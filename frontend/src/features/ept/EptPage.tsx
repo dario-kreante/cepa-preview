@@ -40,6 +40,7 @@ import {
 import { cn, fmtDate } from "@/lib/utils";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { puedeEscribirEpt, type Rol } from "@/lib/rbac";
+import { AlertasPendientesModulo } from "@/features/alertas/AlertasPendientesModulo";
 import { useBuscarPacientes, useVista360 } from "@/features/ingresos/hooks";
 import { useCaso, useCasosPorPaciente, useEliminarCaso } from "./hooks";
 import { NuevoCasoEptDialog } from "./NuevoCasoEptDialog";
@@ -464,6 +465,9 @@ export function EptPage() {
           </>
         )}
       </div>
+
+      {/* ── Alertas pendientes (mismo número que el menú) ── */}
+      <AlertasPendientesModulo modulo="ept" onAbrir={(a) => a.caso_ept_id != null && setCasoId(a.caso_ept_id)} />
 
       {/* ── Cargar por caso_id ── */}
       <div className="flex items-center gap-2">

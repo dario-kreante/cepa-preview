@@ -5777,6 +5777,10 @@ export interface components {
             email_enviado: boolean;
             /** Paciente Id */
             paciente_id?: number | null;
+            /** Paciente Nombre */
+            paciente_nombre?: string | null;
+            /** Caso Ept Id */
+            caso_ept_id?: number | null;
         };
         /** AlertaRead */
         app__schemas__farmacos__AlertaRead: {
