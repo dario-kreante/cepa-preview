@@ -144,7 +144,9 @@ def test_el_contenido_se_pide_a_salutem_con_la_persona_del_archivo(as_admin, db_
     assert r.headers["x-content-type-options"] == "nosniff"
     assert as_admin.get(_url(paciente, "/10/contenido")).status_code == 200
     assert pedidos == [(PERSONA, 4), (OTRA_PERSONA_DEL_PACIENTE, 10)]
-    auditoria = db_session.scalars(select(AuditLog).where(AuditLog.entity == "salutem_archivo")).all()
+    auditoria = db_session.scalars(
+        select(AuditLog).where(AuditLog.entity == "salutem_archivo").order_by(AuditLog.id)
+    ).all()
     assert [(a.action, a.entity_id) for a in auditoria] == [("READ", "4"), ("READ", "10")]
 
 

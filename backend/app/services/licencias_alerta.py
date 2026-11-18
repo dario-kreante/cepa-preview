@@ -63,6 +63,10 @@ def generar_alertas_vencimiento(
     if festivos is None:
         festivos = cargar_festivos(db)
 
+    from app.services.alertas_cierre import ids_ingresos_cerrados
+
+    cerrados = ids_ingresos_cerrados(db)  # QA-011: un caso cerrado no genera alertas
+
     # LM vigentes cuyo término es >= hoy (no vencidas aún)
     lm_candidatas = list(
         db.scalars(
@@ -75,6 +79,8 @@ def generar_alertas_vencimiento(
 
     nuevas: list[AlertaLicencia] = []
     for lm in lm_candidatas:
+        if lm.ingreso_id in cerrados:
+            continue
         habiles = contar_dias_habiles(hoy, lm.fecha_termino, festivos)
         if habiles > umbral_habiles:
             continue  # todavía no está en la ventana de alerta

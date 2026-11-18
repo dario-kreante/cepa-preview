@@ -20,7 +20,9 @@ import { cn, fmtDate } from "@/lib/utils";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { puedeEscribir, type Rol } from "@/lib/rbac";
 import { useBuscarPacientes, useVista360 } from "@/features/ingresos/hooks";
-import { useCaso, useCasosPorIngreso, useReca } from "./hooks";
+import { useCaso, useCasosActivosDePaciente, useCasosPorIngreso, useReca } from "./hooks";
+import { CasoRepetidoAviso } from "./CasoRepetidoAviso";
+import { CasosRepetidosPanel } from "./CasosRepetidosPanel";
 import { NuevoCasoReintegroDialog } from "./NuevoCasoReintegroDialog";
 import { NuevaRecaDialog } from "./NuevaRecaDialog";
 import { CierreDialog } from "./CierreDialog";
@@ -328,6 +330,8 @@ export function ReintegroPage() {
   );
   const ingresoId: number | undefined = vista?.ingresos?.[0]?.id;
   const { data: casosIngreso = [] } = useCasosPorIngreso(ingresoId ?? null);
+  // Casos activos del paciente en todos sus ingresos: base del aviso de caso repetido.
+  const { data: casosActivos = [] } = useCasosActivosDePaciente(selectedPaciente?.id ?? null);
 
   // Precarga del alta con los datos del paciente y de su ingreso principal.
   const prefillCaso = useMemo<Partial<CasoReintegroForm> | undefined>(() => {
@@ -351,6 +355,20 @@ export function ReintegroPage() {
   });
 
   const [nuevaOpen, setNuevaOpen] = useState(false);
+  const [avisoOpen, setAvisoOpen] = useState(false);
+  const [repetidosOpen, setRepetidosOpen] = useState(false);
+
+  function handleNuevoCaso() {
+    // No bloquea: con casos activos se avisa primero; sin ellos se abre el formulario.
+    if (casosActivos.length > 0) setAvisoOpen(true);
+    else setNuevaOpen(true);
+  }
+
+  function abrirCaso(id: number) {
+    setCasoId(id);
+    setAvisoOpen(false);
+    window.scrollTo?.({ top: 0 });
+  }
   const hasSearched = q.length > 0;
 
   function handleLoadCaso() {
@@ -382,7 +400,7 @@ export function ReintegroPage() {
                 data-testid="btn-nuevo-caso"
                 aria-describedby={!ingresoId ? "nuevo-caso-requisito" : undefined}
                 disabled={!ingresoId}
-                onClick={() => setNuevaOpen(true)}
+                onClick={handleNuevoCaso}
               >
                 <Plus className="size-3.5" /> Nuevo caso
               </Button>
@@ -396,6 +414,18 @@ export function ReintegroPage() {
                 </p>
               )}
             </div>
+            {ingresoId && (
+              <CasoRepetidoAviso
+                casos={casosActivos}
+                open={avisoOpen}
+                onOpenChange={setAvisoOpen}
+                onAbrir={abrirCaso}
+                onContinuar={() => {
+                  setAvisoOpen(false);
+                  setNuevaOpen(true);
+                }}
+              />
+            )}
             {ingresoId && (
               <NuevoCasoReintegroDialog
                 ingresoId={ingresoId}
@@ -437,6 +467,20 @@ export function ReintegroPage() {
         >
           Cargar
         </Button>
+      </div>
+
+      {/* Revisión de duplicados (solo lectura) */}
+      <div className="space-y-2">
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => setRepetidosOpen((v) => !v)}
+          aria-expanded={repetidosOpen}
+          data-testid="btn-casos-repetidos"
+        >
+          {repetidosOpen ? "Ocultar casos repetidos" : "Revisar pacientes con casos repetidos"}
+        </Button>
+        {repetidosOpen && <CasosRepetidosPanel onAbrirCaso={abrirCaso} />}
       </div>
 
       {/* Caso activo */}

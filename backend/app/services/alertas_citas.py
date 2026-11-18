@@ -25,6 +25,7 @@ from app.models.ingreso import Ingreso
 from app.models.paciente import Paciente
 from app.models.salutem_copia import SalutemCita, SalutemPersona
 from app.services.alertas import _resolver_usuario
+from app.services.alertas_cierre import ingreso_cerrado
 from app.services.salutem_sync.alertas_control import ACTOR, DIAS_NOVEDAD
 from app.services.salutem_sync.filtro import cruce_con_paciente
 
@@ -36,6 +37,8 @@ def alertar_inasistencia(
     db: Session, *, salutem_cita_id: int, cita: Cita, hoy: date, ventanas: dict
 ) -> bool:
     """Crea la alerta de inasistencia de una cita si corresponde. True si la creó."""
+    if ingreso_cerrado(db, cita.ingreso_id):  # QA-011
+        return False
     if cita.estado != "inasistencia":
         return False
     if cita.fecha < hoy - timedelta(days=DIAS_NOVEDAD):
@@ -127,6 +130,8 @@ def alertar_posible_encuadre(
     Una por inasistencia: cada inasistencia nueva vuelve a avisar, aunque el paciente ya
     esté en encuadre (el CEPA revisa y decide). No se resuelve sola al tener hora vigente.
     """
+    if ingreso_cerrado(db, cita.ingreso_id):  # QA-011
+        return False
     if cita.estado != "inasistencia":
         return False
     if cita.fecha < hoy - timedelta(days=DIAS_NOVEDAD):

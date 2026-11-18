@@ -20,7 +20,7 @@ def test_cerrar_con_alta_terapeutica(as_admin):
     ing = _ingreso(as_admin)
     r = as_admin.post(
         f"/api/v1/ingresos/{ing['id']}/cierre",
-        json={"estado": "cerrado", "tipo_alta": "terapeutica", "fecha_alta": "2026-06-20"},
+        json={"estado": "cerrado", "motivo_cierre": "alta_medica", "tipo_alta": "terapeutica", "fecha_alta": "2026-06-20"},
     )
     assert r.status_code == 200
     cuerpo = r.json()
@@ -46,7 +46,7 @@ def test_tipo_alta_invalido(as_admin):
     ing = _ingreso(as_admin)
     r = as_admin.post(
         f"/api/v1/ingresos/{ing['id']}/cierre",
-        json={"estado": "cerrado", "tipo_alta": "otro"},
+        json={"estado": "cerrado", "motivo_cierre": "alta_medica", "tipo_alta": "otro"},
     )
     assert r.status_code == 422
 
@@ -56,7 +56,7 @@ def test_cerrar_con_flag_revision(as_admin):
     ing = _ingreso(as_admin)
     r = as_admin.post(
         f"/api/v1/ingresos/{ing['id']}/cierre",
-        json={"estado": "cerrado", "tipo_alta": "medica", "flag_revision": True},
+        json={"estado": "cerrado", "motivo_cierre": "alta_medica", "tipo_alta": "medica", "flag_revision": True},
     )
     assert r.status_code == 200
     assert r.json()["flag_revision"] is True
@@ -75,11 +75,11 @@ def test_estado_invalido(as_admin):
 def test_auditor_no_cierra(as_admin, as_auditor):
     ing = _ingreso(as_admin)
     r = as_auditor.post(
-        f"/api/v1/ingresos/{ing['id']}/cierre", json={"estado": "cerrado"}
+        f"/api/v1/ingresos/{ing['id']}/cierre", json={"estado": "cerrado", "motivo_cierre": "alta_medica"}
     )
     assert r.status_code == 403
 
 
 def test_cierre_ingreso_inexistente(as_admin):
-    r = as_admin.post("/api/v1/ingresos/999999/cierre", json={"estado": "cerrado"})
+    r = as_admin.post("/api/v1/ingresos/999999/cierre", json={"estado": "cerrado", "motivo_cierre": "alta_medica"})
     assert r.status_code == 404

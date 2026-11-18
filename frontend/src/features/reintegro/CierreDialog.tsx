@@ -20,6 +20,7 @@ import {
   cierreSchema,
   ESTADO_REINTEGRO_LABELS,
   ESTADO_REINTEGRO_VALUES,
+  TIPO_ALTA_ANTIGUOS,
   TIPO_ALTA_LABELS,
   TIPO_ALTA_VALUES,
   type CierreForm,
@@ -148,6 +149,11 @@ export function CierreDialog({ caso, open, onOpenChange }: Props) {
                   type="date"
                   {...register("fecha_alta_medica")}
                 />
+                {errors.fecha_alta_medica && (
+                  <p className="text-[11.5px] text-destructive mt-1">
+                    {errors.fecha_alta_medica.message}
+                  </p>
+                )}
               </div>
             )}
           </div>
@@ -166,6 +172,11 @@ export function CierreDialog({ caso, open, onOpenChange }: Props) {
                   type="date"
                   {...register("fecha_alta_psico")}
                 />
+                {errors.fecha_alta_psico && (
+                  <p className="text-[11.5px] text-destructive mt-1">
+                    {errors.fecha_alta_psico.message}
+                  </p>
+                )}
               </div>
             )}
           </div>
@@ -179,7 +190,18 @@ export function CierreDialog({ caso, open, onOpenChange }: Props) {
                   {TIPO_ALTA_LABELS[v]}
                 </option>
               ))}
+              {/* Caso guardado con un tipo antiguo: se muestra y se conserva al guardar. */}
+              {(TIPO_ALTA_ANTIGUOS as readonly string[]).includes(caso.tipo_alta ?? "") && (
+                <option value={caso.tipo_alta ?? ""}>
+                  {TIPO_ALTA_LABELS[caso.tipo_alta as keyof typeof TIPO_ALTA_LABELS]} (antiguo)
+                </option>
+              )}
             </select>
+            {errors.tipo_alta && (
+              <p className="text-[11.5px] text-destructive mt-1">
+                {errors.tipo_alta.message}
+              </p>
+            )}
           </div>
 
           <div>

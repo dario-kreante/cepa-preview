@@ -1,10 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { http, HttpResponse } from "msw";
 import { renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { server } from "@/test/msw/server";
-import { useCaso, useCasosPorIngreso, useReca } from "./hooks";
+import { useCaso, useCasosPorIngreso, useReca, useRegistrarCierre } from "./hooks";
 
 const BASE = import.meta.env.VITE_API_BASE_URL;
 
@@ -75,5 +75,29 @@ describe("useReca", () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data).toBeNull();
     expect(result.current.isError).toBe(false);
+  });
+});
+
+describe("useRegistrarCierre", () => {
+  it("invalida el caso, los casos activos del paciente, los duplicados y los del ingreso", async () => {
+    server.use(
+      http.patch(`${BASE}/api/v1/reintegros/1/cierre`, () =>
+        HttpResponse.json({ ...CASO, estado_reintegro: "total" }),
+      ),
+    );
+    const qc = new QueryClient({ defaultOptions: { mutations: { retry: false } } });
+    const spy = vi.spyOn(qc, "invalidateQueries");
+    const w = ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={qc}>{children}</QueryClientProvider>
+    );
+    const { result } = renderHook(() => useRegistrarCierre(), { wrapper: w });
+    result.current.mutate({ casoId: 1, body: { estado_reintegro: "total", remitido_isl: false, alta_medica: false, alta_psicologica: false } });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    const keys = spy.mock.calls.map((c) => JSON.stringify((c[0] as { queryKey: unknown }).queryKey));
+    expect(keys).toContain(JSON.stringify(["reintegro", 1]));
+    expect(keys).toContain(JSON.stringify(["reintegro", "paciente"]));
+    expect(keys).toContain(JSON.stringify(["reintegro", "duplicados"]));
+    expect(keys).toContain(JSON.stringify(["reintegro", "ingreso", 10]));
   });
 });

@@ -86,6 +86,7 @@ def test_coherencia_cierre_rechaza_total_sin_fecha():
             fecha_reca=datetime.date(2026, 4, 1),
             fecha_caso=None,
             alta_medica=True,
+            fecha_alta_medica=datetime.date(2026, 5, 28),
             alta_psicologica=False,
             tipo_alta="terapeutica",
         )
@@ -102,6 +103,7 @@ def test_coherencia_cierre_rechaza_fecha_reintegro_anterior_a_reca():
             fecha_reca=datetime.date(2026, 4, 1),
             fecha_caso=None,
             alta_medica=True,
+            fecha_alta_medica=datetime.date(2026, 5, 28),
             alta_psicologica=False,
             tipo_alta="terapeutica",
         )
@@ -133,6 +135,7 @@ def test_coherencia_cierre_acepta_total_completo():
         fecha_reca=datetime.date(2026, 4, 1),
         fecha_caso=None,
         alta_medica=True,
+        fecha_alta_medica=datetime.date(2026, 5, 28),
         alta_psicologica=False,
         tipo_alta="terapeutica",
     )
@@ -164,6 +167,7 @@ def test_coherencia_cierre_rechaza_fecha_reintegro_anterior_a_fecha_caso():
             fecha_reca=None,
             fecha_caso=datetime.date(2026, 4, 1),
             alta_medica=True,
+            fecha_alta_medica=datetime.date(2026, 5, 28),
             alta_psicologica=False,
             tipo_alta="terapeutica",
         )
@@ -180,6 +184,7 @@ def test_coherencia_cierre_acepta_reintegro_posterior_a_fecha_caso():
         fecha_reca=datetime.date(2026, 4, 5),
         fecha_caso=datetime.date(2026, 3, 1),
         alta_medica=True,
+        fecha_alta_medica=datetime.date(2026, 5, 28),
         alta_psicologica=False,
         tipo_alta="terapeutica",
     )
@@ -210,3 +215,77 @@ def test_coherencia_reca_acepta_verifica_con_fecha_verificacion():
         verifica_medidas=True,
         fecha_verificacion=datetime.date(2026, 4, 10),
     )
+
+
+# ── QA-003: altas unificadas (casillas + tipo de alta opcional) ───────────
+
+def _cierre_total(**kw):
+    from app.domain.reintegro_enums import EstadoReintegro
+
+    base = dict(
+        estado=EstadoReintegro.TOTAL,
+        fecha_reintegro=datetime.date(2026, 5, 30),
+        fecha_reca=None,
+        fecha_caso=None,
+        alta_medica=False,
+        alta_psicologica=False,
+        tipo_alta=None,
+    )
+    base.update(kw)
+    validar_coherencia_cierre(**base)
+
+
+def test_total_acepta_solo_alta_medica_sin_tipo_alta():
+    _cierre_total(alta_medica=True, fecha_alta_medica=datetime.date(2026, 5, 28))
+
+
+def test_total_acepta_solo_alta_psicologica_sin_tipo_alta():
+    _cierre_total(alta_psicologica=True, fecha_alta_psico=datetime.date(2026, 5, 28))
+
+
+def test_total_acepta_solo_tipo_alta_sin_casillas():
+    _cierre_total(tipo_alta="abandono")
+
+
+def test_total_sin_ninguna_alta_se_rechaza_con_mensaje_claro():
+    with pytest.raises(HTTPException) as exc_info:
+        _cierre_total()
+    assert exc_info.value.status_code == 422
+    assert exc_info.value.detail == (
+        "Para un reintegro total, marca el alta médica, el alta psicológica "
+        "o elige un tipo de alta."
+    )
+
+
+def test_alta_medica_marcada_exige_su_fecha():
+    with pytest.raises(HTTPException) as exc_info:
+        _cierre_total(alta_medica=True, tipo_alta="terapeutica")
+    assert exc_info.value.status_code == 422
+    assert "fecha del alta médica" in exc_info.value.detail
+
+
+def test_alta_psicologica_marcada_exige_su_fecha():
+    with pytest.raises(HTTPException) as exc_info:
+        _cierre_total(alta_psicologica=True, tipo_alta="terapeutica")
+    assert exc_info.value.status_code == 422
+    assert "fecha del alta psicológica" in exc_info.value.detail
+
+
+def test_fecha_de_alta_exigida_tambien_en_reintegro_parcial():
+    from app.domain.reintegro_enums import EstadoReintegro
+
+    with pytest.raises(HTTPException):
+        validar_coherencia_cierre(
+            estado=EstadoReintegro.PARCIAL,
+            fecha_reintegro=None,
+            fecha_reca=None,
+            alta_medica=True,
+            alta_psicologica=False,
+            tipo_alta=None,
+        )
+
+
+@pytest.mark.parametrize("antiguo", ["medica", "psicologica"])
+def test_tipo_alta_antiguo_sigue_siendo_valido(antiguo):
+    """Casos guardados con tipo_alta médica/psicológica no deben romperse al editar."""
+    _cierre_total(tipo_alta=antiguo)

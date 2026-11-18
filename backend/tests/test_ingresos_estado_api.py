@@ -35,7 +35,7 @@ def test_actualizar_estado_ingreso(as_admin, ingreso_activo):
     # Actualizar estado
     r_patch = as_admin.patch(
         f"/api/v1/ingresos/{ingreso_id}/estado",
-        json={"estado": "cerrado", "tipo_alta": "terapeutica", "observaciones": "Alta programada"},
+        json={"estado": "cerrado", "motivo_cierre": "alta_medica", "tipo_alta": "terapeutica", "observaciones": "Alta programada"},
     )
     assert r_patch.status_code == 200, r_patch.text
     assert r_patch.json()["estado"] == "cerrado"
@@ -50,7 +50,7 @@ def test_auditor_no_puede_actualizar_estado(as_auditor, ingreso_activo):
     ingreso_id = ingreso_activo["id"]
     r = as_auditor.patch(
         f"/api/v1/ingresos/{ingreso_id}/estado",
-        json={"estado": "cerrado"},
+        json={"estado": "cerrado", "motivo_cierre": "alta_medica"},
     )
     assert r.status_code == 403
 
@@ -68,7 +68,7 @@ def test_estado_invalido_devuelve_422(as_admin, ingreso_activo):
 def test_ingreso_inexistente_devuelve_404(as_admin):
     r = as_admin.patch(
         "/api/v1/ingresos/99999999/estado",
-        json={"estado": "cerrado"},
+        json={"estado": "cerrado", "motivo_cierre": "alta_medica"},
     )
     assert r.status_code == 404
 

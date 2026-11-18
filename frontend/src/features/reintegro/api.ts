@@ -15,6 +15,10 @@ export type RecaUpdate = components["schemas"]["RecaUpdate"];
 export type CierreReintegroUpdate =
   components["schemas"]["CierreReintegroUpdate"];
 
+export type CasoActivoResumen = components["schemas"]["CasoActivoResumen"];
+export type PacienteConCasosRepetidos =
+  components["schemas"]["PacienteConCasosRepetidosRead"];
+
 export type EstadoReintegro = components["schemas"]["EstadoReintegro"];
 export type TipoReca = components["schemas"]["TipoReca"];
 export type TipoAlta = components["schemas"]["TipoAlta"];
@@ -48,6 +52,30 @@ export async function listarCasos(
     params: { query: ingresoId != null ? { ingreso_id: ingresoId } : {} },
   });
   if (error || !data) throw new Error("No se pudieron listar los casos de reintegro");
+  return data;
+}
+
+/**
+ * GET /api/v1/reintegros?paciente_id=&solo_activos=true
+ * Casos activos (reintegro pendiente o parcial) del paciente en todos sus ingresos.
+ */
+export async function listarCasosActivosDePaciente(
+  pacienteId: number,
+): Promise<CasoReintegroRead[]> {
+  const { data, error } = await api.GET("/api/v1/reintegros", {
+    params: { query: { paciente_id: pacienteId, solo_activos: true } },
+  });
+  if (error || !data) throw new Error("No se pudieron revisar los casos activos del paciente");
+  return data;
+}
+
+/** GET /api/v1/reintegros/duplicados — pacientes con más de un caso activo (solo lectura). */
+export async function listarPacientesConCasosRepetidos(): Promise<
+  PacienteConCasosRepetidos[]
+> {
+  const { data, error } = await api.GET("/api/v1/reintegros/duplicados");
+  if (error || !data)
+    throw new Error("No se pudo cargar el listado de pacientes con casos repetidos");
   return data;
 }
 

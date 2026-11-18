@@ -8,9 +8,10 @@ convertirá la excepción en una respuesta 422 JSON sin código adicional.
 import datetime
 
 from fastapi import HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import Select, func, select
 from sqlalchemy.orm import Session
 
+from app.domain.enums import EstadoCaso
 from app.domain.reintegro_enums import EstadoReintegro
 from app.models.ingreso import Ingreso
 from app.models.paciente import Paciente
@@ -18,7 +19,9 @@ from app.models.reintegro import CasoReintegro, Reca
 from app.schemas.reintegro import (
     CasoReintegroCreate,
     CasoReintegroUpdate,
+    CasoActivoResumen,
     CierreReintegroUpdate,
+    PacienteConCasosRepetidosRead,
     RecaCreate,
     RecaUpdate,
 )
@@ -94,14 +97,31 @@ def validar_coherencia_cierre(
     alta_psicologica: bool,
     tipo_alta: str | None,
     fecha_caso: datetime.date | None = None,
+    fecha_alta_medica: datetime.date | None = None,
+    fecha_alta_psico: datetime.date | None = None,
 ) -> None:
-    """Valida las reglas de negocio del cierre del caso (CEPA-042 RN-1..4).
+    """Valida las reglas de negocio del cierre del caso (CEPA-042 RN-1..4, QA-003).
 
     - RN-1: estado=total exige fecha_reintegro.
     - RN-2: fecha_reintegro >= fecha_reca (cuando fecha_reca disponible)
             Y fecha_reintegro >= fecha_caso (cuando fecha_caso disponible).
-    - RN-4: reintegro total requiere al menos una alta y tipo_alta.
+    - RN-4 (QA-003): reintegro total requiere al menos una de: alta médica, alta
+      psicológica o un tipo de alta (el tipo de alta es opcional si hay casilla).
+    - QA-003: cada casilla de alta marcada exige su fecha (en cualquier estado).
+
+    `tipo_alta` acepta también los valores antiguos «medica» y «psicologica»: los casos
+    ya guardados con ellos no deben romperse al editarse.
     """
+    if alta_medica and fecha_alta_medica is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Si marcas el alta médica, indica la fecha del alta médica.",
+        )
+    if alta_psicologica and fecha_alta_psico is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Si marcas el alta psicológica, indica la fecha del alta psicológica.",
+        )
     if estado == EstadoReintegro.TOTAL:
         if fecha_reintegro is None:
             raise HTTPException(
@@ -124,17 +144,89 @@ def validar_coherencia_cierre(
                     f"a la fecha del caso ({_fmt(fecha_caso)})."
                 ),
             )
-        if not alta_medica and not alta_psicologica:
+        if not alta_medica and not alta_psicologica and not tipo_alta:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="Para un reintegro total, marca el alta médica, el alta psicológica o ambas.",
-            )
-        if not tipo_alta:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="Para un reintegro total, elige el tipo de alta.",
+                detail=(
+                    "Para un reintegro total, marca el alta médica, el alta psicológica "
+                    "o elige un tipo de alta."
+                ),
             )
     # estado=parcial o pendiente: no hay restricciones adicionales aquí
+
+
+# ── Casos activos y duplicados (QA-003) ───────────────────────────────────
+#
+# «Caso activo» = estado de reintegro distinto de «total». El reintegro total es el
+# estado de cierre del caso (diálogo «Reintegro y cierre del caso»); pendiente y parcial
+# siguen abiertos. La pantalla no tiene otro indicador de vigencia.
+
+# Un caso de un ingreso cerrado tampoco cuenta como activo, aunque siga pendiente.
+_ACTIVO = (
+    CasoReintegro.estado_reintegro != EstadoReintegro.TOTAL.value,
+    Ingreso.estado != EstadoCaso.CERRADO.value,
+)
+
+
+def consulta_casos(
+    ingreso_id: int | None = None,
+    paciente_id: int | None = None,
+    solo_activos: bool = False,
+) -> Select:
+    stmt = select(CasoReintegro)
+    if paciente_id is not None or solo_activos:
+        stmt = stmt.join(Ingreso, Ingreso.id == CasoReintegro.ingreso_id)
+    if paciente_id is not None:
+        stmt = stmt.where(Ingreso.paciente_id == paciente_id)
+    if ingreso_id is not None:
+        stmt = stmt.where(CasoReintegro.ingreso_id == ingreso_id)
+    if solo_activos:
+        stmt = stmt.where(*_ACTIVO)
+    return stmt.order_by(CasoReintegro.id)
+
+
+def consulta_pacientes_con_casos_activos_repetidos() -> Select:
+    """Ids de pacientes (vía su ingreso) con más de un caso activo. Solo lectura."""
+    return (
+        select(Ingreso.paciente_id)
+        .join(CasoReintegro, CasoReintegro.ingreso_id == Ingreso.id)
+        .where(*_ACTIVO)
+        .group_by(Ingreso.paciente_id)
+        .having(func.count(CasoReintegro.id) > 1)
+    )
+
+
+def listar_pacientes_con_casos_repetidos(
+    db: Session,
+) -> list[PacienteConCasosRepetidosRead]:
+    ids = consulta_pacientes_con_casos_activos_repetidos().scalar_subquery()
+    pacientes = {
+        p.id: p
+        for p in db.scalars(select(Paciente).where(Paciente.id.in_(ids)))
+    }
+    filas = db.execute(
+        select(CasoReintegro, Ingreso.paciente_id)
+        .join(Ingreso, Ingreso.id == CasoReintegro.ingreso_id)
+        .where(*_ACTIVO, Ingreso.paciente_id.in_(ids))
+        .order_by(CasoReintegro.id)
+    ).all()
+    casos_por_paciente: dict[int, list[CasoActivoResumen]] = {}
+    for caso, paciente_id in filas:
+        casos_por_paciente.setdefault(paciente_id, []).append(
+            CasoActivoResumen.model_validate(caso)
+        )
+    resultado = [
+        PacienteConCasosRepetidosRead(
+            paciente_id=pid,
+            rut=pacientes[pid].rut,
+            nombre=pacientes[pid].nombre,
+            casos=casos,
+        )
+        for pid, casos in casos_por_paciente.items()
+        if pid in pacientes
+    ]
+    resultado.sort(key=lambda r: (r.nombre.lower(), r.paciente_id))
+    return resultado
 
 
 # ── Operaciones con sesión ────────────────────────────────────────────────
@@ -293,6 +385,8 @@ def cerrar_caso_reintegro(
         alta_medica=data.alta_medica,
         alta_psicologica=data.alta_psicologica,
         tipo_alta=data.tipo_alta.value if data.tipo_alta else None,
+        fecha_alta_medica=data.fecha_alta_medica,
+        fecha_alta_psico=data.fecha_alta_psico,
     )
     caso.estado_reintegro = data.estado_reintegro.value
     caso.fecha_reintegro = data.fecha_reintegro

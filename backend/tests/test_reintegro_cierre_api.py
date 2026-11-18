@@ -80,6 +80,7 @@ def test_cierre_total_visible_por_auditor(as_admin, as_auditor):
             "estado_reintegro": "total",
             "fecha_reintegro": "2026-05-30",
             "alta_medica": True,
+            "fecha_alta_medica": "2026-05-28",
             "tipo_alta": "terapeutica",
         },
     )
@@ -108,6 +109,7 @@ def test_total_sin_fecha_rechazado(as_admin):
         json={
             "estado_reintegro": "total",
             "alta_medica": True,
+            "fecha_alta_medica": "2026-05-28",
             "tipo_alta": "terapeutica",
         },
     )
@@ -124,6 +126,7 @@ def test_fecha_reintegro_anterior_a_reca_rechazado(as_admin):
             "estado_reintegro": "total",
             "fecha_reintegro": "2026-03-15",  # anterior a fecha_reca 2026-04-05
             "alta_medica": True,
+            "fecha_alta_medica": "2026-05-28",
             "tipo_alta": "terapeutica",
         },
     )
@@ -150,7 +153,8 @@ def test_auditor_no_puede_cerrar(as_auditor):
     r = as_auditor.patch(
         "/api/v1/reintegros/1/cierre",
         json={"estado_reintegro": "total", "fecha_reintegro": "2026-05-30",
-              "alta_medica": True, "tipo_alta": "terapeutica"},
+              "alta_medica": True, "fecha_alta_medica": "2026-05-28",
+              "tipo_alta": "terapeutica"},
     )
     assert r.status_code == 403
 
@@ -165,8 +169,91 @@ def test_remitido_isl_persiste(as_admin):
             "fecha_reintegro": "2026-05-30",
             "remitido_isl": True,
             "alta_medica": True,
+            "fecha_alta_medica": "2026-05-28",
             "tipo_alta": "medica",
         },
     )
     r = as_admin.get(f"/api/v1/reintegros/{caso_id}")
     assert r.json()["remitido_isl"] is True
+
+
+# ── QA-003: altas unificadas ──────────────────────────────────────────────
+
+def test_total_con_solo_alta_psicologica_sin_tipo_alta(as_admin):
+    caso_id = _caso_con_reca(as_admin)
+    r = as_admin.patch(
+        f"/api/v1/reintegros/{caso_id}/cierre",
+        json={
+            "estado_reintegro": "total",
+            "fecha_reintegro": "2026-05-30",
+            "alta_psicologica": True,
+            "fecha_alta_psico": "2026-05-29",
+        },
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["tipo_alta"] is None
+    assert r.json()["alta_psicologica"] is True
+
+
+def test_total_con_solo_tipo_alta_sin_casillas(as_admin):
+    caso_id = _caso_con_reca(as_admin)
+    r = as_admin.patch(
+        f"/api/v1/reintegros/{caso_id}/cierre",
+        json={
+            "estado_reintegro": "total",
+            "fecha_reintegro": "2026-05-30",
+            "tipo_alta": "derivacion",
+        },
+    )
+    assert r.status_code == 200, r.text
+
+
+def test_total_sin_ninguna_alta_devuelve_mensaje_para_el_usuario(as_admin):
+    caso_id = _caso_con_reca(as_admin)
+    r = as_admin.patch(
+        f"/api/v1/reintegros/{caso_id}/cierre",
+        json={"estado_reintegro": "total", "fecha_reintegro": "2026-05-30"},
+    )
+    assert r.status_code == 422
+    assert "o elige un tipo de alta" in r.json()["detail"]
+
+
+def test_casilla_de_alta_sin_fecha_rechazada(as_admin):
+    caso_id = _caso_con_reca(as_admin)
+    r = as_admin.patch(
+        f"/api/v1/reintegros/{caso_id}/cierre",
+        json={
+            "estado_reintegro": "total",
+            "fecha_reintegro": "2026-05-30",
+            "alta_medica": True,
+            "tipo_alta": "terapeutica",
+        },
+    )
+    assert r.status_code == 422
+    assert "fecha del alta médica" in r.json()["detail"]
+
+
+def test_caso_antiguo_con_tipo_alta_medica_se_conserva_al_editar(as_admin, db_session):
+    """Un caso guardado con tipo_alta «medica» sigue leyéndose y se puede re-guardar igual."""
+    from app.models.reintegro import CasoReintegro
+
+    caso_id = _caso_con_reca(as_admin)
+    caso = db_session.get(CasoReintegro, caso_id)
+    caso.tipo_alta = "medica"
+    db_session.commit()
+
+    leido = as_admin.get(f"/api/v1/reintegros/{caso_id}")
+    assert leido.status_code == 200
+    assert leido.json()["tipo_alta"] == "medica"
+
+    r = as_admin.patch(
+        f"/api/v1/reintegros/{caso_id}/cierre",
+        json={
+            "estado_reintegro": "total",
+            "fecha_reintegro": "2026-05-30",
+            "tipo_alta": "medica",
+            "observaciones": "editado",
+        },
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["tipo_alta"] == "medica"

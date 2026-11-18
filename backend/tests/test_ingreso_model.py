@@ -25,6 +25,9 @@ def test_tabla_y_columnas():
         "flag_revision",
         "observaciones",
         "tratamiento_iniciado",
+        "motivo_cierre",
+        "fecha_cierre",
+        "cierre_usuario",
         "created_at",
         "updated_at",
         # EPIC-09 DD-3: sexo/region/comuna/tramo_etario eliminados (viven en Paciente)

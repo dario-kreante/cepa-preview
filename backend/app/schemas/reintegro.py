@@ -104,6 +104,28 @@ class CasoReintegroRead(BaseModel):
     observaciones: str | None
 
 
+class CasoActivoResumen(BaseModel):
+    """Resumen de un caso activo para el aviso de caso repetido y el listado de duplicados."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    ingreso_id: int
+    region: str
+    razon_social: str | None
+    fecha_caso: date
+    estado_reintegro: EstadoReintegro
+
+
+class PacienteConCasosRepetidosRead(BaseModel):
+    """Paciente con más de un caso de reintegro activo (QA-003). Solo lectura."""
+
+    paciente_id: int
+    rut: str | None
+    nombre: str
+    casos: list[CasoActivoResumen]
+
+
 # ── CEPA-041: RECA y medidas correctivas ──────────────────────────────────
 
 class RecaCreate(BaseModel):
