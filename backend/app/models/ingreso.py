@@ -54,6 +54,10 @@ class Ingreso(Base):
     tipo_alta: Mapped[str | None] = mapped_column(String(20), nullable=True)
     fecha_alta: Mapped[date | None] = mapped_column(Date, nullable=True)
     flag_revision: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # Cierre del caso con motivo (QA-011): se limpian al reabrir (el historial queda en auditoría).
+    motivo_cierre: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    fecha_cierre: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    cierre_usuario: Mapped[str | None] = mapped_column(String(100), nullable=True)
     observaciones: Mapped[str | None] = mapped_column(Text, nullable=True)
     tratamiento_iniciado: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     # ── Campos de dimensión para dashboard/reportes EPIC-09 ───────────────────

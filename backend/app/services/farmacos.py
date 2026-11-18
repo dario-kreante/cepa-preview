@@ -204,8 +204,14 @@ def generar_alertas_revision(db, hoy: date | None = None) -> list[Alerta]:
         )
     ).all()
 
+    from app.services.alertas_cierre import ids_ingresos_cerrados
+
+    cerrados = ids_ingresos_cerrados(db)  # QA-011: un caso cerrado no genera alertas
     nuevas: list[Alerta] = []
     for receta in recetas_proximas:
+        registro = db.get(RegistroFarmacologico, receta.registro_id)
+        if registro is not None and registro.ingreso_id in cerrados:
+            continue
         # Idempotencia: no duplicar alerta si ya existe para esta receta+tipo+día
         ya_existe = db.execute(
             select(Alerta).where(

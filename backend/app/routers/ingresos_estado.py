@@ -12,9 +12,10 @@ from sqlalchemy.orm import Session
 from app.audit.service import record_audit
 from app.auth.deps import get_current_user, require_role
 from app.db.session import get_db
-from app.domain.enums import EstadoCaso, TipoAlta
+from app.domain.enums import EstadoCaso, MotivoCierre, TipoAlta
 from app.models.ingreso import Ingreso
 from app.schemas.ingreso import IngresoRead
+from app.services.cierre import cambiar_estado
 
 router = APIRouter(prefix="/api/v1/ingresos", tags=["ingresos"])
 
@@ -24,6 +25,7 @@ _reader = require_role("Administrativo", "Coordinacion", "Auditor")
 
 class EstadoUpdate(BaseModel):
     estado: EstadoCaso
+    motivo_cierre: MotivoCierre | None = None
     tipo_alta: TipoAlta | None = None
     observaciones: str | None = None
 
@@ -54,13 +56,18 @@ def actualizar_estado(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ) -> Ingreso:
-    """Actualiza el estado del ingreso con trazabilidad (CA-2, RN-4 CEPA-121)."""
-    ingreso = db.get(Ingreso, ingreso_id)
-    if ingreso is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Ingreso no encontrado"
-        )
-    ingreso.estado = payload.estado.value
+    """Actualiza el estado del ingreso con trazabilidad (CA-2, RN-4 CEPA-121).
+
+    Cerrar exige ``motivo_cierre`` (QA-011); reabrir un caso cerrado, solo Coordinación.
+    """
+    ingreso = cambiar_estado(
+        db,
+        ingreso_id,
+        payload.estado,
+        motivo_cierre=payload.motivo_cierre,
+        actor=current_user.username,
+        rol=current_user.role,
+    )
     if payload.tipo_alta is not None:
         ingreso.tipo_alta = payload.tipo_alta.value
     if payload.observaciones is not None:

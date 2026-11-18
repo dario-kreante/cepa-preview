@@ -16,6 +16,7 @@ import {
   type IngresoCreate,
   type IngresoRead,
   type IngresoUpdate,
+  type MotivoCierre,
 } from "./api";
 
 export function useFichasClinicas(folio: string | undefined) {
@@ -129,11 +130,21 @@ export function useActualizarIngreso(pacienteId: number) {
 export function useCambiarEstadoIngreso(pacienteId: number) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ ingresoId, estado }: { ingresoId: number; estado: IngresoRead["estado"] }) =>
-      cambiarEstadoIngreso(ingresoId, estado),
+    mutationFn: ({
+      ingresoId,
+      estado,
+      motivoCierre,
+    }: {
+      ingresoId: number;
+      estado: IngresoRead["estado"];
+      motivoCierre?: MotivoCierre;
+    }) => cambiarEstadoIngreso(ingresoId, estado, motivoCierre),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["pacientes", pacienteId, "vista360"] });
       qc.invalidateQueries({ queryKey: ["pacientes", "buscar"] });
+      // Un caso cerrado deja de contar como activo y sus alertas quedan resueltas.
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+      qc.invalidateQueries({ queryKey: ["alertas"] });
     },
   });
 }

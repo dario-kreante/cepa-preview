@@ -3424,6 +3424,12 @@ export interface components {
          */
         EstadoCaso: "activo" | "cerrado" | "derivado" | "encuadre";
         /**
+         * MotivoCierre
+         * @description Motivo con que se cierra un caso (QA-011). Lista propia, separada de ``TipoAlta``.
+         * @enum {string}
+         */
+        MotivoCierre: "reca_ec" | "alta_medica" | "alta_administrativa" | "abandono" | "desiste_proceso" | "cambio_prestador";
+        /**
          * EstadoCita
          * @description Estado de una cita dentro de una propuesta.
          * @enum {string}
@@ -3507,6 +3513,7 @@ export interface components {
         /** EstadoUpdate */
         EstadoUpdate: {
             estado: components["schemas"]["EstadoCaso"];
+            motivo_cierre?: components["schemas"]["MotivoCierre"] | null;
             tipo_alta?: components["schemas"]["TipoAlta"] | null;
             /** Observaciones */
             observaciones?: string | null;
@@ -4006,6 +4013,7 @@ export interface components {
          */
         IngresoCierre: {
             estado: components["schemas"]["EstadoCaso"];
+            motivo_cierre?: components["schemas"]["MotivoCierre"] | null;
             tipo_alta?: components["schemas"]["TipoAlta"] | null;
             /** Fecha Alta */
             fecha_alta?: string | null;
@@ -4112,6 +4120,11 @@ export interface components {
             observaciones: string | null;
             /** Tratamiento Iniciado */
             tratamiento_iniciado: boolean;
+            motivo_cierre?: components["schemas"]["MotivoCierre"] | null;
+            /** Fecha Cierre */
+            fecha_cierre?: string | null;
+            /** Cierre Usuario */
+            cierre_usuario?: string | null;
         };
         /**
          * IngresoUpdate

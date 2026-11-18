@@ -135,7 +135,9 @@ def cerrar(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ) -> IngresoRead:
-    ingreso = cerrar_ingreso(db, ingreso_id, payload)
+    ingreso = cerrar_ingreso(
+        db, ingreso_id, payload, actor=current_user.username, rol=current_user.role
+    )
     record_audit(
         db, actor=current_user.username, action="UPDATE", entity="ingreso", entity_id=str(ingreso.id)
     )
