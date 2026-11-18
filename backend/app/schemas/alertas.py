@@ -28,6 +28,9 @@ class AlertaRead(BaseModel):
     paciente_nombre: str | None = None
     # Caso EPT real de la alerta: caso_id guarda el id del plazo en las alertas de plazo EPT.
     caso_ept_id: int | None = None
+    # Dato propio del tipo que el panel muestra junto al título: hoy, la proyección de
+    # reintegro que registró el médico («Más de 1 mes»). Se lee del control al listar.
+    detalle: str | None = None
 
 
 class AlertaUpdate(BaseModel):

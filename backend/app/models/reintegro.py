@@ -22,7 +22,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
-from app.domain.reintegro_enums import EstadoReintegro
+from app.domain.reintegro_enums import EstadoReintegro, EstadoSolicitudReca, estado_solicitud_reca
 
 
 def _utcnow() -> datetime:
@@ -69,6 +69,8 @@ class CasoReintegro(Base):
     fecha_alta_psico: Mapped[date | None] = mapped_column(Date, nullable=True)
     tipo_alta: Mapped[str | None] = mapped_column(String(20), nullable=True)
     observaciones: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Solicitud de RECA (1490, QA-003): cuándo se pidió. El estado se deriva (ver propiedad).
+    fecha_solicitud_reca: Mapped[date | None] = mapped_column(Date, nullable=True)
     # Auditoría ────────────────────────────────────────────────────────────
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, nullable=False
@@ -80,6 +82,10 @@ class CasoReintegro(Base):
     reca: Mapped["Reca | None"] = relationship(
         back_populates="caso", uselist=False, cascade="all, delete-orphan"
     )
+
+    @property
+    def estado_solicitud_reca(self) -> EstadoSolicitudReca:
+        return estado_solicitud_reca(self.fecha_solicitud_reca, self.reca is not None)
 
 
 class Reca(Base):

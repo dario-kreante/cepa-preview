@@ -3,12 +3,12 @@ import { http, HttpResponse } from "msw";
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { server } from "@/test/msw/server";
 import { AuthProvider } from "@/lib/auth/AuthContext";
 import { tokenStore } from "@/lib/tokenStore";
 import { TOKENS } from "@/test/tokens";
-import { AlertsPanel, routeForCaso, tituloAlerta } from "./AlertsPanel";
+import { AlertsPanel, routeForCaso, subtituloAlerta, tituloAlerta } from "./AlertsPanel";
 
 const BASE = import.meta.env.VITE_API_BASE_URL;
 
@@ -630,5 +630,109 @@ describe("AlertsPanel: gestionar la alerta desde el diálogo", () => {
     await userEvent.click(await within(dialogo).findByRole("button", { name: /Gestionar en Fármacos/ }));
 
     expect(await screen.findByText("página de fármacos")).toBeInTheDocument();
+  });
+});
+
+
+function Ubicacion() {
+  const loc = useLocation();
+  return <p data-testid="ubicacion">{loc.pathname + loc.search}</p>;
+}
+
+function renderPanelConRuta() {
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(
+    <QueryClientProvider client={qc}>
+      <MemoryRouter>
+        <AuthProvider>
+          <AlertsPanel />
+          <Ubicacion />
+        </AuthProvider>
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+}
+
+function alertaBase(extra: Record<string, unknown>) {
+  return { ...alertaLicencia(), ...extra };
+}
+
+describe("AlertsPanel: alertas de reintegro (QA-003)", () => {
+  it("nombra los dos tipos nuevos", () => {
+    expect(tituloAlerta("reca_por_solicitar")).toBe("RECA por solicitar");
+    expect(tituloAlerta("proyeccion_reintegro")).toBe("Proyección de reintegro registrada");
+  });
+
+  it("routeForCaso abre el caso de reintegro en /reintegro?caso=", () => {
+    expect(routeForCaso("caso_reintegro", 12)).toBe("/reintegro?caso=12");
+    expect(routeForCaso("caso_reintegro", 12, 42)).toBe("/reintegro?caso=12");
+    expect(routeForCaso("caso_reintegro", null)).toBe("/reintegro");
+  });
+
+  it("el subtítulo de la proyección muestra el valor del médico; el resto, el caso", () => {
+    expect(
+      subtituloAlerta({ tipo: "proyeccion_reintegro", caso_tipo: "control_medico", caso_id: 5, detalle: "Más de 1 mes" }),
+    ).toBe("Proyección: Más de 1 mes");
+    expect(
+      subtituloAlerta({ tipo: "proyeccion_reintegro", caso_tipo: "control_medico", caso_id: 5, detalle: null }),
+    ).toBe("Control #5");
+    expect(
+      subtituloAlerta({ tipo: "reca_por_solicitar", caso_tipo: "caso_reintegro", caso_id: 3, detalle: null }),
+    ).toBe("Caso de reintegro #3");
+  });
+
+  it("«RECA por solicitar» muestra el plazo en UTC y abre el caso", async () => {
+    tokenStore.setAccess(TOKENS.Coordinacion);
+    server.use(
+      http.get(`${BASE}/api/v1/alertas`, () =>
+        HttpResponse.json([
+          alertaBase({
+            id: 31, tipo: "reca_por_solicitar", caso_tipo: "caso_reintegro", caso_id: 3, paciente_id: 42,
+            plazo_objetivo: "2026-11-07T00:00:00Z", ventana_dias: 5,
+          }),
+        ]),
+      ),
+      http.get(`${BASE}/api/v1/tareas`, () => HttpResponse.json([])),
+    );
+    renderPanelConRuta();
+    expect(await screen.findByText("Caso de reintegro #3")).toBeInTheDocument();
+    expect(screen.getByText(/^Plazo: 07 nov/i)).toBeInTheDocument();
+    await userEvent.click(screen.getByText("RECA por solicitar"));
+    expect(await screen.findByTestId("ubicacion")).toHaveTextContent("/reintegro?caso=3");
+  });
+
+  it("«Proyección de reintegro registrada» muestra el valor y abre los controles del paciente", async () => {
+    tokenStore.setAccess(TOKENS.Coordinacion);
+    server.use(
+      http.get(`${BASE}/api/v1/alertas`, () =>
+        HttpResponse.json([
+          alertaBase({
+            id: 32, tipo: "proyeccion_reintegro", caso_tipo: "control_medico", caso_id: 5, paciente_id: 42,
+            detalle: "Más de 1 mes",
+          }),
+        ]),
+      ),
+      http.get(`${BASE}/api/v1/tareas`, () => HttpResponse.json([])),
+    );
+    renderPanelConRuta();
+    expect(await screen.findByText("Proyección: Más de 1 mes")).toBeInTheDocument();
+    expect(screen.getByText(/^Control: 15 oct/i)).toBeInTheDocument();
+    await userEvent.click(screen.getByText("Proyección de reintegro registrada"));
+    expect(await screen.findByTestId("ubicacion")).toHaveTextContent("/ingresos?paciente=42&tab=controles");
+  });
+
+  it("la proyección sin paciente cae a la página de controles", async () => {
+    tokenStore.setAccess(TOKENS.Coordinacion);
+    server.use(
+      http.get(`${BASE}/api/v1/alertas`, () =>
+        HttpResponse.json([
+          alertaBase({ id: 33, tipo: "proyeccion_reintegro", caso_tipo: "control_medico", caso_id: 5, detalle: "X" }),
+        ]),
+      ),
+      http.get(`${BASE}/api/v1/tareas`, () => HttpResponse.json([])),
+    );
+    renderPanelConRuta();
+    await userEvent.click(await screen.findByText("Proyección de reintegro registrada"));
+    expect(await screen.findByTestId("ubicacion")).toHaveTextContent("/controles");
   });
 });

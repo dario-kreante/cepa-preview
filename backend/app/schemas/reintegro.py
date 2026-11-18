@@ -13,6 +13,7 @@ from pydantic import BaseModel, ConfigDict, field_validator
 from app.domain.enums import TipoDerivacion
 from app.domain.reintegro_enums import (
     EstadoReintegro,
+    EstadoSolicitudReca,
     TipoAlta,
     TipoReca,
     TipoTrabajador,
@@ -102,6 +103,14 @@ class CasoReintegroRead(BaseModel):
     fecha_alta_psico: date | None
     tipo_alta: TipoAlta | None
     observaciones: str | None
+    fecha_solicitud_reca: date | None = None
+    estado_solicitud_reca: EstadoSolicitudReca = EstadoSolicitudReca.PENDIENTE
+
+
+class SolicitudRecaUpdate(BaseModel):
+    """Registra o corrige la fecha en que se solicitó la RECA (QA-003)."""
+
+    fecha_solicitud_reca: date
 
 
 class CasoActivoResumen(BaseModel):

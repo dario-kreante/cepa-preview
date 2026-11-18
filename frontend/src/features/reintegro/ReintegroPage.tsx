@@ -26,6 +26,11 @@ import { CasosRepetidosPanel } from "./CasosRepetidosPanel";
 import { NuevoCasoReintegroDialog } from "./NuevoCasoReintegroDialog";
 import { NuevaRecaDialog } from "./NuevaRecaDialog";
 import { CierreDialog } from "./CierreDialog";
+import { SolicitudRecaDialog } from "./SolicitudRecaDialog";
+import {
+  ESTADO_SOLICITUD_RECA_LABELS,
+  ESTADO_SOLICITUD_RECA_VARIANT,
+} from "./solicitudRecaSchema";
 import { ESTADO_REINTEGRO_LABELS } from "./cierreSchema";
 import {
   TIPO_TRABAJADOR_LABELS,
@@ -67,9 +72,12 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
 
 // ── RECA panel ────────────────────────────────────────────────────────────────
 
-function RecaPanel({ casoId, canWrite }: { casoId: number; canWrite: boolean }) {
+function RecaPanel({ caso, canWrite }: { caso: CasoReintegroRead; canWrite: boolean }) {
+  const casoId = caso.id;
   const { data: reca, isLoading } = useReca(casoId);
   const [open, setOpen] = useState(false);
+  const [solicitudOpen, setSolicitudOpen] = useState(false);
+  const estadoSolicitud = caso.estado_solicitud_reca ?? "pendiente";
 
   const initialValues: RecaForm | undefined = reca
     ? {
@@ -112,6 +120,43 @@ function RecaPanel({ casoId, canWrite }: { casoId: number; canWrite: boolean }) 
         )}
       </div>
 
+      {/* Solicitud de RECA (QA-003): estado derivado y fecha en que se pidió */}
+      <div
+        className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-md border border-border px-3 py-2"
+        data-testid="solicitud-reca"
+      >
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+            Solicitud de RECA
+          </span>
+          <Badge variant={ESTADO_SOLICITUD_RECA_VARIANT[estadoSolicitud]} data-testid="estado-solicitud-reca">
+            {ESTADO_SOLICITUD_RECA_LABELS[estadoSolicitud]}
+          </Badge>
+        </div>
+        <p className="text-[13px]" data-testid="fecha-solicitud-reca">
+          {caso.fecha_solicitud_reca ? fmtDate(caso.fecha_solicitud_reca) : "Sin fecha de solicitud"}
+        </p>
+        {canWrite && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="ml-auto h-7 text-[11.5px] px-2"
+            onClick={() => setSolicitudOpen(true)}
+            data-testid="btn-solicitud-reca"
+          >
+            {caso.fecha_solicitud_reca ? (
+              <>
+                <Pencil className="size-3 mr-1" /> Corregir fecha
+              </>
+            ) : (
+              <>
+                <Plus className="size-3 mr-1" /> Registrar solicitud
+              </>
+            )}
+          </Button>
+        )}
+      </div>
+
       {isLoading ? (
         <p className="text-[13px] text-muted-foreground">Cargando RECA…</p>
       ) : reca ? (
@@ -134,6 +179,8 @@ function RecaPanel({ casoId, canWrite }: { casoId: number; canWrite: boolean }) 
           Sin RECA registrada para este caso.
         </p>
       )}
+
+      {canWrite && <SolicitudRecaDialog caso={caso} open={solicitudOpen} onOpenChange={setSolicitudOpen} />}
 
       {canWrite && (
         <NuevaRecaDialog
@@ -298,7 +345,7 @@ function CasoPanel({
         )}
       </Card>
 
-      <RecaPanel casoId={casoId} canWrite={canWrite} />
+      <RecaPanel caso={caso} canWrite={canWrite} />
     </div>
   );
 }

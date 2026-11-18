@@ -17,6 +17,8 @@ const CONFIG = [
   { tipo: "oda_por_vencer", dias: 7, habiles: false, activo: true, actualizado_por: "migracion" },
   { tipo: "gaf_licencia", dias: 30, habiles: false, activo: false, actualizado_por: "migracion" },
   { tipo: "licencia_en_control", dias: 0, habiles: false, activo: true, actualizado_por: "migracion" },
+  { tipo: "reca_por_solicitar", dias: 5, habiles: false, activo: true, actualizado_por: "migracion" },
+  { tipo: "proyeccion_reintegro", dias: 0, habiles: false, activo: true, actualizado_por: "migracion" },
 ];
 const FESTIVOS = [{ id: 1, fecha: "2026-09-18", descripcion: "Independencia Nacional" }];
 
@@ -69,6 +71,31 @@ describe("ConfigAlertasPage (COMP-2609-07)", () => {
     expect(within(fila).getByText("Licencia emitida en control")).toBeInTheDocument();
     expect(within(fila).queryByLabelText(/días/i)).not.toBeInTheDocument();
     expect(within(fila).queryByLabelText(/hábiles/i)).not.toBeInTheDocument();
+    expect(within(fila).getByLabelText(/activo/i)).toBeInTheDocument();
+  });
+
+  it("QA-003: «RECA por solicitar» edita solo los días corridos, con aviso de plazo provisorio", async () => {
+    const user = userEvent.setup();
+    renderComo("Coordinacion");
+    const fila = await screen.findByTestId("fila-reca_por_solicitar");
+    expect(within(fila).getByText(/plazo provisorio/i)).toBeInTheDocument();
+    expect(within(fila).queryByLabelText(/hábiles/i)).not.toBeInTheDocument();
+    const dias = within(fila).getByLabelText(/Días/i);
+    expect(dias).toHaveValue(5);
+    await user.clear(dias);
+    await user.type(dias, "7");
+    await user.click(screen.getByRole("button", { name: /Guardar umbrales/i }));
+    await waitFor(() => expect(putBody).not.toBeNull());
+    expect(putBody).toEqual(
+      expect.arrayContaining([{ tipo: "reca_por_solicitar", dias: 7, habiles: false, activo: true }]),
+    );
+  });
+
+  it("QA-003: «Proyección de reintegro registrada» solo se enciende o apaga", async () => {
+    renderComo("Coordinacion");
+    const fila = await screen.findByTestId("fila-proyeccion_reintegro");
+    expect(within(fila).getByText("Proyección de reintegro registrada")).toBeInTheDocument();
+    expect(within(fila).queryByLabelText(/días/i)).not.toBeInTheDocument();
     expect(within(fila).getByLabelText(/activo/i)).toBeInTheDocument();
   });
 

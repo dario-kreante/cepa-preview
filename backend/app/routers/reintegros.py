@@ -15,6 +15,7 @@ from app.schemas.reintegro import (
     RecaCreate,
     RecaRead,
     RecaUpdate,
+    SolicitudRecaUpdate,
 )
 from app.services.reintegro import (
     _obtener_caso_o_404,
@@ -25,6 +26,7 @@ from app.services.reintegro import (
     consulta_casos,
     crear_reca,
     listar_pacientes_con_casos_repetidos,
+    registrar_solicitud_reca,
 )
 
 router = APIRouter(prefix="/api/v1/reintegros", tags=["reintegros"])
@@ -118,6 +120,37 @@ def actualizar_caso(
         action="UPDATE",
         entity="caso_reintegro",
         entity_id=str(caso.id),
+    )
+    db.commit()
+    db.refresh(caso)
+    return caso
+
+
+# ── QA-003: solicitud de RECA ─────────────────────────────────────────────
+
+@router.patch(
+    "/{caso_id}/solicitud-reca",
+    response_model=CasoReintegroRead,
+    dependencies=[Depends(_writer)],
+)
+def registrar_solicitud(
+    caso_id: int,
+    payload: SolicitudRecaUpdate,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+) -> CasoReintegroRead:
+    """Registra o corrige la fecha en que se solicitó la RECA."""
+    caso = _obtener_caso_o_404(db, caso_id)
+    anterior = caso.fecha_solicitud_reca
+    caso = registrar_solicitud_reca(db, caso, payload.fecha_solicitud_reca)
+    record_audit(
+        db,
+        actor=current_user.username,
+        action="UPDATE",
+        entity="caso_reintegro",
+        entity_id=str(caso.id),
+        valor_anterior=f"fecha_solicitud_reca={anterior.isoformat()}" if anterior else None,
+        valor_nuevo=f"fecha_solicitud_reca={caso.fecha_solicitud_reca.isoformat()}",
     )
     db.commit()
     db.refresh(caso)
