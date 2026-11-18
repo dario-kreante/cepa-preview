@@ -84,12 +84,25 @@ export function etiquetaFactorRiesgo(valor: string): string {
   return valor;
 }
 
+const MESES = [
+  "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
+];
+
+/** «Enero 2026» a partir de una fecha YYYY-MM-DD. Vacío si la fecha no es válida. */
+export function mesDesdeFecha(fecha: string): string {
+  const m = /^(\d{4})-(\d{2})-\d{2}$/.exec(fecha);
+  const nombre = m ? MESES[Number(m[2]) - 1] : undefined;
+  return m && nombre ? `${nombre} ${m[1]}` : "";
+}
+
 const isoDate = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, "Formato de fecha inválido (YYYY-MM-DD)");
 
 export const casoEptSchema = z.object({
-  mes: z.string().trim().min(1, "El mes es requerido"),
+  // QA-002: el mes se deriva de la fecha de ingreso EPT al guardar; ya no se escribe.
+  mes: z.string().trim().optional(),
 
   fecha_ingreso_ept: isoDate.min(1, "La fecha de ingreso EPT es requerida"),
 
