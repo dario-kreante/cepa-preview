@@ -320,6 +320,57 @@ describe("ReportesPage — ODA vencidas: carga, columnas, gestión, filtro y Exc
     ]);
   });
 
+  it("un atendido sin ODA muestra SOLICITAR, «—» en los campos de la orden y sin selector de gestión", async () => {
+    server.use(
+      http.get(`${BASE}/api/v1/reportes/odas-vencidas`, () =>
+        HttpResponse.json(
+          odasVencidasResp([
+            ODA_VENCIDA,
+            {
+              id: null,
+              folio_id: 30,
+              identificador: null,
+              folio: "F-2026-0099",
+              paciente_nombre: "Atendida Sin Orden",
+              paciente_rut: "22.222.222-2",
+              fecha_registro: null,
+              fecha_vencimiento: null,
+              programa: "Programa Regular",
+              region: "Maule",
+              comuna: null,
+              ordenes: [],
+              fechas_atencion: ["2026-11-02", "2026-11-09"],
+              cobertura: "SOLICITAR",
+              estado_gestion: null,
+            },
+          ]),
+        ),
+      ),
+    );
+    renderPage("/reportes?tab=odas");
+    const fila = (await screen.findByText("Atendida Sin Orden")).closest("tr")!;
+    const celdas = Array.from(fila.querySelectorAll("td")).map((c) => c.textContent);
+    expect(celdas).toEqual([
+      "Atendida Sin Orden",
+      "22.222.222-2",
+      "—",
+      "—",
+      "—",
+      "—",
+      "02/11/2026 / 09/11/2026",
+      "SOLICITAR",
+      "—",
+    ]);
+    expect(fila.querySelector("select")).toBeNull();
+    // La fila con ODA sigue ofreciendo el selector.
+    expect(screen.getByTestId("gestion-21")).toBeTruthy();
+  });
+
+  it("aclara que el informe también incluye atendidos sin ODA", async () => {
+    renderPage("/reportes?tab=odas");
+    expect(screen.getByText(/atendidos sin ODA/i)).toBeTruthy();
+  });
+
   it("el escritor cambia la gestión desde la tabla y se guarda en el backend", async () => {
     let cuerpo: unknown = null;
     server.use(

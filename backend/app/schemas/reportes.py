@@ -191,16 +191,17 @@ class ODAVencidaItem(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     # `id` es la ODA vencida sobre la que se gestiona (PATCH /odas/{id}/gestion).
-    id: int
+    # Los campos propios de la ODA son None en las filas de atendidos sin ODA.
+    id: int | None
     folio_id: int
     # N° de la orden en ISL, el folio del CEPA y el paciente: lo que el equipo
     # reconoce. `id` y `folio_id` son internos y no se muestran (QA-007).
-    identificador: str
+    identificador: str | None
     folio: str
     paciente_nombre: str
     paciente_rut: str | None
     fecha_registro: date | None
-    fecha_vencimiento: date
+    fecha_vencimiento: date | None
     programa: str | None
     region: str | None
     comuna: str | None
@@ -208,7 +209,7 @@ class ODAVencidaItem(BaseModel):
     ordenes: list[OrdenCobertura] = []
     fechas_atencion: list[date] = []
     cobertura: Literal["CUBRE", "SOLICITAR"] = "SOLICITAR"
-    estado_gestion: Literal["pendiente", "solicitada", "recibida"] = "pendiente"
+    estado_gestion: Literal["pendiente", "solicitada", "recibida"] | None = "pendiente"
 
 
 class ReporteODASVencidasResponse(BaseModel):

@@ -432,3 +432,113 @@ def test_consultas_por_lotes_con_mas_de_un_lote(as_coordinacion, db_session, mon
         assert f["cobertura"] == "SOLICITAR"
         assert len(f["fechas_atencion"]) == 2
         assert len(f["ordenes"]) == 1
+
+
+# ── Atendidos sin ODA (18-11): también se solicita ─────────────────────────────
+
+
+def _sin_oda(cliente, **params):
+    r = cliente.get("/api/v1/reportes/odas-vencidas", params=params)
+    assert r.status_code == 200, r.text
+    return r.json()["items"]
+
+
+def test_atendido_sin_oda_aparece_como_solicitar(as_coordinacion, db_session):
+    ing = _caso(db_session, nombre="Atendido sin orden")
+    _cita(db_session, ing, _d(-10))
+    _cita(db_session, ing, _d(-3))
+    _cita(db_session, ing, _d(-2), estado="agendada")  # no cuenta
+    db_session.commit()
+    f = _fila(as_coordinacion, "Atendido sin orden")
+    assert f["cobertura"] == "SOLICITAR"
+    assert f["fechas_atencion"] == [_d(-10).isoformat(), _d(-3).isoformat()]
+    assert f["ordenes"] == []
+    assert f["identificador"] is None
+    assert f["fecha_registro"] is None and f["fecha_vencimiento"] is None
+    assert f["estado_gestion"] is None
+    assert f["id"] is None
+    assert f["folio"] == ing.folio
+
+
+def test_sin_oda_requiere_cita_realizada_e_ingreso_activo(as_coordinacion, db_session):
+    solo_agendada = _caso(db_session, nombre="Solo agendada")
+    _cita(db_session, solo_agendada, _d(5), estado="agendada")
+    sin_citas = _caso(db_session, nombre="Sin citas")
+    cerrado = _caso(db_session, nombre="Cerrado atendido", estado="cerrado")
+    _cita(db_session, cerrado, _d(-5))
+    db_session.commit()
+    nombres = {i["paciente_nombre"] for i in _sin_oda(as_coordinacion)}
+    assert not nombres & {"Solo agendada", "Sin citas", "Cerrado atendido"}
+    assert sin_citas.id  # creado, pero sin atenciones
+
+
+def test_paciente_con_oda_vigente_no_aparece_como_sin_oda(as_coordinacion, db_session):
+    ing = _caso(db_session, nombre="Con orden vigente")
+    _oda(db_session, ing, "5001", _d(-5), _d(30))
+    _cita(db_session, ing, _d(-2))
+    db_session.commit()
+    nombres = [i["paciente_nombre"] for i in _sin_oda(as_coordinacion)]
+    assert "Con orden vigente" not in nombres
+
+
+def test_orden_en_otro_ingreso_del_paciente_cuenta_como_registrada(as_coordinacion, db_session):
+    ing = _caso(db_session, nombre="Dos ingresos")
+    _cita(db_session, ing, _d(-4))
+    otro = Ingreso(
+        paciente_id=ing.paciente_id, folio="F-QA-OTRO", folio_manual=True, programa="PIPT",
+        fecha_ingreso=date(2025, 6, 1), tipo_derivacion="DIAT", tipo_ingreso="convenio",
+        modelo_tratamiento="ambulatorio", diagnostico="t", estado="cerrado",
+    )
+    db_session.add(otro)
+    db_session.flush()
+    _oda(db_session, otro, "6001", _d(-300), _d(-250))
+    db_session.commit()
+    nombres = [i["paciente_nombre"] for i in _sin_oda(as_coordinacion)]
+    assert "Dos ingresos" not in nombres
+
+
+def test_paciente_con_oda_vencida_no_se_duplica(as_coordinacion, db_session):
+    ing = _caso(db_session, nombre="Vencida y atendida")
+    _oda(db_session, ing, "7001", _d(-40), _d(-20))
+    _cita(db_session, ing, _d(-30))
+    db_session.commit()
+    items = [i for i in _sin_oda(as_coordinacion) if i["paciente_nombre"] == "Vencida y atendida"]
+    assert len(items) == 1
+    assert items[0]["identificador"] == "7001"
+
+
+def test_sin_oda_respeta_filtros_de_programa_region_y_comuna(as_coordinacion, db_session):
+    a = _caso(db_session, nombre="Regular Talca", programa="Programa Regular")
+    b = _caso(db_session, nombre="PIPT Linares", programa="PIPT")
+    pa = db_session.get(Paciente, a.paciente_id)
+    pb = db_session.get(Paciente, b.paciente_id)
+    pa.comuna, pb.comuna = "Talca", "Linares"
+    pb.region = "Otra"
+    _cita(db_session, a, _d(-3))
+    _cita(db_session, b, _d(-3))
+    db_session.commit()
+
+    def nombres(**p):
+        return {i["paciente_nombre"] for i in _sin_oda(as_coordinacion, **p)}
+
+    assert {"Regular Talca", "PIPT Linares"} <= nombres()
+    n = nombres(programa="pipt")
+    assert "PIPT Linares" in n and "Regular Talca" not in n
+    n = nombres(region="Maule")
+    assert "Regular Talca" in n and "PIPT Linares" not in n
+    n = nombres(comuna="Linares")
+    assert "PIPT Linares" in n and "Regular Talca" not in n
+
+
+def test_excel_incluye_atendidos_sin_oda(as_coordinacion, db_session):
+    ing = _caso(db_session, nombre="Excel sin orden")
+    _cita(db_session, ing, date(2026, 11, 2))
+    db_session.commit()
+    r = as_coordinacion.get("/api/v1/reportes/odas-vencidas/excel")
+    assert r.status_code == 200
+    ws = load_workbook(io.BytesIO(r.content)).active
+    fila = next(row for row in ws.iter_rows(values_only=True) if row[0] == "Excel sin orden")
+    assert fila[2:6] == ("—", "—", "—", "—")
+    assert fila[6] == "02-11-2026"
+    assert fila[7] == "SOLICITAR"
+    assert fila[8] == "—"
