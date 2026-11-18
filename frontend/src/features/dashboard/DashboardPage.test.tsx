@@ -131,6 +131,15 @@ describe("DashboardPage", () => {
     expect(screen.getByTestId("kpi-ODA vencidas").closest("a")).toHaveAttribute("href", "/reportes?tab=odas");
   });
 
+  it("la tarjeta Ingresos indica el período y abre el reporte de ingresos del mismo período (QA-004)", async () => {
+    server.use(http.get(`${BASE}/api/v1/dashboard/operativo`, () => HttpResponse.json(RESPUESTA)));
+    renderizar();
+    await waitFor(() => expect(screen.getByTestId("kpi-Ingresos del período")).toHaveTextContent("5"));
+    const tarjeta = screen.getByTestId("kpi-Ingresos del período").closest("a")!;
+    expect(tarjeta).toHaveAttribute("href", "/reportes/ingresos?desde=2026-09-17&hasta=2026-10-16");
+    expect(tarjeta).toHaveTextContent("17-09 al 16-10");
+  });
+
   it("todas las tarjetas son clicables (D14)", async () => {
     server.use(http.get(`${BASE}/api/v1/dashboard/operativo`, () => HttpResponse.json(RESPUESTA)));
     renderizar();

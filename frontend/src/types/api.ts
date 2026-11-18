@@ -1545,6 +1545,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/reportes/ingresos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Reporte Ingresos
+         * @description QA-004: ingresos del período (una fila por ingreso) más pendientes de folio.
+         */
+        get: operations["get_reporte_ingresos_api_v1_reportes_ingresos_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/reportes/odas-vencidas": {
         parameters: {
             query?: never;
@@ -5113,6 +5133,59 @@ export interface components {
             periodo_hasta: string | null;
             /** Items */
             items: components["schemas"]["LicenciaAcumuladaItem"][];
+        };
+        /** ConteoIngreso */
+        ConteoIngreso: {
+            /** Etiqueta */
+            etiqueta: string;
+            /** Total */
+            total: number;
+        };
+        /**
+         * IngresoReporteItem
+         * @description Una fila por ingreso; los borradores de SALUTEM sin folio salen como pendientes.
+         */
+        IngresoReporteItem: {
+            /** Paciente Id */
+            paciente_id: number;
+            /** Ingreso Id */
+            ingreso_id?: number | null;
+            /** Paciente Nombre */
+            paciente_nombre: string;
+            /** Paciente Rut */
+            paciente_rut?: string | null;
+            /** Folio */
+            folio?: string | null;
+            /** Pendiente */
+            pendiente: boolean;
+            /** Tipo Ingreso */
+            tipo_ingreso?: string | null;
+            /** Programa */
+            programa?: string | null;
+            /** Region */
+            region?: string | null;
+            /** Tipo Convenio */
+            tipo_convenio?: string | null;
+            /**
+             * Fecha
+             * Format: date
+             */
+            fecha: string;
+        };
+        /** ReporteIngresosResponse */
+        ReporteIngresosResponse: {
+            /** Format: date */
+            periodo_desde: string;
+            /** Format: date */
+            periodo_hasta: string;
+            total: number;
+            total_con_folio: number;
+            total_pendientes: number;
+            por_tipo_ingreso: components["schemas"]["ConteoIngreso"][];
+            por_region: components["schemas"]["ConteoIngreso"][];
+            por_programa: components["schemas"]["ConteoIngreso"][];
+            por_convenio: components["schemas"]["ConteoIngreso"][];
+            items: components["schemas"]["IngresoReporteItem"][];
         };
         /** ReporteODASVencidasResponse */
         ReporteODASVencidasResponse: {
@@ -9108,6 +9181,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReporteLicenciasResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_reporte_ingresos_api_v1_reportes_ingresos_get: {
+        parameters: {
+            query?: {
+                fecha_desde?: string | null;
+                fecha_hasta?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReporteIngresosResponse"];
                 };
             };
             /** @description Validation Error */

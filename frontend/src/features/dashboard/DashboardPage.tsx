@@ -285,7 +285,14 @@ export function DashboardPage() {
           />
           <Kpi label="Anulaciones" value={n(d?.anulaciones)} icon={Ban} tone="text-destructive" to="/reportes?tab=operativo" />
           <Kpi label="Agendadas" value={n(d?.agendadas_periodo)} icon={CalendarDays} tone="text-[oklch(0.45_0.13_250)]" detalle="Citas vigentes del período" to="/reportes?tab=operativo" />
-          <Kpi label="Ingresos" value={n(d?.ingresos_periodo)} icon={UserPlus} tone="text-[oklch(0.45_0.13_250)]" detalle={`${n(d?.altas_periodo)} altas en el período`} to="/ingresos" />
+          <Kpi
+            label="Ingresos del período"
+            value={n(d?.ingresos_periodo)}
+            icon={UserPlus}
+            tone="text-[oklch(0.45_0.13_250)]"
+            detalle={d ? `${fechaCl(d.periodo_desde, true)} al ${fechaCl(d.periodo_hasta, true)} · ${n(d.altas_periodo)} altas` : undefined}
+            to={d ? `/reportes/ingresos?desde=${d.periodo_desde}&hasta=${d.periodo_hasta}` : "/reportes/ingresos"}
+          />
           <Kpi label="Controles médicos" value={n(d?.controles_periodo)} icon={ClipboardCheck} tone="text-[oklch(0.5_0.12_220)]" to="/controles" />
           <Kpi label="Agenda 7 días" value={n(d?.agendadas_proximas)} icon={CalendarClock} tone="text-[oklch(0.45_0.13_250)]" detalle="Citas vigentes desde hoy" to="/agenda" />
         </div>
