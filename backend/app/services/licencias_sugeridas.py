@@ -24,6 +24,7 @@ from app.models.ficha_clinica import FichaClinica
 from app.models.licencia import LicenciaMedica
 from app.schemas.licencia_sugerida import LicenciaSugeridaRead
 from app.services.ficha_clinica import _obtener_ingreso_por_folio
+from app.services.folio import ingresos_por_folio
 
 _TIPOS_CATALOGO = sorted(t.value for t in TipoLicencia)
 
@@ -71,7 +72,11 @@ def _ya_registrada(mencion: MencionLicencia, registradas: list[LicenciaMedica]) 
 
 
 def sugerir_licencias(db: Session, folio: str) -> list[LicenciaSugeridaRead]:
-    ingreso = _obtener_ingreso_por_folio(db, folio)
+    _obtener_ingreso_por_folio(db, folio)  # 404 si el folio no existe
+    # Las fichas se buscan por folio, así que las licencias ya registradas se
+    # comparan contra TODOS los ingresos del folio (mismo paciente): si no, la
+    # licencia registrada en un reingreso volvería a sugerirse.
+    ingreso_ids = [i.id for i in ingresos_por_folio(db, folio)]
     fichas = db.scalars(
         select(FichaClinica)
         .where(
@@ -86,7 +91,7 @@ def sugerir_licencias(db: Session, folio: str) -> list[LicenciaSugeridaRead]:
         db.scalars(
             select(LicenciaMedica).where(
                 # `== false()` y no `.is_(False)`: Oracle rechaza "IS 0" (ORA-00908).
-                LicenciaMedica.ingreso_id == ingreso.id, LicenciaMedica.anulada == false()
+                LicenciaMedica.ingreso_id.in_(ingreso_ids), LicenciaMedica.anulada == false()
             )
         ).all()
     )
