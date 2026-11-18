@@ -4170,6 +4170,8 @@ export interface components {
             fecha_cierre?: string | null;
             /** Cierre Usuario */
             cierre_usuario?: string | null;
+            /** Programa */
+            programa?: string | null;
         };
         /**
          * IngresoUpdate
@@ -4206,6 +4208,8 @@ export interface components {
             razon_social?: string | null;
             /** Numero Siniestro */
             numero_siniestro?: string | null;
+            /** Programa */
+            programa?: string | null;
         };
         /**
          * IngresosActivos

@@ -208,3 +208,30 @@ describe("PatientSheet", () => {
     await waitFor(() => expect(enviado).toEqual({ estado: "encuadre" }));
   });
 });
+
+describe("PatientSheet — programa en Resumen", () => {
+  it("muestra el programa del ingreso junto a sus datos", async () => {
+    setupMocks();
+    server.use(
+      http.get(`${BASE}/api/v1/pacientes/:paciente_id/vista-360`, () =>
+        HttpResponse.json({
+          paciente: MOCK_PACIENTE,
+          ingresos: [{ ...MOCK_INGRESO, programa: "Ley Karin" }],
+          farmacos: [],
+          licencias: [],
+          controles: [],
+          odas: [],
+          reintegro: [],
+        }),
+      ),
+    );
+    renderSheet(7);
+    expect(await screen.findByText(/Programa:/)).toHaveTextContent("Programa: Ley Karin");
+  });
+
+  it("muestra «—» cuando el ingreso no tiene programa", async () => {
+    setupMocks();
+    renderSheet(7);
+    expect(await screen.findByText(/Programa:/)).toHaveTextContent("Programa: —");
+  });
+});

@@ -24,6 +24,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useActualizarIngreso } from "./hooks";
 import { TIPOS_INGRESO } from "./tiposIngreso";
+import { PROGRAMAS, opcionesPrograma } from "./programas";
 import type { IngresoRead, IngresoUpdate, PacienteRead } from "./api";
 
 const TIPOS_DERIVACION = [
@@ -55,6 +56,7 @@ const edicionSchema = z.object({
   fecha_diep_diat: z.string().optional(),
   razon_social: z.string().optional(),
   numero_siniestro: z.string().optional(),
+  programa: z.string().optional(),
 });
 
 type EdicionForm = z.infer<typeof edicionSchema>;
@@ -77,6 +79,7 @@ function valoresIniciales(paciente: PacienteRead, ingreso: IngresoRead): Edicion
     fecha_diep_diat: ingreso.fecha_diep_diat ?? "",
     razon_social: ingreso.razon_social ?? "",
     numero_siniestro: ingreso.numero_siniestro ?? "",
+    programa: ingreso.programa ?? "",
   };
 }
 
@@ -99,6 +102,8 @@ function aCuerpo(v: EdicionForm): IngresoUpdate {
     fecha_diep_diat: vacioANull(v.fecha_diep_diat),
     razon_social: vacioANull(v.razon_social),
     numero_siniestro: vacioANull(v.numero_siniestro),
+    // "Sin programa" viaja como null; un programa antiguo se envía tal cual.
+    programa: vacioANull(v.programa),
   };
 }
 
@@ -243,6 +248,17 @@ export function EditarFichaDialog({ paciente, ingreso, open, onOpenChange }: Pro
                 {Object.entries(TIPOS_INGRESO).map(([valor, label]) => (
                   <option key={valor} value={valor}>
                     {label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <Label htmlFor="editar-programa">Programa (opcional)</Label>
+              <select id="editar-programa" className={selectClass} {...register("programa")}>
+                <option value="">Sin programa</option>
+                {opcionesPrograma(ingreso.programa).map((p) => (
+                  <option key={p} value={p}>
+                    {(PROGRAMAS as readonly string[]).includes(p) ? p : `${p} (valor anterior)`}
                   </option>
                 ))}
               </select>
