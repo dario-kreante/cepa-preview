@@ -17,6 +17,7 @@ import { AuditoriaPage } from "@/features/auditoria/AuditoriaPage";
 import { AgendaPage } from "@/features/agenda/AgendaPage";
 import { DashboardPage } from "@/features/dashboard/DashboardPage";
 import { ReportesPage } from "@/features/reportes/ReportesPage";
+import { ReporteIngresosPage } from "@/features/reporte-ingresos/ReporteIngresosPage";
 import { UsuariosPage } from "@/features/usuarios/UsuariosPage";
 import { ConfigFormulariosPage } from "@/features/config-formularios/ConfigFormulariosPage";
 import { VentanasProcesoPage } from "@/features/ventanas-proceso/VentanasProcesoPage";
@@ -56,6 +57,7 @@ export function AppRoutes() {
           <Route path="/auditoria" element={<AuditoriaPage />} />
           <Route path="/agenda" element={<AgendaPage />} />
           <Route path="/reportes" element={<ReportesPage />} />
+          <Route path="/reportes/ingresos" element={<ReporteIngresosPage />} />
           <Route path="/usuarios" element={<UsuariosPage />} />
           <Route path="/config-formularios" element={<ConfigFormulariosPage />} />
           <Route path="/ventanas-proceso" element={<VentanasProcesoPage />} />
