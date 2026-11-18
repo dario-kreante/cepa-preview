@@ -134,7 +134,7 @@
 | CEPA-032 | AC | CA-3 | Dado informe ya enviado, cuando registra fecha de envío y estado 'enviado', entonces marca el plazo cumplido y cesan las alertas del hito. | TC-CEPA-032-003 | RN-1, RN-4 |
 | CEPA-032 | AC | CA-4 | Dado caso con fecha de entrega ISL pasada sin envío, cuando evalúa los plazos, entonces marca 'vencido' y lo expone en el reporte de cumplimiento. | TC-CEPA-032-004 | RN-1 |
 | CEPA-032 | AC | CA-5 | Dado usuario Coordinación o Auditor, cuando consulta plazos y estados, entonces los visualiza en solo lectura sin poder editarlos. | TC-CEPA-032-005 | RN-6 |
-| CEPA-032 | BR | RN-3 | La fecha de entrega ISL no puede ser anterior a la fecha de ingreso del caso ni al plazo de informe EPT. | TC-CEPA-032-006 | RN-3 |
+| CEPA-032 | BR | RN-3 | La fecha de entrega ISL no puede ser anterior a la fecha de ingreso del caso. Sí puede ser anterior al plazo de informe EPT: entregar antes es válido (ajuste del 18-11-2026). | TC-CEPA-032-006 | RN-3 |
 | CEPA-032 | BR | RN-5 | El cumplimiento de plazos ISL es dato regulatorio: todo cambio de plazo, fecha de envío o estado queda en el log de auditoría. | TC-CEPA-032-007 | RN-5 |
 | CEPA-032 | BR | RN-7 | Los casos con 'Corresponde EPT' = No no generan plazos ni alertas EPT. | TC-CEPA-032-008 | RN-7 |
 | CEPA-032 | PLANILLA | Seguimiento EPT | Hoja 'Seguimiento EPT': columnas de plazos regulatorios y envío (Plazo Informe EPT, Plazo Portal ISL, Fecha Entrega ISL, Fecha de envío / estado). | TC-CEPA-032-009 | RN-1, RN-3 |

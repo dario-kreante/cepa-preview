@@ -193,7 +193,7 @@ Como **administrativo**, quiero **gestionar los plazos de informe EPT y portal I
 ### Reglas de Negocio
 - **RN-1:** Estado de cumplimiento de cada plazo: **en plazo** (fecha objetivo futura), **por vencer** (dentro de la ventana de alerta configurada), **vencido** (fecha objetivo pasada sin envío), **cumplido** (envío registrado en fecha).
 - **RN-2:** La generación de alertas de plazo de informe EPT y entrega ISL se delega a la lógica común de **EPIC-10 (Alertas y Tareas Automatizadas)**; esta historia define los hitos y sus fechas objetivo.
-- **RN-3:** La fecha de entrega ISL no puede ser anterior a la fecha de ingreso del caso ni al plazo de informe EPT.
+- **RN-3:** La fecha de entrega ISL no puede ser anterior a la fecha de ingreso del caso. Sí puede ser anterior al plazo de informe EPT: entregar antes es válido (ajuste del 18-11-2026).
 - **RN-4:** Registrar la fecha de envío con estado "enviado" cierra el hito y detiene las alertas de vencimiento asociadas.
 - **RN-5:** El cumplimiento de plazos ISL es un dato regulatorio: todo cambio de plazo, fecha de envío o estado queda en el log de auditoría.
 - **RN-6 (RBAC):** Solo Administrativo edita plazos, fechas y estados; Coordinación y Auditor solo lectura.
