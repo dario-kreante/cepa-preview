@@ -23,6 +23,7 @@ export const TIPO_LABELS: Record<string, string> = {
   plazo_insumos_ept: "Plazo de insumos EPT",
   reca_por_solicitar: "RECA por solicitar",
   proyeccion_reintegro: "Proyección de reintegro registrada",
+  paciente_pendiente_folio: "Paciente nuevo pendiente de folio",
 };
 
 /** Alertas del sync de SALUTEM: no tienen plazo, solo se encienden o apagan. */
