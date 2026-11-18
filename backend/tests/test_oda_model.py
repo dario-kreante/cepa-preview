@@ -11,6 +11,8 @@ def test_columnas_oda():
         "fecha_registro",   # EPIC-09 D4: campo añadido para reporte ODAS vencidas
         "fecha_vencimiento",
         "vigente",
+        "tipo_orden",       # QA-007: «Tipo de Orden» del reporte ISL
+        "estado_gestion",   # QA-007: pendiente | solicitada | recibida
         "created_at",
     }
 

@@ -6,10 +6,8 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
-import { BarChart3, FileText, Upload } from "lucide-react";
-import { useAuth } from "@/lib/auth/AuthContext";
-import { puedeEscribir, type Rol } from "@/lib/rbac";
-import { CargarReporteIslDialog } from "./CargarReporteIslDialog";
+import { BarChart3, FileText } from "lucide-react";
+import { OdasTab } from "./OdasTab";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,7 +18,6 @@ import {
   useReporteCargaLaboral,
   useReporteConvenio,
   useReporteLicencias,
-  useReporteOdasVencidas,
   useReporteOperativo,
 } from "./hooks";
 
@@ -323,84 +320,13 @@ function LicenciasTab() {
         <Tabla
           headers={["Folio", "RUT", "Días acumulados", "Internas", "Externas"]}
           rows={m.data.items.map((it) => [
-            it.folio_id,
+            it.folio ?? it.folio_id,
             it.rut_paciente ?? "—",
             it.total_dias_acumulados,
             it.licencias_internas,
             it.licencias_externas,
           ])}
           empty="Sin licencias acumuladas en el período."
-        />
-      )}
-    </div>
-  );
-}
-
-// ── Tab: ODAS vencidas ──────────────────────────────────────────────────────────
-
-function OdasTab() {
-  const m = useReporteOdasVencidas();
-  const { rol } = useAuth();
-  const [cargaAbierta, setCargaAbierta] = useState(false);
-
-  async function gen() {
-    try {
-      await m.mutateAsync();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Error");
-    }
-  }
-
-  return (
-    <div className="space-y-3">
-      <Card className="p-4">
-        <div className="flex items-center justify-between">
-          <p className="text-[13px] text-muted-foreground">
-            ODAS vigentes de casos activos con fecha de vencimiento pasada a hoy.
-          </p>
-          <div className="flex gap-2">
-            {puedeEscribir(rol as Rol) && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setCargaAbierta(true)}
-                data-testid="btn-cargar-reporte-isl"
-              >
-                <Upload className="size-3.5" />
-                Cargar reporte ISL
-              </Button>
-            )}
-            <Button size="sm" onClick={gen} disabled={m.isPending} data-testid="btn-generar-reporte">
-              <FileText className="size-3.5" />
-              {m.isPending ? "Consultando…" : "Consultar"}
-            </Button>
-          </div>
-        </div>
-      </Card>
-      <CargarReporteIslDialog open={cargaAbierta} onOpenChange={setCargaAbierta} />
-      {m.data && (
-        <Tabla
-          headers={[
-            "Paciente",
-            "RUT",
-            "N° ODA ISL",
-            "Folio",
-            "Registro",
-            "Vencimiento",
-            "Programa",
-            "Región",
-          ]}
-          rows={m.data.items.map((it) => [
-            it.paciente_nombre,
-            it.paciente_rut ?? "—",
-            it.identificador,
-            it.folio,
-            it.fecha_registro ? fmtDate(it.fecha_registro) : "—",
-            fmtDate(it.fecha_vencimiento),
-            it.programa ?? "—",
-            it.region ?? "—",
-          ])}
-          empty="No hay ODAS vencidas."
         />
       )}
     </div>
@@ -547,7 +473,7 @@ export function ReportesPage() {
       {tab === "convenio" && <ConvenioTab />}
       {tab === "carga" && <CargaTab />}
       {tab === "licencias" && <LicenciasTab />}
-      {tab === "odas" && <OdasTab />}
+      {tab === "odas" && <OdasTab autoCargar={tabUrl === "odas"} />}
       {tab === "adherencia" && <AdherenciaTab />}
     </div>
   );

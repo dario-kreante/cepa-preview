@@ -232,7 +232,7 @@ def parsear_reporte(contenido: bytes) -> ResultadoParseo:
                 FilaReporte(
                     fila=num_fila,
                     numero_orden=numero,
-                    tipo_orden=_texto(celda("tipo_orden")),
+                    tipo_orden=(_texto(celda("tipo_orden")) or "")[:40] or None,
                     inicio=inicio,
                     fin=fin,
                     cese=cese,
@@ -426,15 +426,19 @@ def importar_reporte(
                     identificador=f.numero_orden,
                     fecha_registro=f.inicio,
                     fecha_vencimiento=f.fecha_vencimiento,
+                    tipo_orden=f.tipo_orden,
                     vigente=False,
                 )
                 db.add(oda)
                 existentes[f.numero_orden] = oda
                 resumen.creadas += 1
                 resumen.cambios.append((oda, "CREATE"))
-            elif (oda.fecha_registro, oda.fecha_vencimiento) != (f.inicio, f.fecha_vencimiento):
+            elif (oda.fecha_registro, oda.fecha_vencimiento, oda.tipo_orden) != (
+                f.inicio, f.fecha_vencimiento, f.tipo_orden
+            ):
                 oda.fecha_registro = f.inicio
                 oda.fecha_vencimiento = f.fecha_vencimiento
+                oda.tipo_orden = f.tipo_orden
                 resumen.actualizadas += 1
                 resumen.cambios.append((oda, "UPDATE"))
             else:

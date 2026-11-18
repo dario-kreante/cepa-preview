@@ -71,14 +71,64 @@ export async function reporteLicencias(
   return data;
 }
 
+/** Filtro por programa del reporte de ODAS (el backend compara sin mayúsculas y por fragmento). */
+export type ProgramaFiltro = "regular" | "ley_karin" | "pipt";
+export type EstadoGestion = "pendiente" | "solicitada" | "recibida";
+export type ODAVencidaItem = components["schemas"]["ODAVencidaItem"];
+export type ReporteODAEstadoResponse =
+  components["schemas"]["ReporteODAEstadoResponse"];
+
 /** GET /api/v1/reportes/odas-vencidas — sin filtros obligatorios. */
-export async function reporteOdasVencidas(): Promise<ReporteODASVencidasResponse> {
+export async function reporteOdasVencidas(
+  programa?: ProgramaFiltro,
+): Promise<ReporteODASVencidasResponse> {
   const { data, error } = await api.GET("/api/v1/reportes/odas-vencidas", {
-    params: { query: {} },
+    params: { query: programa ? { programa } : {} },
   });
   if (error || !data)
     throw new Error("No se pudo generar el reporte de ODAS vencidas");
   return data;
+}
+
+/** GET /api/v1/reportes/odas-estado — estado de la ODA de cada paciente (QA-006). */
+export async function reporteOdasEstado(
+  estadoCaso?: string,
+): Promise<ReporteODAEstadoResponse> {
+  const { data, error } = await api.GET("/api/v1/reportes/odas-estado", {
+    params: { query: estadoCaso ? { estado_caso: estadoCaso } : {} },
+  });
+  if (error || !data)
+    throw new Error("No se pudo consultar el estado de las ODA");
+  return data;
+}
+
+/** PATCH /api/v1/odas/{id}/gestion — estado de gestión de una ODA vencida. */
+export async function cambiarGestionOda(
+  odaId: number,
+  estado: EstadoGestion,
+): Promise<void> {
+  const { error } = await api.PATCH("/api/v1/odas/{oda_id}/gestion", {
+    params: { path: { oda_id: odaId } },
+    body: { estado_gestion: estado },
+  });
+  if (error) throw new Error("No se pudo guardar el estado de gestión");
+}
+
+/** GET /api/v1/reportes/odas-vencidas/excel — descarga la tabla (mismo filtro) como .xlsx. */
+export async function descargarOdasVencidasExcel(
+  programa?: ProgramaFiltro,
+): Promise<void> {
+  const { data, error } = await api.GET(
+    "/api/v1/reportes/odas-vencidas/excel",
+    { params: { query: programa ? { programa } : {} }, parseAs: "blob" },
+  );
+  if (error || !data) throw new Error("No se pudo descargar el Excel");
+  const url = URL.createObjectURL(data as Blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `odas-vencidas-${new Date().toISOString().slice(0, 10)}.xlsx`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }
 
 export type OdaImportResumen = components["schemas"]["OdaImportResumen"];
