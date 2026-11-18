@@ -188,6 +188,11 @@ def _unir(valores: list[str]) -> str:
     return SEPARADOR.join(valores) if valores else SIN_DATO
 
 
+def _seguro(valor: str) -> str:
+    """Evita la inyección de fórmulas: un texto que parte con = + - @ (o tab/CR) se antepone con '."""
+    return "'" + valor if valor[:1] in ("=", "+", "-", "@", "\t", "\r") else valor
+
+
 def generar_excel(filas: list[FilaVencida]) -> bytes:
     wb = Workbook()
     ws = wb.active
@@ -196,8 +201,7 @@ def generar_excel(filas: list[FilaVencida]) -> bytes:
     for c in ws[1]:
         c.font = Font(bold=True)
     for f in filas:
-        ws.append(
-            [
+        fila = [
                 f.paciente.nombre,
                 f.paciente.rut or SIN_DATO,
                 _unir([o.identificador for o in f.ordenes]),
@@ -207,8 +211,8 @@ def generar_excel(filas: list[FilaVencida]) -> bytes:
                 _unir([_fecha(d) for d in f.fechas_atencion]),
                 f.cobertura,
                 f.oda.estado_gestion.capitalize(),
-            ]
-        )
+        ]
+        ws.append([_seguro(str(v)) for v in fila])
     for col, ancho in zip("ABCDEFGHI", (34, 14, 24, 14, 26, 26, 34, 12, 18)):
         ws.column_dimensions[col].width = ancho
     buf = io.BytesIO()

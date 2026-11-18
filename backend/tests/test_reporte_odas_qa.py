@@ -398,3 +398,14 @@ def test_las_consultas_nuevas_compilan_para_oracle():
     assert " is 1" not in sql
 
 
+
+
+def test_excel_neutraliza_formulas_en_el_texto(as_coordinacion, db_session):
+    ing = _caso(db_session, nombre='=HYPERLINK("http://x","clic")')
+    _oda(db_session, ing, "+1234", _d(-40), _d(-20))
+    db_session.commit()
+    r = as_coordinacion.get("/api/v1/reportes/odas-vencidas/excel")
+    filas = list(load_workbook(io.BytesIO(r.content)).active.iter_rows(values_only=True))
+    fila = next(f for f in filas if "HYPERLINK" in str(f[0]))
+    assert fila[0].startswith("'=")
+    assert fila[2] == "'+1234"
