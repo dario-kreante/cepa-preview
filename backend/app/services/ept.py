@@ -358,11 +358,20 @@ def crear_plazo_ept(db: Session, data: PlazoEptCreate, caso: CasoEpt) -> PlazoEp
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Este caso está marcado como «No corresponde EPT»: no lleva plazos.",
         )
-    _validar_plazo(data, caso)
     hoy = date.today()
     # Los plazos vacíos se calculan desde el ingreso; los que vienen (ajustados) se respetan.
     auto_informe, auto_isl = plazos_automaticos(caso.fecha_ingreso_ept)
     plazo_informe = data.plazo_informe_ept or auto_informe
+
+    from types import SimpleNamespace
+
+    # RN-3 se valida contra el plazo ya resuelto, también cuando lo calculó el sistema.
+    _validar_plazo(
+        SimpleNamespace(
+            fecha_entrega_isl=data.fecha_entrega_isl, plazo_informe_ept=plazo_informe
+        ),
+        caso,
+    )
     plazo = PlazoEpt(
         caso_ept_id=caso.id,
         plazo_informe_ept=plazo_informe,

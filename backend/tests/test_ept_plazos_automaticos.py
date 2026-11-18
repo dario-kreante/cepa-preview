@@ -179,3 +179,27 @@ def test_plazos_legados_sin_plazo_isl_conservan_la_ventana_configurada(db_sessio
     plazo = _caso_con_plazo(db_session, informe=hoy + datetime.timedelta(days=1), isl=None)
     ejecutar_job_alertas(db_session, actor="t", hoy=hoy)
     assert _alertas(db_session, plazo) == {"plazo_ept"}
+
+
+def test_rn3_se_valida_contra_el_plazo_calculado(as_admin, ingreso_fixture):
+    """Entrega ISL anterior al plazo del informe calculado (día 18) → 422, no se salta la regla."""
+    caso_id = _crear_caso(as_admin, ingreso_fixture.id)  # ingreso 2026-01-10 → informe 2026-01-28
+    r = as_admin.post(
+        f"/api/v1/casos-ept/{caso_id}/plazos",
+        json={"caso_ept_id": caso_id, "fecha_entrega_isl": "2026-01-15"},
+    )
+    assert r.status_code == 422, r.text
+    ok = as_admin.post(
+        f"/api/v1/casos-ept/{caso_id}/plazos",
+        json={"caso_ept_id": caso_id, "fecha_entrega_isl": "2026-01-28"},
+    )
+    assert ok.status_code == 201, ok.text
+
+
+def test_plazos_antiguos_iguales_conservan_la_ventana_configurada(db_session: Session):
+    """Informe e ISL en la misma fecha no forman rango: rige el aviso anticipado configurado."""
+    hoy = datetime.date.today()
+    fecha = hoy + datetime.timedelta(days=2)  # dentro de la ventana de 5 días hábiles
+    plazo = _caso_con_plazo(db_session, informe=fecha, isl=fecha)
+    ejecutar_job_alertas(db_session, actor="t", hoy=hoy)
+    assert _alertas(db_session, plazo) == {"plazo_ept", "plazo_isl"}

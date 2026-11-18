@@ -340,7 +340,7 @@ def _construir_hitos_ept(db: Session, ventanas: dict[str, dict] | None = None) -
             continue
         usuario_id = _resolver_usuario(caso.ingreso_id, db)
         informe, isl = plazo_ept.plazo_informe_ept, plazo_ept.plazo_portal_isl
-        rango = {"desde": informe, "hasta": isl} if informe and isl and informe <= isl else {}
+        rango = {"desde": informe, "hasta": isl} if informe and isl and informe < isl else {}
         for campo_date, tipo, ventana in [
             (informe, TipoAlerta.PLAZO_EPT.value, v_ept),
             (isl, TipoAlerta.PLAZO_ISL.value, v_isl),
