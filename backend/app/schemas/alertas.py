@@ -24,6 +24,8 @@ class AlertaRead(BaseModel):
     # Paciente del caso, para abrir su ficha desde el panel. Solo se resuelve en el listado
     # y para los casos que cuelgan de un ingreso (ODA, ingreso); el resto queda en None.
     paciente_id: int | None = None
+    # Nombre de ese paciente, para listar las alertas en su módulo (EPT, licencias) sin pedir cada caso.
+    paciente_nombre: str | None = None
 
 
 class AlertaUpdate(BaseModel):

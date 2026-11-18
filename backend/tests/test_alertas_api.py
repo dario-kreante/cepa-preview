@@ -235,3 +235,45 @@ def test_listado_trae_paciente_de_la_cita_salutem(as_admin: TestClient, db_sessi
     data = {a["id"]: a for a in as_admin.get("/api/v1/alertas").json()}
     assert data[con_cita.id]["paciente_id"] == ingreso["paciente_id"]
     assert data[huerfana.id]["paciente_id"] is None
+
+
+# QA-001: EPT y Licencias listan sus alertas con el nombre del paciente, sin pedir cada caso.
+def test_listado_trae_paciente_de_caso_ept_y_licencia(as_admin: TestClient, db_session: Session):
+    from datetime import date
+
+    from app.models.ept import CasoEpt
+    from app.models.licencia import LicenciaMedica
+
+    ingreso = as_admin.post(
+        "/api/v1/ingresos",
+        json={
+            "rut": "11.111.111-1", "nombre": "Ana González", "sexo": "F", "edad": 33,
+            "region": "Maule", "diagnostico": "x", "tipo_derivacion": "DIAT",
+            "tipo_ingreso": "convenio", "modelo_tratamiento": "ambulatorio",
+            "fecha_ingreso": "2026-06-10",
+        },
+    ).json()
+    caso = CasoEpt(
+        ingreso_id=ingreso["id"], mes="Junio 2026", fecha_ingreso_ept=date(2026, 6, 20),
+        nombre_trabajador="Otra Persona", rut_trabajador="12.345.678-5",
+        region_trabajador="Maule", eista="E", factor_riesgo="carga_fisica",
+        corresponde_ept=True, estado="abierto",
+    )
+    licencia = LicenciaMedica(
+        ingreso_id=ingreso["id"], tipo_lm="LM", tipo_reposo="total",
+        fecha_inicio=date(2026, 6, 10), fecha_termino=date(2026, 6, 19),
+        fecha_emision=date(2026, 6, 10), inicio_reposo=date(2026, 6, 10),
+        fin_reposo=date(2026, 6, 19), cantidad_dias=10, diagnostico="x",
+    )
+    db_session.add_all([caso, licencia])
+    db_session.flush()
+    a_ept = _alerta_en_bd(db_session, usuario_id=None, tipo="plazo_insumos_ept")
+    a_ept.caso_tipo, a_ept.caso_id = "ept", caso.id
+    a_lic = _alerta_en_bd(db_session, usuario_id=None, tipo="vencimiento_licencia")
+    a_lic.caso_tipo, a_lic.caso_id = "licencia", licencia.id
+    db_session.commit()
+
+    data = {a["id"]: a for a in as_admin.get("/api/v1/alertas").json()}
+    for a in (a_ept, a_lic):
+        assert data[a.id]["paciente_id"] == ingreso["paciente_id"]
+        assert data[a.id]["paciente_nombre"] == "Ana González"
