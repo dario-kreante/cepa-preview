@@ -63,14 +63,15 @@ def get_reporte_licencias(
 
     # Subquery: IDs de ingresos que pasan los filtros de dimensión (Paciente join para region/comuna)
     stmt_ingresos = (
-        select(Ingreso.id)
+        select(Ingreso.id, Ingreso.folio, Paciente.rut)
         .select_from(Ingreso)
         .join(Paciente, Ingreso.paciente_id == Paciente.id)
     )
     stmt_ingresos = aplicar_filtros_ingreso(
         stmt_ingresos, Ingreso, filtros, modelo_paciente=Paciente
     )
-    ingreso_ids = [r.id for r in db.execute(stmt_ingresos).all()]
+    datos_ingreso = {r.id: (r.folio, r.rut) for r in db.execute(stmt_ingresos).all()}
+    ingreso_ids = list(datos_ingreso)
 
     if not ingreso_ids:
         return ReporteLicenciasResponse(
@@ -121,7 +122,8 @@ def get_reporte_licencias(
     items = [
         LicenciaAcumuladaItem(
             folio_id=folio_id,
-            rut_paciente=None,
+            folio=datos_ingreso[folio_id][0],
+            rut_paciente=datos_ingreso[folio_id][1],
             total_dias_acumulados=totales_dias.get(folio_id, 0),
             licencias_internas=internas_cnt.get(folio_id, 0),
             licencias_externas=externas_cnt.get(folio_id, 0),

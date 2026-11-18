@@ -7,9 +7,12 @@ from sqlalchemy.orm import Session
 from app.audit.service import record_audit
 from app.auth.deps import get_current_user, require_role
 from app.db.session import get_db
+from app.models.oda import Oda
 from app.schemas.oda import (
     OdaAlerta,
     OdaCreate,
+    OdaGestionRead,
+    OdaGestionUpdate,
     OdaImportError,
     OdaImportFilaSinPaciente,
     OdaImportPorVencer,
@@ -46,6 +49,38 @@ def crear_oda(
     )
     db.commit()
     db.refresh(oda)
+    return oda
+
+
+@router.patch(
+    "/odas/{oda_id}/gestion",
+    response_model=OdaGestionRead,
+    dependencies=[Depends(_writer)],
+)
+def cambiar_gestion(
+    oda_id: int,
+    payload: OdaGestionUpdate,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+) -> OdaGestionRead:
+    """QA-007: estado de gestión de una ODA vencida (pendiente → solicitada → recibida)."""
+    oda = db.get(Oda, oda_id)
+    if oda is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="ODA no encontrada")
+    anterior = oda.estado_gestion
+    if anterior != payload.estado_gestion:
+        oda.estado_gestion = payload.estado_gestion
+        record_audit(
+            db,
+            actor=current_user.username,
+            action="UPDATE",
+            entity="oda",
+            entity_id=str(oda.id),
+            valor_anterior=anterior,
+            valor_nuevo=payload.estado_gestion,
+        )
+        db.commit()
+        db.refresh(oda)
     return oda
 
 

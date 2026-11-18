@@ -16,6 +16,7 @@ from datetime import date, datetime, time, timedelta, timezone
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.agendamiento.salutem import lotes
 from app.audit.service import record_audit
 from app.domain.enums import EstadoCaso
 from app.domain.enums_alertas import EstadoAlerta, TipoAlerta
@@ -41,8 +42,9 @@ def oda_que_cubre(odas: Iterable[Oda], fecha: date) -> Oda | None:
 
 def odas_por_ingreso(db: Session, ingreso_ids: set[int]) -> dict[int, list[Oda]]:
     resultado: dict[int, list[Oda]] = defaultdict(list)
-    if ingreso_ids:
-        for oda in db.scalars(select(Oda).where(Oda.ingreso_id.in_(ingreso_ids))):
+    # En lotes: Oracle rechaza más de 1000 valores en un IN (ORA-01795).
+    for lote in lotes(ingreso_ids):
+        for oda in db.scalars(select(Oda).where(Oda.ingreso_id.in_(lote))):
             resultado[oda.ingreso_id].append(oda)
     return resultado
 

@@ -1,12 +1,17 @@
 import { useMutation } from "@tanstack/react-query";
 import {
+  cambiarGestionOda,
+  descargarOdasVencidasExcel,
   importarReporteIsl,
   reporteAdherencia,
   reporteCargaLaboral,
   reporteConvenio,
   reporteLicencias,
+  reporteOdasEstado,
   reporteOdasVencidas,
   reporteOperativo,
+  type EstadoGestion,
+  type ProgramaFiltro,
   type RangoFechas,
 } from "./api";
 
@@ -32,7 +37,29 @@ export function useReporteLicencias() {
 }
 
 export function useReporteOdasVencidas() {
-  return useMutation({ mutationFn: () => reporteOdasVencidas() });
+  return useMutation({
+    mutationFn: (programa: ProgramaFiltro | void) => reporteOdasVencidas(programa || undefined),
+  });
+}
+
+export function useReporteOdasEstado() {
+  return useMutation({
+    mutationFn: (estadoCaso: string | void) => reporteOdasEstado(estadoCaso || undefined),
+  });
+}
+
+export function useCambiarGestionOda() {
+  return useMutation({
+    mutationFn: ({ odaId, estado }: { odaId: number; estado: EstadoGestion }) =>
+      cambiarGestionOda(odaId, estado),
+  });
+}
+
+export function useDescargarOdasExcel() {
+  return useMutation({
+    mutationFn: (programa: ProgramaFiltro | void) =>
+      descargarOdasVencidasExcel(programa || undefined),
+  });
 }
 
 export function useImportarReporteIsl() {

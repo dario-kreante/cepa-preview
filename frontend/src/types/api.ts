@@ -1588,6 +1588,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/reportes/odas-vencidas/excel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_odas_vencidas_excel_api_v1_reportes_odas_vencidas_excel_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: never;
+        trace?: never;
+    };
+    "/api/v1/reportes/odas-estado": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_odas_estado_api_v1_reportes_odas_estado_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: never;
+        trace?: never;
+    };
+    "/api/v1/odas/{oda_id}/gestion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["cambiar_gestion_api_v1_odas__oda_id__gestion_patch"];
+        trace?: never;
+    };
     "/api/v1/reportes/adherencia/{folio_id}": {
         parameters: {
             query?: never;
@@ -4128,6 +4176,8 @@ export interface components {
         LicenciaAcumuladaItem: {
             /** Folio Id */
             folio_id: number;
+            /** Folio real del CEPA (folio_id es el id interno) */
+            folio?: string | null;
             /** Rut Paciente */
             rut_paciente: string | null;
             /** Total Dias Acumulados */
@@ -4286,6 +4336,43 @@ export interface components {
             /** Password */
             password: string;
         };
+        /** OrdenCobertura */
+        OrdenCobertura: {
+            identificador: string;
+            /** ODA (Ambulatoria) | OPA (OPA/OPAEP); null si la orden se cargó antes de guardar el tipo */
+            tipo: string | null;
+            fecha_inicio: string | null;
+            fecha_termino: string;
+        };
+        /** ODAEstadoItem */
+        ODAEstadoItem: {
+            ingreso_id: number;
+            folio: string;
+            paciente_nombre: string;
+            paciente_rut: string | null;
+            fecha_ingreso: string;
+            estado_caso: string;
+            programa: string | null;
+            estado_oda: "vigente" | "por_vencer" | "vencida" | "sin_oda";
+            fecha_vencimiento: string | null;
+            dias_para_vencer: number | null;
+        };
+        /** ReporteODAEstadoResponse */
+        ReporteODAEstadoResponse: {
+            fecha_consulta: string;
+            total: number;
+            dias_por_vencer: number;
+            items: components["schemas"]["ODAEstadoItem"][];
+        };
+        /** OdaGestionUpdate */
+        OdaGestionUpdate: {
+            estado_gestion: "pendiente" | "solicitada" | "recibida";
+        };
+        /** OdaGestionRead */
+        OdaGestionRead: {
+            id: number;
+            estado_gestion: string;
+        };
         /** ODAVencidaItem */
         ODAVencidaItem: {
             /** Id */
@@ -4313,6 +4400,10 @@ export interface components {
             region: string | null;
             /** Comuna */
             comuna: string | null;
+            ordenes?: components["schemas"]["OrdenCobertura"][];
+            fechas_atencion?: string[];
+            cobertura?: "CUBRE" | "SOLICITAR";
+            estado_gestion?: "pendiente" | "solicitada" | "recibida";
         };
         /** OdaAlerta */
         OdaAlerta: {
@@ -9250,6 +9341,106 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReporteODASVencidasResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_odas_vencidas_excel_api_v1_reportes_odas_vencidas_excel_get: {
+        parameters: {
+            query?: {
+                programa?: string | null;
+                region?: string | null;
+                comuna?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_odas_estado_api_v1_reportes_odas_estado_get: {
+        parameters: {
+            query?: {
+                estado_caso?: string | null;
+                programa?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReporteODAEstadoResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cambiar_gestion_api_v1_odas__oda_id__gestion_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                oda_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OdaGestionUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OdaGestionRead"];
                 };
             };
             /** @description Validation Error */
