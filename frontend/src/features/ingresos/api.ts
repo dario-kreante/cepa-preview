@@ -41,17 +41,31 @@ export async function actualizarIngreso(
   return data;
 }
 
-/** PATCH /api/v1/ingresos/{id}/estado — p. ej. pasar a encuadre o volver a activo. */
+export type MotivoCierre = components["schemas"]["MotivoCierre"];
+
+/**
+ * PATCH /api/v1/ingresos/{id}/estado — pasar a encuadre, cerrar (con motivo) o reabrir.
+ * Cerrar exige `motivoCierre`; reabrir un caso cerrado solo lo permite Coordinación.
+ */
 export async function cambiarEstadoIngreso(
   ingresoId: number,
   estado: IngresoRead["estado"],
+  motivoCierre?: MotivoCierre,
 ): Promise<IngresoRead> {
   const { data, error, response } = await api.PATCH("/api/v1/ingresos/{ingreso_id}/estado", {
     params: { path: { ingreso_id: ingresoId } },
-    body: { estado },
+    body: motivoCierre ? { estado, motivo_cierre: motivoCierre } : { estado },
   });
   if (error || !data) {
-    if (response.status === 403) throw new Error("Tu perfil no puede cambiar el estado del ingreso.");
+    if (response.status === 403) {
+      throw new Error(
+        estado === "cerrado"
+          ? "Tu perfil no puede cerrar el caso."
+          : "Tu perfil no puede cambiar el estado del ingreso. Reabrir un caso cerrado es solo de Coordinación.",
+      );
+    }
+    if (response.status === 409) throw new Error("El caso ya está cerrado.");
+    if (response.status === 422 && estado === "cerrado") throw new Error("Debes elegir un motivo de cierre.");
     throw new Error("No se pudo cambiar el estado. Intenta nuevamente.");
   }
   return data;

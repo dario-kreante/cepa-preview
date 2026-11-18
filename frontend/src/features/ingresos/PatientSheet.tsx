@@ -38,6 +38,8 @@ import type {
 } from "./api";
 import { SalutemTab } from "./SalutemTab";
 import { EditarFichaDialog } from "./EditarFichaDialog";
+import { CierreCasoDialog } from "./CierreCasoDialog";
+import { etiquetaEstadoCaso } from "./motivosCierre";
 import { FolioCard } from "./FolioCard";
 import { AltaLicenciaDialog } from "@/features/licencias/AltaLicenciaDialog";
 import { NuevoControlDialog } from "@/features/controles/NuevoControlDialog";
@@ -348,13 +350,6 @@ export interface PatientSheetProps {
   tabInicial?: string;
 }
 
-const ESTADO_INGRESO: Record<string, string> = {
-  activo: "Activo",
-  encuadre: "En encuadre",
-  cerrado: "Cerrado",
-  derivado: "Derivado",
-};
-
 export function PatientSheet({
   pacienteId,
   open,
@@ -365,6 +360,9 @@ export function PatientSheet({
   const canWrite = puedeEscribir(rol as Rol);
   const navigate = useNavigate();
   const cambiarEstado = useCambiarEstadoIngreso(pacienteId ?? 0);
+  // QA-011: cerrar lo hace quien escribe; reabrir un caso cerrado, solo Coordinación.
+  const puedeReabrir = tieneRol(rol as Rol, "Coordinacion");
+  const [dialogoCierre, setDialogoCierre] = useState<"cerrar" | "reabrir" | null>(null);
 
   const {
     data: vista,
@@ -456,7 +454,7 @@ export function PatientSheet({
                           className="bg-white/15 text-white border-white/20"
                           data-testid="estado-ingreso"
                         >
-                          {ESTADO_INGRESO[primaryIngreso.estado] ?? primaryIngreso.estado}
+                          {etiquetaEstadoCaso(primaryIngreso.estado, primaryIngreso.motivo_cierre)}
                         </Badge>
                       )}
                       {/* Encuadre (reunión 29-10, D5): lo cambia a mano el CEPA al revisar la alerta. */}
@@ -488,6 +486,30 @@ export function PatientSheet({
                             {primaryIngreso.estado === "activo" ? "Pasar a encuadre" : "Volver a activo"}
                           </Button>
                         )}
+                      {canWrite &&
+                        primaryIngreso &&
+                        (primaryIngreso.estado === "activo" || primaryIngreso.estado === "encuadre") && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-6 px-2 text-[11px] bg-white/10 text-white border-white/30 hover:bg-white/20"
+                            data-testid="btn-cerrar-caso"
+                            onClick={() => setDialogoCierre("cerrar")}
+                          >
+                            Cerrar caso
+                          </Button>
+                        )}
+                      {puedeReabrir && primaryIngreso?.estado === "cerrado" && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-6 px-2 text-[11px] bg-white/10 text-white border-white/30 hover:bg-white/20"
+                          data-testid="btn-reabrir-caso"
+                          onClick={() => setDialogoCierre("reabrir")}
+                        >
+                          Reabrir caso
+                        </Button>
+                      )}
                       {primaryIngreso && (
                         <Badge
                           variant="outline"
@@ -556,6 +578,17 @@ export function PatientSheet({
                 <Stethoscope className="size-3.5" /> Agendar control
               </Button>
             </div>
+          )}
+          {vista && primaryIngreso && dialogoCierre && (
+            <CierreCasoDialog
+              key={dialogoCierre}
+              modo={dialogoCierre}
+              open
+              onOpenChange={(o) => !o && setDialogoCierre(null)}
+              pacienteId={vista.paciente.id}
+              ingresoId={primaryIngreso.id}
+              motivoActual={primaryIngreso.motivo_cierre}
+            />
           )}
           {canWrite && vista && primaryIngreso && (
             <>
@@ -660,7 +693,7 @@ export function PatientSheet({
                           {primaryIngreso.diagnostico ?? "Sin registrar"}
                         </div>
                         <div className="text-[12px] text-muted-foreground mt-1">
-                          {ESTADO_INGRESO[primaryIngreso.estado] ?? primaryIngreso.estado} · Ingreso {formatDate(primaryIngreso.fecha_ingreso)}
+                          {etiquetaEstadoCaso(primaryIngreso.estado, primaryIngreso.motivo_cierre)} · Ingreso {formatDate(primaryIngreso.fecha_ingreso)}
                           {primaryIngreso.folio ? ` · Folio ${primaryIngreso.folio}` : ""}
                         </div>
                       </CardContent>
@@ -681,7 +714,7 @@ export function PatientSheet({
                             >
                               <span>Folio {ing.folio}</span>
                               <span className="text-muted-foreground">
-                                {ESTADO_INGRESO[ing.estado] ?? ing.estado} · {formatDate(ing.fecha_ingreso)}
+                                {etiquetaEstadoCaso(ing.estado, ing.motivo_cierre)} · {formatDate(ing.fecha_ingreso)}
                               </span>
                             </li>
                           ))}
