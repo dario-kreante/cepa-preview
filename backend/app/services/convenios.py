@@ -30,6 +30,22 @@ def listar_convenios(db: Session, *, solo_seleccionables: bool = False) -> list[
     return convenios
 
 
+def validar_tipo_convenio(db: Session, nuevo: str | None, actual: str | None) -> None:
+    """El convenio de un ingreso debe estar en el catálogo seleccionable.
+
+    Se acepta vacío y el mismo valor que ya tenía el ingreso (un convenio antiguo fuera del
+    catálogo no se pierde al editar otros campos).
+    """
+    if nuevo is None or nuevo == actual:
+        return
+    if any(c.nombre == nuevo for c in listar_convenios(db, solo_seleccionables=True)):
+        return
+    raise HTTPException(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        detail=f"El convenio «{nuevo}» no está en el catálogo de convenios.",
+    )
+
+
 def nombres_para_reportes(db: Session) -> list[str]:
     """Todo el catálogo más los valores antiguos de ``ingreso.tipo_convenio`` que ya no están en él."""
     nombres = {c.nombre for c in db.scalars(select(Convenio))}
