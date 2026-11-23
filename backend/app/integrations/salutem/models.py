@@ -81,6 +81,24 @@ class PersonaSalutem(BaseModel):
         )
 
 
+class ConvenioSalutem(BaseModel):
+    """Convenio del catálogo de SALUTEM (`/financiadores` con `tipo == "CONVENIO"`)."""
+
+    model_config = ConfigDict(frozen=True)
+
+    salutem_id: int
+    nombre: str
+    activo: bool = True
+
+    @classmethod
+    def desde_api(cls, d: dict[str, Any]) -> "ConvenioSalutem":
+        return cls(
+            salutem_id=int(d["id"]),
+            nombre=str(d["nombre"]),
+            activo=bool(d.get("activo", True)),
+        )
+
+
 class CitaSalutem(BaseModel):
     """Cita de SALUTEM. Sirve tanto para `/cita` como para el listado de `/atencion`."""
 

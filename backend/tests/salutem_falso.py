@@ -20,6 +20,7 @@ from app.integrations.salutem.models import (
     AtencionSalutem,
     CitaSalutem,
     ContenidoArchivo,
+    ConvenioSalutem,
     EstadoCitaSalutem,
     PersonaSalutem,
     TipoFechaCita,
@@ -45,6 +46,8 @@ class SalutemFalso:
         self.citas: dict[int, dict] = {}
         self.atenciones: dict[int, dict] = {}
         self.archivos: dict[int, dict] = {}
+        # Catálogo de convenios que devuelve `listar_convenios` (filas crudas de /financiadores).
+        self.convenios: list[dict] = []
         self.llamadas: list[tuple] = []
         # (dia, estado) que SALUTEM rechaza con SalutemRequestError.
         self.dias_con_error: set[tuple[date, int]] = set()
@@ -207,6 +210,10 @@ class SalutemFalso:
         if a is None or a["personaId"] != salutem_id:
             return None
         return ContenidoArchivo.desde_api(a)
+
+    def listar_convenios(self) -> list[ConvenioSalutem]:
+        self._registrar("listar_convenios")
+        return [ConvenioSalutem.desde_api(c) for c in self.convenios]
 
     def llamadas_a(self, metodo: str) -> list[tuple]:
         return [ll for ll in self.llamadas if ll[0] == metodo]

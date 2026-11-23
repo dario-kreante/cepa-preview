@@ -23,6 +23,7 @@ from app.integrations.salutem.models import (
     AtencionSalutem,
     CitaSalutem,
     ContenidoArchivo,
+    ConvenioSalutem,
     EstadoCitaSalutem,
     PersonaSalutem,
     TipoFechaCita,
@@ -86,6 +87,9 @@ class SalutemStubClient:
         self, salutem_id: int, archivo_id: int
     ) -> ContenidoArchivo | None:
         return None
+
+    def listar_convenios(self) -> list[ConvenioSalutem]:
+        return []
 
 
 class SalutemHttpClient:
@@ -208,6 +212,18 @@ class SalutemHttpClient:
             {"persona_id": str(salutem_id), "archivo_id": str(archivo_id)},
         )
         return ContenidoArchivo.desde_api(r) if r else None
+
+    def listar_convenios(self) -> list[ConvenioSalutem]:
+        # `/financiadores` mezcla financiadores y convenios; solo interesan estos últimos.
+        r = self._get("financiadores", {})
+        return [
+            ConvenioSalutem.desde_api(x)
+            for x in (r or [])
+            if isinstance(x, dict)
+            and x.get("tipo") == "CONVENIO"
+            and x.get("id") is not None
+            and x.get("nombre")
+        ]
 
 
 _STUB_CLIENT: SalutemClientProtocol = SalutemStubClient()

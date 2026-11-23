@@ -449,3 +449,34 @@ def test_listar_personas_pide_las_creadas_en_un_solo_dia():
     assert visto["body"] == {"fechaHoraInicio": "2026-11-03 00:00", "fechaHoraTermino": "2026-11-03 23:59"}
     assert [p.salutem_id for p in personas] == [4061957]
     assert personas[0].crudo["fechaCreacion"] == "2026-11-03 15:40"
+
+
+def test_listar_convenios_filtra_tipo_convenio():
+    def handler(req):
+        assert req.url.path.endswith("/financiadores")
+        return httpx.Response(200, json={"estado": True, "respuesta": [
+            {"id": 1486, "nombre": "Convenio Colegio Inglés", "tipo": "CONVENIO", "activo": True},
+            {"id": 1173, "nombre": "PARTICULAR", "tipo": "FINANCIADOR", "activo": True},
+            {"id": 1662, "nombre": "Proyecto ISL Biobío", "tipo": "CONVENIO", "activo": False},
+        ]})
+    r = _cliente(handler).listar_convenios()
+    assert [(c.salutem_id, c.nombre, c.activo) for c in r] == [
+        (1486, "Convenio Colegio Inglés", True), (1662, "Proyecto ISL Biobío", False)]
+
+
+def test_listar_convenios_ignora_filas_invalidas():
+    def handler(req):
+        return httpx.Response(200, json={"estado": True, "respuesta": [
+            "basura",
+            {"nombre": "Sin id", "tipo": "CONVENIO", "activo": True},
+            {"id": 7, "tipo": "CONVENIO", "activo": True},
+            {"id": 8, "nombre": "Válido", "tipo": "CONVENIO"},
+        ]})
+    r = _cliente(handler).listar_convenios()
+    assert [(c.salutem_id, c.nombre, c.activo) for c in r] == [(8, "Válido", True)]
+
+
+def test_stub_listar_convenios_vacio():
+    from app.integrations.salutem.client import SalutemStubClient
+
+    assert SalutemStubClient().listar_convenios() == []

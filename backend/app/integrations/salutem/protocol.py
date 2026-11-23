@@ -32,6 +32,7 @@ from app.integrations.salutem.models import (
     AtencionSalutem,
     CitaSalutem,
     ContenidoArchivo,
+    ConvenioSalutem,
     EstadoCitaSalutem,
     PersonaSalutem,
     TipoFechaCita,
@@ -103,4 +104,11 @@ class SalutemClientProtocol(Protocol):
 
     def obtener_archivo(self, salutem_id: int, archivo_id: int) -> ContenidoArchivo | None:
         """Trae un archivo con su contenido. None si no existe o llega sin contenido."""
+        ...
+
+    def listar_convenios(self) -> list[ConvenioSalutem]:
+        """Lista el catálogo de convenios de SALUTEM (financiadores de tipo CONVENIO).
+
+        Incluye los inactivos: el llamador decide qué hacer con ellos.
+        """
         ...
