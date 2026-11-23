@@ -547,6 +547,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/odas/{oda_id}/gestion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Cambiar Gestion
+         * @description QA-007: estado de gestión de una ODA vencida (pendiente → solicitada → recibida).
+         */
+        patch: operations["cambiar_gestion_api_v1_odas__oda_id__gestion_patch"];
+        trace?: never;
+    };
     "/api/v1/odas/importar": {
         parameters: {
             query?: never;
@@ -838,7 +858,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Listar Casos */
+        /**
+         * Listar Casos
+         * @description Lista casos. `paciente_id` abarca todos los ingresos del paciente; `solo_activos`
+         *     deja los que no están en reintegro total (QA-003).
+         */
         get: operations["listar_casos_api_v1_reintegros_get"];
         put?: never;
         /** Crear Caso */
@@ -856,7 +880,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Listar Duplicados */
+        /**
+         * Listar Duplicados
+         * @description Pacientes con más de un caso activo, para revisarlos a mano (solo lectura).
+         */
         get: operations["listar_duplicados_api_v1_reintegros_duplicados_get"];
         put?: never;
         post?: never;
@@ -884,6 +911,26 @@ export interface paths {
         patch: operations["actualizar_caso_api_v1_reintegros__caso_id__patch"];
         trace?: never;
     };
+    "/api/v1/reintegros/{caso_id}/solicitud-reca": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Registrar Solicitud
+         * @description Registra o corrige la fecha en que se solicitó la RECA.
+         */
+        patch: operations["registrar_solicitud_api_v1_reintegros__caso_id__solicitud_reca_patch"];
+        trace?: never;
+    };
     "/api/v1/reintegros/{caso_id}/reca": {
         parameters: {
             query?: never;
@@ -901,23 +948,6 @@ export interface paths {
         head?: never;
         /** Actualizar Reca Endpoint */
         patch: operations["actualizar_reca_endpoint_api_v1_reintegros__caso_id__reca_patch"];
-        trace?: never;
-    };
-    "/api/v1/reintegros/{caso_id}/solicitud-reca": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        /** Registra o corrige la fecha en que se solicitó la RECA */
-        patch: operations["registrar_solicitud_api_v1_reintegros__caso_id__solicitud_reca_patch"];
         trace?: never;
     };
     "/api/v1/reintegros/{caso_id}/cierre": {
@@ -1579,26 +1609,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/reportes/ingresos": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Reporte Ingresos
-         * @description QA-004: ingresos del período (una fila por ingreso) más pendientes de folio.
-         */
-        get: operations["get_reporte_ingresos_api_v1_reportes_ingresos_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/reportes/odas-vencidas": {
         parameters: {
             query?: never;
@@ -1608,10 +1618,11 @@ export interface paths {
         };
         /**
          * Get Odas Vencidas
-         * @description CA-1..CA-3: lista de ODAS cuya fecha_vencimiento < hoy (estricto).
+         * @description CA-1..CA-3: ODAS vigentes de casos activos con fecha_vencimiento < hoy (estricto).
          *
          *     TC-097-02: ODA que vence exactamente hoy NO aparece (condición estricta < hoy).
-         *     DD-6: programa/region/comuna se leen de Ingreso y Paciente respectivamente.
+         *     QA-007: una fila por paciente, con el cruce de cobertura y el estado de gestión.
+         *     También incluye a los atendidos sin ninguna ODA (SOLICITAR, sin gestión).
          */
         get: operations["get_odas_vencidas_api_v1_reportes_odas_vencidas_get"];
         put?: never;
@@ -1629,13 +1640,17 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /**
+         * Get Odas Vencidas Excel
+         * @description QA-007: la tabla de ODA vencidas en Excel (mismos filtros que el JSON).
+         */
         get: operations["get_odas_vencidas_excel_api_v1_reportes_odas_vencidas_excel_get"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
-        patch: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/reportes/odas-estado": {
@@ -1645,29 +1660,34 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /**
+         * Get Odas Estado
+         * @description QA-006: estado de la ODA de cada paciente, sin abrir ficha por ficha.
+         */
         get: operations["get_odas_estado_api_v1_reportes_odas_estado_get"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
-        patch: never;
+        patch?: never;
         trace?: never;
     };
-    "/api/v1/odas/{oda_id}/gestion": {
+    "/api/v1/reportes/ingresos": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get: never;
+        /** Get Reporte Ingresos */
+        get: operations["get_reporte_ingresos_api_v1_reportes_ingresos_get"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
-        patch: operations["cambiar_gestion_api_v1_odas__oda_id__gestion_patch"];
+        patch?: never;
         trace?: never;
     };
     "/api/v1/reportes/adherencia/{folio_id}": {
@@ -2005,6 +2025,92 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/convenios": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Listar */
+        get: operations["listar_api_v1_convenios_get"];
+        put?: never;
+        /** Crear */
+        post: operations["crear_api_v1_convenios_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/convenios/para-reportes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Para Reportes */
+        get: operations["para_reportes_api_v1_convenios_para_reportes_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/convenios/sugerido": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Sugerido */
+        get: operations["sugerido_api_v1_convenios_sugerido_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/convenios/actualizar-salutem": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Actualizar Salutem */
+        post: operations["actualizar_salutem_api_v1_convenios_actualizar_salutem_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/convenios/{convenio_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Actualizar */
+        patch: operations["actualizar_api_v1_convenios__convenio_id__patch"];
         trace?: never;
     };
     "/api/v1/tareas": {
@@ -2410,6 +2516,8 @@ export interface paths {
         /**
          * Actualizar Estado
          * @description Actualiza el estado del ingreso con trazabilidad (CA-2, RN-4 CEPA-121).
+         *
+         *     Cerrar exige ``motivo_cierre`` (QA-011); reabrir un caso cerrado, solo Coordinación.
          */
         patch: operations["actualizar_estado_api_v1_ingresos__ingreso_id__estado_patch"];
         trace?: never;
@@ -2526,6 +2634,17 @@ export interface components {
             ultima_atencion: string | null;
             /** Ultimas Atenciones */
             ultimas_atenciones: components["schemas"]["AtencionProfesionalRead"][];
+        };
+        /** ActualizacionConvenios */
+        ActualizacionConvenios: {
+            /** Creados */
+            creados: number;
+            /** Actualizados */
+            actualizados: number;
+            /** Desactivados */
+            desactivados: number;
+            /** Errores */
+            errores: string[];
         };
         /**
          * AcumuladoRead
@@ -2742,6 +2861,26 @@ export interface components {
             total_atenciones: number;
         };
         /**
+         * CasoActivoResumen
+         * @description Resumen de un caso activo para el aviso de caso repetido y el listado de duplicados.
+         */
+        CasoActivoResumen: {
+            /** Id */
+            id: number;
+            /** Ingreso Id */
+            ingreso_id: number;
+            /** Region */
+            region: string;
+            /** Razon Social */
+            razon_social: string | null;
+            /**
+             * Fecha Caso
+             * Format: date
+             */
+            fecha_caso: string;
+            estado_reintegro: components["schemas"]["EstadoReintegro"];
+        };
+        /**
          * CasoConsolidadoRead
          * @description Vista consolidada del caso — todas las secciones §7.5.1..§7.5.4.
          *
@@ -2778,8 +2917,11 @@ export interface components {
             /** Eista */
             eista: string;
             factor_riesgo: components["schemas"]["FactorRiesgo"];
-            /** Factores Adicionales */
-            factores_adicionales?: components["schemas"]["FactorRiesgo"][];
+            /**
+             * Factores Adicionales
+             * @default []
+             */
+            factores_adicionales: components["schemas"]["FactorRiesgo"][];
             /**
              * Corresponde Ept
              * @default true
@@ -2813,8 +2955,11 @@ export interface components {
             eista: string;
             /** Factor Riesgo */
             factor_riesgo: components["schemas"]["FactorRiesgo"] | components["schemas"]["FactorRiesgoLegado"];
-            /** Factores Adicionales */
-            factores_adicionales?: string[];
+            /**
+             * Factores Adicionales
+             * @default []
+             */
+            factores_adicionales: string[];
             /** Corresponde Ept */
             corresponde_ept: boolean;
             estado: components["schemas"]["EstadoEpt"];
@@ -2892,34 +3037,6 @@ export interface components {
             razon_social?: string | null;
             tipo_trabajador?: components["schemas"]["TipoTrabajador"] | null;
         };
-        /** CasoActivoResumen */
-        CasoActivoResumen: {
-            /** Id */
-            id: number;
-            /** Ingreso Id */
-            ingreso_id: number;
-            /** Region */
-            region: string;
-            /** Razon Social */
-            razon_social: string | null;
-            /**
-             * Fecha Caso
-             * Format: date
-             */
-            fecha_caso: string;
-            estado_reintegro: components["schemas"]["EstadoReintegro"];
-        };
-        /** PacienteConCasosRepetidosRead */
-        PacienteConCasosRepetidosRead: {
-            /** Paciente Id */
-            paciente_id: number;
-            /** Rut */
-            rut: string | null;
-            /** Nombre */
-            nombre: string;
-            /** Casos */
-            casos: components["schemas"]["CasoActivoResumen"][];
-        };
         /** CasoReintegroRead */
         CasoReintegroRead: {
             /** Id */
@@ -2967,16 +3084,8 @@ export interface components {
             observaciones: string | null;
             /** Fecha Solicitud Reca */
             fecha_solicitud_reca?: string | null;
-            /** Estado derivado de la solicitud de RECA (QA-003). */
-            estado_solicitud_reca?: components["schemas"]["EstadoSolicitudReca"];
-        };
-        /** SolicitudRecaUpdate */
-        SolicitudRecaUpdate: {
-            /**
-             * Fecha Solicitud Reca
-             * Format: date
-             */
-            fecha_solicitud_reca: string;
+            /** @default pendiente */
+            estado_solicitud_reca: components["schemas"]["EstadoSolicitudReca"];
         };
         /**
          * CasoReintegroUpdate
@@ -3183,6 +3292,13 @@ export interface components {
             /** Total */
             total: number;
         };
+        /** ConteoIngreso */
+        ConteoIngreso: {
+            /** Etiqueta */
+            etiqueta: string;
+            /** Total */
+            total: number;
+        };
         /**
          * ControlMedicoCreate
          * @description Alta de un control médico (CEPA-060).
@@ -3273,15 +3389,51 @@ export interface components {
             salutem_cita_id?: number | null;
             /** Especialidad */
             especialidad?: string | null;
-            /** Campos Editados */
-            campos_editados?: string[];
+            /**
+             * Campos Editados
+             * @default []
+             */
+            campos_editados: string[];
             /** Oda Que Cubre */
             oda_que_cubre?: string | null;
             /**
              * Fuera De Oda
              * @default false
              */
-            fuera_de_oda?: boolean;
+            fuera_de_oda: boolean;
+        };
+        /** ConvenioCreate */
+        ConvenioCreate: {
+            /** Nombre */
+            nombre: string;
+        };
+        /** ConvenioRead */
+        ConvenioRead: {
+            /** Id */
+            id: number;
+            /** Nombre */
+            nombre: string;
+            /** Salutem Id */
+            salutem_id: number | null;
+            /** Activo Salutem */
+            activo_salutem: boolean;
+            /** Visible */
+            visible: boolean;
+            /** Seleccionable */
+            seleccionable: boolean;
+            /** Sincronizado En */
+            sincronizado_en: string | null;
+        };
+        /** ConvenioSugerido */
+        ConvenioSugerido: {
+            convenio?: components["schemas"]["ConvenioRead"] | null;
+        };
+        /** ConvenioUpdate */
+        ConvenioUpdate: {
+            /** Visible */
+            visible?: boolean | null;
+            /** Nombre */
+            nombre?: string | null;
         };
         /** CumplimientoConvenioItem */
         CumplimientoConvenioItem: {
@@ -3498,12 +3650,6 @@ export interface components {
          */
         EstadoCaso: "activo" | "cerrado" | "derivado" | "encuadre";
         /**
-         * MotivoCierre
-         * @description Motivo con que se cierra un caso (QA-011). Lista propia, separada de ``TipoAlta``.
-         * @enum {string}
-         */
-        MotivoCierre: "reca_ec" | "alta_medica" | "alta_administrativa" | "abandono" | "desiste_proceso" | "cambio_prestador";
-        /**
          * EstadoCita
          * @description Estado de una cita dentro de una propuesta.
          * @enum {string}
@@ -3559,7 +3705,11 @@ export interface components {
          * @enum {string}
          */
         EstadoReintegro: "pendiente" | "parcial" | "total";
-        /** EstadoSolicitudReca */
+        /**
+         * EstadoSolicitudReca
+         * @description Estado de la solicitud de RECA, derivado (QA-003, PRD v5 §7.4.2): no se guarda.
+         * @enum {string}
+         */
         EstadoSolicitudReca: "pendiente" | "solicitada" | "recibida";
         /** EstadoSyncRead */
         EstadoSyncRead: {
@@ -4186,6 +4336,10 @@ export interface components {
             diagnostico: string | null;
             /** Razon Social */
             razon_social: string | null;
+            /** Programa */
+            programa?: string | null;
+            /** Tipo Convenio */
+            tipo_convenio?: string | null;
             estado: components["schemas"]["EstadoCaso"];
             tipo_alta: components["schemas"]["TipoAlta"] | null;
             /** Fecha Alta */
@@ -4201,8 +4355,37 @@ export interface components {
             fecha_cierre?: string | null;
             /** Cierre Usuario */
             cierre_usuario?: string | null;
+        };
+        /**
+         * IngresoReporteItem
+         * @description Una fila por ingreso; los borradores de SALUTEM sin folio salen como pendientes.
+         */
+        IngresoReporteItem: {
+            /** Paciente Id */
+            paciente_id: number;
+            /** Ingreso Id */
+            ingreso_id?: number | null;
+            /** Paciente Nombre */
+            paciente_nombre: string;
+            /** Paciente Rut */
+            paciente_rut?: string | null;
+            /** Folio */
+            folio?: string | null;
+            /** Pendiente */
+            pendiente: boolean;
+            /** Tipo Ingreso */
+            tipo_ingreso?: string | null;
             /** Programa */
             programa?: string | null;
+            /** Region */
+            region?: string | null;
+            /** Tipo Convenio */
+            tipo_convenio?: string | null;
+            /**
+             * Fecha
+             * Format: date
+             */
+            fecha: string;
         };
         /**
          * IngresoUpdate
@@ -4241,6 +4424,8 @@ export interface components {
             numero_siniestro?: string | null;
             /** Programa */
             programa?: string | null;
+            /** Tipo Convenio */
+            tipo_convenio?: string | null;
         };
         /**
          * IngresosActivos
@@ -4269,7 +4454,7 @@ export interface components {
         LicenciaAcumuladaItem: {
             /** Folio Id */
             folio_id: number;
-            /** Folio real del CEPA (folio_id es el id interno) */
+            /** Folio */
             folio?: string | null;
             /** Rut Paciente */
             rut_paciente: string | null;
@@ -4429,42 +4614,40 @@ export interface components {
             /** Password */
             password: string;
         };
-        /** OrdenCobertura */
-        OrdenCobertura: {
-            identificador: string;
-            /** ODA (Ambulatoria) | OPA (OPA/OPAEP); null si la orden se cargó antes de guardar el tipo */
-            tipo: string | null;
-            fecha_inicio: string | null;
-            fecha_termino: string;
-        };
+        /**
+         * MotivoCierre
+         * @description Motivo con que se cierra un caso (QA-011). Lista propia, separada de ``TipoAlta``.
+         * @enum {string}
+         */
+        MotivoCierre: "reca_ec" | "alta_medica" | "alta_administrativa" | "abandono" | "desiste_proceso" | "cambio_prestador";
         /** ODAEstadoItem */
         ODAEstadoItem: {
+            /** Ingreso Id */
             ingreso_id: number;
+            /** Folio */
             folio: string;
+            /** Paciente Nombre */
             paciente_nombre: string;
+            /** Paciente Rut */
             paciente_rut: string | null;
+            /**
+             * Fecha Ingreso
+             * Format: date
+             */
             fecha_ingreso: string;
+            /** Estado Caso */
             estado_caso: string;
+            /** Programa */
             programa: string | null;
+            /**
+             * Estado Oda
+             * @enum {string}
+             */
             estado_oda: "vigente" | "por_vencer" | "vencida" | "sin_oda";
+            /** Fecha Vencimiento */
             fecha_vencimiento: string | null;
+            /** Dias Para Vencer */
             dias_para_vencer: number | null;
-        };
-        /** ReporteODAEstadoResponse */
-        ReporteODAEstadoResponse: {
-            fecha_consulta: string;
-            total: number;
-            dias_por_vencer: number;
-            items: components["schemas"]["ODAEstadoItem"][];
-        };
-        /** OdaGestionUpdate */
-        OdaGestionUpdate: {
-            estado_gestion: "pendiente" | "solicitada" | "recibida";
-        };
-        /** OdaGestionRead */
-        OdaGestionRead: {
-            id: number;
-            estado_gestion: string;
         };
         /** ODAVencidaItem */
         ODAVencidaItem: {
@@ -4490,10 +4673,27 @@ export interface components {
             region: string | null;
             /** Comuna */
             comuna: string | null;
-            ordenes?: components["schemas"]["OrdenCobertura"][];
-            fechas_atencion?: string[];
-            cobertura?: "CUBRE" | "SOLICITAR";
-            estado_gestion?: ("pendiente" | "solicitada" | "recibida") | null;
+            /**
+             * Ordenes
+             * @default []
+             */
+            ordenes: components["schemas"]["OrdenCobertura"][];
+            /**
+             * Fechas Atencion
+             * @default []
+             */
+            fechas_atencion: string[];
+            /**
+             * Cobertura
+             * @default SOLICITAR
+             * @enum {string}
+             */
+            cobertura: "CUBRE" | "SOLICITAR";
+            /**
+             * Estado Gestion
+             * @default pendiente
+             */
+            estado_gestion: ("pendiente" | "solicitada" | "recibida") | null;
         };
         /** OdaAlerta */
         OdaAlerta: {
@@ -4521,6 +4721,21 @@ export interface components {
              * Format: date
              */
             fecha_vencimiento: string;
+        };
+        /** OdaGestionRead */
+        OdaGestionRead: {
+            /** Id */
+            id: number;
+            /** Estado Gestion */
+            estado_gestion: string;
+        };
+        /** OdaGestionUpdate */
+        OdaGestionUpdate: {
+            /**
+             * Estado Gestion
+             * @enum {string}
+             */
+            estado_gestion: "pendiente" | "solicitada" | "recibida";
         };
         /** OdaImportError */
         OdaImportError: {
@@ -4612,11 +4827,42 @@ export interface components {
             vigente: boolean;
         };
         /**
+         * OrdenCobertura
+         * @description Una orden (ODA u OPA) del paciente dentro del período del cruce de cobertura.
+         */
+        OrdenCobertura: {
+            /** Identificador */
+            identificador: string;
+            /** Tipo */
+            tipo: string | null;
+            /** Fecha Inicio */
+            fecha_inicio: string | null;
+            /**
+             * Fecha Termino
+             * Format: date
+             */
+            fecha_termino: string;
+        };
+        /**
          * OrigenLicencia
          * @description Origen de la licencia: gestionada en CEPA o registrada como extra-sistema (v4 D7).
          * @enum {string}
          */
         OrigenLicencia: "sistema" | "extra_sistema";
+        /**
+         * PacienteConCasosRepetidosRead
+         * @description Paciente con más de un caso de reintegro activo (QA-003). Solo lectura.
+         */
+        PacienteConCasosRepetidosRead: {
+            /** Paciente Id */
+            paciente_id: number;
+            /** Rut */
+            rut: string | null;
+            /** Nombre */
+            nombre: string;
+            /** Casos */
+            casos: components["schemas"]["CasoActivoResumen"][];
+        };
         /**
          * PacientePendienteRead
          * @description Fila de la lista de pacientes borrador pendientes de folio.
@@ -5306,6 +5552,35 @@ export interface components {
             /** Items */
             items: components["schemas"]["CumplimientoConvenioItem"][];
         };
+        /** ReporteIngresosResponse */
+        ReporteIngresosResponse: {
+            /**
+             * Periodo Desde
+             * Format: date
+             */
+            periodo_desde: string;
+            /**
+             * Periodo Hasta
+             * Format: date
+             */
+            periodo_hasta: string;
+            /** Total */
+            total: number;
+            /** Total Con Folio */
+            total_con_folio: number;
+            /** Total Pendientes */
+            total_pendientes: number;
+            /** Por Tipo Ingreso */
+            por_tipo_ingreso: components["schemas"]["ConteoIngreso"][];
+            /** Por Region */
+            por_region: components["schemas"]["ConteoIngreso"][];
+            /** Por Programa */
+            por_programa: components["schemas"]["ConteoIngreso"][];
+            /** Por Convenio */
+            por_convenio: components["schemas"]["ConteoIngreso"][];
+            /** Items */
+            items: components["schemas"]["IngresoReporteItem"][];
+        };
         /** ReporteLicenciasResponse */
         ReporteLicenciasResponse: {
             /** Periodo Desde */
@@ -5315,58 +5590,19 @@ export interface components {
             /** Items */
             items: components["schemas"]["LicenciaAcumuladaItem"][];
         };
-        /** ConteoIngreso */
-        ConteoIngreso: {
-            /** Etiqueta */
-            etiqueta: string;
-            /** Total */
-            total: number;
-        };
-        /**
-         * IngresoReporteItem
-         * @description Una fila por ingreso; los borradores de SALUTEM sin folio salen como pendientes.
-         */
-        IngresoReporteItem: {
-            /** Paciente Id */
-            paciente_id: number;
-            /** Ingreso Id */
-            ingreso_id?: number | null;
-            /** Paciente Nombre */
-            paciente_nombre: string;
-            /** Paciente Rut */
-            paciente_rut?: string | null;
-            /** Folio */
-            folio?: string | null;
-            /** Pendiente */
-            pendiente: boolean;
-            /** Tipo Ingreso */
-            tipo_ingreso?: string | null;
-            /** Programa */
-            programa?: string | null;
-            /** Region */
-            region?: string | null;
-            /** Tipo Convenio */
-            tipo_convenio?: string | null;
+        /** ReporteODAEstadoResponse */
+        ReporteODAEstadoResponse: {
             /**
-             * Fecha
+             * Fecha Consulta
              * Format: date
              */
-            fecha: string;
-        };
-        /** ReporteIngresosResponse */
-        ReporteIngresosResponse: {
-            /** Format: date */
-            periodo_desde: string;
-            /** Format: date */
-            periodo_hasta: string;
+            fecha_consulta: string;
+            /** Total */
             total: number;
-            total_con_folio: number;
-            total_pendientes: number;
-            por_tipo_ingreso: components["schemas"]["ConteoIngreso"][];
-            por_region: components["schemas"]["ConteoIngreso"][];
-            por_programa: components["schemas"]["ConteoIngreso"][];
-            por_convenio: components["schemas"]["ConteoIngreso"][];
-            items: components["schemas"]["IngresoReporteItem"][];
+            /** Dias Por Vencer */
+            dias_por_vencer: number;
+            /** Items */
+            items: components["schemas"]["ODAEstadoItem"][];
         };
         /** ReporteODASVencidasResponse */
         ReporteODASVencidasResponse: {
@@ -5644,6 +5880,17 @@ export interface components {
          * @enum {string}
          */
         Sexo: "F" | "M" | "otro";
+        /**
+         * SolicitudRecaUpdate
+         * @description Registra o corrige la fecha en que se solicitó la RECA (QA-003).
+         */
+        SolicitudRecaUpdate: {
+            /**
+             * Fecha Solicitud Reca
+             * Format: date
+             */
+            fecha_solicitud_reca: string;
+        };
         /** TareaItemCreate */
         TareaItemCreate: {
             /** Titulo */
@@ -5962,7 +6209,7 @@ export interface components {
             paciente_nombre?: string | null;
             /** Caso Ept Id */
             caso_ept_id?: number | null;
-            /** Detalle propio del tipo (p. ej. la proyección de reintegro del médico). */
+            /** Detalle */
             detalle?: string | null;
         };
         /** AlertaRead */
@@ -7146,6 +7393,41 @@ export interface operations {
             };
         };
     };
+    cambiar_gestion_api_v1_odas__oda_id__gestion_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                oda_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OdaGestionUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OdaGestionRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     importar_api_v1_odas_importar_post: {
         parameters: {
             query?: {
@@ -7967,26 +8249,6 @@ export interface operations {
             };
         };
     };
-    listar_duplicados_api_v1_reintegros_duplicados_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PacienteConCasosRepetidosRead"][];
-                };
-            };
-        };
-    };
     listar_casos_api_v1_reintegros_get: {
         parameters: {
             query?: {
@@ -8053,6 +8315,26 @@ export interface operations {
             };
         };
     };
+    listar_duplicados_api_v1_reintegros_duplicados_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PacienteConCasosRepetidosRead"][];
+                };
+            };
+        };
+    };
     obtener_caso_api_v1_reintegros__caso_id__get: {
         parameters: {
             query?: never;
@@ -8096,6 +8378,41 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["CasoReintegroUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CasoReintegroRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    registrar_solicitud_api_v1_reintegros__caso_id__solicitud_reca_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                caso_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SolicitudRecaUpdate"];
             };
         };
         responses: {
@@ -8207,41 +8524,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RecaRead"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    registrar_solicitud_api_v1_reintegros__caso_id__solicitud_reca_patch: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                caso_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SolicitudRecaUpdate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CasoReintegroRead"];
                 };
             };
             /** @description Validation Error */
@@ -9438,41 +9720,10 @@ export interface operations {
             };
         };
     };
-    get_reporte_ingresos_api_v1_reportes_ingresos_get: {
-        parameters: {
-            query?: {
-                fecha_desde?: string | null;
-                fecha_hasta?: string | null;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ReporteIngresosResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     get_odas_vencidas_api_v1_reportes_odas_vencidas_get: {
         parameters: {
             query?: {
+                /** @description regular | ley_karin | pipt (otro valor: coincidencia exacta) */
                 programa?: string | null;
                 region?: string | null;
                 comuna?: string | null;
@@ -9539,6 +9790,7 @@ export interface operations {
     get_odas_estado_api_v1_reportes_odas_estado_get: {
         parameters: {
             query?: {
+                /** @description activo | cerrado | encuadre | derivado */
                 estado_caso?: string | null;
                 programa?: string | null;
             };
@@ -9568,20 +9820,17 @@ export interface operations {
             };
         };
     };
-    cambiar_gestion_api_v1_odas__oda_id__gestion_patch: {
+    get_reporte_ingresos_api_v1_reportes_ingresos_get: {
         parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                oda_id: number;
+            query?: {
+                fecha_desde?: string | null;
+                fecha_hasta?: string | null;
             };
+            header?: never;
+            path?: never;
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["OdaGestionUpdate"];
-            };
-        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {
@@ -9589,7 +9838,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["OdaGestionRead"];
+                    "application/json": components["schemas"]["ReporteIngresosResponse"];
                 };
             };
             /** @description Validation Error */
@@ -10160,6 +10409,177 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ImportacionSalutemResultado"];
+                };
+            };
+        };
+    };
+    listar_api_v1_convenios_get: {
+        parameters: {
+            query?: {
+                solo_seleccionables?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConvenioRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    crear_api_v1_convenios_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConvenioCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConvenioRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    para_reportes_api_v1_convenios_para_reportes_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string[];
+                };
+            };
+        };
+    };
+    sugerido_api_v1_convenios_sugerido_get: {
+        parameters: {
+            query?: {
+                paciente_id?: number | null;
+                rut?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConvenioSugerido"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    actualizar_salutem_api_v1_convenios_actualizar_salutem_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActualizacionConvenios"];
+                };
+            };
+        };
+    };
+    actualizar_api_v1_convenios__convenio_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                convenio_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConvenioUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConvenioRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

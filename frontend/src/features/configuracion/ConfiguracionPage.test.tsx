@@ -39,6 +39,11 @@ describe("ConfiguracionPage (COMP-2609-02)", () => {
     );
   });
 
+  it("Coordinación ve el ítem Convenios", () => {
+    renderComo("Coordinacion");
+    expect(screen.getByRole("link", { name: /Convenios/i })).toHaveAttribute("href", "/convenios");
+  });
+
   it("Administrativo ve ventanas de proceso y profesionales", () => {
     renderComo("Administrativo");
     expect(screen.getByRole("link", { name: /Ventanas de proceso/i })).toBeInTheDocument();
