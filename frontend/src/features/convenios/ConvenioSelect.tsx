@@ -30,12 +30,21 @@ export function ConvenioSelect({ id, value, onChange, valorGuardado, sugerencia,
   const fueraDeCatalogo = valorGuardado && !nombres.includes(valorGuardado) ? valorGuardado : null;
 
   useEffect(() => {
+    if (tocado.current) return;
     const candidato = sugerido?.convenio;
-    if (!candidato || tocado.current || value !== "") return;
-    if (!candidato.seleccionable) return;
-    setAplicado(candidato.nombre);
-    onChange(candidato.nombre);
-  }, [sugerido, value, onChange]);
+    const vigente = candidato?.seleccionable ? candidato.nombre : null;
+    // La sugerencia aplicada dejó de valer (cambió el RUT: recargando, sin sugerido u otro
+    // convenio): se retira, para no dejar un convenio equivocado en silencio.
+    if (aplicado !== null && value === aplicado && vigente !== aplicado) {
+      setAplicado(null);
+      onChange("");
+      return;
+    }
+    if (vigente && value === "") {
+      setAplicado(vigente);
+      onChange(vigente);
+    }
+  }, [sugerido, value, aplicado, onChange]);
 
   return (
     <>

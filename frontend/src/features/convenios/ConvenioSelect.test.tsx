@@ -32,6 +32,36 @@ function mockCatalogo(sugerido: unknown = null) {
   return consultas;
 }
 
+function WrapperRut({ rutInicial }: { rutInicial: string }) {
+  const [valor, setValor] = useState("");
+  const [rut, setRut] = useState(rutInicial);
+  return (
+    <>
+      <button onClick={() => setRut("22.222.222-2")}>cambiar rut</button>
+      <label htmlFor="conv">Convenio</label>
+      <ConvenioSelect id="conv" value={valor} onChange={setValor} sugerencia={{ rut }} />
+    </>
+  );
+}
+
+function renderRut() {
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(
+    <QueryClientProvider client={qc}>
+      <WrapperRut rutInicial="11.111.111-1" />
+    </QueryClientProvider>,
+  );
+}
+
+function mockPorRut(porRut: Record<string, unknown>) {
+  server.use(
+    http.get(`${BASE}/api/v1/convenios`, () => HttpResponse.json([ISL, RANGERS])),
+    http.get(`${BASE}/api/v1/convenios/sugerido`, ({ request }) =>
+      HttpResponse.json({ convenio: porRut[new URL(request.url).searchParams.get("rut") ?? ""] ?? null }),
+    ),
+  );
+}
+
 function Wrapper({
   inicial = "",
   valorGuardado,
@@ -138,5 +168,36 @@ describe("ConvenioSelect", () => {
     await new Promise((r) => setTimeout(r, 50));
     expect(screen.getByLabelText("Convenio")).toHaveValue("");
     expect(screen.queryByText("Sugerido desde SALUTEM")).not.toBeInTheDocument();
+  });
+
+  it("al cambiar el RUT, retira el sugerido anterior si el nuevo no sugiere nada", async () => {
+    mockPorRut({ "11.111.111-1": ISL });
+    renderRut();
+    const user = userEvent.setup();
+    await waitFor(() => expect(screen.getByLabelText("Convenio")).toHaveValue("Convenio ISL MAULE"));
+    await user.click(screen.getByText("cambiar rut"));
+    await waitFor(() => expect(screen.getByLabelText("Convenio")).toHaveValue(""));
+    expect(screen.queryByText("Sugerido desde SALUTEM")).not.toBeInTheDocument();
+  });
+
+  it("al cambiar el RUT, reemplaza el sugerido por el del nuevo RUT", async () => {
+    mockPorRut({ "11.111.111-1": ISL, "22.222.222-2": RANGERS });
+    renderRut();
+    const user = userEvent.setup();
+    await waitFor(() => expect(screen.getByLabelText("Convenio")).toHaveValue("Convenio ISL MAULE"));
+    await user.click(screen.getByText("cambiar rut"));
+    await waitFor(() => expect(screen.getByLabelText("Convenio")).toHaveValue("Convenio Rangers"));
+    expect(screen.getByText("Sugerido desde SALUTEM")).toBeInTheDocument();
+  });
+
+  it("al cambiar el RUT, conserva lo que el usuario eligió", async () => {
+    mockPorRut({ "11.111.111-1": ISL });
+    renderRut();
+    const user = userEvent.setup();
+    await waitFor(() => expect(screen.getByLabelText("Convenio")).toHaveValue("Convenio ISL MAULE"));
+    await user.selectOptions(screen.getByLabelText("Convenio"), "Convenio Rangers");
+    await user.click(screen.getByText("cambiar rut"));
+    await new Promise((r) => setTimeout(r, 100));
+    expect(screen.getByLabelText("Convenio")).toHaveValue("Convenio Rangers");
   });
 });
