@@ -2,7 +2,6 @@
 
 from datetime import date, datetime, timezone
 
-import pytest
 from sqlalchemy import select
 
 from app.integrations.salutem.errors import SalutemAuthError, SalutemUnavailableError

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useConvenios, useConvenioSugerido } from "./hooks";
 
 interface Props {
@@ -23,28 +23,35 @@ const CLASE_BASE = "w-full rounded-md border border-ink-300 px-3 py-2 text-sm";
 export function ConvenioSelect({ id, value, onChange, valorGuardado, sugerencia, className }: Props) {
   const { data: convenios = [], isSuccess } = useConvenios(true);
   const { data: sugerido } = useConvenioSugerido(sugerencia ?? null);
-  const tocado = useRef(false);
+  // Una vez que el usuario elige algo, la sugerencia no vuelve a tocar el campo.
+  const [tocado, setTocado] = useState(false);
+  // Convenio que puso la sugerencia (no el usuario): solo para mostrar la nota.
   const [aplicado, setAplicado] = useState<string | null>(null);
 
   const nombres = convenios.map((c) => c.nombre);
   const fueraDeCatalogo = isSuccess && valorGuardado && !nombres.includes(valorGuardado) ? valorGuardado : null;
+  const candidato = sugerido?.convenio;
+  const vigente = candidato?.seleccionable ? candidato.nombre : null;
 
+  // `aplicado` se ajusta durante el render (patrón de React para derivar estado de props):
+  // marca el valor que puso la sugerencia y se suelta cuando el valor ya es otro.
+  if (!tocado && vigente !== null && value === vigente && aplicado !== vigente) {
+    setAplicado(vigente);
+  } else if (aplicado !== null && value !== aplicado) {
+    setAplicado(null);
+  }
+
+  // El efecto solo avisa al formulario; no toca estado propio.
   useEffect(() => {
-    if (tocado.current) return;
-    const candidato = sugerido?.convenio;
-    const vigente = candidato?.seleccionable ? candidato.nombre : null;
+    if (tocado) return;
     // La sugerencia aplicada dejó de valer (cambió el RUT: recargando, sin sugerido u otro
     // convenio): se retira, para no dejar un convenio equivocado en silencio.
     if (aplicado !== null && value === aplicado && vigente !== aplicado) {
-      setAplicado(null);
       onChange("");
       return;
     }
-    if (vigente && value === "") {
-      setAplicado(vigente);
-      onChange(vigente);
-    }
-  }, [sugerido, value, aplicado, onChange]);
+    if (vigente && value === "") onChange(vigente);
+  }, [tocado, aplicado, vigente, value, onChange]);
 
   return (
     <>
@@ -52,8 +59,7 @@ export function ConvenioSelect({ id, value, onChange, valorGuardado, sugerencia,
         id={id}
         value={value}
         onChange={(e) => {
-          tocado.current = true;
-          setAplicado(null);
+          setTocado(true);
           onChange(e.target.value);
         }}
         className={className ?? CLASE_BASE}
