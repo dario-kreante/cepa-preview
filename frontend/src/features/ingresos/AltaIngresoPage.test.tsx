@@ -10,6 +10,8 @@ import { AltaIngresoPage } from "./AltaIngresoPage";
 const BASE = import.meta.env.VITE_API_BASE_URL;
 let lastBody: any = null;
 const server = setupServer(
+  http.get(`${BASE}/api/v1/convenios`, () => HttpResponse.json([])),
+  http.get(`${BASE}/api/v1/convenios/sugerido`, () => HttpResponse.json({ convenio: null })),
   http.post(`${BASE}/api/v1/ingresos`, async ({ request }) => {
     lastBody = await request.json();
     return HttpResponse.json({ id: 1, paciente_id: 1, folio: "F-2026-0001", estado: "activo", fecha_ingreso: lastBody.fecha_ingreso, folio_manual: false, numero_siniestro: null, fecha_diep_diat: null, tipo_derivacion: lastBody.tipo_derivacion, tipo_ingreso: lastBody.tipo_ingreso, modelo_tratamiento: lastBody.modelo_tratamiento, diagnostico: lastBody.diagnostico, razon_social: null, tipo_alta: null, fecha_alta: null, flag_revision: false, observaciones: null, tratamiento_iniciado: false }, { status: 201 });

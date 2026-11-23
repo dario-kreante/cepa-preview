@@ -12,6 +12,7 @@ from app.models.imed_payload import ImedPayload
 from app.models.ingreso import Ingreso
 from app.models.paciente import Paciente
 from app.schemas.ingreso import IngresoCreate, IngresoUpdate
+from app.services.convenios import validar_tipo_convenio
 from app.services.folio import folio_existe, siguiente_folio
 from app.services.salutem_sync.borradores import resolver_alerta_borrador
 
@@ -121,6 +122,7 @@ def _resolver_folio(db, data: IngresoCreate, paciente: Paciente) -> tuple[str, b
 
 
 def crear_ingreso(db, data: IngresoCreate, actor: str | None = None) -> Ingreso:
+    validar_tipo_convenio(db, data.tipo_convenio, None)
     paciente = _obtener_o_crear_paciente(db, data)
     folio, folio_manual = _resolver_folio(db, data, paciente)
     _dejar_completo(db, paciente, actor)
@@ -156,7 +158,10 @@ def actualizar_ingreso(db, ingreso_id: int, data: IngresoUpdate) -> Ingreso:
     ingreso = db.get(Ingreso, ingreso_id)
     if ingreso is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ingreso no encontrado.")
-    for campo, valor in data.model_dump(exclude_unset=True).items():
+    cambios = data.model_dump(exclude_unset=True)
+    if "tipo_convenio" in cambios:
+        validar_tipo_convenio(db, cambios["tipo_convenio"], ingreso.tipo_convenio)
+    for campo, valor in cambios.items():
         if isinstance(valor, Enum):
             valor = valor.value
         destino = ingreso.paciente if campo in _CAMPOS_PACIENTE else ingreso

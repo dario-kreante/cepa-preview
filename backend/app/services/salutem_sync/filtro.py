@@ -9,6 +9,7 @@ from app.integrations.salutem.models import (
     AtencionSalutem,
     CitaSalutem,
     ContenidoArchivo,
+    ConvenioSalutem,
     EstadoCitaSalutem,
     PersonaSalutem,
     TipoFechaCita,
@@ -82,6 +83,10 @@ class ClientePersonasPermitidas:
         if salutem_id not in self._permitidas:
             return None
         return self._cliente.obtener_archivo(salutem_id, archivo_id)
+
+    def listar_convenios(self) -> list[ConvenioSalutem]:
+        # El catálogo no contiene datos de personas: no hay nada que filtrar.
+        return self._cliente.listar_convenios()
 
 
 def envolver_si_corresponde(

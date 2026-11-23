@@ -256,3 +256,66 @@ describe("PatientSheet — programa en la edición de la ficha", () => {
     expect(putSpy.mock.calls[0][0].programa).toBeNull();
   });
 });
+
+describe("PatientSheet — convenio en la edición de la ficha", () => {
+  const ISL = {
+    id: 1, nombre: "Convenio ISL MAULE", salutem_id: 10, activo_salutem: true,
+    visible: true, seleccionable: true, sincronizado_en: "2026-11-23T07:10:00Z",
+  };
+
+  function mockPut(respuesta: Record<string, unknown>) {
+    const putSpy = vi.fn();
+    server.use(
+      http.get(`${BASE}/api/v1/convenios`, () => HttpResponse.json([ISL])),
+      http.put(`${BASE}/api/v1/ingresos/:ingreso_id`, async ({ request }) => {
+        putSpy((await request.json()) as Record<string, unknown>);
+        return HttpResponse.json({ ...INGRESO, ...respuesta });
+      }),
+    );
+    return putSpy;
+  }
+
+  it("elige un convenio y el PUT lo incluye", async () => {
+    mocksBase();
+    const putSpy = mockPut({ tipo_convenio: "Convenio ISL MAULE" });
+    const { user, dialog } = await abrirEdicion();
+
+    await dialog.findByRole("option", { name: "Convenio ISL MAULE" });
+    await user.selectOptions(dialog.getByLabelText(/Convenio \(opcional\)/i), "Convenio ISL MAULE");
+    await user.click(dialog.getByRole("button", { name: /Guardar cambios/i }));
+    await waitFor(() => expect(putSpy).toHaveBeenCalledOnce());
+    expect(putSpy.mock.calls[0][0].tipo_convenio).toBe("Convenio ISL MAULE");
+  });
+
+  it("«Sin convenio» viaja como null", async () => {
+    mocksBase();
+    const putSpy = mockPut({ tipo_convenio: null });
+    const { user, dialog } = await abrirEdicion();
+
+    await user.click(dialog.getByRole("button", { name: /Guardar cambios/i }));
+    await waitFor(() => expect(putSpy).toHaveBeenCalledOnce());
+    expect(putSpy.mock.calls[0][0].tipo_convenio).toBeNull();
+  });
+
+  it("un convenio guardado fuera del catálogo se ve y se conserva al guardar", async () => {
+    mocksBase();
+    server.use(
+      http.get(`${BASE}/api/v1/pacientes/:paciente_id/vista-360`, () =>
+        HttpResponse.json({
+          paciente: PACIENTE,
+          ingresos: [{ ...INGRESO, tipo_convenio: "Convenio Antiguo" }],
+          farmacos: [], licencias: [], controles: [], reintegro: [],
+        }),
+      ),
+    );
+    const putSpy = mockPut({ tipo_convenio: "Convenio Antiguo" });
+    const { user, dialog } = await abrirEdicion();
+
+    const convenio = dialog.getByLabelText(/Convenio \(opcional\)/i);
+    await within(convenio).findByRole("option", { name: /Convenio Antiguo.*valor anterior/ });
+    expect(convenio).toHaveValue("Convenio Antiguo");
+    await user.click(dialog.getByRole("button", { name: /Guardar cambios/i }));
+    await waitFor(() => expect(putSpy).toHaveBeenCalledOnce());
+    expect(putSpy.mock.calls[0][0].tipo_convenio).toBe("Convenio Antiguo");
+  });
+});

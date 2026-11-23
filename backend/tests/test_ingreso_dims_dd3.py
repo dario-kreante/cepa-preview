@@ -6,6 +6,8 @@ TC-DD3-03: filtro por region vía Paciente join funciona.
 TC-DD3-04: filtro por tramo_etario derivado de paciente.edad funciona.
 """
 
+from app.models.convenio import Convenio
+
 # RUTs válidos computados algorítmicamente para este módulo de tests
 _RUT_A = "10000000-8"
 _RUT_B = "11000001-4"
@@ -15,8 +17,10 @@ _RUT_D = "13000003-7"
 
 # ── TC-DD3-01: crear ingreso con programa, luego filtrarlo en dashboard ───────
 
-def test_ingreso_con_programa_aparece_en_dashboard(as_coordinacion):
+def test_ingreso_con_programa_aparece_en_dashboard(as_coordinacion, db_session):
     """DD-3: programa poblado en crear_ingreso via POST y filtrable en dashboard."""
+    db_session.add(Convenio(nombre="DIEP", nombre_normalizado="diep", visible=True, activo_salutem=True))
+    db_session.flush()
     payload = {
         "rut": _RUT_A,
         "nombre": "Test Dims",

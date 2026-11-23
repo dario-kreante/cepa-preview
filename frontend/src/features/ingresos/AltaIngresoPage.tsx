@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
@@ -12,6 +13,8 @@ import { Label } from "@/components/ui/label";
 import { opcionesRegion } from "@/lib/regiones";
 import { TIPOS_INGRESO } from "./tiposIngreso";
 import { PROGRAMAS } from "./programas";
+import { ConvenioSelect } from "@/features/convenios/ConvenioSelect";
+import { rutValido } from "@/lib/rut";
 
 const TIPOS_DERIVACION = ["DIEP", "DIAT", "PAPT a flujo AT", "Reingreso FUMP", "Reingreso SUSESO", "Reingreso ISL", "Convenio U.Clinica", "Proyecto", "Particular", "PAPT"];
 
@@ -42,10 +45,23 @@ function AltaIngresoForm({ paciente }: { paciente?: PacienteRead }) {
     ? pendientes.find((p) => p.id === paciente.id)?.identificacion_salutem
     : null;
 
-  const { register, handleSubmit, formState: { errors } } = useForm<IngresoForm>({
+  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<IngresoForm>({
     resolver: zodResolver(rutOpcional ? ingresoSinRutSchema : ingresoSchema),
     defaultValues: valoresIniciales(paciente),
   });
+
+  // Convenio: con un borrador se consulta por paciente; en un alta nueva, por el RUT, y solo
+  // cuando ya valida (no a medio escribir).
+  const rutEscrito = watch("rut")?.trim() ?? "";
+  const sugerencia = paciente
+    ? { paciente_id: paciente.id }
+    : rutEscrito && rutValido(rutEscrito)
+      ? { rut: rutEscrito }
+      : null;
+  const cambiarConvenio = useCallback(
+    (v: string) => setValue("tipo_convenio", v, { shouldDirty: true }),
+    [setValue],
+  );
 
   async function onSubmit(values: IngresoForm) {
     try {
@@ -58,6 +74,8 @@ function AltaIngresoForm({ paciente }: { paciente?: PacienteRead }) {
         modelo_tratamiento: values.modelo_tratamiento?.trim() || null,
         // "Sin programa" (vacío) se guarda como null.
         programa: values.programa?.trim() || null,
+        // "Sin convenio" (vacío) se guarda como null.
+        tipo_convenio: values.tipo_convenio?.trim() || null,
       };
       const body = (paciente
         ? { ...datos, paciente_id: paciente.id, rut: values.rut?.trim() || null }
@@ -147,6 +165,15 @@ function AltaIngresoForm({ paciente }: { paciente?: PacienteRead }) {
           <option value="">Sin programa</option>
           {PROGRAMAS.map((p) => <option key={p} value={p}>{p}</option>)}
         </select>
+      </div>
+      <div className="space-y-1">
+        <Label htmlFor="tipo_convenio">Convenio (opcional)</Label>
+        <ConvenioSelect
+          id="tipo_convenio"
+          value={watch("tipo_convenio") ?? ""}
+          onChange={cambiarConvenio}
+          sugerencia={sugerencia}
+        />
       </div>
       <div className="space-y-1">
         <Label htmlFor="tipo_ingreso">Tipo de ingreso *</Label>

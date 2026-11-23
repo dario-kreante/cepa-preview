@@ -72,6 +72,8 @@ const MOCK_CONTROL: ControlMedicoRead = {
   factores_riesgo: "sobrecarga y hostilidad de jefatura",
   origen: "SALUTEM",
   salutem_cita_id: 99,
+  campos_editados: [],
+  fuera_de_oda: false,
 };
 
 function renderPage(token: string) {

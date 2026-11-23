@@ -80,6 +80,7 @@ const MOCK_CASO: import("./api").CasoEptRead = {
   region_trabajador: "Metropolitana",
   eista: "EISTA-001",
   factor_riesgo: "sobrecarga",
+  factores_adicionales: [],
   corresponde_ept: true,
   estado: "abierto",
   razon_social: "Empresa S.A.",

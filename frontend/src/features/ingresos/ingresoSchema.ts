@@ -29,6 +29,8 @@ export const ingresoSchema = z.object({
   es_reingreso: z.boolean().default(false),
   // Opcional: "" = Sin programa (se envía como null).
   programa: z.string().optional(),
+  // Opcional: "" = Sin convenio (se envía como null).
+  tipo_convenio: z.string().optional(),
 });
 
 /**

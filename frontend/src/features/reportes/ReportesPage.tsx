@@ -8,6 +8,7 @@ import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { BarChart3, FileText } from "lucide-react";
 import { OdasTab } from "./OdasTab";
+import { useConveniosParaReportes } from "@/features/convenios/hooks";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -195,6 +196,8 @@ function ConvenioTab() {
   const [hasta, setHasta] = useState("");
   const [convenio, setConvenio] = useState("");
   const m = useReporteConvenio();
+  // Catálogo (incluso ocultos) más los valores antiguos de los ingresos.
+  const convenios = useConveniosParaReportes();
 
   async function gen() {
     if (!convenio.trim()) {
@@ -224,13 +227,25 @@ function ConvenioTab() {
         extra={
           <div>
             <Label htmlFor="convenio">Tipo convenio *</Label>
-            <Input
+            <select
               id="convenio"
               value={convenio}
               onChange={(e) => setConvenio(e.target.value)}
-              placeholder="Ej. FONASA"
-              className="h-9 w-[160px]"
-            />
+              className="h-9 w-[200px] pl-3 pr-8 text-[12.5px] border rounded-md bg-card hover:bg-muted/30 cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring font-medium"
+            >
+              <option value="">
+                {convenios.isPending
+                  ? "Cargando convenios…"
+                  : convenios.isError
+                    ? "No se pudieron cargar los convenios."
+                    : "Elige un convenio"}
+              </option>
+              {(convenios.data ?? []).map((nombre) => (
+                <option key={nombre} value={nombre}>
+                  {nombre}
+                </option>
+              ))}
+            </select>
           </div>
         }
       />

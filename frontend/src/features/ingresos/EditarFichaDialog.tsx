@@ -7,7 +7,7 @@
  * es silencioso: el error queda visible y el formulario conserva lo escrito.
  */
 import { opcionesRegion } from "@/lib/regiones";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -25,6 +25,7 @@ import { Label } from "@/components/ui/label";
 import { useActualizarIngreso } from "./hooks";
 import { TIPOS_INGRESO } from "./tiposIngreso";
 import { PROGRAMAS, opcionesPrograma } from "./programas";
+import { ConvenioSelect } from "@/features/convenios/ConvenioSelect";
 import type { IngresoRead, IngresoUpdate, PacienteRead } from "./api";
 
 const TIPOS_DERIVACION = [
@@ -57,6 +58,7 @@ const edicionSchema = z.object({
   razon_social: z.string().optional(),
   numero_siniestro: z.string().optional(),
   programa: z.string().optional(),
+  tipo_convenio: z.string().optional(),
 });
 
 type EdicionForm = z.infer<typeof edicionSchema>;
@@ -80,6 +82,7 @@ function valoresIniciales(paciente: PacienteRead, ingreso: IngresoRead): Edicion
     razon_social: ingreso.razon_social ?? "",
     numero_siniestro: ingreso.numero_siniestro ?? "",
     programa: ingreso.programa ?? "",
+    tipo_convenio: ingreso.tipo_convenio ?? "",
   };
 }
 
@@ -104,6 +107,8 @@ function aCuerpo(v: EdicionForm): IngresoUpdate {
     numero_siniestro: vacioANull(v.numero_siniestro),
     // "Sin programa" viaja como null; un programa antiguo se envía tal cual.
     programa: vacioANull(v.programa),
+    // "Sin convenio" viaja como null; uno antiguo se envía tal cual (el backend lo acepta si no cambió).
+    tipo_convenio: vacioANull(v.tipo_convenio),
   };
 }
 
@@ -125,11 +130,18 @@ export function EditarFichaDialog({ paciente, ingreso, open, onOpenChange }: Pro
     register,
     handleSubmit,
     reset,
+    watch,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<EdicionForm>({
     resolver: zodResolver(edicionSchema),
     defaultValues: valoresIniciales(paciente, ingreso),
   });
+
+  const cambiarConvenio = useCallback(
+    (v: string) => setValue("tipo_convenio", v, { shouldDirty: true }),
+    [setValue],
+  );
 
   // Al abrir, el formulario parte de los datos vigentes.
   useEffect(() => {
@@ -262,6 +274,16 @@ export function EditarFichaDialog({ paciente, ingreso, open, onOpenChange }: Pro
                   </option>
                 ))}
               </select>
+            </div>
+            <div>
+              <Label htmlFor="editar-tipo_convenio">Convenio (opcional)</Label>
+              <ConvenioSelect
+                id="editar-tipo_convenio"
+                className={selectClass}
+                value={watch("tipo_convenio") ?? ""}
+                onChange={cambiarConvenio}
+                valorGuardado={ingreso.tipo_convenio}
+              />
             </div>
             <div className="sm:col-span-2">{campo("diagnostico", "Diagnóstico")}</div>
             {campo("modelo_tratamiento", "Modelo de tratamiento")}

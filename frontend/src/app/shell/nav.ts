@@ -16,6 +16,7 @@ import {
   BellRing,
   UserRoundSearch,
   Contact,
+  Handshake,
   type LucideIcon,
 } from "lucide-react";
 import { tieneRol, type Rol } from "@/lib/rbac";
@@ -108,6 +109,12 @@ export const NAV: NavSection[] = [
         roles: ["Coordinacion", "Administrativo"],
       },
       {
+        to: "/convenios",
+        label: "Convenios",
+        icon: Handshake,
+        roles: ["Coordinacion", "Administrativo"],
+      },
+      {
         to: "/config-alertas",
         label: "Umbrales de alerta",
         icon: BellRing,
@@ -146,6 +153,7 @@ export const TITLE_MAP: Record<string, string> = {
   "/config-formularios": "Formularios dinámicos",
   "/ventanas-proceso": "Ventanas de proceso",
   "/profesionales": "Profesionales",
+  "/convenios": "Convenios",
   "/config-alertas": "Umbrales de alerta",
   "/configuracion": "Configuración",
   "/ayuda": "Ayuda y soporte",
@@ -170,6 +178,7 @@ export const CRUMBS_MAP: Record<string, string> = {
   "/config-formularios": "Inicio · Administración · Formularios dinámicos",
   "/ventanas-proceso": "Inicio · Administración · Ventanas de proceso",
   "/profesionales": "Inicio · Administración · Profesionales",
+  "/convenios": "Inicio · Administración · Convenios",
   "/config-alertas": "Inicio · Administración · Umbrales de alerta",
   "/configuracion": "Inicio · Configuración",
   "/ayuda": "Inicio · Ayuda y soporte",

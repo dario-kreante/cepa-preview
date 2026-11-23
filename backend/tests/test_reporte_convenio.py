@@ -60,6 +60,18 @@ def test_reporte_convenio_sin_actividad_totales_cero(as_coordinacion, datos_conv
     assert total == 0
 
 
+def test_reporte_convenio_encuentra_legado_con_espacios(as_coordinacion, db_session, datos_convenio):
+    datos_convenio.tipo_convenio = "DIEP "
+    db_session.commit()
+    resp = as_coordinacion.get("/api/v1/reportes/convenio", params={
+        "tipo_convenio": "DIEP",
+        "fecha_desde": "2026-04-01",
+        "fecha_hasta": "2026-04-30",
+    })
+    assert resp.status_code == 200
+    assert resp.json()["items"][0]["total_atenciones"] == 1
+
+
 # ── TC-092-05: Auditor puede leer ─────────────────────────────────────────────
 
 def test_reporte_convenio_auditor_puede_leer(as_auditor, datos_convenio):

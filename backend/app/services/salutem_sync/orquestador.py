@@ -21,6 +21,7 @@ from app.config import get_settings
 from app.integrations.salutem.client import SalutemStubClient
 from app.integrations.salutem.protocol import SalutemClientProtocol
 from app.models.salutem_sync import SalutemSyncEjecucion
+from app.services.convenios_sync import sincronizar_convenios
 from app.services.salutem_sync.archivos import refrescar_archivos
 from app.services.salutem_sync.backfill import DIAS_FUTURO, ejecutar_backfill
 from app.services.salutem_sync.bitacora import (
@@ -128,6 +129,23 @@ def correr(
             log.exception("Modo %s: falló la sincronización de profesionales", modo)
             db.rollback()
             errores = errores + [f"profesionales: {type(e).__name__}: {e}"]
+        if modo == "fria":
+            try:
+                convenios = sincronizar_convenios(db, cliente, ahora())
+                db.commit()
+                # Choques de nombre y nombres inválidos: se avisan en el log, no marcan la corrida
+                # `con_errores` (si no, un choque permanente congelaría la ventana de citas).
+                for m in convenios.errores:
+                    log.warning("Convenios: %s", m)
+                log.info(
+                    "Convenios: %d creados, %d actualizados, %d desactivados, %d renombrados (%d ingresos)",
+                    convenios.creados, convenios.actualizados, convenios.desactivados,
+                    convenios.renombrados, convenios.ingresos_renombrados,
+                )
+            except Exception as e:  # noqa: BLE001 — un fallo de este paso no debe perder el resto del ciclo
+                log.exception("Modo %s: falló la sincronización de convenios", modo)
+                db.rollback()
+                errores = errores + [f"convenios: {type(e).__name__}: {e}"]
         try:
             desde = get_settings().salutem_borradores_desde_fecha
         except ValueError as e:

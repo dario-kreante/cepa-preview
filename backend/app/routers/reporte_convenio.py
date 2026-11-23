@@ -46,7 +46,8 @@ def get_reporte_convenio(
     filtros = FiltrosDashboard(
         fecha_desde=fecha_desde,
         fecha_hasta=fecha_hasta,
-        tipo_convenio=tipo_convenio,
+        # El convenio se filtra abajo con trim (valores legados con espacios); no se repite acá.
+        tipo_convenio=None,
         profesional_id=profesional_id,
         tipo_atencion=tipo_atencion,
         programa=programa,
@@ -57,7 +58,7 @@ def get_reporte_convenio(
             select(func.count())
             .select_from(Cita)
             .join(Ingreso, Cita.ingreso_id == Ingreso.id)
-            .where(Ingreso.tipo_convenio == tipo_convenio)
+            .where(func.trim(Ingreso.tipo_convenio) == tipo_convenio)
             .where(condicion_citas_reportables())
             .where(Cita.estado == estado)
             .where(Cita.fecha >= fecha_desde)

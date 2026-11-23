@@ -17,6 +17,7 @@ const DESCRIPCIONES: Record<string, string> = {
   "/config-formularios": "Campos y versiones de los formularios dinámicos de ingreso.",
   "/ventanas-proceso": "Columnas y orden por defecto de los listados de cada proceso.",
   "/profesionales": "Profesionales que aparecen en el agendamiento; importación desde SALUTEM.",
+  "/convenios": "Convenios de la Unidad Clínica; se actualizan desde SALUTEM.",
 };
 
 export function ConfiguracionPage() {

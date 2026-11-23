@@ -65,7 +65,7 @@ class Ingreso(Base):
     # esos datos viven en Paciente y se acceden vía JOIN.
     programa: Mapped[str | None] = mapped_column(String(40), nullable=True)
     profesional_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
-    tipo_convenio: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    tipo_convenio: Mapped[str | None] = mapped_column(String(120), nullable=True)
     especialidad: Mapped[str | None] = mapped_column(String(60), nullable=True)
     tipo_atencion: Mapped[str | None] = mapped_column(String(40), nullable=True)
     created_at: Mapped[datetime] = mapped_column(

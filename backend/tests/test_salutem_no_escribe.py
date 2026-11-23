@@ -167,6 +167,7 @@ METODOS_LECTURA_APROBADOS = frozenset(
         "listar_personas",
         "listar_archivos",
         "obtener_archivo",
+        "listar_convenios",
     }
 )
 
