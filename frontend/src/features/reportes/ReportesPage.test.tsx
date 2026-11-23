@@ -474,3 +474,56 @@ describe("ReportesPage — Licencias muestra el folio real", () => {
     expect(screen.queryByText("4242")).toBeNull();
   });
 });
+
+describe("ReportesPage — pestaña Convenio elige del catálogo", () => {
+  function conConvenios() {
+    server.use(
+      http.get(`${BASE}/api/v1/convenios/para-reportes`, () =>
+        HttpResponse.json(["Convenio SSM", "ISL"]),
+      ),
+    );
+  }
+
+  function abrirConvenio() {
+    renderPage("/reportes");
+    fireEvent.click(screen.getByTestId("tab-convenio"));
+    fireEvent.change(document.getElementById("r-desde")!, { target: { value: "2026-01-01" } });
+    fireEvent.change(document.getElementById("r-hasta")!, { target: { value: "2026-12-31" } });
+  }
+
+  it("la pestaña Convenio ofrece los convenios del catálogo y los valores antiguos", async () => {
+    conConvenios();
+    abrirConvenio();
+    expect(await screen.findByRole("option", { name: "Convenio SSM" })).toBeTruthy();
+    expect(screen.getByRole("option", { name: "ISL" })).toBeTruthy();
+    expect(screen.getByRole("option", { name: "Elige un convenio" })).toBeTruthy();
+  });
+
+  it("generar sin elegir convenio muestra «Indica el tipo de convenio.»", async () => {
+    conConvenios();
+    abrirConvenio();
+    await screen.findByRole("option", { name: "ISL" });
+    fireEvent.click(screen.getByTestId("btn-generar-reporte"));
+    expect(await screen.findByText("Indica el tipo de convenio.")).toBeTruthy();
+  });
+
+  it("genera con el convenio elegido", async () => {
+    conConvenios();
+    let recibido: string | null = null;
+    server.use(
+      http.get(`${BASE}/api/v1/reportes/convenio`, ({ request }) => {
+        recibido = new URL(request.url).searchParams.get("tipo_convenio");
+        return HttpResponse.json({
+          periodo_desde: "2026-01-01",
+          periodo_hasta: "2026-12-31",
+          items: [],
+        });
+      }),
+    );
+    abrirConvenio();
+    await screen.findByRole("option", { name: "Convenio SSM" });
+    fireEvent.change(document.getElementById("convenio")!, { target: { value: "Convenio SSM" } });
+    fireEvent.click(screen.getByTestId("btn-generar-reporte"));
+    await waitFor(() => expect(recibido).toBe("Convenio SSM"));
+  });
+});

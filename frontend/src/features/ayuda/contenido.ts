@@ -398,6 +398,25 @@ export const GUIAS: Guia[] = [
     ],
   },
   {
+    ruta: "/convenios",
+    titulo: "Convenios",
+    resumen: "Catálogo de convenios de la Unidad Clínica. Se administra en Configuración → Convenios y viene de SALUTEM.",
+    tareas: [
+      {
+        titulo: "Tener un convenio nuevo en el SIGE",
+        pasos: [
+          "Créalo en SALUTEM: los convenios se crean allá.",
+          "Presiona «Actualizar desde SALUTEM» para traerlo de inmediato; si no, llega con la sincronización diaria.",
+        ],
+      },
+    ],
+    consejos: [
+      "Si creas un convenio solo en el SIGE, créalo también en SALUTEM para que ambos sistemas coincidan.",
+      "En el ingreso, el convenio se precarga con el «origen» del paciente en SALUTEM y se puede corregir.",
+      "El reporte «Convenio» elige entre estos convenios y los valores antiguos de los ingresos.",
+    ],
+  },
+  {
     ruta: "/profesionales",
     titulo: "Profesionales",
     resumen: "Catálogo de profesionales que se usa en Controles y en Pacientes por citar.",
