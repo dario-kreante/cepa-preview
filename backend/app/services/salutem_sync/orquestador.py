@@ -133,7 +133,10 @@ def correr(
             try:
                 convenios = sincronizar_convenios(db, cliente, ahora())
                 db.commit()
-                errores = errores + [f"convenios: {m}" for m in convenios.errores]
+                # Choques de nombre y nombres inválidos: se avisan en el log, no marcan la corrida
+                # `con_errores` (si no, un choque permanente congelaría la ventana de citas).
+                for m in convenios.errores:
+                    log.warning("Convenios: %s", m)
                 log.info(
                     "Convenios: %d creados, %d actualizados, %d desactivados, %d renombrados (%d ingresos)",
                     convenios.creados, convenios.actualizados, convenios.desactivados,

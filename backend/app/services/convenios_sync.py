@@ -73,10 +73,11 @@ def sincronizar_convenios(
     for ent in entrantes:
         nombre = " ".join(ent.nombre.split())
         norm = normalizar_nombre(nombre)
+        # Aunque el nombre no sirva, SALUTEM sigue enviándolo: no es un convenio ausente.
+        vistos.add(ent.salutem_id)
         if not norm or len(nombre) > _LARGO_NOMBRE:
             r.errores.append(f"convenio {ent.salutem_id}: nombre inválido o de más de {_LARGO_NOMBRE} caracteres")
             continue
-        vistos.add(ent.salutem_id)
 
         conv = por_sid.get(ent.salutem_id)
         if conv is None:

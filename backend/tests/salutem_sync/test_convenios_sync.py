@@ -41,13 +41,20 @@ def test_crea_convenios_y_sin_convenio_nace_oculto(db_session):
     assert _por_sid(db_session, 1415).visible is False
 
 
-def test_adopta_manual_por_nombre_sin_tildes_ni_mayusculas(db_session):
+def test_adopta_manual_por_nombre_sin_tildes_ni_mayusculas(db_session, ingreso_fixture):
     manual = _convenio(db_session, "convenio colegio ingles")
+    ingreso_fixture.tipo_convenio = "convenio colegio ingles"
+    db_session.flush()
 
     r = sincronizar_convenios(db_session, _falso((1486, "Convenio Colegio Inglés", True)), AHORA)
 
     assert r.creados == 0
     assert manual.salutem_id == 1486
+    assert manual.nombre == "Convenio Colegio Inglés"
+    db_session.refresh(ingreso_fixture)
+    assert ingreso_fixture.tipo_convenio == "Convenio Colegio Inglés"
+    trazas = db_session.scalars(select(AuditLog).where(AuditLog.action == "convenio_renombrado")).all()
+    assert len(trazas) == 1
     assert db_session.scalar(select(func.count()).select_from(Convenio)) == 1
 
 
@@ -122,3 +129,14 @@ def test_salutem_caido_propaga_y_no_cambia_nada(db_session):
 
     assert db_session.scalar(select(func.count()).select_from(Convenio)) == 1
     assert _por_sid(db_session, 1).activo_salutem is True
+
+
+def test_nombre_invalido_de_uno_existente_no_lo_desactiva(db_session):
+    conv = _convenio(db_session, "Convenio Largo", salutem_id=77)
+
+    r = sincronizar_convenios(db_session, _falso((77, "x" * 121, True)), AHORA)
+
+    assert conv.activo_salutem is True
+    assert conv.nombre == "Convenio Largo"
+    assert r.desactivados == 0
+    assert len(r.errores) == 1

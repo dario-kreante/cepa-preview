@@ -306,3 +306,16 @@ def test_fria_sincroniza_convenios_y_caliente_no(db_session, salutem, ritmo):
     assert _correr(db_session, salutem, ritmo, modo="fria") == 0
     (conv,) = db_session.scalars(select(Convenio)).all()
     assert conv.salutem_id == 1486
+
+
+def test_choque_de_convenios_no_deja_la_fria_con_errores(db_session, salutem, ritmo):
+    from app.models.convenio import Convenio
+
+    db_session.add(Convenio(nombre="Convenio Rangers", nombre_normalizado="convenio rangers", salutem_id=9))
+    db_session.flush()
+    salutem.convenios = [{"id": 1500, "nombre": "Convenio RANGERS", "activo": True, "tipo": "CONVENIO"}]
+
+    assert _correr(db_session, salutem, ritmo, modo="fria") == 0
+
+    (ejecucion,) = _ejecuciones(db_session, "fria")
+    assert ejecucion.estado == "ok"
