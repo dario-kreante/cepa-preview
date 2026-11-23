@@ -293,3 +293,16 @@ def test_citas_no_avanza_su_desde_tras_una_ejecucion_con_errores(db_session, sal
     # Contra el valor conocido: en Oracle `previa.inicio` se recarga naive (columna DATE).
     assert recibidos == [AHORA - timedelta(hours=3)]
     assert ultimo_inicio_ok(db_session) == AHORA  # la corrida limpia sí lo adelanta
+
+
+def test_fria_sincroniza_convenios_y_caliente_no(db_session, salutem, ritmo):
+    from app.models.convenio import Convenio
+
+    salutem.convenios = [{"id": 1486, "nombre": "Colegio Inglés", "activo": True, "tipo": "CONVENIO"}]
+
+    assert _correr(db_session, salutem, ritmo, modo="caliente") == 0
+    assert db_session.scalars(select(Convenio)).all() == []
+
+    assert _correr(db_session, salutem, ritmo, modo="fria") == 0
+    (conv,) = db_session.scalars(select(Convenio)).all()
+    assert conv.salutem_id == 1486
