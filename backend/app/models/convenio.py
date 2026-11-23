@@ -3,8 +3,9 @@
 ``ingreso.tipo_convenio`` guarda el *nombre* del convenio (texto), no una clave: este catálogo
 es la lista de opciones que ofrece el formulario y lo que el sync de SALUTEM mantiene al día.
 
-- ``salutem_id`` / ``activo_salutem`` / ``sincronizado_en`` los escribe solo el sync; son nulos
-  en los convenios creados a mano en SIGE.
+- ``salutem_id`` / ``sincronizado_en`` los escribe solo el sync; son nulos en los convenios
+  creados a mano en SIGE. ``activo_salutem`` nunca es nulo (los manuales nacen en true) y solo
+  cuenta cuando hay ``salutem_id``.
 - ``visible`` lo cambia solo el CEPA (oculta un convenio del formulario sin borrarlo). El sync
   no lo toca, salvo al crear «Sin Convenio», que nace oculto.
 - Un convenio nunca se borra: los ingresos antiguos siguen apuntando a su nombre.

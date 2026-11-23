@@ -140,3 +140,13 @@ def test_nombre_invalido_de_uno_existente_no_lo_desactiva(db_session):
     assert conv.nombre == "Convenio Largo"
     assert r.desactivados == 0
     assert len(r.errores) == 1
+
+
+def test_catalogo_vacio_no_desactiva_nada(db_session):
+    c = _convenio(db_session, "Antiguo", salutem_id=1237)
+
+    r = sincronizar_convenios(db_session, _falso(), AHORA)
+
+    assert c.activo_salutem is True
+    assert r.desactivados == 0
+    assert r.errores == ["SALUTEM devolvió el catálogo de convenios vacío; no se desactivó nada."]

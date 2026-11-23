@@ -8,8 +8,8 @@ from sqlalchemy.orm import Session
 
 from app.auth.deps import CurrentUser, require_role
 from app.db.session import get_db
-from app.integrations.salutem.client import get_salutem_client
-from app.integrations.salutem.errors import SalutemUnavailableError
+from app.integrations.salutem.client import SalutemStubClient, get_salutem_client
+from app.integrations.salutem.errors import SalutemError, SalutemUnavailableError
 from app.models.convenio import Convenio
 from app.schemas.convenio import (
     ActualizacionConvenios,
@@ -57,12 +57,22 @@ def actualizar_salutem(
     db: Session = Depends(get_db),
     actor: CurrentUser = Depends(_escritor),
 ) -> ActualizacionConvenios:
+    cliente = get_salutem_client()
+    if isinstance(cliente, SalutemStubClient):
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="SALUTEM no está configurado."
+        )
     try:
-        resultado = servicio.actualizar_desde_salutem(db, get_salutem_client(), actor.username)
+        resultado = servicio.actualizar_desde_salutem(db, cliente, actor.username)
     except SalutemUnavailableError:
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY, detail="SALUTEM no respondió; intenta más tarde."
+        )
+    except SalutemError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY, detail=f"SALUTEM rechazó la consulta: {exc}"
         )
     db.commit()
     return ActualizacionConvenios(

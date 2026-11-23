@@ -82,3 +82,13 @@ def test_editar_conserva_valor_antiguo(as_admin, db_session, ingreso_fixture):
 def test_editar_a_valor_desconocido_422(as_admin, ingreso_fixture):
     r = as_admin.put(f"/api/v1/ingresos/{ingreso_fixture.id}", json={"tipo_convenio": "Inventado"})
     assert r.status_code == 422, r.text
+
+
+def test_editar_conserva_valor_antiguo_con_espacios(as_admin, db_session, ingreso_fixture):
+    ingreso_fixture.tipo_convenio = "ISL "
+    db_session.flush()
+    r = as_admin.put(
+        f"/api/v1/ingresos/{ingreso_fixture.id}",
+        json={"tipo_convenio": "ISL", "diagnostico": "x"},
+    )
+    assert r.status_code == 200, r.text

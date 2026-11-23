@@ -66,6 +66,11 @@ def sincronizar_convenios(
     r = ResultadoConvenios()
 
     existentes = list(db.scalars(select(Convenio)).all())
+    if not entrantes and any(c.salutem_id is not None for c in existentes):
+        # Un catálogo vacío es más probable que sea un fallo (cliente sin configurar, respuesta
+        # truncada) que un catálogo realmente vacío: no se desactiva nada.
+        r.errores.append("SALUTEM devolvió el catálogo de convenios vacío; no se desactivó nada.")
+        return r
     por_sid = {c.salutem_id: c for c in existentes if c.salutem_id is not None}
     por_norm = {c.nombre_normalizado: c for c in existentes}
     vistos: set[int] = set()

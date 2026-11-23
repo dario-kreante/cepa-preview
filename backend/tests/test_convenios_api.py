@@ -5,7 +5,7 @@ from datetime import date, datetime, timezone
 import pytest
 from sqlalchemy import select
 
-from app.integrations.salutem.errors import SalutemUnavailableError
+from app.integrations.salutem.errors import SalutemAuthError, SalutemUnavailableError
 from app.models.audit_log import AuditLog
 from app.models.convenio import Convenio
 from app.models.ingreso import Ingreso
@@ -97,7 +97,7 @@ def test_renombrar_arrastra_ingresos_y_deja_una_traza(as_admin, db_session):
     assert ing.tipo_convenio == "Manual Nuevo"
     trazas = db_session.scalars(select(AuditLog).where(AuditLog.action == "convenio_renombrado")).all()
     assert len(trazas) == 1
-    assert trazas[0].valor_anterior == "Manual Viejo" and trazas[0].valor_nuevo == "Manual Nuevo"
+    assert trazas[0].valor_anterior == "Manual Viejo" and trazas[0].valor_nuevo == "Manual Nuevo (1 ingresos)"
 
 
 def test_patch_inexistente_404(as_admin):
@@ -132,6 +132,27 @@ def test_actualizar_salutem_caido_502(as_admin, db_session, monkeypatch):
     assert r.status_code == 502
     assert r.json()["detail"] == "SALUTEM no respondió; intenta más tarde."
     assert db_session.scalars(select(Convenio)).all() == []
+
+
+def test_actualizar_salutem_otro_error_502(as_admin, db_session, monkeypatch):
+    class Cliente:
+        def listar_convenios(self):
+            raise SalutemAuthError("SALUTEM rechazó la credencial: API_KEY_NO_VALIDA")
+
+    monkeypatch.setattr("app.routers.convenios.get_salutem_client", lambda: Cliente())
+    r = as_admin.post(f"{URL}/actualizar-salutem")
+    assert r.status_code == 502
+    assert r.json()["detail"].startswith("SALUTEM rechazó la consulta: ")
+    assert "API_KEY_NO_VALIDA" in r.json()["detail"]
+
+
+def test_actualizar_salutem_sin_configurar_503(as_admin, db_session, monkeypatch):
+    from app.integrations.salutem.client import SalutemStubClient
+
+    monkeypatch.setattr("app.routers.convenios.get_salutem_client", lambda: SalutemStubClient())
+    r = as_admin.post(f"{URL}/actualizar-salutem")
+    assert r.status_code == 503
+    assert r.json()["detail"] == "SALUTEM no está configurado."
 
 
 def test_auditor_no_actualiza_salutem(as_auditor):
@@ -198,6 +219,16 @@ def test_sugerido_paciente_sin_persona_usa_su_rut(as_admin, db_session):
     _persona(db_session, 505, "390001185", "Convenio ISL Maule")
     c = _convenio(db_session, "Convenio ISL Maule")
     pac = Paciente(rut="390001185", nombre="X", sexo="M", edad=50, region="Maule")
+    db_session.add(pac)
+    db_session.flush()
+    r = as_admin.get(f"{URL}/sugerido", params={"paciente_id": pac.id})
+    assert r.json()["convenio"]["id"] == c.id
+
+
+def test_sugerido_persona_vinculada_sin_fila_usa_el_rut(as_admin, db_session):
+    _persona(db_session, 606, "390001185", "Convenio ISL Maule")
+    c = _convenio(db_session, "Convenio ISL Maule")
+    pac = Paciente(rut="390001185", nombre="X", sexo="M", edad=50, region="Maule", salutem_persona_id=999)
     db_session.add(pac)
     db_session.flush()
     r = as_admin.get(f"{URL}/sugerido", params={"paciente_id": pac.id})

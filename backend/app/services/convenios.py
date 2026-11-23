@@ -38,6 +38,9 @@ def validar_tipo_convenio(db: Session, nuevo: str | None, actual: str | None) ->
     """
     if nuevo is None or nuevo == actual:
         return
+    # Un valor legado con espacios sobrantes («ISL ») se acepta si el cliente lo manda recortado.
+    if actual is not None and normalizar_nombre(nuevo) == normalizar_nombre(actual):
+        return
     if any(c.nombre == nuevo for c in listar_convenios(db, solo_seleccionables=True)):
         return
     raise HTTPException(
@@ -95,12 +98,15 @@ def actualizar_convenio(db: Session, convenio_id: int, datos: ConvenioUpdate, ac
             raise _409_nombre()
         anterior = convenio.nombre
         # ``ingreso.tipo_convenio`` guarda el nombre: los ingresos del convenio lo siguen.
-        db.execute(update(Ingreso).where(Ingreso.tipo_convenio == anterior).values(tipo_convenio=datos.nombre))
+        n = db.execute(
+            update(Ingreso).where(Ingreso.tipo_convenio == anterior).values(tipo_convenio=datos.nombre)
+        ).rowcount
+        n = max(n or 0, 0)
         convenio.nombre = datos.nombre
         convenio.nombre_normalizado = normalizado
         record_audit(
             db, actor=actor, rol=rol, action="convenio_renombrado", entity="convenio",
-            entity_id=str(convenio.id), valor_anterior=anterior, valor_nuevo=datos.nombre,
+            entity_id=str(convenio.id), valor_anterior=anterior, valor_nuevo=f"{datos.nombre} ({n} ingresos)",
         )
 
     if datos.visible is not None and datos.visible != convenio.visible:
@@ -129,8 +135,8 @@ def convenio_sugerido(db: Session, *, paciente_id: int | None, rut: str | None) 
                 persona = db.scalar(
                     select(SalutemPersona).where(SalutemPersona.salutem_id == paciente.salutem_persona_id)
                 )
-            elif paciente.rut:
-                # Sin vínculo con SALUTEM: se busca por el RUT del propio paciente.
+            if persona is None and paciente.rut:
+                # Sin vínculo con SALUTEM (o sin su copia local): se busca por el RUT del propio paciente.
                 rut = paciente.rut
     if persona is None and rut:
         try:
