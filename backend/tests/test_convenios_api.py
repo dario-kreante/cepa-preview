@@ -82,6 +82,24 @@ def test_renombrar_manual_y_choque(as_admin, db_session):
     assert r.status_code == 200 and r.json()["nombre"] == "Manual C"
 
 
+def test_renombrar_arrastra_ingresos_y_deja_una_traza(as_admin, db_session):
+    c = _convenio(db_session, "Manual Viejo")
+    p = Paciente(rut="390001185", nombre="X", sexo="M", edad=50, region="Maule")
+    db_session.add(p)
+    db_session.flush()
+    ing = Ingreso(paciente_id=p.id, folio="F-9", folio_manual=True, fecha_ingreso=date(2026, 9, 1),
+                  tipo_derivacion="DIEP", tipo_ingreso="convenio", modelo_tratamiento="ambulatorio",
+                  diagnostico="prueba", estado="activo", tipo_convenio="Manual Viejo")
+    db_session.add(ing)
+    db_session.flush()
+    assert as_admin.patch(f"{URL}/{c.id}", json={"nombre": "Manual Nuevo"}).status_code == 200
+    db_session.refresh(ing)
+    assert ing.tipo_convenio == "Manual Nuevo"
+    trazas = db_session.scalars(select(AuditLog).where(AuditLog.action == "convenio_renombrado")).all()
+    assert len(trazas) == 1
+    assert trazas[0].valor_anterior == "Manual Viejo" and trazas[0].valor_nuevo == "Manual Nuevo"
+
+
 def test_patch_inexistente_404(as_admin):
     assert as_admin.patch(f"{URL}/999999", json={"visible": False}).status_code == 404
 
@@ -91,7 +109,7 @@ def test_ocultar(as_coordinacion, db_session):
     r = as_coordinacion.patch(f"{URL}/{c.id}", json={"visible": False})
     assert r.status_code == 200
     assert r.json()["visible"] is False and r.json()["seleccionable"] is False
-    assert db_session.scalar(select(AuditLog).where(AuditLog.entity == "convenio")) is not None
+    assert db_session.scalar(select(AuditLog).where(AuditLog.action == "convenio_visibilidad")) is not None
 
 
 def test_actualizar_salutem_ok(as_admin, db_session, monkeypatch):
@@ -125,12 +143,13 @@ def test_para_reportes_incluye_valores_antiguos(as_admin, db_session):
     p = Paciente(rut="390001185", nombre="X", sexo="M", edad=50, region="Maule")
     db_session.add(p)
     db_session.flush()
-    for folio, tipo in (("F-1", "ISL"), ("F-2", "ISL"), ("F-3", "Convenio SSM"), ("F-4", "")):
+    for folio, tipo in (("F-1", "ISL"), ("F-2", " ISL"), ("F-3", "Convenio SSM"), ("F-4", ""), ("F-5", "Zeta"),
+                        ("F-6", "Óptima")):
         db_session.add(Ingreso(paciente_id=p.id, folio=folio, folio_manual=True, fecha_ingreso=date(2026, 9, 1),
                                tipo_derivacion="DIEP", tipo_ingreso="convenio", modelo_tratamiento="ambulatorio",
                                diagnostico="prueba", estado="activo", tipo_convenio=tipo))
     db_session.flush()
-    assert as_admin.get(f"{URL}/para-reportes").json() == ["Convenio SSM", "ISL"]
+    assert as_admin.get(f"{URL}/para-reportes").json() == ["Convenio SSM", "ISL", "Óptima", "Zeta"]
 
 
 def test_sugerido_por_paciente_ignora_mayusculas(as_admin, db_session):
@@ -167,3 +186,19 @@ def test_sugerido_convenio_oculto_es_null(as_admin, db_session):
     _persona(db_session, 503, "390001185", "Convenio ISL Maule")
     _convenio(db_session, "Convenio ISL Maule", visible=False)
     assert as_admin.get(f"{URL}/sugerido", params={"rut": "390001185"}).json() == {"convenio": None}
+
+
+def test_sugerido_sin_convenio_es_null(as_admin, db_session):
+    _persona(db_session, 504, "390001185", "Sin Convenio")
+    _convenio(db_session, "Sin Convenio", visible=True)
+    assert as_admin.get(f"{URL}/sugerido", params={"rut": "390001185"}).json() == {"convenio": None}
+
+
+def test_sugerido_paciente_sin_persona_usa_su_rut(as_admin, db_session):
+    _persona(db_session, 505, "390001185", "Convenio ISL Maule")
+    c = _convenio(db_session, "Convenio ISL Maule")
+    pac = Paciente(rut="390001185", nombre="X", sexo="M", edad=50, region="Maule")
+    db_session.add(pac)
+    db_session.flush()
+    r = as_admin.get(f"{URL}/sugerido", params={"paciente_id": pac.id})
+    assert r.json()["convenio"]["id"] == c.id

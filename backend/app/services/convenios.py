@@ -19,7 +19,7 @@ from app.services.convenios_sync import ResultadoConvenios, sincronizar_convenio
 from app.services.salutem_sync.profesionales import normalizar_nombre
 from app.util.rut import RutInvalidoError, normalizar_rut
 
-_SIN_ORIGEN = "sin origen"
+_ORIGENES_SIN_CONVENIO = {"sin origen", "sin convenio"}
 
 
 def listar_convenios(db: Session, *, solo_seleccionables: bool = False) -> list[Convenio]:
@@ -34,8 +34,8 @@ def nombres_para_reportes(db: Session) -> list[str]:
     """Todo el catálogo más los valores antiguos de ``ingreso.tipo_convenio`` que ya no están en él."""
     nombres = {c.nombre for c in db.scalars(select(Convenio))}
     usados = db.scalars(select(Ingreso.tipo_convenio).where(Ingreso.tipo_convenio.is_not(None)).distinct())
-    nombres.update(u for u in usados if u and u.strip())
-    return sorted(nombres)
+    nombres.update(u.strip() for u in usados if u and u.strip())
+    return sorted(nombres, key=normalizar_nombre)
 
 
 def _409_nombre() -> HTTPException:
@@ -108,10 +108,14 @@ def convenio_sugerido(db: Session, *, paciente_id: int | None, rut: str | None) 
     persona: SalutemPersona | None = None
     if paciente_id is not None:
         paciente = db.get(Paciente, paciente_id)
-        if paciente is not None and paciente.salutem_persona_id is not None:
-            persona = db.scalar(
-                select(SalutemPersona).where(SalutemPersona.salutem_id == paciente.salutem_persona_id)
-            )
+        if paciente is not None:
+            if paciente.salutem_persona_id is not None:
+                persona = db.scalar(
+                    select(SalutemPersona).where(SalutemPersona.salutem_id == paciente.salutem_persona_id)
+                )
+            elif paciente.rut:
+                # Sin vínculo con SALUTEM: se busca por el RUT del propio paciente.
+                rut = paciente.rut
     if persona is None and rut:
         try:
             canonico = normalizar_rut(rut)
@@ -125,7 +129,7 @@ def convenio_sugerido(db: Session, *, paciente_id: int | None, rut: str | None) 
     if not isinstance(origen, str):
         return None
     normalizado = normalizar_nombre(origen)
-    if not normalizado or normalizado == _SIN_ORIGEN:
+    if not normalizado or normalizado in _ORIGENES_SIN_CONVENIO:
         return None
     convenio = db.scalar(select(Convenio).where(Convenio.nombre_normalizado == normalizado))
     if convenio is None or not convenio.seleccionable:
