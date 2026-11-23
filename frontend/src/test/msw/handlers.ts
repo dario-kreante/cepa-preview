@@ -12,6 +12,9 @@ export const GAF_TRAMOS = Array.from({ length: 10 }, (_, i) => ({
 }));
 
 export const handlers = [
+  // Convenios: catálogo y sugerencia vacíos por defecto (los monta el selector de la ficha de ingreso).
+  http.get(`${BASE}/api/v1/convenios`, () => HttpResponse.json([])),
+  http.get(`${BASE}/api/v1/convenios/sugerido`, () => HttpResponse.json({ convenio: null })),
   // Alertas vacías por defecto (las páginas de EPT y licencias las listan al entrar).
   http.get(`${BASE}/api/v1/alertas`, () => HttpResponse.json([])),
   // Catálogo de profesionales vacío por defecto (lo monta NuevoControlDialog); cada test lo sobrescribe.

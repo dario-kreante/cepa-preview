@@ -219,3 +219,70 @@ describe("AltaIngresoPage — programa al completar un borrador", () => {
     expect(enviados[0].programa).toBe("PIPT");
   });
 });
+
+describe("AltaIngresoPage — convenio al completar un borrador", () => {
+  const ISL = {
+    id: 1, nombre: "Convenio ISL MAULE", salutem_id: 10, activo_salutem: true,
+    visible: true, seleccionable: true, sincronizado_en: "2026-11-23T07:10:00Z",
+  };
+
+  function mockConvenios(sugerido: unknown = null) {
+    const consultas: URL[] = [];
+    server.use(
+      http.get(`${BASE}/api/v1/convenios`, () => HttpResponse.json([ISL])),
+      http.get(`${BASE}/api/v1/convenios/sugerido`, ({ request }) => {
+        consultas.push(new URL(request.url));
+        return HttpResponse.json({ convenio: sugerido });
+      }),
+    );
+    return consultas;
+  }
+
+  it("un borrador pide el sugerido con paciente_id y envía el convenio precargado", async () => {
+    const enviados = mockAlta();
+    const consultas = mockConvenios(ISL);
+    renderPage("/ingresos/nuevo?paciente=7");
+    const user = userEvent.setup();
+
+    await waitFor(() => expect(screen.getByLabelText(/^Nombre/)).toHaveValue("JUAN PEREZ SOTO"));
+    await waitFor(() => expect(screen.getByLabelText("Convenio (opcional)")).toHaveValue("Convenio ISL MAULE"));
+    expect(screen.getByText("Sugerido desde SALUTEM")).toBeInTheDocument();
+    expect(consultas[0].searchParams.get("paciente_id")).toBe("7");
+    expect(consultas[0].searchParams.has("rut")).toBe(false);
+
+    await completarCampos(user);
+    await user.click(screen.getByRole("button", { name: /crear ingreso/i }));
+    await waitFor(() => expect(enviados).toHaveLength(1));
+    expect(enviados[0].tipo_convenio).toBe("Convenio ISL MAULE");
+  });
+
+  it("sin convenio elegido el envío lleva tipo_convenio null", async () => {
+    const enviados = mockAlta();
+    mockConvenios(null);
+    renderPage("/ingresos/nuevo?paciente=7");
+    const user = userEvent.setup();
+
+    await waitFor(() => expect(screen.getByLabelText(/^Nombre/)).toHaveValue("JUAN PEREZ SOTO"));
+    await completarCampos(user);
+    await user.click(screen.getByRole("button", { name: /crear ingreso/i }));
+    await waitFor(() => expect(enviados).toHaveLength(1));
+    expect(enviados[0].tipo_convenio).toBeNull();
+  });
+
+  it("alta nueva: pide el sugerido con el RUT solo cuando es válido, no a medio escribir", async () => {
+    mockAlta();
+    const consultas = mockConvenios(ISL);
+    renderPage("/ingresos/nuevo");
+    const user = userEvent.setup();
+
+    await user.type(screen.getByLabelText(/^RUT/), "11.111");
+    await new Promise((r) => setTimeout(r, 80));
+    expect(consultas).toHaveLength(0);
+
+    await user.type(screen.getByLabelText(/^RUT/), ".111-1");
+    await waitFor(() => expect(consultas.length).toBeGreaterThan(0));
+    expect(consultas[0].searchParams.get("rut")).toBe("11.111.111-1");
+    expect(consultas[0].searchParams.has("paciente_id")).toBe(false);
+    await waitFor(() => expect(screen.getByLabelText("Convenio (opcional)")).toHaveValue("Convenio ISL MAULE"));
+  });
+});
