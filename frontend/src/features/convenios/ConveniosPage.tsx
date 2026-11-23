@@ -205,7 +205,9 @@ export function ConveniosPage() {
     try {
       const r = await sincronizar.mutateAsync();
       setResultado(r);
-      if (r.errores.length > 0) toast.warning(`Actualización con errores: ${resumenActualizacion(r)}`);
+      if (r.errores.length > 0) toast.warning(`Actualización con errores: ${resumenActualizacion(r)}`, {
+          description: r.errores.join("\n"),
+        });
       else toast.success(`Actualizado desde SALUTEM: ${resumenActualizacion(r)}`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Error al actualizar");

@@ -233,7 +233,13 @@ function ConvenioTab() {
               onChange={(e) => setConvenio(e.target.value)}
               className="h-9 w-[200px] pl-3 pr-8 text-[12.5px] border rounded-md bg-card hover:bg-muted/30 cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring font-medium"
             >
-              <option value="">Elige un convenio</option>
+              <option value="">
+                {convenios.isPending
+                  ? "Cargando convenios…"
+                  : convenios.isError
+                    ? "No se pudieron cargar los convenios."
+                    : "Elige un convenio"}
+              </option>
               {(convenios.data ?? []).map((nombre) => (
                 <option key={nombre} value={nombre}>
                   {nombre}

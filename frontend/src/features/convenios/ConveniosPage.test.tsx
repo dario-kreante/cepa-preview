@@ -103,6 +103,27 @@ describe("ConveniosPage", () => {
     expect(await screen.findByText(/1 nuevo/)).toBeInTheDocument();
   });
 
+  it("si la actualización trae errores, el aviso los muestra", async () => {
+    usarListado();
+    server.use(
+      http.post(`${BASE}/api/v1/convenios/actualizar-salutem`, () =>
+        HttpResponse.json({
+          creados: 0, actualizados: 0, desactivados: 0,
+          errores: ["SALUTEM devolvió el catálogo de convenios vacío; no se desactivó nada."],
+        }),
+      ),
+    );
+    renderPage();
+    const user = userEvent.setup();
+    await user.click(await screen.findByTestId("btn-actualizar-salutem"));
+
+    // El aviso (toast) también lleva el detalle, no solo el panel de errores de la página.
+    await waitFor(() => {
+      const aviso = document.querySelector("[data-sonner-toast]");
+      expect(aviso?.textContent).toContain("SALUTEM devolvió el catálogo de convenios vacío");
+    });
+  });
+
   it("si SALUTEM falla muestra el mensaje del 502", async () => {
     usarListado();
     server.use(

@@ -113,6 +113,15 @@ describe("ConvenioSelect", () => {
     expect(screen.getByLabelText("Convenio")).toHaveValue("Convenio Antiguo");
   });
 
+  it("no ofrece «(valor anterior)» mientras el catálogo no ha cargado", async () => {
+    server.use(
+      http.get(`${BASE}/api/v1/convenios`, () => new Promise(() => {})),
+    );
+    renderSelect({ inicial: "Convenio Antiguo", valorGuardado: "Convenio Antiguo" });
+    await new Promise((r) => setTimeout(r, 50));
+    expect(screen.queryByRole("option", { name: /valor anterior/ })).toBeNull();
+  });
+
   it("precarga el sugerido y muestra «Sugerido desde SALUTEM»", async () => {
     const consultas = mockCatalogo(ISL);
     renderSelect({ sugerencia: { paciente_id: 7 } });

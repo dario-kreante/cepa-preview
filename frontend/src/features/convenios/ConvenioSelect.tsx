@@ -21,13 +21,13 @@ const CLASE_BASE = "w-full rounded-md border border-ink-300 px-3 py-2 text-sm";
  * tocado el campo (una vez que elige algo, la sugerencia no vuelve a pisarlo).
  */
 export function ConvenioSelect({ id, value, onChange, valorGuardado, sugerencia, className }: Props) {
-  const { data: convenios = [] } = useConvenios(true);
+  const { data: convenios = [], isSuccess } = useConvenios(true);
   const { data: sugerido } = useConvenioSugerido(sugerencia ?? null);
   const tocado = useRef(false);
   const [aplicado, setAplicado] = useState<string | null>(null);
 
   const nombres = convenios.map((c) => c.nombre);
-  const fueraDeCatalogo = valorGuardado && !nombres.includes(valorGuardado) ? valorGuardado : null;
+  const fueraDeCatalogo = isSuccess && valorGuardado && !nombres.includes(valorGuardado) ? valorGuardado : null;
 
   useEffect(() => {
     if (tocado.current) return;

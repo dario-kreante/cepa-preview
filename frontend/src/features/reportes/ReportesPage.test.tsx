@@ -499,6 +499,16 @@ describe("ReportesPage — pestaña Convenio elige del catálogo", () => {
     expect(screen.getByRole("option", { name: "Elige un convenio" })).toBeTruthy();
   });
 
+  it("muestra el estado de error si no cargan los convenios", async () => {
+    server.use(
+      http.get(`${BASE}/api/v1/convenios/para-reportes`, () =>
+        HttpResponse.json({ detail: "x" }, { status: 500 }),
+      ),
+    );
+    abrirConvenio();
+    expect(await screen.findByRole("option", { name: "No se pudieron cargar los convenios." })).toBeTruthy();
+  });
+
   it("generar sin elegir convenio muestra «Indica el tipo de convenio.»", async () => {
     conConvenios();
     abrirConvenio();
