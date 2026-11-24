@@ -51,6 +51,7 @@ const DEFAULT_VALUES: CasoReintegroForm = {
   rubro_empleador: "",
   razon_social: "",
   tipo_trabajador: "",
+  ocupacion: "",
 };
 
 const selectCls =
@@ -98,6 +99,7 @@ export function NuevoCasoReintegroDialog({
             rubro_empleador: values.rubro_empleador || null,
             razon_social: values.razon_social || null,
             tipo_trabajador: values.tipo_trabajador || null,
+            ocupacion: values.ocupacion || null,
           },
         });
         toast.success("Caso de reintegro actualizado");
@@ -113,6 +115,7 @@ export function NuevoCasoReintegroDialog({
           rubro_empleador: values.rubro_empleador || null,
           razon_social: values.razon_social || null,
           tipo_trabajador: values.tipo_trabajador || null,
+          ocupacion: values.ocupacion || null,
         });
         toast.success("Caso de reintegro creado");
       }
@@ -228,6 +231,20 @@ export function NuevoCasoReintegroDialog({
                 </p>
               )}
             </div>
+          </div>
+
+          <div>
+            <Label htmlFor="ocupacion">Ocupación (opcional)</Label>
+            <Input
+              id="ocupacion"
+              placeholder="Ej. Operario de bodega"
+              {...register("ocupacion")}
+            />
+            {errors.ocupacion && (
+              <p className="text-[11.5px] text-destructive mt-1">
+                {errors.ocupacion.message}
+              </p>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-3">

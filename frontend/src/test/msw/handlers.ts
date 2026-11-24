@@ -21,6 +21,13 @@ export const handlers = [
   http.get(`${BASE}/api/v1/profesionales`, () => HttpResponse.json([])),
   http.get(`${BASE}/api/v1/gaf-tramos`, () => HttpResponse.json(GAF_TRAMOS)),
   http.get(`${BASE}/api/v1/pacientes/buscar`, () => HttpResponse.json([])),
+  // Reintegro (QA-010): lista global vacía y sin precarga por defecto (los monta ReintegroPage).
+  http.get(`${BASE}/api/v1/reintegros/panel`, () =>
+    HttpResponse.json({ activos: [], pendientes_registro: [] }),
+  ),
+  http.get(`${BASE}/api/v1/reintegros/precarga`, () =>
+    HttpResponse.json({ ocupacion: null, tipo_trabajador: null }),
+  ),
   // Contexto de una alerta (panel): sin paciente por defecto, el diálogo no ofrece gestión.
   http.get(`${BASE}/api/v1/alertas/:id/contexto`, () => HttpResponse.json({})),
   // Default handler for the esquema endpoint — returns empty list.

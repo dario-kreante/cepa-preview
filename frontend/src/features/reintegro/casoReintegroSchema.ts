@@ -51,6 +51,8 @@ export const casoReintegroSchema = z.object({
   razon_social: z.string().trim().optional(),
   // "" = sin indicar (casos previos a QA-008). En el alta es obligatorio (ver abajo).
   tipo_trabajador: z.enum(TIPO_TRABAJADOR_VALUES).or(z.literal("")),
+  // QA-010: ocupación del trabajador (opcional; se precarga de un caso anterior o de SALUTEM).
+  ocupacion: z.string().trim().max(120, "Máximo 120 caracteres").optional(),
 });
 
 /** Alta: además exige el tipo de trabajador (los casos previos pueden no tenerlo). */
