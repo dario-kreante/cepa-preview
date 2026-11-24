@@ -8,8 +8,11 @@ import {
   listarCasosActivosDePaciente,
   listarPacientesConCasosRepetidos,
   obtenerCaso,
+  obtenerPanel,
+  obtenerPrecarga,
   obtenerReca,
   registrarCierre,
+  registrarRemisionIsl,
   registrarSolicitudReca,
   type CasoReintegroCreate,
   type CasoReintegroUpdate,
@@ -17,6 +20,9 @@ import {
   type RecaCreate,
   type RecaUpdate,
 } from "./api";
+
+/** Lista global: la cambian el alta, el cierre, la solicitud de RECA, la RECA y la remisión. */
+const PANEL_KEY = ["reintegro", "panel"] as const;
 
 // ── Query hooks ──────────────────────────────────────────────────────────────
 
@@ -43,6 +49,20 @@ export function usePacientesConCasosRepetidos(enabled = true) {
     queryKey: ["reintegro", "duplicados"],
     queryFn: listarPacientesConCasosRepetidos,
     enabled,
+  });
+}
+
+/** Lista global de la pestaña (QA-010): casos activos y pendientes por registrar. */
+export function usePanelReintegro(enabled = true) {
+  return useQuery({ queryKey: PANEL_KEY, queryFn: obtenerPanel, enabled });
+}
+
+/** Precarga del alta (QA-010): ocupación y tipo de trabajador de un caso anterior o de SALUTEM. */
+export function usePrecargaCaso(ingresoId: number | null) {
+  return useQuery({
+    queryKey: ["reintegro", "precarga", ingresoId],
+    queryFn: () => obtenerPrecarga(ingresoId as number),
+    enabled: !!ingresoId,
   });
 }
 
@@ -75,6 +95,7 @@ export function useCrearCaso() {
       });
       qc.invalidateQueries({ queryKey: ["reintegro", "paciente"] });
       qc.invalidateQueries({ queryKey: ["reintegro", "duplicados"] });
+      qc.invalidateQueries({ queryKey: PANEL_KEY });
     },
   });
 }
@@ -89,8 +110,10 @@ export function useActualizarCaso() {
       casoId: number;
       body: CasoReintegroUpdate;
     }) => actualizarCaso(casoId, body),
-    onSuccess: (_data, { casoId }) =>
-      qc.invalidateQueries({ queryKey: ["reintegro", casoId] }),
+    onSuccess: (_data, { casoId }) => {
+      qc.invalidateQueries({ queryKey: ["reintegro", casoId] });
+      qc.invalidateQueries({ queryKey: PANEL_KEY });
+    },
   });
 }
 
@@ -104,6 +127,7 @@ export function useCrearReca() {
     onSuccess: (_data, { casoId }) => {
       qc.invalidateQueries({ queryKey: ["reintegro", casoId] });
       qc.invalidateQueries({ queryKey: ["alertas"] });
+      qc.invalidateQueries({ queryKey: PANEL_KEY });
     },
   });
 }
@@ -136,6 +160,7 @@ export function useRegistrarCierre() {
       qc.invalidateQueries({ queryKey: ["reintegro", "duplicados"] });
       // El reintegro total resuelve la alerta «RECA por solicitar».
       qc.invalidateQueries({ queryKey: ["alertas"] });
+      qc.invalidateQueries({ queryKey: PANEL_KEY });
     },
   });
 }
@@ -150,6 +175,22 @@ export function useRegistrarSolicitudReca() {
       qc.invalidateQueries({ queryKey: ["reintegro", casoId] });
       qc.invalidateQueries({ queryKey: ["reintegro", "ingreso", caso.ingreso_id] });
       qc.invalidateQueries({ queryKey: ["alertas"] });
+      qc.invalidateQueries({ queryKey: PANEL_KEY });
+    },
+  });
+}
+
+/** Marca el caso «Remitido a ISL» (QA-010); resuelve la alerta «Pendiente de remitir a ISL». */
+export function useRegistrarRemisionIsl() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ casoId, fecha }: { casoId: number; fecha: string }) =>
+      registrarRemisionIsl(casoId, fecha),
+    onSuccess: (caso, { casoId }) => {
+      qc.invalidateQueries({ queryKey: ["reintegro", casoId] });
+      qc.invalidateQueries({ queryKey: ["reintegro", "ingreso", caso.ingreso_id] });
+      qc.invalidateQueries({ queryKey: ["alertas"] });
+      qc.invalidateQueries({ queryKey: PANEL_KEY });
     },
   });
 }

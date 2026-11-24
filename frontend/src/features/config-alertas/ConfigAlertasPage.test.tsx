@@ -19,6 +19,7 @@ const CONFIG = [
   { tipo: "licencia_en_control", dias: 0, habiles: false, activo: true, actualizado_por: "migracion" },
   { tipo: "reca_por_solicitar", dias: 5, habiles: false, activo: true, actualizado_por: "migracion" },
   { tipo: "proyeccion_reintegro", dias: 0, habiles: false, activo: true, actualizado_por: "migracion" },
+  { tipo: "pendiente_remitir_isl", dias: 7, habiles: false, activo: true, actualizado_por: "migracion" },
 ];
 const FESTIVOS = [{ id: 1, fecha: "2026-09-18", descripcion: "Independencia Nacional" }];
 
@@ -88,11 +89,12 @@ describe("ConfigAlertasPage (COMP-2609-07)", () => {
     expect(within(fila).queryByText("paciente_pendiente_folio")).toBeNull();
   });
 
-  it("QA-003: «RECA por solicitar» edita solo los días corridos, con aviso de plazo provisorio", async () => {
+  it("QA-010: «RECA por solicitar» edita solo los días corridos desde el envío del caso EPT", async () => {
     const user = userEvent.setup();
     renderComo("Coordinacion");
     const fila = await screen.findByTestId("fila-reca_por_solicitar");
-    expect(within(fila).getByText(/plazo provisorio/i)).toBeInTheDocument();
+    expect(within(fila).getByText(/desde el envío del caso EPT/i)).toBeInTheDocument();
+    expect(within(fila).getByText(/solo pacientes ISL/i)).toBeInTheDocument();
     expect(within(fila).queryByLabelText(/hábiles/i)).not.toBeInTheDocument();
     const dias = within(fila).getByLabelText(/Días/i);
     expect(dias).toHaveValue(5);
@@ -103,6 +105,15 @@ describe("ConfigAlertasPage (COMP-2609-07)", () => {
     expect(putBody).toEqual(
       expect.arrayContaining([{ tipo: "reca_por_solicitar", dias: 7, habiles: false, activo: true }]),
     );
+  });
+
+  it("QA-010: «Pendiente de remitir a ISL» se nombra en palabras y edita solo días corridos", async () => {
+    renderComo("Coordinacion");
+    const fila = await screen.findByTestId("fila-pendiente_remitir_isl");
+    expect(within(fila).getByText("Pendiente de remitir a ISL")).toBeInTheDocument();
+    expect(within(fila).getByText(/sin remitir a ISL/i)).toBeInTheDocument();
+    expect(within(fila).queryByLabelText(/hábiles/i)).not.toBeInTheDocument();
+    expect(within(fila).getByLabelText(/Días/i)).toHaveValue(7);
   });
 
   it("QA-003: «Proyección de reintegro registrada» solo se enciende o apaga", async () => {

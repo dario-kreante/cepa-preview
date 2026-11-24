@@ -209,9 +209,11 @@ VENTANAS_DEFAULT: dict[str, dict] = {
     TipoAlerta.CITA_FUERA_DE_ODA.value: {"dias": 30, "habiles": False},
     # El mismo día del plazo (D10): Sasha envía los insumos al EPTista esa mañana.
     TipoAlerta.PLAZO_INSUMOS_EPT.value: {"dias": 0, "habiles": False},
-    # QA-003: "dias" = días corridos desde la fecha del caso para solicitar la RECA. 5 es
-    # provisional: la clienta aún debe confirmarlo (se edita en la configuración de alertas).
-    TipoAlerta.RECA_POR_SOLICITAR.value: {"dias": 5, "habiles": False},
+    # QA-010: "dias" = días corridos desde la fecha de envío del caso EPT (o la del caso) para
+    # solicitar la RECA; solo pacientes ISL.
+    TipoAlerta.RECA_POR_SOLICITAR.value: {"dias": 15, "habiles": False},
+    # QA-010: "dias" = días corridos desde la fecha del caso para remitirlo a ISL.
+    TipoAlerta.PENDIENTE_REMITIR_ISL.value: {"dias": 7, "habiles": False},
     # Sin plazo: la crea el sync al vincular el control; aquí solo se enciende o apaga.
     TipoAlerta.PROYECCION_REINTEGRO.value: {"dias": 0, "habiles": False},
 }
@@ -770,6 +772,12 @@ def ejecutar_job_alertas(
 
     reca_por_solicitar, resueltas_reca = alertar_reca_por_solicitar(db, hoy, ventanas, actor)
     resueltas += resueltas_reca
+
+    from app.services.alertas_remitir_isl import alertar_pendiente_remitir_isl
+
+    remitir_isl, resueltas_isl = alertar_pendiente_remitir_isl(db, hoy, ventanas, actor)
+    resueltas += resueltas_isl
+    reca_por_solicitar += remitir_isl
 
     hitos: list[HitoPlazos] = []
     hitos.extend(_construir_hitos_oda(db, ventanas))

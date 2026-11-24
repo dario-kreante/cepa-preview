@@ -38,6 +38,8 @@ class TipoAlerta(str, Enum):
     RECA_POR_SOLICITAR = "reca_por_solicitar"
     # QA-003 (18-11): el médico registró la proyección de reintegro laboral en un control.
     PROYECCION_REINTEGRO = "proyeccion_reintegro"
+    # QA-010 (23-11): caso de reintegro de un paciente ISL que lleva días sin remitirse a ISL.
+    PENDIENTE_REMITIR_ISL = "pendiente_remitir_isl"
 
 
 class EstadoAlerta(str, Enum):

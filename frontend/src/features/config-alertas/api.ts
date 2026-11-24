@@ -23,6 +23,7 @@ export const TIPO_LABELS: Record<string, string> = {
   plazo_insumos_ept: "Plazo de insumos EPT",
   reca_por_solicitar: "RECA por solicitar",
   proyeccion_reintegro: "Proyección de reintegro registrada",
+  pendiente_remitir_isl: "Pendiente de remitir a ISL",
   paciente_pendiente_folio: "Paciente nuevo pendiente de folio",
 };
 
@@ -36,7 +37,15 @@ export const TIPOS_SIN_DIAS = new Set([
 ]);
 
 /** Plazos que siempre se cuentan en días corridos: no tienen la opción de días hábiles. */
-export const TIPOS_DIAS_CORRIDOS = new Set(["reca_por_solicitar"]);
+export const TIPOS_DIAS_CORRIDOS = new Set(["reca_por_solicitar", "pendiente_remitir_isl"]);
+
+/** Qué cuenta cada plazo en días corridos (QA-010): se muestra bajo el nombre del tipo. */
+export const AYUDA_DIAS_CORRIDOS: Record<string, string> = {
+  reca_por_solicitar:
+    "Días corridos desde el envío del caso EPT (o la fecha del caso), solo pacientes ISL: avisa si sigue sin solicitud ni RECA",
+  pendiente_remitir_isl:
+    "Días corridos desde la fecha del caso, solo pacientes ISL: avisa si el caso sigue sin remitir a ISL",
+};
 
 /** Tipo cuyo "dias" es el límite superior del tramo de GAF umbral (CEPA-075). */
 export const TIPO_GAF = "gaf_licencia";

@@ -66,7 +66,8 @@ def test_enum_tipo_alerta_contiene_todos_los_tipos_rn1():
     assert "plazo_insumos_ept" in tipos  # reunión 29-10 (D10)
     assert "reca_por_solicitar" in tipos  # QA-003
     assert "proyeccion_reintegro" in tipos  # QA-003
-    assert len(tipos) == 17
+    assert "pendiente_remitir_isl" in tipos  # QA-010
+    assert len(tipos) == 18
 
 
 def test_enum_estado_alerta():

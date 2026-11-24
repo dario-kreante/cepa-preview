@@ -23,7 +23,15 @@ import {
   useFestivos,
   useGuardarConfig,
 } from "./hooks";
-import { TIPO_GAF, TIPO_LABELS, TIPOS_DIAS_CORRIDOS, TIPOS_SIN_DIAS, type ConfigAlertaItem, type ConfigAlertaRead } from "./api";
+import {
+  AYUDA_DIAS_CORRIDOS,
+  TIPO_GAF,
+  TIPO_LABELS,
+  TIPOS_DIAS_CORRIDOS,
+  TIPOS_SIN_DIAS,
+  type ConfigAlertaItem,
+  type ConfigAlertaRead,
+} from "./api";
 import { useGafTramos } from "@/features/gaf-tramos/hooks";
 
 function Th({ children }: { children: React.ReactNode }) {
@@ -134,8 +142,7 @@ function UmbralesForm({ inicial }: { inicial: ConfigAlertaRead[] }) {
                     )}
                     {soloCorridos && (
                       <p className="text-[11.5px] font-normal text-muted-foreground">
-                        Plazo provisorio (la clienta aún debe confirmarlo), en días corridos desde la
-                        fecha del caso: avisa si sigue sin solicitud ni RECA
+                        {AYUDA_DIAS_CORRIDOS[f.tipo]}
                       </p>
                     )}
                   </td>

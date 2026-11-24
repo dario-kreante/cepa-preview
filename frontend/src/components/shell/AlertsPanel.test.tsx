@@ -661,6 +661,7 @@ describe("AlertsPanel: alertas de reintegro (QA-003)", () => {
   it("nombra los dos tipos nuevos", () => {
     expect(tituloAlerta("reca_por_solicitar")).toBe("RECA por solicitar");
     expect(tituloAlerta("proyeccion_reintegro")).toBe("Proyección de reintegro registrada");
+    expect(tituloAlerta("pendiente_remitir_isl")).toBe("Pendiente de remitir a ISL");
   });
 
   it("routeForCaso abre el caso de reintegro en /reintegro?caso=", () => {
@@ -701,27 +702,49 @@ describe("AlertsPanel: alertas de reintegro (QA-003)", () => {
     expect(await screen.findByTestId("ubicacion")).toHaveTextContent("/reintegro?caso=3");
   });
 
-  it("«Proyección de reintegro registrada» muestra el valor y abre los controles del paciente", async () => {
+  it("QA-010: la proyección abre la pestaña Reintegro con el paciente y pide el alta", async () => {
     tokenStore.setAccess(TOKENS.Coordinacion);
     server.use(
       http.get(`${BASE}/api/v1/alertas`, () =>
         HttpResponse.json([
           alertaBase({
             id: 32, tipo: "proyeccion_reintegro", caso_tipo: "control_medico", caso_id: 5, paciente_id: 42,
-            detalle: "Más de 1 mes",
+            detalle: "3 semanas aproximadamente · reintegro estimado al 05-11-2026",
           }),
         ]),
       ),
       http.get(`${BASE}/api/v1/tareas`, () => HttpResponse.json([])),
     );
     renderPanelConRuta();
-    expect(await screen.findByText("Proyección: Más de 1 mes")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Proyección: 3 semanas aproximadamente · reintegro estimado al 05-11-2026"),
+    ).toBeInTheDocument();
     expect(screen.getByText(/^Control: 15 oct/i)).toBeInTheDocument();
     await userEvent.click(screen.getByText("Proyección de reintegro registrada"));
-    expect(await screen.findByTestId("ubicacion")).toHaveTextContent("/ingresos?paciente=42&tab=controles");
+    expect(await screen.findByTestId("ubicacion")).toHaveTextContent("/reintegro?paciente=42&nuevo=1");
   });
 
-  it("la proyección sin paciente cae a la página de controles", async () => {
+  it("«Pendiente de remitir a ISL» muestra el plazo en UTC y abre el caso", async () => {
+    tokenStore.setAccess(TOKENS.Coordinacion);
+    server.use(
+      http.get(`${BASE}/api/v1/alertas`, () =>
+        HttpResponse.json([
+          alertaBase({
+            id: 34, tipo: "pendiente_remitir_isl", caso_tipo: "caso_reintegro", caso_id: 4, paciente_id: 42,
+            plazo_objetivo: "2026-11-09T00:00:00Z", ventana_dias: 7,
+          }),
+        ]),
+      ),
+      http.get(`${BASE}/api/v1/tareas`, () => HttpResponse.json([])),
+    );
+    renderPanelConRuta();
+    expect(await screen.findByText("Caso de reintegro #4")).toBeInTheDocument();
+    expect(screen.getByText(/^Plazo: 09 nov/i)).toBeInTheDocument();
+    await userEvent.click(screen.getByText("Pendiente de remitir a ISL"));
+    expect(await screen.findByTestId("ubicacion")).toHaveTextContent("/reintegro?caso=4");
+  });
+
+  it("la proyección sin paciente abre la pestaña Reintegro", async () => {
     tokenStore.setAccess(TOKENS.Coordinacion);
     server.use(
       http.get(`${BASE}/api/v1/alertas`, () =>
@@ -733,6 +756,6 @@ describe("AlertsPanel: alertas de reintegro (QA-003)", () => {
     );
     renderPanelConRuta();
     await userEvent.click(await screen.findByText("Proyección de reintegro registrada"));
-    expect(await screen.findByTestId("ubicacion")).toHaveTextContent("/controles");
+    expect(await screen.findByTestId("ubicacion")).toHaveTextContent(/^\/reintegro$/);
   });
 });

@@ -22,6 +22,7 @@ from sqlalchemy.orm import Session
 from app.audit.service import record_audit
 from app.config import clave_especialidad
 from app.domain.enums_alertas import EstadoAlerta, TipoAlerta
+from app.domain.proyeccion_reintegro import opcion_alertable
 from app.integrations.salutem.senales import certificado_reposo, tiene_receta
 from app.models.alertas import AlertaNotif
 from app.models.control_medico import ControlMedico
@@ -93,11 +94,15 @@ def huella_proyeccion(valor: str) -> int:
 def alertar_proyeccion(db: Session, control: ControlMedico, hoy: date) -> int:
     """Alerta «Proyección de reintegro registrada»: una por control y valor. Devuelve 1 si la creó.
 
-    Con otro valor que el de la alerta abierta (el médico corrigió la proyección) la anterior
-    queda resuelta y se avisa de nuevo; si el valor pasa a vacío o a relleno, se resuelve. Un
-    valor ya alertado antes (aunque se resolviera a mano) no reaparece.
+    QA-010 (23-11-2026): solo alertan «Paciente con reintegro parcial» y «1, 2 y 3 semanas
+    aproximadamente» (``opcion_alertable``); el resto de la lista de SALUTEM, el relleno y los
+    vacíos no. Con otro valor que el de la alerta abierta (el médico corrigió la proyección) la
+    anterior queda resuelta y, si el nuevo valor alerta, se avisa de nuevo. Un valor ya alertado
+    antes (aunque se resolviera a mano) no reaparece.
     """
     valor = proyeccion_real(control.proyeccion_reintegro)
+    if opcion_alertable(valor) is None:
+        valor = None
     huella = huella_proyeccion(valor) if valor is not None else None
     previas = db.scalars(
         select(AlertaNotif).where(

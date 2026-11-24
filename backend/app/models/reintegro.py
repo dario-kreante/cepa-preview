@@ -57,12 +57,16 @@ class CasoReintegro(Base):
     # Empresa y relación laboral (1380, QA-008). Nullable para los casos previos.
     razon_social: Mapped[str | None] = mapped_column(String(160), nullable=True)
     tipo_trabajador: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    # Ocupación del trabajador (1530, QA-010).
+    ocupacion: Mapped[str | None] = mapped_column(String(120), nullable=True)
     # Cierre / reintegro (CEPA-042) ────────────────────────────────────────
     estado_reintegro: Mapped[str] = mapped_column(
         String(20), default=EstadoReintegro.PENDIENTE.value, nullable=False
     )
     fecha_reintegro: Mapped[date | None] = mapped_column(Date, nullable=True)
     remitido_isl: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # Cuándo se remitió a ISL (1530, QA-010): se puede marcar sin cerrar el caso.
+    fecha_remitido_isl: Mapped[date | None] = mapped_column(Date, nullable=True)
     alta_medica: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     fecha_alta_medica: Mapped[date | None] = mapped_column(Date, nullable=True)
     alta_psicologica: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)

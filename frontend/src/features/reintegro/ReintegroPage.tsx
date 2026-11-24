@@ -3,15 +3,18 @@
  *
  * A diferencia de EPT, el backend SÍ expone listado (`GET /api/v1/reintegros?
  * ingreso_id=`). La navegación es paciente-driven:
+ *   0. Sin buscar (QA-010): lista global de casos activos y «Pendientes por registrar».
  *   1. Buscar paciente → resolver ingreso_id vía Vista360 → listar sus casos +
  *      "Nuevo caso".
  *   2. Cargar por caso_id (input numérico o `?caso=<id>` en la URL).
+ *   3. `?paciente=<id>&nuevo=1` (alerta de proyección, QA-010): carga el paciente; con un caso
+ *      activo lo muestra y, sin él, abre «Nuevo caso de reintegro» precargado.
  *
  * RBAC: escritura = Coordinacion + Administrativo (puedeEscribir). Auditor lee.
  */
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Search, Plus, RefreshCw, AlertCircle, Hash, Pencil } from "lucide-react";
+import { Search, Plus, AlertCircle, Hash, Pencil } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,13 +23,21 @@ import { cn, fmtDate } from "@/lib/utils";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { puedeEscribir, type Rol } from "@/lib/rbac";
 import { useBuscarPacientes, useVista360 } from "@/features/ingresos/hooks";
-import { useCaso, useCasosActivosDePaciente, useCasosPorIngreso, useReca } from "./hooks";
+import {
+  useCaso,
+  useCasosActivosDePaciente,
+  useCasosPorIngreso,
+  usePrecargaCaso,
+  useReca,
+} from "./hooks";
 import { CasoRepetidoAviso } from "./CasoRepetidoAviso";
 import { CasosRepetidosPanel } from "./CasosRepetidosPanel";
 import { NuevoCasoReintegroDialog } from "./NuevoCasoReintegroDialog";
 import { NuevaRecaDialog } from "./NuevaRecaDialog";
 import { CierreDialog } from "./CierreDialog";
 import { SolicitudRecaDialog } from "./SolicitudRecaDialog";
+import { RemisionIslDialog } from "./RemisionIslDialog";
+import { PanelReintegroGlobal } from "./PanelReintegroGlobal";
 import {
   ESTADO_SOLICITUD_RECA_LABELS,
   ESTADO_SOLICITUD_RECA_VARIANT,
@@ -38,10 +49,12 @@ import {
   type CasoReintegroForm,
 } from "./casoReintegroSchema";
 import type { RecaForm } from "./recaSchema";
-import type { CasoReintegroRead, EstadoReintegro } from "./api";
-import type { components } from "@/types/api";
+import type { CasoReintegroRead, EstadoReintegro, PendienteRegistro } from "./api";
 
-type PacienteRead = components["schemas"]["PacienteRead"];
+function idDeParam(valor: string | null): number | null {
+  const n = valor ? parseInt(valor, 10) : NaN;
+  return Number.isInteger(n) && n > 0 ? n : null;
+}
 
 function estadoVariant(
   estado: EstadoReintegro,
@@ -207,6 +220,7 @@ function CasoPanel({
   const { data: caso, isLoading, isError, error } = useCaso(casoId);
   const [editOpen, setEditOpen] = useState(false);
   const [cierreOpen, setCierreOpen] = useState(false);
+  const [remisionOpen, setRemisionOpen] = useState(false);
 
   if (isLoading)
     return (
@@ -238,6 +252,7 @@ function CasoPanel({
     rubro_empleador: caso.rubro_empleador ?? "",
     razon_social: caso.razon_social ?? "",
     tipo_trabajador: caso.tipo_trabajador ?? "",
+    ocupacion: caso.ocupacion ?? "",
   };
 
   return (
@@ -295,11 +310,33 @@ function CasoPanel({
                 : "—"
             }
           />
+          <Field label="Ocupación" value={caso.ocupacion ?? "—"} />
           <Field label="Rubro empleador" value={caso.rubro_empleador ?? "—"} />
-          <Field
-            label="Remitido ISL"
-            value={caso.remitido_isl ? "Sí" : "No"}
-          />
+          <div>
+            <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
+              Remitido ISL
+            </p>
+            <div className="flex items-center gap-2">
+              <p className="text-[13px]" data-testid="remitido-isl">
+                {caso.remitido_isl
+                  ? caso.fecha_remitido_isl
+                    ? `Sí · ${fmtDate(caso.fecha_remitido_isl)}`
+                    : "Sí"
+                  : "No"}
+              </p>
+              {canWrite && caso.estado_reintegro !== "total" && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-6 text-[11px] px-2"
+                  onClick={() => setRemisionOpen(true)}
+                  data-testid="btn-remitido-isl"
+                >
+                  {caso.remitido_isl ? "Corregir fecha" : "Marcar remitido"}
+                </Button>
+              )}
+            </div>
+          </div>
           <Field
             label="Fecha reintegro"
             value={caso.fecha_reintegro ? fmtDate(caso.fecha_reintegro) : "—"}
@@ -341,6 +378,7 @@ function CasoPanel({
               open={cierreOpen}
               onOpenChange={setCierreOpen}
             />
+            <RemisionIslDialog caso={caso} open={remisionOpen} onOpenChange={setRemisionOpen} />
           </>
         )}
       </Card>
@@ -359,51 +397,86 @@ export function ReintegroPage() {
 
   const [inputQ, setInputQ] = useState("");
   const [q, setQ] = useState("");
-  const [selectedPaciente, setSelectedPaciente] = useState<PacienteRead | null>(
-    null,
+  // Paciente seleccionado: desde la búsqueda, la lista global o `?paciente=` (alerta de proyección).
+  const [selectedPacienteId, setSelectedPacienteId] = useState<number | null>(() =>
+    idDeParam(searchParams.get("paciente")),
   );
+  // Ingreso preferido (el del control de la proyección); si no, el principal del paciente.
+  const [ingresoPreferido, setIngresoPreferido] = useState<number | null>(() =>
+    idDeParam(searchParams.get("ingreso")),
+  );
+  // Pedido de alta pendiente (`?nuevo=1` o «Registrar caso»): se abre cuando el paciente cargó
+  // y se confirmó que no tiene caso activo; con uno activo se muestra ese caso.
+  const [quiereNuevo, setQuiereNuevo] = useState(() => searchParams.get("nuevo") === "1");
 
   useEffect(() => {
-    const t = setTimeout(() => {
-      setQ(inputQ.trim());
-      setSelectedPaciente(null);
-    }, 300);
+    const t = setTimeout(() => setQ(inputQ.trim()), 300);
     return () => clearTimeout(t);
   }, [inputQ]);
 
+  function cambiarBusqueda(valor: string) {
+    setInputQ(valor);
+    setSelectedPacienteId(null);
+    setIngresoPreferido(null);
+    setQuiereNuevo(false);
+  }
+
   const { data: pacientes = [], isFetching } = useBuscarPacientes(q);
-  const { data: vista, isLoading: vistaLoading } = useVista360(
-    selectedPaciente?.id ?? null,
-  );
-  const ingresoId: number | undefined = vista?.ingresos?.[0]?.id;
+  const { data: vista, isLoading: vistaLoading } = useVista360(selectedPacienteId);
+  const ingresoElegido =
+    vista?.ingresos?.find((i) => i.id === ingresoPreferido) ?? vista?.ingresos?.[0];
+  const ingresoId: number | undefined = ingresoElegido?.id;
   const { data: casosIngreso = [] } = useCasosPorIngreso(ingresoId ?? null);
   // Casos activos del paciente en todos sus ingresos: base del aviso de caso repetido.
-  const { data: casosActivos = [] } = useCasosActivosDePaciente(selectedPaciente?.id ?? null);
+  const { data: casosActivos = [], isSuccess: activosCargados } =
+    useCasosActivosDePaciente(selectedPacienteId);
+  // Ocupación y tipo de trabajador de un caso anterior o de SALUTEM (QA-010).
+  const { data: precarga } = usePrecargaCaso(canWrite ? (ingresoId ?? null) : null);
 
-  // Precarga del alta con los datos del paciente y de su ingreso principal.
+  // Precarga del alta con los datos del paciente y de su ingreso.
   const prefillCaso = useMemo<Partial<CasoReintegroForm> | undefined>(() => {
     if (!vista) return undefined;
     const p = vista.paciente;
-    const ing = vista.ingresos?.[0];
+    const ing = ingresoElegido;
     const prefill: Partial<CasoReintegroForm> = { rut: p.rut ?? "", nombre: p.nombre };
     if (p.region) prefill.region = p.region;
     if (ing?.razon_social) prefill.razon_social = ing.razon_social;
     if (ing && (TIPO_DERIVACION_VALUES as readonly string[]).includes(ing.tipo_derivacion)) {
       prefill.tipo_derivacion = ing.tipo_derivacion as CasoReintegroForm["tipo_derivacion"];
     }
+    if (precarga?.ocupacion) prefill.ocupacion = precarga.ocupacion;
+    if (precarga?.tipo_trabajador) prefill.tipo_trabajador = precarga.tipo_trabajador;
     return prefill;
-  }, [vista]);
+  }, [vista, ingresoElegido, precarga]);
 
   const [casoIdInput, setCasoIdInput] = useState("");
-  const [casoId, setCasoId] = useState<number | null>(() => {
-    const param = searchParams.get("caso");
-    const n = param ? parseInt(param, 10) : NaN;
-    return Number.isInteger(n) && n > 0 ? n : null;
-  });
+  const [casoId, setCasoId] = useState<number | null>(() => idDeParam(searchParams.get("caso")));
 
   const [nuevaOpen, setNuevaOpen] = useState(false);
   const [avisoOpen, setAvisoOpen] = useState(false);
   const [repetidosOpen, setRepetidosOpen] = useState(false);
+
+  // Derivados del pedido de alta: sin efectos (la regla de lint no permite setState en efectos).
+  const pedidoListo = quiereNuevo && !!ingresoId && activosCargados;
+  const abrirAltaPedida = pedidoListo && canWrite && casosActivos.length === 0;
+  const casoActivoPedido = pedidoListo && casosActivos.length > 0 ? casosActivos[0].id : null;
+  const casoMostrado = casoId ?? casoActivoPedido;
+  const altaAbierta = nuevaOpen || abrirAltaPedida;
+
+  function cambiarAlta(open: boolean) {
+    setNuevaOpen(open);
+    if (!open) setQuiereNuevo(false);
+  }
+
+  function registrarPendiente(p: PendienteRegistro) {
+    setInputQ("");
+    setQ("");
+    setCasoId(null);
+    setSelectedPacienteId(p.paciente_id);
+    setIngresoPreferido(p.ingreso_id);
+    setQuiereNuevo(true);
+    window.scrollTo?.({ top: 0 });
+  }
 
   function handleNuevoCaso() {
     // No bloquea: con casos activos se avisa primero; sin ellos se abre el formulario.
@@ -414,6 +487,7 @@ export function ReintegroPage() {
   function abrirCaso(id: number) {
     setCasoId(id);
     setAvisoOpen(false);
+    setQuiereNuevo(false);
     window.scrollTo?.({ top: 0 });
   }
   const hasSearched = q.length > 0;
@@ -477,11 +551,11 @@ export function ReintegroPage() {
               <NuevoCasoReintegroDialog
                 ingresoId={ingresoId}
                 prefill={prefillCaso}
-                open={nuevaOpen}
-                onOpenChange={setNuevaOpen}
+                open={altaAbierta}
+                onOpenChange={cambiarAlta}
                 onSaved={(caso) => {
                   setCasoId(caso.id);
-                  setNuevaOpen(false);
+                  cambiarAlta(false);
                 }}
               />
             )}
@@ -531,10 +605,10 @@ export function ReintegroPage() {
       </div>
 
       {/* Caso activo */}
-      {casoId !== null && (
+      {casoMostrado !== null && (
         <div className="space-y-2">
           <h2 className="text-[14px] font-semibold px-0.5">Caso activo</h2>
-          <CasoPanel casoId={casoId} canWrite={canWrite} />
+          <CasoPanel casoId={casoMostrado} canWrite={canWrite} />
         </div>
       )}
 
@@ -544,21 +618,19 @@ export function ReintegroPage() {
           <Search className="absolute left-2.5 top-2.5 size-3.5 text-muted-foreground pointer-events-none" />
           <Input
             value={inputQ}
-            onChange={(e) => setInputQ(e.target.value)}
+            onChange={(e) => cambiarBusqueda(e.target.value)}
             placeholder="Buscar por RUT, folio, nombre o ID SALUTEM"
             className="h-9 pl-8 text-[13px]"
             aria-label="Buscar pacientes"
           />
         </div>
 
-        {!hasSearched && !isFetching && casoId === null && (
-          <div className="rounded-lg border border-dashed border-border bg-muted/20 px-6 py-12 text-center">
-            <RefreshCw className="mx-auto mb-3 size-8 text-muted-foreground/50" />
-            <p className="text-[13.5px] text-muted-foreground">
-              Busca un paciente para ver o crear sus casos de reintegro, o carga
-              un caso existente por su número.
-            </p>
-          </div>
+        {/* QA-010: sin buscar, la lista global de casos activos y pendientes por registrar. */}
+        {!hasSearched && selectedPacienteId === null && (
+          <PanelReintegroGlobal
+            onAbrirCaso={abrirCaso}
+            onRegistrar={canWrite ? registrarPendiente : undefined}
+          />
         )}
 
         {isFetching && (
@@ -585,14 +657,17 @@ export function ReintegroPage() {
                 {pacientes.map((p) => (
                   <tr
                     key={p.id}
-                    onClick={() => setSelectedPaciente(p)}
+                    onClick={() => {
+                      setSelectedPacienteId(p.id);
+                      setIngresoPreferido(null);
+                    }}
                     className={cn(
                       "border-b cursor-pointer transition-colors",
-                      selectedPaciente?.id === p.id
+                      selectedPacienteId === p.id
                         ? "bg-primary/5 hover:bg-primary/10"
                         : "hover:bg-muted/40",
                     )}
-                    aria-selected={selectedPaciente?.id === p.id}
+                    aria-selected={selectedPacienteId === p.id}
                     role="row"
                   >
                     <td className="px-4 py-3">
@@ -611,11 +686,22 @@ export function ReintegroPage() {
         )}
 
         {/* Paciente seleccionado → casos del ingreso */}
-        {selectedPaciente && (
+        {selectedPacienteId !== null && (
           <div className="space-y-3">
             {vistaLoading && (
               <p className="text-[13px] text-muted-foreground px-1">
-                Cargando ingreso de {selectedPaciente.nombre}…
+                Cargando ingreso del paciente…
+              </p>
+            )}
+
+            {vista && (
+              <p className="text-[13px] font-semibold px-1" data-testid="paciente-seleccionado">
+                {vista.paciente.nombre}
+                {vista.paciente.rut && (
+                  <span className="ml-2 font-mono text-[12px] font-normal text-muted-foreground">
+                    {vista.paciente.rut}
+                  </span>
+                )}
               </p>
             )}
 
@@ -652,7 +738,7 @@ export function ReintegroPage() {
                             onClick={() => setCasoId(c.id)}
                             className={cn(
                               "border-b cursor-pointer transition-colors",
-                              casoId === c.id
+                              casoMostrado === c.id
                                 ? "bg-primary/5 hover:bg-primary/10"
                                 : "hover:bg-muted/40",
                             )}
