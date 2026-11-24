@@ -87,7 +87,7 @@ export const GUIAS: Guia[] = [
       },
     ],
     etiquetas: [
-      { texto: "Falta folio", tono: "warning", significado: "Paciente atendido en SALUTEM que aún no tiene ingreso en el SIGE. Usa «Completar registro»." },
+      { texto: "Falta folio", tono: "warning", significado: "Paciente creado, agendado o atendido en SALUTEM que aún no tiene ingreso en el SIGE. Usa «Completar registro»." },
       { texto: "SALUTEM", tono: "info", significado: "Dato creado automáticamente desde una atención en SALUTEM." },
     ],
     automatico:
@@ -101,7 +101,7 @@ export const GUIAS: Guia[] = [
     ruta: "/pendientes-folio",
     titulo: "Pendientes de folio",
     resumen:
-      "Pacientes que se atendieron en SALUTEM y todavía no tienen ingreso en el SIGE. El número rojo del menú indica cuántos quedan.",
+      "Pacientes creados, agendados o atendidos en SALUTEM que todavía no tienen ingreso en el SIGE. El número rojo del menú indica cuántos quedan.",
     tareas: [
       {
         titulo: "Completar el registro de un paciente",
@@ -121,7 +121,7 @@ export const GUIAS: Guia[] = [
       },
     ],
     automatico:
-      "La sincronización crea la fila y la alerta «Paciente nuevo pendiente de folio» por cada persona atendida en SALUTEM que no existe en el SIGE.",
+      "La sincronización crea la fila y la alerta «Paciente nuevo pendiente de folio» por cada persona de SALUTEM que no existe en el SIGE y que se creó, tiene una hora agendada (no anulada) o se atendió desde la puesta en marcha. No hay que esperar la primera atención.",
   },
   {
     ruta: "/licencias",
