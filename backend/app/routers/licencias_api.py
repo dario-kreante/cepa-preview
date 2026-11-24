@@ -44,7 +44,11 @@ def obtener_licencias(folio: str, db: Session = Depends(get_db)) -> LicenciasRes
 
     licencias = list(
         db.scalars(
-            select(LicenciaMedica).where(LicenciaMedica.ingreso_id == ingreso.id)
+            select(LicenciaMedica)
+            .where(LicenciaMedica.ingreso_id == ingreso.id)
+            # Mismo orden que la ficha (por ingreso): sin orden, Oracle devuelve las filas
+            # en cualquier orden y una licencia recién creada podía quedar perdida en medio.
+            .order_by(LicenciaMedica.fecha_inicio, LicenciaMedica.id)
         ).all()
     )
     # calcular_acumulado toma ingreso_id y devuelve ResultadoAcumulado

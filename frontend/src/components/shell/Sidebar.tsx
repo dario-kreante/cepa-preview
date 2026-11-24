@@ -20,7 +20,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ collapsed, onToggleCollapse, badges = {} }: SidebarProps) {
-  const { username, rol, logout } = useAuth();
+  const { username, rol, accesoAuditoria, logout } = useAuth();
   const navigate = useNavigate();
   const [busqueda, setBusqueda] = useState("");
 
@@ -96,7 +96,7 @@ export function Sidebar({ collapsed, onToggleCollapse, badges = {} }: SidebarPro
       <nav className="flex-1 overflow-y-auto px-3">
         {NAV.map((section) => {
           // Filtra items restringidos por rol; oculta la sección si queda vacía.
-          const items = itemsVisibles(section.items, rol as Rol | null);
+          const items = itemsVisibles(section.items, rol as Rol | null, accesoAuditoria);
           if (items.length === 0) return null;
           return (
           <div key={section.label} className="mb-3">

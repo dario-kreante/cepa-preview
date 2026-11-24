@@ -135,6 +135,11 @@ export function UsuariosPage() {
                         <Badge variant={rolVariant(u.rol)}>
                           {ROL_LABELS[u.rol as RolUsuario] ?? u.rol}
                         </Badge>
+                        {u.rol === "Administrativo" && u.acceso_auditoria && (
+                          <Badge variant="warning" className="ml-1.5">
+                            + Auditoría
+                          </Badge>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-[12.5px] text-muted-foreground">
                         {u.email ?? "—"}

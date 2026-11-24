@@ -74,6 +74,8 @@ const MOCK_CONTROL: ControlMedicoRead = {
   salutem_cita_id: 99,
   campos_editados: [],
   fuera_de_oda: false,
+  notas_salutem: [],
+  tiene_addendum: false,
 };
 
 function renderPage(token: string) {

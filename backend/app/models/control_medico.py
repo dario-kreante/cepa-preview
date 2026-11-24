@@ -5,7 +5,9 @@ Próximo control:        CEPA-061 (Task 5, migración 0061)
 Licencia / RECA:        CEPA-062 (Task 7, migración 0062)
 """
 
+import json
 from datetime import date, datetime, timezone
+from typing import Any
 
 from sqlalchemy import (
     BigInteger,
@@ -22,6 +24,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+from app.domain.addendum import es_addendum
 
 
 def _utcnow() -> datetime:
@@ -88,6 +91,32 @@ class ControlMedico(Base):
     # ── RECA y observaciones (CEPA-062, siempre editables) ───────────────────
     estado_reca: Mapped[str | None] = mapped_column(String(20), nullable=True)
     observaciones: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # ── Notas de SALUTEM (migración 1570, QA-008) ───────────────────────────
+    # Las notas de la atención (``contenido["notas"]``), ya en texto plano, como JSON:
+    # [{"fecha": "2026-11-23T12:07:28", "profesional": "...", "texto": "..."}]. La fecha es
+    # la hora local de Santiago, sin zona. Solo lectura: la escribe el sync. CLOB en Oracle:
+    # se compara en Python, nunca con ``=`` en SQL. Cuáles son addendum se decide al leer
+    # (app.domain.addendum).
+    notas_salutem: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    @property
+    def notas(self) -> list[dict[str, Any]]:
+        if not self.notas_salutem:
+            return []
+        try:
+            notas = json.loads(self.notas_salutem)
+        except ValueError:
+            return []
+        if not isinstance(notas, list):
+            return []
+        return [
+            {**n, "es_addendum": es_addendum(n.get("texto"))} for n in notas if isinstance(n, dict)
+        ]
+
+    @property
+    def tiene_addendum(self) -> bool:
+        return any(n["es_addendum"] for n in self.notas)
 
     # ── Origen (migración 1270) ──────────────────────────────────────────────
     # "CEPA" = cargado en SIGE; "SALUTEM" = creado por el sync desde una atención.

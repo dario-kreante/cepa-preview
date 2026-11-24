@@ -10,6 +10,22 @@ import {
   type LicenciaISLUpdate,
 } from "./api";
 
+/**
+ * Tras crear, anular o marcar ISL se refrescan todas las vistas de la licencia: el módulo
+ * (por folio), la ficha del paciente (por ingreso) y el acumulado de días.
+ */
+function invalidarVistasLicencia(
+  qc: ReturnType<typeof useQueryClient>,
+  folio: string,
+  ingresoId: number | undefined,
+) {
+  qc.invalidateQueries({ queryKey: ["licencias", "folio", folio] });
+  qc.invalidateQueries({ queryKey: ["licencias", "acumulado"] });
+  if (ingresoId !== undefined) {
+    qc.invalidateQueries({ queryKey: ["ingresos", ingresoId, "licencias"] });
+  }
+}
+
 export function useLicenciasPorFolio(folio: string) {
   return useQuery({
     queryKey: ["licencias", "folio", folio],
@@ -30,11 +46,8 @@ export function useCrearLicencia(folio: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (body: LicenciaCreate) => crearLicencia(body),
-    onSuccess: (_licencia, body) => {
-      qc.invalidateQueries({ queryKey: ["licencias", "folio", folio] });
-      // La ficha del paciente cuenta las licencias por ingreso, no por folio.
-      qc.invalidateQueries({ queryKey: ["ingresos", body.ingreso_id, "licencias"] });
-    },
+    // La ficha del paciente cuenta las licencias por ingreso, no por folio.
+    onSuccess: (_licencia, body) => invalidarVistasLicencia(qc, folio, body.ingreso_id),
   });
 }
 
@@ -48,8 +61,7 @@ export function useAnularLicencia(folio: string) {
       id: number;
       observaciones: string;
     }) => anularLicencia(id, observaciones),
-    onSuccess: () =>
-      qc.invalidateQueries({ queryKey: ["licencias", "folio", folio] }),
+    onSuccess: (licencia) => invalidarVistasLicencia(qc, folio, licencia?.ingreso_id),
   });
 }
 
@@ -58,8 +70,7 @@ export function useActualizarISL(folio: string) {
   return useMutation({
     mutationFn: ({ id, body }: { id: number; body: LicenciaISLUpdate }) =>
       actualizarISL(id, body),
-    onSuccess: () =>
-      qc.invalidateQueries({ queryKey: ["licencias", "folio", folio] }),
+    onSuccess: (licencia) => invalidarVistasLicencia(qc, folio, licencia?.ingreso_id),
   });
 }
 

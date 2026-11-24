@@ -15,6 +15,9 @@ import {
   Edit3,
   Loader2,
   CalendarClock,
+  Lock,
+  LockOpen,
+  ChevronDown,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -44,6 +47,7 @@ import { FolioCard } from "./FolioCard";
 import { HistorialCierresCard } from "./HistorialCierresCard";
 import { AltaLicenciaDialog } from "@/features/licencias/AltaLicenciaDialog";
 import { NuevoControlDialog } from "@/features/controles/NuevoControlDialog";
+import { BadgeAddendum, NotasSalutemControl } from "@/features/controles/NotasSalutemControl";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -217,34 +221,79 @@ function ControlesTab({ controles }: { controles: ControlMedicoRead[] }) {
   return (
     <div className="space-y-2">
       {controles.map((c) => (
-        <Card key={c.id}>
-          <CardContent className="p-4 flex items-center gap-4">
-            <div className="size-10 rounded-md bg-[oklch(0.94_0.05_155)] text-[oklch(0.40_0.12_155)] grid place-items-center shrink-0">
-              <Stethoscope className="size-5" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="font-semibold text-[13px] flex items-center gap-1.5">
-                Semana {c.semana_control} · {c.medico_tratante}
-                {c.origen === "SALUTEM" && (
-                  <Badge variant="info" title="Creado automáticamente desde una atención de SALUTEM">
-                    SALUTEM
-                  </Badge>
-                )}
-              </div>
-              <div className="text-[11px] text-muted-foreground">
-                {formatDate(c.fecha_control)} · {c.region_derivacion}
-                {c.proximo_control ? ` · Próximo: ${formatDate(c.proximo_control)}` : ""}
-              </div>
-            </div>
-            {c.observaciones && (
-              <span className="text-[11px] text-muted-foreground truncate max-w-[120px]">
-                {c.observaciones}
-              </span>
-            )}
-          </CardContent>
-        </Card>
+        <ControlCard key={c.id} control={c} />
       ))}
     </div>
+  );
+}
+
+/**
+ * Un control de la pestaña. Las observaciones se ven cortadas en la tarjeta (con el texto
+ * completo en el title) y el botón «Ver detalle» despliega las observaciones completas y las
+ * notas de SALUTEM, con el addendum aparte (QA-008).
+ */
+function ControlCard({ control: c }: { control: ControlMedicoRead }) {
+  const [abierto, setAbierto] = useState(false);
+  const tieneDetalle = Boolean(c.observaciones) || (c.notas_salutem?.length ?? 0) > 0;
+  return (
+    <Card>
+      <CardContent className="p-4">
+        <div className="flex items-center gap-4">
+          <div className="size-10 rounded-md bg-[oklch(0.94_0.05_155)] text-[oklch(0.40_0.12_155)] grid place-items-center shrink-0">
+            <Stethoscope className="size-5" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="font-semibold text-[13px] flex flex-wrap items-center gap-1.5">
+              Semana {c.semana_control} · {c.medico_tratante}
+              {c.origen === "SALUTEM" && (
+                <Badge variant="info" title="Creado automáticamente desde una atención de SALUTEM">
+                  SALUTEM
+                </Badge>
+              )}
+              <BadgeAddendum control={c} />
+            </div>
+            <div className="text-[11px] text-muted-foreground">
+              {formatDate(c.fecha_control)} · {c.region_derivacion}
+              {c.proximo_control ? ` · Próximo: ${formatDate(c.proximo_control)}` : ""}
+            </div>
+          </div>
+          {c.observaciones && !abierto && (
+            <span
+              className="text-[11px] text-muted-foreground truncate max-w-[120px]"
+              title={c.observaciones}
+            >
+              {c.observaciones}
+            </span>
+          )}
+          {tieneDetalle && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 px-2 text-[11.5px] shrink-0"
+              aria-expanded={abierto}
+              data-testid={`btn-detalle-control-${c.id}`}
+              onClick={() => setAbierto((v) => !v)}
+            >
+              <ChevronDown className={cn("size-3.5 transition-transform", abierto && "rotate-180")} />
+              {abierto ? "Ocultar" : "Ver detalle"}
+            </Button>
+          )}
+        </div>
+        {abierto && (
+          <div className="mt-3 space-y-3 border-t pt-3" data-testid={`detalle-control-${c.id}`}>
+            {c.observaciones && (
+              <section>
+                <h4 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Observaciones
+                </h4>
+                <p className="mt-0.5 text-[13px] whitespace-pre-line">{c.observaciones}</p>
+              </section>
+            )}
+            <NotasSalutemControl control={c} />
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -374,6 +423,7 @@ export function PatientSheet({
   // Primary ingreso = first in list (the backend sorts by fecha_ingreso desc)
   const primaryIngreso = vista?.ingresos?.[0];
   const primaryIngresoId = primaryIngreso?.id;
+  const casoAbierto = primaryIngreso?.estado === "activo" || primaryIngreso?.estado === "encuadre";
 
   const { data: licencias = [], isLoading: licLoading, isError: licError } =
     useLicenciasPorIngreso(primaryIngresoId);
@@ -487,30 +537,6 @@ export function PatientSheet({
                             {primaryIngreso.estado === "activo" ? "Pasar a encuadre" : "Volver a activo"}
                           </Button>
                         )}
-                      {canWrite &&
-                        primaryIngreso &&
-                        (primaryIngreso.estado === "activo" || primaryIngreso.estado === "encuadre") && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-6 px-2 text-[11px] bg-white/10 text-white border-white/30 hover:bg-white/20"
-                            data-testid="btn-cerrar-caso"
-                            onClick={() => setDialogoCierre("cerrar")}
-                          >
-                            Cerrar caso
-                          </Button>
-                        )}
-                      {puedeReabrir && primaryIngreso?.estado === "cerrado" && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-6 px-2 text-[11px] bg-white/10 text-white border-white/30 hover:bg-white/20"
-                          data-testid="btn-reabrir-caso"
-                          onClick={() => setDialogoCierre("reabrir")}
-                        >
-                          Reabrir caso
-                        </Button>
-                      )}
                       {primaryIngreso && (
                         <Badge
                           variant="outline"
@@ -551,33 +577,60 @@ export function PatientSheet({
             </div>
           )}
 
-          {/* Action buttons — only for writers */}
-          {canWrite && vista && primaryIngreso && (
-            <div className="flex items-center gap-2 mt-5">
-              <Button
-                variant="secondary"
-                size="sm"
-                className="bg-white text-primary hover:bg-white/90"
-                onClick={() => setEditarOpen(true)}
-              >
-                <Edit3 className="size-3.5" /> Editar ficha
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="bg-transparent border-white/30 text-white hover:bg-white/10"
-                onClick={() => setLicenciaOpen(true)}
-              >
-                <FileText className="size-3.5" /> Nueva licencia
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="bg-transparent border-white/30 text-white hover:bg-white/10"
-                onClick={() => setControlOpen(true)}
-              >
-                <Stethoscope className="size-3.5" /> Agendar control
-              </Button>
+          {/* Acciones de la ficha. QA 23-11: «Cerrar caso» va aquí, junto a las demás acciones,
+              para que se encuentre (antes era un botón chico entre las etiquetas de estado). */}
+          {vista && primaryIngreso && (canWrite || puedeReabrir) && (
+            <div className="flex flex-wrap items-center gap-2 mt-5">
+              {canWrite && (
+                <>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="bg-white text-primary hover:bg-white/90"
+                    onClick={() => setEditarOpen(true)}
+                  >
+                    <Edit3 className="size-3.5" /> Editar ficha
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="bg-transparent border-white/30 text-white hover:bg-white/10"
+                    onClick={() => setLicenciaOpen(true)}
+                  >
+                    <FileText className="size-3.5" /> Nueva licencia
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="bg-transparent border-white/30 text-white hover:bg-white/10"
+                    onClick={() => setControlOpen(true)}
+                  >
+                    <Stethoscope className="size-3.5" /> Agendar control
+                  </Button>
+                </>
+              )}
+              {canWrite && casoAbierto && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="bg-transparent border-white/30 text-white hover:bg-white/10"
+                  data-testid="btn-cerrar-caso"
+                  onClick={() => setDialogoCierre("cerrar")}
+                >
+                  <Lock className="size-3.5" /> Cerrar caso
+                </Button>
+              )}
+              {puedeReabrir && primaryIngreso.estado === "cerrado" && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="bg-transparent border-white/30 text-white hover:bg-white/10"
+                  data-testid="btn-reabrir-caso"
+                  onClick={() => setDialogoCierre("reabrir")}
+                >
+                  <LockOpen className="size-3.5" /> Reabrir caso
+                </Button>
+              )}
             </div>
           )}
           {vista && primaryIngreso && dialogoCierre && (

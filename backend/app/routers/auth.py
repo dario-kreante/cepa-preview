@@ -33,8 +33,12 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)) -> TokenPair:
 
     db.commit()
     return TokenPair(
-        access_token=crear_access_token(usuario.id, usuario.username, usuario.rol),
-        refresh_token=crear_refresh_token(usuario.id, usuario.username, usuario.rol),
+        access_token=crear_access_token(
+            usuario.id, usuario.username, usuario.rol, usuario.acceso_auditoria
+        ),
+        refresh_token=crear_refresh_token(
+            usuario.id, usuario.username, usuario.rol, usuario.acceso_auditoria
+        ),
     )
 
 
@@ -53,5 +57,7 @@ def refresh(payload: RefreshRequest, db: Session = Depends(get_db)) -> AccessTok
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuario inexistente o desactivado"
         )
     return AccessTokenResponse(
-        access_token=crear_access_token(usuario.id, usuario.username, usuario.rol)
+        access_token=crear_access_token(
+            usuario.id, usuario.username, usuario.rol, usuario.acceso_auditoria
+        )
     )

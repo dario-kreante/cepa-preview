@@ -420,4 +420,59 @@ describe("ControlesPage", () => {
     const delCepa = screen.getByText("Dr. Andrés Molina").closest("tr")!;
     expect(within(delCepa).getByTestId(/prestacion-control-/)).toHaveTextContent("—");
   });
+
+  it("etiqueta «Con addendum» y muestra el addendum completo en el detalle (QA-008)", async () => {
+    server.use(
+      http.get(`${BASE}/api/v1/pacientes/buscar`, () => HttpResponse.json([MOCK_PACIENTE])),
+      http.get(`${BASE}/api/v1/pacientes/:pacienteId/vista-360`, () =>
+        HttpResponse.json(MOCK_VISTA_360)
+      ),
+      http.get(`${BASE}/api/v1/controles-medicos/por-ingreso/:ingresoId`, () =>
+        HttpResponse.json([
+          {
+            ...MOCK_CONTROLES[0],
+            id: 501,
+            tiene_addendum: true,
+            notas_salutem: [
+              {
+                fecha: "2026-11-23T12:07:28",
+                profesional: "PILAR GARCÍA",
+                texto: "Prueba addendum. Se corrige próximo control 45 días.",
+                es_addendum: true,
+              },
+              { fecha: null, profesional: null, texto: "Paciente llega tarde", es_addendum: false },
+            ],
+          },
+          {
+            ...MOCK_CONTROLES[0],
+            id: 502,
+            fecha_control: "2026-03-17",
+            tiene_addendum: false,
+            notas_salutem: [],
+          },
+        ])
+      )
+    );
+
+    renderPage();
+    await userEvent.type(
+      screen.getByPlaceholderText("Buscar por RUT, folio, nombre o ID SALUTEM"),
+      "Juan"
+    );
+    await userEvent.click(await screen.findByText("Juan Pérez", {}, { timeout: 8000 }));
+
+    expect(await screen.findByTestId("badge-addendum-501", {}, { timeout: 8000 })).toHaveTextContent(
+      "Con addendum"
+    );
+    expect(screen.queryByTestId("badge-addendum-502")).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByTestId("btn-detalle-control-501"));
+    const notas = screen.getByTestId("notas-salutem-501");
+    expect(
+      within(notas).getByText("Prueba addendum. Se corrige próximo control 45 días.")
+    ).toBeInTheDocument();
+    expect(within(notas).getByText("23/11/2026 12:07 · PILAR GARCÍA")).toBeInTheDocument();
+    expect(within(notas).getByText("Notas de SALUTEM")).toBeInTheDocument();
+    expect(within(notas).getByText("Paciente llega tarde")).toBeInTheDocument();
+  });
 });

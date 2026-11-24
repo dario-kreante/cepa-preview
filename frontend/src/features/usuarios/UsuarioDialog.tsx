@@ -43,6 +43,7 @@ const DEFAULTS: UsuarioCreateForm = {
   password: "",
   rol: "Administrativo",
   email: "",
+  acceso_auditoria: false,
 };
 
 export function UsuarioDialog({ open, onOpenChange, usuario }: Props) {
@@ -55,6 +56,7 @@ export function UsuarioDialog({ open, onOpenChange, usuario }: Props) {
     register,
     handleSubmit,
     reset,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<UsuarioCreateForm>({
     resolver: zodResolver(isEdit ? usuarioEditSchema : usuarioCreateSchema),
@@ -69,13 +71,19 @@ export function UsuarioDialog({ open, onOpenChange, usuario }: Props) {
         password: "",
         rol: usuario.rol as UsuarioCreateForm["rol"],
         email: usuario.email ?? "",
+        acceso_auditoria: usuario.acceso_auditoria ?? false,
       });
     } else if (open) {
       reset(DEFAULTS);
     }
   }, [open, usuario, reset]);
 
+  // CA-012: el permiso extra solo existe para Administrativo (los demás roles ya entran o no
+  // por su rol); para otros roles se envía false y el backend también lo fuerza.
+  const esAdministrativo = watch("rol") === "Administrativo";
+
   async function onSubmit(v: UsuarioCreateForm) {
+    const accesoAuditoria = v.rol === "Administrativo" && !!v.acceso_auditoria;
     try {
       if (isEdit) {
         await actualizar.mutateAsync({
@@ -84,6 +92,7 @@ export function UsuarioDialog({ open, onOpenChange, usuario }: Props) {
             nombre: v.nombre,
             rol: v.rol,
             email: v.email || null,
+            acceso_auditoria: accesoAuditoria,
             ...(v.password ? { password: v.password } : {}),
           },
         });
@@ -95,6 +104,7 @@ export function UsuarioDialog({ open, onOpenChange, usuario }: Props) {
           password: v.password,
           rol: v.rol,
           email: v.email || null,
+          acceso_auditoria: accesoAuditoria,
         });
         toast.success("Usuario creado");
       }
@@ -153,6 +163,24 @@ export function UsuarioDialog({ open, onOpenChange, usuario }: Props) {
               ))}
             </select>
           </div>
+
+          {esAdministrativo && (
+            <div className="flex items-start gap-2 rounded-md border border-border px-3 py-2.5">
+              <input
+                id="acceso_auditoria"
+                type="checkbox"
+                className="mt-0.5 size-4 accent-primary"
+                {...register("acceso_auditoria")}
+              />
+              <div>
+                <Label htmlFor="acceso_auditoria">Acceso a Auditoría</Label>
+                <p className="text-[11.5px] text-muted-foreground mt-0.5">
+                  Además de lo del rol Administrativo, puede ver el módulo Auditoría (vista de caso
+                  y reportes) en modo lectura.
+                </p>
+              </div>
+            </div>
+          )}
 
           <div>
             <Label htmlFor="email">Correo (opcional)</Label>

@@ -29,6 +29,8 @@ cualquier sección de la atención. Correspondencia con el control:
 - tiempo_estimado_tratamiento, proyeccion_reintegro, factores_riesgo
                      ← los campos "Tiempo estimado de tratamiento", "Proyección de
                        reintegro laboral" y "Factores de riesgo acogidos"
+- notas_salutem      ← la lista "notas" de la atención (entre ellas el addendum, que puede
+                       llegar días después), en texto plano y como JSON (QA-008)
 - estado_reca        ← no viene en SALUTEM: lo completa el CEPA y el sync no lo toca
 
 Los campos que el CEPA corrige a mano en SIGE (``campos_editados``, migración 1390) no se
@@ -37,8 +39,9 @@ vuelven a escribir desde SALUTEM.
 
 import calendar
 import html
+import json
 import re
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from typing import Any
 
 from sqlalchemy import select
@@ -202,7 +205,51 @@ def _campos(db: Session, atencion: SalutemAtencion, ingreso: Ingreso) -> dict[st
         "numero_sesion_actual": _recortar(campo(c, "Número de sesión actual"), 20),
         "numero_sesiones_tratamiento": _recortar(campo(c, "Número de sesiones por tratamiento"), 20),
         "observaciones_reintegro": campo(c, "Observaciones para el reintegro laboral"),
+        "notas_salutem": notas_de_atencion(c),
     }
+
+
+def notas_de_atencion(contenido: dict[str, Any]) -> str | None:
+    """Las notas de la atención como JSON, en texto plano y de la más antigua a la más nueva:
+    ``[{"fecha", "profesional", "texto"}]``. None si no hay ninguna con texto.
+
+    SALUTEM las guarda en ``notas``, aparte de la ficha, y el equipo puede agregarlas días
+    después de atender: cambian el hash de la atención y la vinculación las vuelve a leer.
+    Se guardan todas; cuáles son addendum se decide al leer (app.domain.addendum).
+    """
+    valor = contenido.get("notas") or []
+    if isinstance(valor, dict):
+        valor = [valor]
+    if not isinstance(valor, list):
+        return None
+    notas = []
+    for nota in valor:
+        if not isinstance(nota, dict) or not (texto := _plano(nota.get("nota"))):
+            continue
+        notas.append(
+            {
+                "fecha": _fecha_nota(nota.get("fechaCreacion")),
+                "profesional": _texto(nota.get("profesional")),
+                "texto": texto,
+            }
+        )
+    if not notas:
+        return None
+    notas.sort(key=lambda n: n["fecha"] or "")
+    return json.dumps(notas, ensure_ascii=False)
+
+
+def _fecha_nota(valor: Any) -> str | None:
+    """``{"date": "2026-11-23 12:07:28.000000", "timezone": "America/Santiago"}`` (o el texto
+    solo) → ``"2026-11-23T12:07:28"``, hora local sin zona."""
+    if isinstance(valor, dict):
+        valor = valor.get("date")
+    if not isinstance(valor, str) or not valor.strip():
+        return None
+    try:
+        return datetime.fromisoformat(valor.strip()).replace(microsecond=0, tzinfo=None).isoformat()
+    except ValueError:
+        return None
 
 
 def _recortar(valor: str | None, largo: int) -> str | None:

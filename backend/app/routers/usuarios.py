@@ -7,7 +7,7 @@ from app.audit.service import record_audit
 from app.auth.deps import CurrentUser, require_role
 from app.auth.security import hash_password
 from app.db.session import get_db
-from app.models.usuario import ROL_SUPERADMIN, Usuario
+from app.models.usuario import ROL_ADMINISTRATIVO, ROL_SUPERADMIN, Usuario
 from app.schemas.usuario import UsuarioCreate, UsuarioRead, UsuarioUpdate
 
 router = APIRouter(prefix="/api/v1/usuarios", tags=["usuarios"])
@@ -23,6 +23,16 @@ def _exigir_superadmin(actor: CurrentUser, *roles_tocados: str | None) -> None:
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Solo un Superadmin puede gestionar usuarios Superadmin",
         )
+
+
+def _acceso_auditoria_efectivo(rol: str, solicitado: bool) -> bool:
+    """CA-012: el permiso «Acceso a Auditoría» solo existe para Administrativo.
+
+    Coordinación, Auditor y Superadmin ya entran al módulo por su rol, así que para ellos se
+    guarda siempre False (sin error): si el usuario vuelve a ser Administrativo, el permiso
+    hay que darlo de nuevo de forma explícita.
+    """
+    return rol == ROL_ADMINISTRATIVO and solicitado
 
 
 def _get_usuario_o_404(db: Session, usuario_id: int) -> Usuario:
@@ -47,6 +57,7 @@ def crear_usuario(
         activo=True,
         intentos_fallidos=0,
         email=payload.email,
+        acceso_auditoria=_acceso_auditoria_efectivo(payload.rol, payload.acceso_auditoria),
     )
     db.add(usuario)
     try:
@@ -63,7 +74,10 @@ def crear_usuario(
         action="CREATE",
         entity="usuario",
         entity_id=str(usuario.id),
-        valor_nuevo=f'{{"username": "{usuario.username}", "rol": "{usuario.rol}"}}',
+        valor_nuevo=(
+            f'{{"username": "{usuario.username}", "rol": "{usuario.rol}", '
+            f'"acceso_auditoria": {"true" if usuario.acceso_auditoria else "false"}}}'
+        ),
     )
     db.commit()
     db.refresh(usuario)
@@ -104,6 +118,12 @@ def actualizar_usuario(
         usuario.hashed_password = hash_password(payload.password)
     if payload.email is not None:
         usuario.email = payload.email
+    acceso_anterior = bool(usuario.acceso_auditoria)
+    solicitado = (
+        payload.acceso_auditoria if payload.acceso_auditoria is not None else acceso_anterior
+    )
+    usuario.acceso_auditoria = _acceso_auditoria_efectivo(usuario.rol, solicitado)
+    cambio_acceso = acceso_anterior != usuario.acceso_auditoria
     record_audit(
         db,
         actor=actor.username,
@@ -111,6 +131,16 @@ def actualizar_usuario(
         action="UPDATE",
         entity="usuario",
         entity_id=str(usuario.id),
+        valor_anterior=(
+            f'{{"acceso_auditoria": {"true" if acceso_anterior else "false"}}}'
+            if cambio_acceso
+            else None
+        ),
+        valor_nuevo=(
+            f'{{"acceso_auditoria": {"true" if usuario.acceso_auditoria else "false"}}}'
+            if cambio_acceso
+            else None
+        ),
     )
     db.commit()
     db.refresh(usuario)

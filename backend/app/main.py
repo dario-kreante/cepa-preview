@@ -17,6 +17,7 @@ from app.routers import licencias
 from app.routers import auditoria
 from app.agendamiento import router as agendamiento_router
 from app.routers import dashboard, reporte_operativo, reporte_convenio, reporte_carga, reporte_licencias, reporte_odas, reporte_ingresos, reporte_adherencia, ventana_proceso
+from app.routers import reporte_ambulatorio, reporte_farmacos_convenio
 from app.routers import citas as citas_router
 from app.routers import alertas as alertas_router
 from app.routers import config_alertas as config_alertas_router
@@ -71,6 +72,8 @@ app.include_router(reporte_convenio.router)
 app.include_router(reporte_carga.router)
 app.include_router(reporte_licencias.router)
 app.include_router(reporte_odas.router)
+app.include_router(reporte_ambulatorio.router)
+app.include_router(reporte_farmacos_convenio.router)
 app.include_router(reporte_ingresos.router)
 app.include_router(reporte_adherencia.router)
 app.include_router(ventana_proceso.router)

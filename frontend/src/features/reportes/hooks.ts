@@ -1,9 +1,11 @@
 import { useMutation } from "@tanstack/react-query";
 import {
   cambiarGestionOda,
+  descargarAmbulatorioExcel,
   descargarOdasVencidasExcel,
   importarReporteIsl,
   reporteAdherencia,
+  reporteAmbulatorio,
   reporteCargaLaboral,
   reporteConvenio,
   reporteLicencias,
@@ -11,6 +13,7 @@ import {
   reporteOdasVencidas,
   reporteOperativo,
   type EstadoGestion,
+  type FiltroAmbulatorio,
   type ProgramaFiltro,
   type RangoFechas,
 } from "./api";
@@ -66,6 +69,16 @@ export function useImportarReporteIsl() {
   return useMutation({
     mutationFn: ({ file, dryRun }: { file: File; dryRun: boolean }) =>
       importarReporteIsl(file, dryRun),
+  });
+}
+
+export function useReporteAmbulatorio() {
+  return useMutation({ mutationFn: (f: FiltroAmbulatorio) => reporteAmbulatorio(f) });
+}
+
+export function useDescargarAmbulatorioExcel() {
+  return useMutation({
+    mutationFn: (f: FiltroAmbulatorio) => descargarAmbulatorioExcel(f),
   });
 }
 

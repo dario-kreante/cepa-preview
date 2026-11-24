@@ -526,3 +526,103 @@ def test_sin_esos_campos_en_la_ficha_el_control_los_deja_vacios(db_session):
     assert c.numero_sesion_actual is None
     assert c.numero_sesiones_tratamiento is None
     assert c.observaciones_reintegro is None
+
+
+# ── Notas de SALUTEM y addendum (QA-008) ─────────────────────────────────────
+
+
+def _nota(texto, fecha, profesional="PILAR GARCÍA"):
+    return {
+        "nota": texto,
+        "fechaCreacion": {"date": fecha, "timezone_type": 3, "timezone": "America/Santiago"},
+        "profesional": profesional,
+    }
+
+
+def _leer(db):
+    [c] = leer_controles(db, _controles(db))
+    return c
+
+
+def test_la_nota_de_salutem_se_guarda_en_texto_plano_y_marca_el_addendum(db_session):
+    _paciente_e_ingreso(db_session)
+    _persona(db_session)
+    _atencion(
+        db_session, 5101, "2026-10-27",
+        notas=[_nota("Prueba addendum. Se corrige próximo control 45 días.<br>&nbsp;<br>",
+                     "2026-11-23 12:07:28.000000")],
+    )
+
+    vincular(db_session, AHORA)
+
+    c = _leer(db_session)
+    assert c.tiene_addendum is True
+    [nota] = c.notas_salutem
+    assert nota.texto == "Prueba addendum. Se corrige próximo control 45 días."
+    assert nota.profesional == "PILAR GARCÍA"
+    assert nota.fecha.isoformat() == "2026-11-23T12:07:28"
+    assert nota.es_addendum is True
+
+
+def test_una_nota_cualquiera_se_muestra_sin_ser_addendum(db_session):
+    _paciente_e_ingreso(db_session)
+    _persona(db_session)
+    _atencion(db_session, 5102, "2026-10-27", notas=[_nota("Paciente llega tarde", "2026-10-27 10:00:00.000000")])
+
+    vincular(db_session, AHORA)
+
+    c = _leer(db_session)
+    assert c.tiene_addendum is False
+    assert [(n.texto, n.es_addendum) for n in c.notas_salutem] == [("Paciente llega tarde", False)]
+
+
+def test_varias_notas_quedan_en_orden_y_adenda_con_mayusculas_y_tilde_es_addendum(db_session):
+    _paciente_e_ingreso(db_session)
+    _persona(db_session)
+    _atencion(
+        db_session, 5103, "2026-10-27",
+        notas=[
+            _nota("<p>ÁDENDA: se agrega <b>reposo</b></p>", "2026-11-02 09:30:00.000000", "DR. DOS"),
+            _nota("Paciente llega tarde", "2026-10-28 08:00:00.000000"),
+            _nota("<br>&nbsp;", "2026-10-29 08:00:00.000000"),  # sin texto: se descarta
+        ],
+    )
+
+    vincular(db_session, AHORA)
+
+    c = _leer(db_session)
+    assert [(n.texto, n.es_addendum) for n in c.notas_salutem] == [
+        ("Paciente llega tarde", False),
+        ("ÁDENDA: se agrega reposo", True),
+    ]
+    assert c.notas_salutem[1].profesional == "DR. DOS"
+    assert c.tiene_addendum is True
+
+
+def test_una_nota_agregada_despues_actualiza_el_control_ya_creado(db_session):
+    _paciente_e_ingreso(db_session)
+    _persona(db_session)
+    _atencion(db_session, 5104, "2026-10-27")
+    vincular(db_session, AHORA)
+    [c] = _controles(db_session)
+    assert c.notas_salutem is None
+    c.marcar_editados({"observaciones"})  # una corrección del CEPA no frena las notas
+    db_session.flush()
+
+    _atencion(db_session, 5104, "2026-10-27", notas=[_nota("Addendum: 45 días", "2026-11-23 12:07:28.000000")])
+    vincular(db_session, AHORA)
+
+    c = _leer(db_session)
+    assert [n.texto for n in c.notas_salutem] == ["Addendum: 45 días"]
+    assert c.tiene_addendum is True
+
+
+def test_sin_notas_el_control_no_tiene_addendum(db_session):
+    _paciente_e_ingreso(db_session)
+    _persona(db_session)
+    _atencion(db_session, 5105, "2026-10-27")
+
+    vincular(db_session, AHORA)
+
+    c = _leer(db_session)
+    assert (c.notas_salutem, c.tiene_addendum) == ([], False)

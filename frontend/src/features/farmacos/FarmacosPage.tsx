@@ -15,6 +15,7 @@ import { EsquemaPanel } from "./EsquemaPanel";
 import { FarmacosSugeridosPanel } from "./FarmacosSugeridosPanel";
 import { DocumentosSalutemPaciente } from "@/features/controles/DocumentosSalutem";
 import { SeguimientoPanel } from "./SeguimientoPanel";
+import { ExternalizadoReporte } from "./ExternalizadoReporte";
 import { CrearRegistroDialog } from "./CrearRegistroDialog";
 import { NuevaRecetaDialog } from "./NuevaRecetaDialog";
 import { ESTADO_LABELS } from "./registroSchema";
@@ -315,6 +316,9 @@ export function FarmacosPage() {
   const { rol } = useAuth();
   const canWrite = puedeEscribir(rol as Rol);
 
+  // Vista de la página: la gestión por paciente o el reporte Externalizado del período.
+  const [vistaPagina, setVistaPagina] = useState<"paciente" | "externalizado">("paciente");
+
   // Dialog state — "Nueva receta" header button
   const [nuevaRecetaOpen, setNuevaRecetaOpen] = useState(false);
 
@@ -435,6 +439,38 @@ export function FarmacosPage() {
         )}
       </div>
 
+      {/* ── Vista: por paciente o reporte Externalizado (QA-010/QA-013, Coordinación y Administrativo) ── */}
+      {canWrite && (
+        <div className="inline-flex rounded-md border p-0.5 bg-muted/30" role="group" aria-label="Vista de fármacos">
+          {(
+            [
+              ["paciente", "Por paciente"],
+              ["externalizado", "Reporte Externalizado"],
+            ] as const
+          ).map(([k, t]) => (
+            <button
+              key={k}
+              type="button"
+              data-testid={`vista-farmacos-${k}`}
+              aria-pressed={vistaPagina === k}
+              onClick={() => setVistaPagina(k)}
+              className={cn(
+                "px-3 py-1.5 text-[12.5px] font-medium rounded",
+                vistaPagina === k ? "bg-card shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {canWrite && vistaPagina === "externalizado" ? (
+        <ExternalizadoReporte
+          paciente={selectedPaciente ? { id: selectedPaciente.id, nombre: selectedPaciente.nombre } : null}
+        />
+      ) : (
+      <>
       {/* ── Search bar ── */}
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative w-[300px]">
@@ -563,6 +599,8 @@ export function FarmacosPage() {
             </>
           )}
         </div>
+      )}
+      </>
       )}
     </div>
   );

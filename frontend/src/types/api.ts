@@ -1756,6 +1756,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/reportes/ambulatorio": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Ambulatorio */
+        get: operations["get_ambulatorio_api_v1_reportes_ambulatorio_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reportes/ambulatorio/excel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Ambulatorio Excel */
+        get: operations["get_ambulatorio_excel_api_v1_reportes_ambulatorio_excel_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reportes/farmacos-convenio": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Farmacos Convenio */
+        get: operations["get_farmacos_convenio_api_v1_reportes_farmacos_convenio_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reportes/farmacos-convenio/excel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Farmacos Convenio Excel */
+        get: operations["get_farmacos_convenio_excel_api_v1_reportes_farmacos_convenio_excel_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/reportes/ingresos": {
         parameters: {
             query?: never;
@@ -2828,6 +2896,52 @@ export interface components {
         AlertaUpdate: {
             estado: components["schemas"]["EstadoAlerta"];
         };
+        /** AmbulatorioItem */
+        AmbulatorioItem: {
+            /** Cita Id */
+            cita_id: number;
+            /** Region */
+            region: string | null;
+            /** Codigo Region */
+            codigo_region: string | null;
+            /** Comuna */
+            comuna: string | null;
+            /** Codigo Comuna */
+            codigo_comuna: string | null;
+            /** Numero Cuenta */
+            numero_cuenta: string | null;
+            /** Opa */
+            opa: string | null;
+            /** Oda */
+            oda: string | null;
+            /** Rut */
+            rut: string | null;
+            /** Nombre */
+            nombre: string;
+            /** Cantidad */
+            cantidad: number;
+            /** Codigo Prestacion */
+            codigo_prestacion: string | null;
+            /** Glosa Prestacion */
+            glosa_prestacion: string | null;
+            /**
+             * Fecha
+             * Format: date
+             */
+            fecha: string;
+            /** Hora */
+            hora: string | null;
+            /** Monto Neto */
+            monto_neto: number | null;
+            /** Iva */
+            iva: number | null;
+            /** Monto Total */
+            monto_total: number | null;
+            /** Folio */
+            folio: string;
+            /** Programa */
+            programa: string | null;
+        };
         /**
          * ArchivoControlRead
          * @description Un documento de la biblioteca de SALUTEM unido al control por fecha.
@@ -3589,6 +3703,16 @@ export interface components {
             /** Observaciones Reintegro */
             observaciones_reintegro?: string | null;
             /**
+             * Notas Salutem
+             * @default []
+             */
+            notas_salutem: components["schemas"]["NotaSalutemControl"][];
+            /**
+             * Tiene Addendum
+             * @default false
+             */
+            tiene_addendum: boolean;
+            /**
              * Origen
              * @default CEPA
              */
@@ -4002,6 +4126,48 @@ export interface components {
          * @enum {string}
          */
         FactorRiesgoLegado: "carga" | "organizacion_trabajo" | "factores_psicosociales" | "violencia_laboral" | "condiciones_ergonomicas" | "otro";
+        /** FarmacoConvenioItem */
+        FarmacoConvenioItem: {
+            /**
+             * Origen
+             * @enum {string}
+             */
+            origen: "Receta" | "Esquema";
+            /** Registro Id */
+            registro_id: number;
+            /**
+             * Fecha
+             * Format: date
+             */
+            fecha: string;
+            /** Paciente Id */
+            paciente_id: number;
+            /** Paciente Nombre */
+            paciente_nombre: string;
+            /** Paciente Rut */
+            paciente_rut: string | null;
+            /** Folio */
+            folio: string;
+            /** Ingreso Id */
+            ingreso_id: number;
+            /** Programa */
+            programa: string | null;
+            /** Farmaco */
+            farmaco: string;
+            /** Dosis */
+            dosis: string | null;
+            /** Codigo Sap */
+            codigo_sap: string | null;
+            /**
+             * Clasificacion
+             * @enum {string}
+             */
+            clasificacion: "Convenio 001" | "Convenio 002" | "Fuera de convenio" | "REVISAR";
+            /** Detalle */
+            detalle: string;
+            /** Coincidencias */
+            coincidencias: string[];
+        };
         /**
          * FarmacoSugeridoRead
          * @description Un medicamento leído de una receta de SALUTEM, estructurado para el esquema.
@@ -4865,6 +5031,23 @@ export interface components {
          * @enum {string}
          */
         MotivoCierre: "reca_ec" | "alta_medica" | "alta_administrativa" | "abandono" | "desiste_proceso" | "cambio_prestador";
+        /**
+         * NotaSalutemControl
+         * @description Una nota que el equipo agregó a la atención en SALUTEM (p. ej. un addendum).
+         */
+        NotaSalutemControl: {
+            /** Fecha */
+            fecha?: string | null;
+            /** Profesional */
+            profesional?: string | null;
+            /** Texto */
+            texto: string;
+            /**
+             * Es Addendum
+             * @default false
+             */
+            es_addendum: boolean;
+        };
         /** ODAEstadoItem */
         ODAEstadoItem: {
             /** Ingreso Id */
@@ -5829,6 +6012,23 @@ export interface components {
              */
             fecha_remitido_isl: string;
         };
+        /** ReporteAmbulatorioResponse */
+        ReporteAmbulatorioResponse: {
+            /**
+             * Fecha Desde
+             * Format: date
+             */
+            fecha_desde: string;
+            /**
+             * Fecha Hasta
+             * Format: date
+             */
+            fecha_hasta: string;
+            /** Total */
+            total: number;
+            /** Items */
+            items: components["schemas"]["AmbulatorioItem"][];
+        };
         /**
          * ReporteAuditoriaRead
          * @description Respuesta del endpoint de generación de reportes.
@@ -5866,6 +6066,25 @@ export interface components {
             periodo: string;
             /** Items */
             items: components["schemas"]["CumplimientoConvenioItem"][];
+        };
+        /** ReporteFarmacosConvenioResponse */
+        ReporteFarmacosConvenioResponse: {
+            /**
+             * Fecha Desde
+             * Format: date
+             */
+            fecha_desde: string;
+            /**
+             * Fecha Hasta
+             * Format: date
+             */
+            fecha_hasta: string;
+            /** Total */
+            total: number;
+            /** Resumen */
+            resumen: components["schemas"]["ResumenClasificacion"][];
+            /** Items */
+            items: components["schemas"]["FarmacoConvenioItem"][];
         };
         /** ReporteIngresosResponse */
         ReporteIngresosResponse: {
@@ -5976,6 +6195,16 @@ export interface components {
          * @enum {string}
          */
         ResultadoGestion: "agendada_en_salutem" | "no_contesta" | "rechaza" | "otro";
+        /** ResumenClasificacion */
+        ResumenClasificacion: {
+            /**
+             * Clasificacion
+             * @enum {string}
+             */
+            clasificacion: "Convenio 001" | "Convenio 002" | "Fuera de convenio" | "REVISAR";
+            /** Total */
+            total: number;
+        };
         /**
          * ResumenDashboard
          * @description Respuesta del endpoint GET /dashboard.
@@ -6342,6 +6571,11 @@ export interface components {
             rol: "Coordinacion" | "Administrativo" | "Auditor" | "Superadmin";
             /** Email */
             email?: string | null;
+            /**
+             * Acceso Auditoria
+             * @default false
+             */
+            acceso_auditoria: boolean;
         };
         /** UsuarioRead */
         UsuarioRead: {
@@ -6358,6 +6592,11 @@ export interface components {
             /** Email */
             email?: string | null;
             /**
+             * Acceso Auditoria
+             * @default false
+             */
+            acceso_auditoria: boolean;
+            /**
              * Created At
              * Format: date-time
              */
@@ -6373,6 +6612,8 @@ export interface components {
             rol?: ("Coordinacion" | "Administrativo" | "Auditor" | "Superadmin") | null;
             /** Email */
             email?: string | null;
+            /** Acceso Auditoria */
+            acceso_auditoria?: boolean | null;
         };
         /** ValidacionPlazo */
         ValidacionPlazo: {
@@ -10244,6 +10485,151 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReporteODAEstadoResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_ambulatorio_api_v1_reportes_ambulatorio_get: {
+        parameters: {
+            query: {
+                /** @description Inicio del período (obligatorio) */
+                fecha_desde: string;
+                /** @description Fin del período, inclusive (obligatorio) */
+                fecha_hasta: string;
+                /** @description regular | ingreso_isl | tratamiento_isl | ley_karin | pipt (otro valor: coincidencia exacta) */
+                programa?: string | null;
+                /** @description Región del paciente (lista de SIGE) */
+                region?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReporteAmbulatorioResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_ambulatorio_excel_api_v1_reportes_ambulatorio_excel_get: {
+        parameters: {
+            query: {
+                /** @description Inicio del período (obligatorio) */
+                fecha_desde: string;
+                /** @description Fin del período, inclusive (obligatorio) */
+                fecha_hasta: string;
+                programa?: string | null;
+                region?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_farmacos_convenio_api_v1_reportes_farmacos_convenio_get: {
+        parameters: {
+            query: {
+                /** @description Inicio del período (obligatorio) */
+                fecha_desde: string;
+                /** @description Fin del período, inclusive (obligatorio) */
+                fecha_hasta: string;
+                /** @description Solo los fármacos de este paciente */
+                paciente_id?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReporteFarmacosConvenioResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_farmacos_convenio_excel_api_v1_reportes_farmacos_convenio_excel_get: {
+        parameters: {
+            query: {
+                /** @description Inicio del período (obligatorio) */
+                fecha_desde: string;
+                /** @description Fin del período, inclusive (obligatorio) */
+                fecha_hasta: string;
+                paciente_id?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */

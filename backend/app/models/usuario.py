@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import BigInteger, Boolean, DateTime, Identity, Integer, String
+from sqlalchemy import BigInteger, Boolean, DateTime, Identity, Integer, String, false
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -14,6 +14,7 @@ def _utcnow() -> datetime:
 # Superadmin (reunión 29-10-2026): acceso completo, para quienes revisan todos los módulos y
 # se reemplazan entre sí; require_role lo deja pasar en cualquier endpoint.
 ROL_SUPERADMIN = "Superadmin"
+ROL_ADMINISTRATIVO = "Administrativo"
 ROLES_VALIDOS = ("Coordinacion", "Administrativo", "Auditor", ROL_SUPERADMIN)
 
 
@@ -39,6 +40,11 @@ class Usuario(Base):
     # Nullable porque los usuarios locales (login por contraseña) no lo necesitan;
     # único porque un RUT identifica a una sola persona.
     rut: Mapped[str | None] = mapped_column(String(12), nullable=True, unique=True)
+    # CA-012 (QA 23-11-2026): permiso extra «Acceso a Auditoría». Solo tiene efecto para un
+    # Administrativo (le da lectura del módulo Auditoría); para otros roles se guarda False.
+    acceso_auditoria: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=false()
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, nullable=False
     )

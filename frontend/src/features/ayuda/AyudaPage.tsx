@@ -58,7 +58,7 @@ function desplazarA(ruta: string) {
 }
 
 export function AyudaPage() {
-  const { rol } = useAuth();
+  const { rol, accesoAuditoria } = useAuth();
   const [params, setParams] = useSearchParams();
   const guiaPedida = params.get("guia");
   const [busqueda, setBusqueda] = useState("");
@@ -70,11 +70,11 @@ export function AyudaPage() {
     const porRuta = new Map(GUIAS.map((g) => [g.ruta, g]));
     return NAV.map((s) => ({
       seccion: s.label,
-      items: itemsVisibles(s.items, rol)
+      items: itemsVisibles(s.items, rol, accesoAuditoria)
         .map((i: NavItem) => ({ guia: porRuta.get(i.to), icono: i.icon }))
         .filter((x): x is { guia: Guia; icono: NavItem["icon"] } => !!x.guia),
     })).filter((g) => g.items.length > 0);
-  }, [rol]);
+  }, [rol, accesoAuditoria]);
 
   const iconos = useMemo(
     () => new Map(grupos.flatMap((g) => g.items.map((i) => [i.guia.ruta, i.icono] as const))),

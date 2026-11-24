@@ -119,6 +119,27 @@ describe("PatientSheet — cierre del caso (QA-011)", () => {
     await waitFor(() => expect(enviado).toEqual({ estado: "cerrado", motivo_cierre: "alta_medica" }));
   });
 
+  // QA 23-11 (Valeria y Belén): «No logré identificar dónde cerrar caso».
+  it("«Cerrar caso» está entre las acciones de la ficha, junto a «Editar ficha»", async () => {
+    montar(INGRESO);
+    renderSheet("Administrativo");
+    const cerrar = await screen.findByRole("button", { name: "Cerrar caso" }, { timeout: 8000 });
+    const acciones = cerrar.parentElement as HTMLElement;
+    expect(within(acciones).getByRole("button", { name: /Editar ficha/ })).toBeInTheDocument();
+    expect(within(acciones).getByRole("button", { name: /Nueva licencia/ })).toBeInTheDocument();
+    expect(within(acciones).getByRole("button", { name: /Agendar control/ })).toBeInTheDocument();
+    // Ya no está escondido entre las etiquetas de estado.
+    expect(screen.getByTestId("estado-ingreso").parentElement).not.toContainElement(cerrar);
+  });
+
+  it("con el caso cerrado, Coordinación ve «Reabrir caso» en el mismo lugar", async () => {
+    montar({ ...INGRESO, estado: "cerrado", motivo_cierre: "abandono" });
+    renderSheet("Coordinacion");
+    const reabrir = await screen.findByRole("button", { name: "Reabrir caso" }, { timeout: 8000 });
+    expect(within(reabrir.parentElement as HTMLElement).getByRole("button", { name: /Editar ficha/ })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Cerrar caso" })).not.toBeInTheDocument();
+  });
+
   it("un caso en encuadre también se puede cerrar", async () => {
     montar({ ...INGRESO, estado: "encuadre" });
     renderSheet("Coordinacion");

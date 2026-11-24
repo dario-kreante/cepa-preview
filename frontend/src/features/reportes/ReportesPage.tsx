@@ -1,12 +1,14 @@
 /**
  * ReportesPage — Reportería operativa (EPIC-09): reportes operativos (CEPA-091),
  * cumplimiento por convenio (CEPA-092), carga laboral (CEPA-093), licencias
- * acumuladas (CEPA-094) y ODAS vencidas (CEPA-097). Solo lectura.
+ * acumuladas (CEPA-094), ODAS vencidas (CEPA-097) y Ambulatorio en formato de la
+ * plataforma ISL (QA 23-11-2026). Solo lectura.
  */
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { BarChart3, FileText } from "lucide-react";
+import { AmbulatorioTab } from "./AmbulatorioTab";
 import { OdasTab } from "./OdasTab";
 import { useConveniosParaReportes } from "@/features/convenios/hooks";
 import { Card } from "@/components/ui/card";
@@ -28,6 +30,7 @@ type Tab =
   | "carga"
   | "licencias"
   | "odas"
+  | "ambulatorio"
   | "adherencia";
 
 const TABS: [Tab, string][] = [
@@ -36,6 +39,7 @@ const TABS: [Tab, string][] = [
   ["carga", "Carga laboral"],
   ["licencias", "Licencias"],
   ["odas", "ODAS vencidas"],
+  ["ambulatorio", "Ambulatorio"],
   ["adherencia", "Adherencia"],
 ];
 
@@ -491,6 +495,7 @@ export function ReportesPage() {
       {tab === "carga" && <CargaTab />}
       {tab === "licencias" && <LicenciasTab />}
       {tab === "odas" && <OdasTab autoCargar={tabUrl === "odas"} />}
+      {tab === "ambulatorio" && <AmbulatorioTab />}
       {tab === "adherencia" && <AdherenciaTab />}
     </div>
   );
