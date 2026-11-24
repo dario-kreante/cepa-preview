@@ -36,14 +36,18 @@ def _sin_repetir_principal(principal: FactorRiesgo | None, adicionales: list[Fac
 
 
 class CasoEptCreate(BaseModel):
-    """Alta de caso EPT (CEPA-030). Campos obligatorios = RN-1."""
+    """Alta de caso EPT (CEPA-030). Campos obligatorios = RN-1.
+
+    QA-009: mes, fecha de ingreso EPT, nombre, RUT y región son opcionales: si no vienen
+    se toman del ingreso y del paciente (el mes se deriva de la fecha).
+    """
 
     ingreso_id: int
-    mes: str
-    fecha_ingreso_ept: date
-    nombre_trabajador: str
-    rut_trabajador: str
-    region_trabajador: str
+    mes: str | None = None
+    fecha_ingreso_ept: date | None = None
+    nombre_trabajador: str | None = None
+    rut_trabajador: str | None = None
+    region_trabajador: str | None = None
     eista: str
     factor_riesgo: FactorRiesgo
     factores_adicionales: list[FactorRiesgo] = []
@@ -54,7 +58,9 @@ class CasoEptCreate(BaseModel):
 
     @field_validator("rut_trabajador")
     @classmethod
-    def _rut_valido(cls, v: str) -> str:
+    def _rut_valido(cls, v: str | None) -> str | None:
+        if not v:
+            return None
         try:
             return normalizar_rut(v)
         except RutInvalidoError as exc:
@@ -133,6 +139,16 @@ class CasoEptRead(BaseModel):
         if isinstance(v, str):
             return [f for f in v.split(",") if f]
         return v
+
+
+class CasoEptResumenRead(CasoEptRead):
+    """Caso EPT en el listado por paciente (QA-009): folio, ingreso y plazos del caso."""
+
+    folio: str
+    fecha_ingreso: date
+    plazo_informe_ept: date | None = None
+    plazo_portal_isl: date | None = None
+    fecha_envio: date | None = None
 
 
 # ──────────────────────────────
@@ -229,6 +245,13 @@ class PlazoEptUpdate(BaseModel):
     plazo_portal_isl: date | None = None
     fecha_entrega_isl: date | None = None
     fecha_envio: date | None = None
+
+
+class PlazosSugeridosRead(BaseModel):
+    """Plazos que el sistema propone desde la fecha de ingreso EPT (QA-009)."""
+
+    plazo_informe_ept: date
+    plazo_portal_isl: date
 
 
 class PlazoEptRead(BaseModel):
