@@ -208,6 +208,21 @@ class IngresoCierre(BaseModel):
         return v
 
 
+class HistorialCierreRead(BaseModel):
+    """Un cierre del caso y, si se reabrió, cuándo, quién y por qué (QA-007)."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    motivo_cierre: MotivoCierre
+    fecha_cierre: date
+    cerrado_por: str
+    cerrado_en: datetime
+    reabierto_por: str | None = None
+    reabierto_en: datetime | None = None
+    motivo_reapertura: str | None = None
+
+
 class FolioUpdate(BaseModel):
     """Corrección del folio de un ingreso (solo Administrativo)."""
 
