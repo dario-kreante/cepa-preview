@@ -78,6 +78,13 @@ export const GUIAS: Guia[] = [
           "Presiona «Crear ingreso». El folio se asigna solo (formato F-2026-0001) y el ingreso queda activo.",
         ],
       },
+      {
+        titulo: "Cerrar o reabrir un caso",
+        pasos: [
+          "El caso se cierra desde la ficha del paciente: ábrela y presiona «Cerrar caso», junto a «Editar ficha», «Nueva licencia» y «Agendar control». Elige el motivo y presiona «Confirmar cierre».",
+          "Si el caso está cerrado, Coordinación ve en el mismo lugar el botón «Reabrir caso».",
+        ],
+      },
     ],
     etiquetas: [
       { texto: "Falta folio", tono: "warning", significado: "Paciente atendido en SALUTEM que aún no tiene ingreso en el SIGE. Usa «Completar registro»." },
@@ -506,6 +513,12 @@ export const PREGUNTAS: Pregunta[] = [
     respuesta:
       "Sale de la lista cuando la hora aparece en SALUTEM. Registra el contacto como «Agendada en SALUTEM»: lo oculta 3 días hábiles mientras la hora se sincroniza.",
     guia: "/agenda",
+  },
+  {
+    pregunta: "¿Dónde cierro un caso?",
+    respuesta:
+      "En la ficha del paciente: presiona «Cerrar caso», junto a «Editar ficha», elige el motivo y confirma. Un caso cerrado lo reabre Coordinación con «Reabrir caso» en el mismo lugar.",
+    guia: "/ingresos",
   },
   {
     pregunta: "¿Qué significan los números rojos del menú?",

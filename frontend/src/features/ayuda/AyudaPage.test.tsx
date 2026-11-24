@@ -85,6 +85,14 @@ describe("AyudaPage (COMP-2609-01)", () => {
     expect(screen.getByText(/No encontramos nada sobre «xyzzy»/)).toBeInTheDocument();
   });
 
+  // QA 23-11: «No logré identificar dónde cerrar caso».
+  it("la ayuda dice dónde se cierra un caso", async () => {
+    renderAyuda();
+    await userEvent.type(screen.getByRole("textbox", { name: "Buscar en la ayuda" }), "cerrar caso");
+    expect(screen.queryByText(/No encontramos nada/)).not.toBeInTheDocument();
+    expect(screen.getByText("¿Dónde cierro un caso?")).toBeInTheDocument();
+  });
+
   it("las preguntas frecuentes y el glosario están en sus pestañas", async () => {
     renderAyuda();
     await userEvent.click(screen.getByRole("tab", { name: "Preguntas frecuentes" }));
