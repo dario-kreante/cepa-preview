@@ -3589,6 +3589,16 @@ export interface components {
             /** Observaciones Reintegro */
             observaciones_reintegro?: string | null;
             /**
+             * Notas Salutem
+             * @default []
+             */
+            notas_salutem: components["schemas"]["NotaSalutemControl"][];
+            /**
+             * Tiene Addendum
+             * @default false
+             */
+            tiene_addendum: boolean;
+            /**
              * Origen
              * @default CEPA
              */
@@ -4865,6 +4875,23 @@ export interface components {
          * @enum {string}
          */
         MotivoCierre: "reca_ec" | "alta_medica" | "alta_administrativa" | "abandono" | "desiste_proceso" | "cambio_prestador";
+        /**
+         * NotaSalutemControl
+         * @description Una nota que el equipo agregó a la atención en SALUTEM (p. ej. un addendum).
+         */
+        NotaSalutemControl: {
+            /** Fecha */
+            fecha?: string | null;
+            /** Profesional */
+            profesional?: string | null;
+            /** Texto */
+            texto: string;
+            /**
+             * Es Addendum
+             * @default false
+             */
+            es_addendum: boolean;
+        };
         /** ODAEstadoItem */
         ODAEstadoItem: {
             /** Ingreso Id */

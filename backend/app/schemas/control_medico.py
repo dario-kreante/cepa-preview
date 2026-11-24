@@ -126,6 +126,17 @@ class EvaluacionUpdate(BaseModel):
     )(_vacio_a_none)
 
 
+class NotaSalutemControl(BaseModel):
+    """Una nota que el equipo agregó a la atención en SALUTEM (p. ej. un addendum)."""
+
+    # Hora local de Santiago, sin zona (así la informa SALUTEM).
+    fecha: datetime | None = None
+    profesional: str | None = None
+    texto: str
+    # La nota menciona «addendum»/«adenda» (app.domain.addendum.PALABRAS_ADDENDUM).
+    es_addendum: bool = False
+
+
 class ControlMedicoRead(BaseModel):
     """Respuesta unificada del control médico (todos los campos de las tres historias)."""
 
@@ -163,6 +174,10 @@ class ControlMedicoRead(BaseModel):
     numero_sesion_actual: str | None = None
     numero_sesiones_tratamiento: str | None = None
     observaciones_reintegro: str | None = None
+    # Notas de la atención en SALUTEM (QA-008), de la más antigua a la más nueva; solo
+    # lectura. tiene_addendum = alguna nota es addendum.
+    notas_salutem: list[NotaSalutemControl] = Field(default=[], validation_alias="notas")
+    tiene_addendum: bool = False
     # "CEPA" = cargado en SIGE; "SALUTEM" = creado por el sync desde una atención.
     origen: str = "CEPA"
     salutem_cita_id: int | None = None
