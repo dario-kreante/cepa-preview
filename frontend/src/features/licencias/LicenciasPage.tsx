@@ -263,8 +263,12 @@ export function LicenciasPage() {
   const historial: LicenciaReadSlim[] = licenciasResp?.historial ?? [];
   const diasAcumulados = licenciasResp?.dias_acumulados ?? 0;
 
-  // El ingreso del folio viene en la respuesta del listado (null si el folio no existe).
-  const ingresoId: number | undefined = licenciasResp?.ingreso_id ?? undefined;
+  // QA 23-11 (licencia «no se visualiza»): la licencia se asocia al ingreso principal del
+  // paciente elegido, el mismo que lista esta página y la ficha. Antes, sin paciente elegido
+  // (o con el listado aún cargando) el diálogo pedía el n.º de ingreso a mano y la licencia
+  // quedaba en otro ingreso, invisible para el paciente buscado.
+  const ingresoId: number | undefined =
+    vista?.ingresos?.[0]?.id ?? licenciasResp?.ingreso_id ?? undefined;
 
   // Client-side filters: el listado trae los campos completos, sin esperar detalles.
   const filtered = historial
@@ -418,7 +422,12 @@ export function LicenciasPage() {
               Envío masivo ISL
             </Button>
 
-            <Button size="sm" onClick={() => setAltaOpen(true)}>
+            <Button
+              size="sm"
+              onClick={() => setAltaOpen(true)}
+              disabled={ingresoId === undefined}
+              title={ingresoId === undefined ? "Busca y elige primero al paciente" : undefined}
+            >
               <Plus /> Nueva licencia
             </Button>
           </div>

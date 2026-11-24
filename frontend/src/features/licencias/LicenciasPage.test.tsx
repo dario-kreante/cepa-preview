@@ -400,3 +400,48 @@ describe("LicenciasPage · buscador de pacientes", () => {
     ).toBeInTheDocument();
   });
 });
+
+// QA 23-11 (Valeria): «Creé licencia médica pero no se logra visualizar». Sin paciente elegido
+// el diálogo pedía el n.º de ingreso a mano y la licencia quedaba en otro ingreso.
+describe("LicenciasPage · alta asociada al paciente buscado", () => {
+  it("sin paciente elegido no se puede abrir 'Nueva licencia'", async () => {
+    renderPage();
+    const boton = await screen.findByRole("button", { name: /Nueva licencia/i });
+    expect(boton).toBeDisabled();
+  });
+
+  it("la licencia se registra en el ingreso del paciente aunque el listado no haya respondido", async () => {
+    let enviado: { ingreso_id?: number } | null = null;
+    server.use(
+      // El listado por folio queda colgado: antes el diálogo abría sin ingreso y lo pedía a mano.
+      http.get(`${BASE}/api/v1/licencias/folio/:folio`, () => new Promise<never>(() => {})),
+      http.post(`${BASE}/api/v1/licencias`, async ({ request }) => {
+        enviado = (await request.json()) as { ingreso_id?: number };
+        return HttpResponse.json({ ...MOCK_FULL_LICENCIA, id: 99 }, { status: 201 });
+      }),
+    );
+    renderPage();
+    fireEvent.change(screen.getByPlaceholderText("Buscar por RUT, folio, nombre o ID SALUTEM"), {
+      target: { value: "humberto" },
+    });
+    const boton = await screen.findByRole("button", { name: /Nueva licencia/i });
+    await waitFor(() => expect(boton).toBeEnabled(), { timeout: 4000 });
+    fireEvent.click(boton);
+
+    const campoIngreso = await screen.findByLabelText(/N.º de ingreso del paciente/i);
+    expect(campoIngreso).toHaveValue(5);
+    expect(campoIngreso).toHaveAttribute("readonly");
+
+    fireEvent.change(screen.getByLabelText("Tipo de licencia"), { target: { value: "1" } });
+    fireEvent.change(screen.getByLabelText("Tipo de reposo"), { target: { value: "total" } });
+    fireEvent.change(screen.getByLabelText("Fecha inicio de la licencia"), { target: { value: "2026-11-01" } });
+    fireEvent.change(screen.getByLabelText("Fecha término de la licencia"), { target: { value: "2026-11-14" } });
+    fireEvent.change(screen.getByLabelText("Fecha de emisión de la licencia"), { target: { value: "2026-11-01" } });
+    fireEvent.change(screen.getByLabelText("Cantidad de días"), { target: { value: "14" } });
+    fireEvent.change(screen.getByLabelText("Diagnóstico"), { target: { value: "F32" } });
+    fireEvent.click(screen.getByRole("button", { name: /Registrar licencia/i }));
+
+    await waitFor(() => expect(enviado).not.toBeNull(), { timeout: 4000 });
+    expect(enviado!.ingreso_id).toBe(5);
+  });
+});

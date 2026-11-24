@@ -120,3 +120,25 @@ def test_auditor_puede_consultar_licencias(as_auditor, as_admin, folio_con_licen
 def test_sin_token_licencias_devuelve_401(client):
     r = client.get("/api/v1/licencias/folio/F-2026-0001")
     assert r.status_code == 401
+
+
+def test_licencia_recien_creada_se_ve_en_modulo_y_ficha(as_admin, folio_con_licencias, db_session):
+    """QA 23-11: una licencia recién creada aparece en el listado del folio (módulo) y en el
+    del ingreso (ficha), en el mismo orden por fecha de inicio."""
+    folio = folio_con_licencias["folio"]
+    ingreso_id = as_admin.get(f"/api/v1/licencias/folio/{folio}").json()["ingreso_id"]
+
+    r = as_admin.post("/api/v1/licencias", json={
+        "ingreso_id": ingreso_id, "tipo_lm": "1", "tipo_reposo": "total",
+        "fecha_inicio": "2026-04-01", "fecha_termino": "2026-04-10", "fecha_emision": "2026-04-01",
+        "inicio_reposo": "2026-04-01", "fin_reposo": "2026-04-10", "cantidad_dias": 10,
+        "diagnostico": "F32", "origen": "sistema",
+    })
+    assert r.status_code == 201, r.text
+    nueva = r.json()["id"]
+
+    modulo = as_admin.get(f"/api/v1/licencias/folio/{folio}").json()["historial"]
+    ficha = as_admin.get(f"/api/v1/ingresos/{ingreso_id}/licencias").json()
+    assert [lic["id"] for lic in modulo] == [lic["id"] for lic in ficha]
+    assert modulo[0]["id"] == nueva  # la más antigua primero, igual que la ficha
+    assert [lic["fecha_inicio"] for lic in modulo] == sorted(lic["fecha_inicio"] for lic in modulo)
