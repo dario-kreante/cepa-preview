@@ -41,6 +41,7 @@ import { EditarFichaDialog } from "./EditarFichaDialog";
 import { CierreCasoDialog } from "./CierreCasoDialog";
 import { etiquetaEstadoCaso } from "./motivosCierre";
 import { FolioCard } from "./FolioCard";
+import { HistorialCierresCard } from "./HistorialCierresCard";
 import { AltaLicenciaDialog } from "@/features/licencias/AltaLicenciaDialog";
 import { NuevoControlDialog } from "@/features/controles/NuevoControlDialog";
 
@@ -702,6 +703,8 @@ export function PatientSheet({
                       </CardContent>
                     </Card>
                   )}
+
+                  {primaryIngreso && <HistorialCierresCard ingresoId={primaryIngreso.id} />}
 
                   {vista.ingresos.length > 1 && (
                     <Card>

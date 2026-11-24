@@ -2501,6 +2501,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/ingresos/{ingreso_id}/cierres": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Listar Cierres
+         * @description Historial de cierres y reaperturas del caso, el más reciente primero (QA-007).
+         */
+        get: operations["listar_cierres_api_v1_ingresos__ingreso_id__cierres_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/ingresos/{ingreso_id}/estado": {
         parameters: {
             query?: never;
@@ -3744,6 +3764,8 @@ export interface components {
             tipo_alta?: components["schemas"]["TipoAlta"] | null;
             /** Observaciones */
             observaciones?: string | null;
+            /** Motivo Reapertura */
+            motivo_reapertura?: string | null;
         };
         /**
          * EvaluacionUpdate
@@ -4164,6 +4186,33 @@ export interface components {
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /**
+         * HistorialCierreRead
+         * @description Un cierre del caso y, si se reabrió, cuándo, quién y por qué (QA-007).
+         */
+        HistorialCierreRead: {
+            /** Id */
+            id: number;
+            motivo_cierre: components["schemas"]["MotivoCierre"];
+            /**
+             * Fecha Cierre
+             * Format: date
+             */
+            fecha_cierre: string;
+            /** Cerrado Por */
+            cerrado_por: string;
+            /**
+             * Cerrado En
+             * Format: date-time
+             */
+            cerrado_en: string;
+            /** Reabierto Por */
+            reabierto_por?: string | null;
+            /** Reabierto En */
+            reabierto_en?: string | null;
+            /** Motivo Reapertura */
+            motivo_reapertura?: string | null;
         };
         /**
          * ImedLicenciaCreate
@@ -11206,6 +11255,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LicenciasResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    listar_cierres_api_v1_ingresos__ingreso_id__cierres_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ingreso_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HistorialCierreRead"][];
                 };
             };
             /** @description Validation Error */

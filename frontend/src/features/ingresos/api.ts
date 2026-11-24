@@ -51,10 +51,16 @@ export async function cambiarEstadoIngreso(
   ingresoId: number,
   estado: IngresoRead["estado"],
   motivoCierre?: MotivoCierre,
+  motivoReapertura?: string,
 ): Promise<IngresoRead> {
+  const reapertura = motivoReapertura?.trim();
   const { data, error, response } = await api.PATCH("/api/v1/ingresos/{ingreso_id}/estado", {
     params: { path: { ingreso_id: ingresoId } },
-    body: motivoCierre ? { estado, motivo_cierre: motivoCierre } : { estado },
+    body: {
+      estado,
+      ...(motivoCierre ? { motivo_cierre: motivoCierre } : {}),
+      ...(reapertura ? { motivo_reapertura: reapertura } : {}),
+    },
   });
   if (error || !data) {
     if (response.status === 403) {
@@ -69,6 +75,17 @@ export async function cambiarEstadoIngreso(
     throw new Error("No se pudo cambiar el estado. Intenta nuevamente.");
   }
   return data;
+}
+
+export type HistorialCierreRead = components["schemas"]["HistorialCierreRead"];
+
+/** GET /api/v1/ingresos/{id}/cierres — cierres y reaperturas del caso, el más reciente primero (QA-007). */
+export async function obtenerHistorialCierres(ingresoId: number): Promise<HistorialCierreRead[]> {
+  const { data, error } = await api.GET("/api/v1/ingresos/{ingreso_id}/cierres", {
+    params: { path: { ingreso_id: ingresoId } },
+  });
+  if (error) throw new Error("No se pudo cargar el historial de cierres");
+  return data ?? [];
 }
 
 /** PUT /api/v1/ingresos/{id}/folio — corrige el folio (solo Administrativo). */

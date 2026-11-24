@@ -13,6 +13,7 @@ import {
   actualizarIngreso,
   corregirFolio,
   cambiarEstadoIngreso,
+  obtenerHistorialCierres,
   type IngresoCreate,
   type IngresoRead,
   type IngresoUpdate,
@@ -127,6 +128,15 @@ export function useActualizarIngreso(pacienteId: number) {
   });
 }
 
+/** Historial de cierres y reaperturas del caso (QA-007). */
+export function useHistorialCierres(ingresoId: number | undefined) {
+  return useQuery({
+    queryKey: ["ingresos", ingresoId, "cierres"],
+    queryFn: () => obtenerHistorialCierres(ingresoId!),
+    enabled: ingresoId !== undefined,
+  });
+}
+
 export function useCambiarEstadoIngreso(pacienteId: number) {
   const qc = useQueryClient();
   return useMutation({
@@ -134,13 +144,16 @@ export function useCambiarEstadoIngreso(pacienteId: number) {
       ingresoId,
       estado,
       motivoCierre,
+      motivoReapertura,
     }: {
       ingresoId: number;
       estado: IngresoRead["estado"];
       motivoCierre?: MotivoCierre;
-    }) => cambiarEstadoIngreso(ingresoId, estado, motivoCierre),
-    onSuccess: () => {
+      motivoReapertura?: string;
+    }) => cambiarEstadoIngreso(ingresoId, estado, motivoCierre, motivoReapertura),
+    onSuccess: (_data, { ingresoId }) => {
       qc.invalidateQueries({ queryKey: ["pacientes", pacienteId, "vista360"] });
+      qc.invalidateQueries({ queryKey: ["ingresos", ingresoId, "cierres"] });
       qc.invalidateQueries({ queryKey: ["pacientes", "buscar"] });
       // Un caso cerrado deja de contar como activo y sus alertas quedan resueltas.
       qc.invalidateQueries({ queryKey: ["dashboard"] });

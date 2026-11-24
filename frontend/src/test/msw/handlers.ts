@@ -23,6 +23,8 @@ export const handlers = [
   http.get(`${BASE}/api/v1/pacientes/buscar`, () => HttpResponse.json([])),
   // Contexto de una alerta (panel): sin paciente por defecto, el diálogo no ofrece gestión.
   http.get(`${BASE}/api/v1/alertas/:id/contexto`, () => HttpResponse.json({})),
+  // Historial de cierres del caso (ficha resumen, QA-007): vacío por defecto.
+  http.get(`${BASE}/api/v1/ingresos/:id/cierres`, () => HttpResponse.json([])),
   // Default handler for the esquema endpoint — returns empty list.
   // Individual tests can override via server.use().
   http.get(

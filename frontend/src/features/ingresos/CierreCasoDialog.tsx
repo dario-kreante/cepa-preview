@@ -2,7 +2,8 @@
  * CierreCasoDialog — cierra o reabre un caso (QA-011).
  *
  * Cerrar: el motivo es obligatorio (lista propia, distinta del tipo de alta). Reabrir:
- * solo Coordinación; el caso vuelve a «Activo» y el motivo anterior queda en la auditoría.
+ * solo Coordinación; el caso vuelve a «Activo» y el cierre anterior queda en el historial de
+ * cierres de la ficha (QA-007), con el motivo de reapertura si se indica.
  */
 import { useState } from "react";
 import { toast } from "sonner";
@@ -33,6 +34,7 @@ interface Props {
 
 export function CierreCasoDialog({ modo, open, onOpenChange, pacienteId, ingresoId, motivoActual }: Props) {
   const [motivo, setMotivo] = useState<MotivoCierre | "">("");
+  const [motivoReapertura, setMotivoReapertura] = useState("");
   const cambiar = useCambiarEstadoIngreso(pacienteId);
   const cerrando = modo === "cerrar";
 
@@ -41,11 +43,12 @@ export function CierreCasoDialog({ modo, open, onOpenChange, pacienteId, ingreso
     cambiar.mutate(
       cerrando
         ? { ingresoId, estado: "cerrado", motivoCierre: motivo as MotivoCierre }
-        : { ingresoId, estado: "activo" },
+        : { ingresoId, estado: "activo", motivoReapertura },
       {
         onSuccess: () => {
           toast.success(cerrando ? "Caso cerrado" : "Caso reabierto: vuelve a Activo");
           setMotivo("");
+          setMotivoReapertura("");
           onOpenChange(false);
         },
         onError: (e) => toast.error(e.message),
@@ -61,9 +64,9 @@ export function CierreCasoDialog({ modo, open, onOpenChange, pacienteId, ingreso
           <DialogDescription>
             {cerrando
               ? "El paciente dejará de contar como caso activo y de generar alertas. Elige el motivo del cierre."
-              : `El caso volverá a «Activo» y se borrarán el motivo, la fecha y el usuario de cierre${
-                  etiquetaMotivo(motivoActual) ? ` (motivo actual: ${etiquetaMotivo(motivoActual)})` : ""
-                }. El historial queda en la auditoría.`}
+              : `El caso volverá a «Activo». El cierre anterior${
+                  etiquetaMotivo(motivoActual) ? ` (motivo: ${etiquetaMotivo(motivoActual)})` : ""
+                } queda registrado en el historial de cierres de la ficha.`}
           </DialogDescription>
         </DialogHeader>
         {cerrando && (
@@ -81,6 +84,21 @@ export function CierreCasoDialog({ modo, open, onOpenChange, pacienteId, ingreso
                 ))}
               </SelectContent>
             </Select>
+          </div>
+        )}
+        {!cerrando && (
+          <div className="space-y-1.5">
+            <Label htmlFor="motivo-reapertura">Motivo de reapertura (opcional)</Label>
+            <textarea
+              id="motivo-reapertura"
+              data-testid="motivo-reapertura"
+              rows={2}
+              maxLength={300}
+              value={motivoReapertura}
+              onChange={(e) => setMotivoReapertura(e.target.value)}
+              placeholder="Por qué se reabre el caso"
+              className="w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-[13px] ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            />
           </div>
         )}
         <DialogFooter>
