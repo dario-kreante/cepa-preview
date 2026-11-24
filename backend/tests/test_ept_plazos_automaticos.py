@@ -1,4 +1,9 @@
-"""QA-005 (16-11): plazos EPT automáticos y alertas del día 18 al 20 (días corridos)."""
+"""Plazos EPT automáticos y sus alertas.
+
+QA-005 (16-11) fijó el rango de alerta entre el plazo del informe y el del portal ISL;
+QA-009 (23-11) cambió los plazos: ingreso + 15 (informe) y + 19 (portal ISL) días corridos,
+adelantados al día hábil anterior si caen en sábado, domingo o feriado.
+"""
 
 import datetime
 from datetime import date
@@ -14,10 +19,36 @@ from tests.test_alertas_integracion import _make_ingreso
 
 
 def test_plazos_automaticos_son_dias_corridos():
-    # Cruza un fin de semana y feriados: igual cuenta corrido.
+    # Lunes 2026-01-12: + 15 = martes 27, + 19 = sábado 31 → viernes 30.
+    informe, isl = plazos_automaticos(date(2026, 1, 12))
+    assert informe == date(2026, 1, 27)
+    assert isl == date(2026, 1, 30)
+
+
+def test_plazo_que_cae_domingo_se_adelanta_al_viernes():
+    # Sábado 2026-01-10: + 15 = domingo 25 → viernes 23; + 19 = jueves 29 (hábil).
     informe, isl = plazos_automaticos(date(2026, 1, 10))
-    assert informe == date(2026, 1, 28)  # ingreso + 18
-    assert isl == date(2026, 1, 30)  # ingreso + 20 (último día de envío)
+    assert informe == date(2026, 1, 23)
+    assert isl == date(2026, 1, 29)
+
+
+def test_plazo_que_cae_feriado_se_adelanta_al_habil_anterior():
+    # + 19 = jueves 29; con 28 y 29 feriados se adelanta al martes 27.
+    _, isl = plazos_automaticos(
+        date(2026, 1, 10), frozenset({date(2026, 1, 28), date(2026, 1, 29)})
+    )
+    assert isl == date(2026, 1, 27)
+
+
+def test_plazos_sugeridos_usan_los_feriados_registrados(as_admin, ingreso_fixture, db_session: Session):
+    from app.models.config_alerta import Festivo
+
+    db_session.add(Festivo(fecha=date(2026, 1, 29), descripcion="Feriado de prueba"))
+    db_session.flush()
+    caso_id = _crear_caso(as_admin, ingreso_fixture.id)
+    r = as_admin.get(f"/api/v1/casos-ept/{caso_id}/plazos-sugeridos")
+    assert r.status_code == 200, r.text
+    assert r.json() == {"plazo_informe_ept": "2026-01-23", "plazo_portal_isl": "2026-01-28"}
 
 
 def _crear_caso(as_admin, ingreso_id, ingreso="2026-01-10"):
@@ -44,8 +75,8 @@ def test_crear_plazos_vacios_los_calcula_el_backend(as_admin, ingreso_fixture):
     r = as_admin.post(f"/api/v1/casos-ept/{caso_id}/plazos", json={"caso_ept_id": caso_id})
     assert r.status_code == 201, r.text
     body = r.json()
-    assert body["plazo_informe_ept"] == "2026-01-28"
-    assert body["plazo_portal_isl"] == "2026-01-30"
+    assert body["plazo_informe_ept"] == "2026-01-23"
+    assert body["plazo_portal_isl"] == "2026-01-29"
 
 
 def test_crear_plazos_ajustados_se_respetan(as_admin, ingreso_fixture):
@@ -66,7 +97,7 @@ def test_crear_plazos_calcula_solo_el_campo_vacio(as_admin, ingreso_fixture):
         json={"caso_ept_id": caso_id, "plazo_informe_ept": "2026-02-01"},
     )
     assert r.json()["plazo_informe_ept"] == "2026-02-01"
-    assert r.json()["plazo_portal_isl"] == "2026-01-30"
+    assert r.json()["plazo_portal_isl"] == "2026-01-29"
 
 
 def test_actualizar_no_recalcula_plazos_existentes(as_admin, ingreso_fixture, db_session: Session):
@@ -182,8 +213,8 @@ def test_plazos_legados_sin_plazo_isl_conservan_la_ventana_configurada(db_sessio
 
 
 def test_entrega_isl_anticipada_se_acepta(as_admin, ingreso_fixture):
-    """Entrega al ISL antes del plazo del informe calculado (día 18): es lo deseable, no se rechaza."""
-    caso_id = _crear_caso(as_admin, ingreso_fixture.id)  # ingreso 2026-01-10 → informe 2026-01-28
+    """Entrega al ISL antes del plazo del informe calculado: es lo deseable, no se rechaza."""
+    caso_id = _crear_caso(as_admin, ingreso_fixture.id)  # ingreso 2026-01-10 → informe 2026-01-23
     ok = as_admin.post(
         f"/api/v1/casos-ept/{caso_id}/plazos",
         json={"caso_ept_id": caso_id, "fecha_entrega_isl": "2026-01-15"},

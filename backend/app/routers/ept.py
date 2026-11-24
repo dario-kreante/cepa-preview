@@ -17,6 +17,7 @@ from app.models.ept import PlazoEpt, ProcesoEpt
 from app.schemas.ept import (
     CasoEptCreate,
     CasoEptRead,
+    CasoEptResumenRead,
     CasoEptUpdate,
     ContactoEptCreate,
     ContactoEptPayload,
@@ -24,6 +25,7 @@ from app.schemas.ept import (
     PlazoEptCreate,
     PlazoEptRead,
     PlazoEptUpdate,
+    PlazosSugeridosRead,
     ProcesoEptCreate,
     ProcesoEptRead,
     ProcesoEptUpdate,
@@ -39,7 +41,9 @@ from app.services.ept import (
     eliminar_caso_ept,
     listar_casos_ept_por_paciente,
     obtener_caso_ept_o_404,
+    plazos_sugeridos,
 )
+from app.services.alertas import sincronizar_alertas_caso_ept
 
 router = APIRouter(prefix="/api/v1/casos-ept", tags=["casos-ept"])
 
@@ -70,6 +74,8 @@ def crear(
         entity="caso_ept",
         entity_id=str(caso.id),
     )
+    # QA-009: las alertas del caso se generan al guardar, sin esperar al job diario.
+    sincronizar_alertas_caso_ept(db, caso.id, actor=current_user.username)
     db.commit()
     db.refresh(caso)
     return caso
@@ -77,14 +83,14 @@ def crear(
 
 @router.get(
     "",
-    response_model=list[CasoEptRead],
+    response_model=list[CasoEptResumenRead],
     dependencies=[Depends(_reader)],
 )
 def listar_por_paciente(
     paciente_id: int = Query(..., description="Paciente cuyos casos EPT se listan"),
     db: Session = Depends(get_db),
-) -> list[CasoEptRead]:
-    """Casos EPT de todos los ingresos del paciente (búsqueda por RUT/nombre en la UI)."""
+) -> list[CasoEptResumenRead]:
+    """Casos EPT de todos los ingresos del paciente, con folio y plazos (QA-009)."""
     return listar_casos_ept_por_paciente(db, paciente_id)
 
 
@@ -117,6 +123,8 @@ def actualizar(
         entity="caso_ept",
         entity_id=str(caso.id),
     )
+    # QA-009: las alertas del caso se generan al guardar, sin esperar al job diario.
+    sincronizar_alertas_caso_ept(db, caso.id, actor=current_user.username)
     db.commit()
     db.refresh(caso)
     return caso
@@ -207,6 +215,8 @@ def crear_proceso(
         entity="proceso_ept",
         entity_id=str(proceso.id),
     )
+    # QA-009: las alertas del caso se generan al guardar, sin esperar al job diario.
+    sincronizar_alertas_caso_ept(db, caso.id, actor=current_user.username)
     db.commit()
     db.refresh(proceso)
     return proceso
@@ -251,6 +261,8 @@ def actualizar_proceso(
         entity="proceso_ept",
         entity_id=str(proceso.id),
     )
+    # QA-009: las alertas del caso se generan al guardar, sin esperar al job diario.
+    sincronizar_alertas_caso_ept(db, caso.id, actor=current_user.username)
     db.commit()
     db.refresh(proceso)
     return proceso
@@ -281,6 +293,8 @@ def crear_plazos(
         entity="plazo_ept",
         entity_id=str(plazo.id),
     )
+    # QA-009: las alertas del caso se generan al guardar, sin esperar al job diario.
+    sincronizar_alertas_caso_ept(db, caso.id, actor=current_user.username)
     db.commit()
     db.refresh(plazo)
     return plazo
@@ -298,6 +312,19 @@ def obtener_plazos(caso_id: int, db: Session = Depends(get_db)) -> PlazoEptRead:
     if plazo is None:
         raise HTTPException(status_code=404, detail="Plazos EPT no encontrados.")
     return plazo
+
+
+@router.get(
+    "/{caso_id}/plazos-sugeridos",
+    response_model=PlazosSugeridosRead,
+    dependencies=[Depends(_reader)],
+)
+def obtener_plazos_sugeridos(caso_id: int, db: Session = Depends(get_db)) -> PlazosSugeridosRead:
+    """Plazos que el sistema propone (QA-009): ingreso + 15 y + 19 días corridos, adelantados
+    al día hábil anterior si caen en fin de semana o feriado."""
+    caso = obtener_caso_ept_o_404(db, caso_id)
+    informe, isl = plazos_sugeridos(db, caso)
+    return PlazosSugeridosRead(plazo_informe_ept=informe, plazo_portal_isl=isl)
 
 
 @router.patch(
@@ -325,6 +352,8 @@ def actualizar_plazos(
         entity="plazo_ept",
         entity_id=str(plazo.id),
     )
+    # QA-009: las alertas del caso se generan al guardar, sin esperar al job diario.
+    sincronizar_alertas_caso_ept(db, caso.id, actor=current_user.username)
     db.commit()
     db.refresh(plazo)
     return plazo

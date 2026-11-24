@@ -7,6 +7,9 @@ import type { components } from "@/types/api";
 export type CasoEptCreate = components["schemas"]["CasoEptCreate"];
 export type CasoEptRead = components["schemas"]["CasoEptRead"];
 export type CasoEptUpdate = components["schemas"]["CasoEptUpdate"];
+/** Caso en el listado por paciente: folio, fecha del ingreso y plazos (QA-009). */
+export type CasoEptResumenRead = components["schemas"]["CasoEptResumenRead"];
+export type PlazosSugeridosRead = components["schemas"]["PlazosSugeridosRead"];
 
 export type ContactoEptPayload = components["schemas"]["ContactoEptPayload"];
 export type ContactoEptRead = components["schemas"]["ContactoEptRead"];
@@ -32,7 +35,7 @@ export async function crearCaso(body: CasoEptCreate): Promise<CasoEptRead> {
   });
   if (error || !data) {
     if (response.status === 409)
-      throw new Error("Ya existe un caso EPT para este ingreso.");
+      throw new Error(mensajeDelBackend(error, "Este folio ya tiene una EPT."));
     if (response.status === 422)
       throw new Error(mensajeDelBackend(error, "Datos inválidos. Revisa los campos."));
     throw new Error(mensajeDelBackend(error, "No se pudo crear el caso EPT"));
@@ -43,11 +46,20 @@ export async function crearCaso(body: CasoEptCreate): Promise<CasoEptRead> {
 /** GET /api/v1/casos-ept?paciente_id= — casos EPT de todos los ingresos del paciente. */
 export async function listarCasosPorPaciente(
   pacienteId: number,
-): Promise<CasoEptRead[]> {
+): Promise<CasoEptResumenRead[]> {
   const { data, error } = await api.GET("/api/v1/casos-ept", {
     params: { query: { paciente_id: pacienteId } },
   });
   if (error || !data) throw new Error("No se pudieron listar los casos EPT");
+  return data;
+}
+
+/** GET /api/v1/casos-ept/{caso_id}/plazos-sugeridos — plazos propuestos con feriados (QA-009). */
+export async function obtenerPlazosSugeridos(casoId: number): Promise<PlazosSugeridosRead> {
+  const { data, error } = await api.GET("/api/v1/casos-ept/{caso_id}/plazos-sugeridos", {
+    params: { path: { caso_id: casoId } },
+  });
+  if (error || !data) throw new Error("No se pudieron calcular los plazos sugeridos");
   return data;
 }
 

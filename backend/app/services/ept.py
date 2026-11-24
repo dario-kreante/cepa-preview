@@ -20,6 +20,7 @@ from app.domain.enums_ept import EstadoCumplimiento, EstadoEpt
 from app.models.alertas import AlertaNotif
 from app.models.ingreso import Ingreso
 from app.models.ept import CasoEpt, ContactoEpt, PlazoEpt, ProcesoEpt
+from app.models.paciente import Paciente
 from app.schemas.ept import (
     CasoEptCreate,
     CasoEptUpdate,
@@ -37,8 +38,66 @@ _MAX_CONTACTOS = 2
 # CasoEpt
 # ──────────────────────────────────────────
 
+_MESES = (
+    "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+    "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
+)
+
+
+def mes_desde_fecha(d: date) -> str:
+    """Mes del caso como lo muestra la planilla del área («Noviembre 2026», QA-002)."""
+    return f"{_MESES[d.month - 1]} {d.year}"
+
+
+def _caso_del_ingreso(db: Session, ingreso_id: int) -> CasoEpt | None:
+    return db.scalars(
+        select(CasoEpt).where(CasoEpt.ingreso_id == ingreso_id).order_by(CasoEpt.id)
+    ).first()
+
+
 def crear_caso_ept(db: Session, data: CasoEptCreate) -> CasoEpt:
-    """Crea un caso EPT. Ajusta el estado si corresponde_ept=False (RN-5)."""
+    """Crea un caso EPT. Ajusta el estado si corresponde_ept=False (RN-5).
+
+    QA-009: cada ingreso (folio) tiene como máximo una EPT (409 si ya existe). Nombre, RUT,
+    región y fecha de ingreso EPT que no vengan se toman del paciente y de su ingreso.
+    """
+    ingreso = db.get(Ingreso, data.ingreso_id)
+    if ingreso is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Ingreso {data.ingreso_id} no encontrado.",
+        )
+    existente = _caso_del_ingreso(db, ingreso.id)
+    if existente is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                f"El folio {ingreso.folio} ya tiene una EPT (caso N° {existente.id}). "
+                "Cada folio admite una sola EPT: abre la existente para editarla."
+            ),
+        )
+    paciente = db.get(Paciente, ingreso.paciente_id)
+    fecha_ingreso_ept = data.fecha_ingreso_ept or ingreso.fecha_ingreso
+    nombre = data.nombre_trabajador or (paciente.nombre if paciente else None)
+    rut = data.rut_trabajador or (paciente.rut if paciente else None)
+    region = data.region_trabajador or (paciente.region if paciente else None)
+    faltan = [
+        etiqueta
+        for valor, etiqueta in [
+            (nombre, "nombre"),
+            (rut, "RUT"),
+            (region, "región"),
+        ]
+        if not valor
+    ]
+    if faltan:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=(
+                "Falta " + ", ".join(faltan) + " del trabajador: el paciente no lo tiene "
+                "registrado, complétalo en el formulario."
+            ),
+        )
     estado = (
         EstadoEpt.NO_CORRESPONDE.value
         if not data.corresponde_ept
@@ -46,11 +105,11 @@ def crear_caso_ept(db: Session, data: CasoEptCreate) -> CasoEpt:
     )
     caso = CasoEpt(
         ingreso_id=data.ingreso_id,
-        mes=data.mes,
-        fecha_ingreso_ept=data.fecha_ingreso_ept,
-        nombre_trabajador=data.nombre_trabajador,
-        rut_trabajador=data.rut_trabajador,
-        region_trabajador=data.region_trabajador,
+        mes=data.mes or mes_desde_fecha(fecha_ingreso_ept),
+        fecha_ingreso_ept=fecha_ingreso_ept,
+        nombre_trabajador=nombre,
+        rut_trabajador=rut,
+        region_trabajador=region,
         eista=data.eista,
         factor_riesgo=data.factor_riesgo.value,
         factores_adicionales=_unir(data.factores_adicionales),
@@ -95,16 +154,32 @@ def actualizar_caso_ept(db: Session, caso: CasoEpt, data: CasoEptUpdate) -> Caso
     return caso
 
 
-def listar_casos_ept_por_paciente(db: Session, paciente_id: int) -> list[CasoEpt]:
-    """Casos EPT de todos los ingresos del paciente, del más reciente al más antiguo."""
-    return list(
-        db.scalars(
-            select(CasoEpt)
-            .join(Ingreso, CasoEpt.ingreso_id == Ingreso.id)
-            .where(Ingreso.paciente_id == paciente_id)
-            .order_by(CasoEpt.fecha_ingreso_ept.desc(), CasoEpt.id.desc())
+def listar_casos_ept_por_paciente(db: Session, paciente_id: int) -> list[dict]:
+    """Casos EPT de todos los ingresos del paciente, del más reciente al más antiguo.
+
+    QA-009: cada fila trae el folio y la fecha del ingreso y los plazos del caso, para
+    listar las EPT del paciente (una por folio) sin abrir cada una.
+    """
+    filas = db.execute(
+        select(CasoEpt, Ingreso.folio, Ingreso.fecha_ingreso)
+        .join(Ingreso, CasoEpt.ingreso_id == Ingreso.id)
+        .where(Ingreso.paciente_id == paciente_id)
+        .order_by(CasoEpt.fecha_ingreso_ept.desc(), CasoEpt.id.desc())
+    ).all()
+    resultado = []
+    for caso, folio, fecha_ingreso in filas:
+        plazo = caso.plazo
+        resultado.append(
+            {
+                **{c.key: getattr(caso, c.key) for c in CasoEpt.__table__.columns},
+                "folio": folio,
+                "fecha_ingreso": fecha_ingreso,
+                "plazo_informe_ept": plazo.plazo_informe_ept if plazo else None,
+                "plazo_portal_isl": plazo.plazo_portal_isl if plazo else None,
+                "fecha_envio": plazo.fecha_envio if plazo else None,
+            }
         )
-    )
+    return resultado
 
 
 def eliminar_caso_ept(db: Session, caso: CasoEpt) -> None:
@@ -318,17 +393,34 @@ def _validar_plazo(data, caso: CasoEpt) -> None:
         )
 
 
-# QA-005 (16-11): días corridos (feriados y fines de semana cuentan) desde el ingreso EPT.
-DIAS_PLAZO_INFORME = 18
-DIAS_PLAZO_PORTAL_ISL = 20  # último día posible de envío
+# QA-009 (23-11): días corridos desde el ingreso EPT; si el día cae en sábado, domingo o
+# feriado, el plazo se adelanta al día hábil anterior. Los plazos siguen siendo editables.
+DIAS_PLAZO_INFORME = 15  # fecha de envío del informe EPT
+DIAS_PLAZO_PORTAL_ISL = 19  # último día posible de carga en el portal ISL
 
 
-def plazos_automaticos(fecha_ingreso_ept: date) -> tuple[date, date]:
+def dia_habil_anterior(d: date, festivos: frozenset[date] = frozenset()) -> date:
+    """El mismo día si es hábil; si no, el día hábil (lun–vie, no feriado) anterior."""
+    while d.weekday() >= 5 or d in festivos:
+        d -= timedelta(days=1)
+    return d
+
+
+def plazos_automaticos(
+    fecha_ingreso_ept: date, festivos: frozenset[date] = frozenset()
+) -> tuple[date, date]:
     """(plazo del informe EPT, plazo del portal ISL) a partir de la fecha de ingreso EPT."""
     return (
-        fecha_ingreso_ept + timedelta(days=DIAS_PLAZO_INFORME),
-        fecha_ingreso_ept + timedelta(days=DIAS_PLAZO_PORTAL_ISL),
+        dia_habil_anterior(fecha_ingreso_ept + timedelta(days=DIAS_PLAZO_INFORME), festivos),
+        dia_habil_anterior(fecha_ingreso_ept + timedelta(days=DIAS_PLAZO_PORTAL_ISL), festivos),
     )
+
+
+def plazos_sugeridos(db: Session, caso: CasoEpt) -> tuple[date, date]:
+    """Plazos automáticos del caso con los feriados registrados en la configuración."""
+    from app.services.config_alertas import cargar_festivos
+
+    return plazos_automaticos(caso.fecha_ingreso_ept, cargar_festivos(db))
 
 
 def _resolver_alertas_plazo(db: Session, plazo: PlazoEpt) -> None:
@@ -353,7 +445,7 @@ def crear_plazo_ept(db: Session, data: PlazoEptCreate, caso: CasoEpt) -> PlazoEp
         )
     hoy = date.today()
     # Los plazos vacíos se calculan desde el ingreso; los que vienen (ajustados) se respetan.
-    auto_informe, auto_isl = plazos_automaticos(caso.fecha_ingreso_ept)
+    auto_informe, auto_isl = plazos_sugeridos(db, caso)
     plazo_informe = data.plazo_informe_ept or auto_informe
 
     from types import SimpleNamespace

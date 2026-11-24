@@ -102,16 +102,97 @@ def test_coordinacion_puede_leer(as_admin, as_coordinacion, ingreso_fixture):
 
 # ── QA Pilar 22-10 QA-003: listar EPT del paciente y borrar las creadas por error ──
 
-def test_listar_casos_ept_por_paciente(as_admin, ingreso_fixture):
+def _segundo_ingreso(db_session, ingreso_fixture, folio="F-2026-TEST-2"):
+    import datetime
+
+    from app.models.ingreso import Ingreso
+
+    otro = Ingreso(
+        paciente_id=ingreso_fixture.paciente_id,
+        folio=folio,
+        folio_manual=True,
+        fecha_ingreso=datetime.date(2026, 5, 1),
+        tipo_derivacion="DIAT",
+        tipo_ingreso="convenio",
+        estado="activo",
+    )
+    db_session.add(otro)
+    db_session.flush()
+    return otro
+
+
+def test_listar_casos_ept_por_paciente(as_admin, db_session, ingreso_fixture):
+    """QA-009: una EPT por folio; el listado trae folio, fecha del ingreso y plazos."""
+    otro = _segundo_ingreso(db_session, ingreso_fixture)
     viejo = as_admin.post(
         "/api/v1/casos-ept", json=_payload(ingreso_fixture.id, fecha_ingreso_ept="2026-01-10")
     ).json()
     nuevo = as_admin.post(
-        "/api/v1/casos-ept", json=_payload(ingreso_fixture.id, fecha_ingreso_ept="2026-05-01")
+        "/api/v1/casos-ept", json=_payload(otro.id, fecha_ingreso_ept="2026-05-01")
     ).json()
+    as_admin.post(f"/api/v1/casos-ept/{viejo['id']}/plazos", json={"caso_ept_id": viejo["id"]})
     r = as_admin.get("/api/v1/casos-ept", params={"paciente_id": ingreso_fixture.paciente_id})
     assert r.status_code == 200, r.text
-    assert [c["id"] for c in r.json()] == [nuevo["id"], viejo["id"]]
+    filas = r.json()
+    assert [c["id"] for c in filas] == [nuevo["id"], viejo["id"]]
+    assert filas[0]["folio"] == "F-2026-TEST-2"
+    assert filas[0]["fecha_ingreso"] == "2026-05-01"
+    assert filas[0]["plazo_informe_ept"] is None
+    assert filas[1]["folio"] == "F-2026-TEST"
+    assert filas[1]["plazo_informe_ept"] == "2026-01-23"
+    assert filas[1]["plazo_portal_isl"] == "2026-01-29"
+    assert filas[1]["fecha_envio"] is None
+
+
+# ── QA-009: una EPT por folio y precarga desde el paciente y su ingreso ──
+
+
+def test_segunda_ept_del_mismo_ingreso_da_409(as_admin, ingreso_fixture):
+    primero = as_admin.post("/api/v1/casos-ept", json=_payload(ingreso_fixture.id))
+    assert primero.status_code == 201
+    r = as_admin.post("/api/v1/casos-ept", json=_payload(ingreso_fixture.id))
+    assert r.status_code == 409, r.text
+    detalle = r.json()["detail"]
+    assert "F-2026-TEST" in detalle
+    assert f"caso N° {primero.json()['id']}" in detalle
+
+
+def test_crear_ept_en_ingreso_inexistente_da_404(as_admin):
+    r = as_admin.post("/api/v1/casos-ept", json=_payload(999999))
+    assert r.status_code == 404
+
+
+def test_crear_caso_sin_datos_del_trabajador_los_toma_del_paciente_e_ingreso(
+    as_admin, ingreso_fixture
+):
+    r = as_admin.post(
+        "/api/v1/casos-ept",
+        json={
+            "ingreso_id": ingreso_fixture.id,
+            "eista": "Ana González",
+            "factor_riesgo": "sobrecarga",
+        },
+    )
+    assert r.status_code == 201, r.text
+    body = r.json()
+    assert body["nombre_trabajador"] == "Pedro Soto"
+    assert body["rut_trabajador"] == "123456785"
+    assert body["region_trabajador"] == "Maule"
+    assert body["fecha_ingreso_ept"] == "2026-01-10"  # fecha del ingreso
+    assert body["mes"] == "Enero 2026"
+
+
+def test_crear_caso_sin_region_y_paciente_sin_region_da_422(
+    as_admin, db_session, ingreso_fixture
+):
+    ingreso_fixture.paciente.region = None
+    db_session.flush()
+    r = as_admin.post(
+        "/api/v1/casos-ept",
+        json={"ingreso_id": ingreso_fixture.id, "eista": "A", "factor_riesgo": "sobrecarga"},
+    )
+    assert r.status_code == 422, r.text
+    assert "región" in r.json()["detail"]
 
 
 def test_listar_casos_ept_paciente_sin_casos(as_auditor, ingreso_fixture):
@@ -204,6 +285,8 @@ def test_crear_caso_con_cada_factor_nuevo(as_admin, ingreso_fixture):
         )
         assert r.status_code == 201, (factor, r.text)
         assert r.json()["factor_riesgo"] == factor.value
+        # QA-009: un folio admite una sola EPT; se borra para probar el siguiente factor.
+        assert as_admin.delete(f"/api/v1/casos-ept/{r.json()['id']}").status_code == 204
 
 
 def test_crear_caso_con_factor_legado_rechazado(as_admin, ingreso_fixture):
