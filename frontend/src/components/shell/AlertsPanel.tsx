@@ -91,6 +91,7 @@ export const TITULOS_ALERTA: Record<string, string> = {
   plazo_insumos_ept: "Plazo de insumos EPT (hoy)",
   reca_por_solicitar: "RECA por solicitar",
   proyeccion_reintegro: "Proyección de reintegro registrada",
+  pendiente_remitir_isl: "Pendiente de remitir a ISL",
 };
 
 /** Alertas de un control médico: al hacer clic abren sus documentos en un diálogo. */
@@ -223,7 +224,8 @@ function metaAlerta(
   if (a.tipo === "inasistencia" || a.tipo === "posible_encuadre" || a.tipo === "cita_fuera_de_oda")
     return `Cita: ${formatDate(a.plazo_objetivo, "UTC")}`;
   // plazo_objetivo es la fecha a medianoche UTC: en hora local de Chile caería el día anterior.
-  if (a.tipo === "reca_por_solicitar") return `Plazo: ${formatDate(a.plazo_objetivo, "UTC")}`;
+  if (a.tipo === "reca_por_solicitar" || a.tipo === "pendiente_remitir_isl")
+    return `Plazo: ${formatDate(a.plazo_objetivo, "UTC")}`;
   if (esDeControl) {
     const etiqueta = a.caso_tipo === CASO_ATENCION ? "Atención" : "Control";
     return `${etiqueta}: ${formatDate(a.plazo_objetivo, "UTC")}`;
@@ -450,9 +452,10 @@ export function AlertsPanel({ onClose }: AlertsPanelProps = {}) {
       setAlertaControl(a);
       return;
     }
-    // La proyección de reintegro abre los controles del paciente en su ficha.
-    if (a.tipo === TIPO_PROYECCION && a.paciente_id) {
-      ir(`/ingresos?paciente=${a.paciente_id}&tab=controles`);
+    // QA-010: la proyección de reintegro abre la pestaña Reintegro con el paciente cargado; si no
+    // tiene caso activo, la página abre el alta del caso precargada (`nuevo=1`).
+    if (a.tipo === TIPO_PROYECCION) {
+      ir(a.paciente_id ? `/reintegro?paciente=${a.paciente_id}&nuevo=1` : "/reintegro");
       return;
     }
     ir(routeForCaso(a.caso_tipo, a.caso_id, a.paciente_id, a.caso_ept_id));

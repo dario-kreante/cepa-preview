@@ -11,6 +11,7 @@ import {
   listarCasosPorPaciente,
   obtenerCaso,
   obtenerPlazos,
+  obtenerPlazosSugeridos,
   obtenerProceso,
   type CasoEptCreate,
   type CasoEptUpdate,
@@ -55,7 +56,28 @@ export function usePlazos(casoId: number) {
   });
 }
 
+/** Plazos que propone el backend (ingreso + 15 / + 19, día hábil anterior; QA-009). */
+export function usePlazosSugeridos(casoId: number, enabled = true) {
+  return useQuery({
+    queryKey: ["ept", casoId, "plazos-sugeridos"],
+    queryFn: () => obtenerPlazosSugeridos(casoId),
+    enabled: !!casoId && enabled,
+  });
+}
+
 // ── Mutation hooks ───────────────────────────────────────────────────────────
+
+/**
+ * QA-009: al guardar un caso, su proceso o sus plazos el backend genera (o resuelve) sus
+ * alertas en el mismo request; se refrescan las alertas y el listado del paciente.
+ */
+function refrescarTrasGuardar(qc: ReturnType<typeof useQueryClient>, casoId: number, parte?: string) {
+  return Promise.all([
+    qc.invalidateQueries({ queryKey: parte ? ["ept", casoId, parte] : ["ept", casoId] }),
+    qc.invalidateQueries({ queryKey: ["ept", "paciente"] }),
+    qc.invalidateQueries({ queryKey: ["alertas"] }),
+  ]);
+}
 
 /** Crea un caso EPT nuevo; refresca el listado del paciente. */
 export function useCrearCaso() {
@@ -83,8 +105,7 @@ export function useActualizarCaso() {
   return useMutation({
     mutationFn: ({ casoId, body }: { casoId: number; body: CasoEptUpdate }) =>
       actualizarCaso(casoId, body),
-    onSuccess: (_data, { casoId }) =>
-      qc.invalidateQueries({ queryKey: ["ept", casoId] }),
+    onSuccess: (_data, { casoId }) => refrescarTrasGuardar(qc, casoId),
   });
 }
 
@@ -108,8 +129,7 @@ export function useCrearProceso() {
   return useMutation({
     mutationFn: ({ casoId, body }: { casoId: number; body: ProcesoEptCreate }) =>
       crearProceso(casoId, body),
-    onSuccess: (_data, { casoId }) =>
-      qc.invalidateQueries({ queryKey: ["ept", casoId, "proceso"] }),
+    onSuccess: (_data, { casoId }) => refrescarTrasGuardar(qc, casoId, "proceso"),
   });
 }
 
@@ -118,8 +138,7 @@ export function useActualizarProceso() {
   return useMutation({
     mutationFn: ({ casoId, body }: { casoId: number; body: ProcesoEptUpdate }) =>
       actualizarProceso(casoId, body),
-    onSuccess: (_data, { casoId }) =>
-      qc.invalidateQueries({ queryKey: ["ept", casoId, "proceso"] }),
+    onSuccess: (_data, { casoId }) => refrescarTrasGuardar(qc, casoId, "proceso"),
   });
 }
 
@@ -128,8 +147,7 @@ export function useCrearPlazos() {
   return useMutation({
     mutationFn: ({ casoId, body }: { casoId: number; body: PlazoEptCreate }) =>
       crearPlazos(casoId, body),
-    onSuccess: (_data, { casoId }) =>
-      qc.invalidateQueries({ queryKey: ["ept", casoId, "plazos"] }),
+    onSuccess: (_data, { casoId }) => refrescarTrasGuardar(qc, casoId, "plazos"),
   });
 }
 
@@ -138,7 +156,6 @@ export function useActualizarPlazos() {
   return useMutation({
     mutationFn: ({ casoId, body }: { casoId: number; body: PlazoEptUpdate }) =>
       actualizarPlazos(casoId, body),
-    onSuccess: (_data, { casoId }) =>
-      qc.invalidateQueries({ queryKey: ["ept", casoId, "plazos"] }),
+    onSuccess: (_data, { casoId }) => refrescarTrasGuardar(qc, casoId, "plazos"),
   });
 }

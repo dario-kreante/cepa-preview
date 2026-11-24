@@ -32,6 +32,8 @@ def test_caso_reintegro_tabla_y_columnas():
         "tipo_alta",
         "observaciones",
         "fecha_solicitud_reca",
+        "ocupacion",  # 1530 (QA-010)
+        "fecha_remitido_isl",  # 1530 (QA-010)
         "created_at",
         "updated_at",
     }

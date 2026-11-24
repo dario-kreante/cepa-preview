@@ -180,3 +180,108 @@ describe("PatientSheet — cierre del caso (QA-011)", () => {
     await waitFor(() => expect(enviado).toEqual({ estado: "activo" }));
   });
 });
+
+describe("PatientSheet — historial de cierres (QA-007)", () => {
+  it("sin cierres no muestra la sección", async () => {
+    montar(INGRESO);
+    renderSheet("Coordinacion");
+    await screen.findByTestId("estado-ingreso", {}, { timeout: 8000 });
+    expect(screen.queryByText("Historial de cierres")).not.toBeInTheDocument();
+  });
+
+  it("el aviso de reapertura dice que el cierre queda en el historial, no que se borra", async () => {
+    montar({ ...INGRESO, estado: "cerrado", motivo_cierre: "abandono" });
+    renderSheet("Coordinacion");
+    await userEvent.click(await screen.findByTestId("btn-reabrir-caso", {}, { timeout: 8000 }));
+    const dialogo = await screen.findByRole("dialog", { name: /reabrir caso/i });
+    expect(dialogo).toHaveTextContent(/queda registrado en el historial de cierres/i);
+    expect(dialogo).not.toHaveTextContent(/borrar/i);
+    expect(within(dialogo).getByLabelText(/motivo de reapertura/i)).toBeInTheDocument();
+  });
+
+  it("cierre → reapertura con motivo → cierre deja dos registros, el más reciente primero", async () => {
+    // Backend simulado con estado: el PATCH cierra/reabre y el historial se acumula.
+    let ingreso: Record<string, unknown> = { ...INGRESO };
+    const cierres: Record<string, unknown>[] = [];
+    const cuerpos: unknown[] = [];
+    montar(INGRESO);
+    server.use(
+      http.get(`${BASE}/api/v1/pacientes/:paciente_id/vista-360`, () =>
+        HttpResponse.json({
+          paciente: { id: 7, rut: "11.222.333-4", nombre: "Carmen Soto", sexo: "F", edad: 42, region: "Valparaíso" },
+          ingresos: [ingreso],
+          farmacos: [],
+          licencias: [],
+          controles: [],
+          odas: [],
+          reintegro: [],
+        }),
+      ),
+      http.get(`${BASE}/api/v1/ingresos/:id/cierres`, () => HttpResponse.json([...cierres].reverse())),
+      http.patch(`${BASE}/api/v1/ingresos/:id/estado`, async ({ request }) => {
+        const body = (await request.json()) as {
+          estado: string;
+          motivo_cierre?: string;
+          motivo_reapertura?: string;
+        };
+        cuerpos.push(body);
+        if (body.estado === "cerrado") {
+          const n = cierres.length + 1;
+          cierres.push({
+            id: n,
+            motivo_cierre: body.motivo_cierre,
+            fecha_cierre: `2026-11-${10 + n}`,
+            cerrado_por: "coord_maria",
+            cerrado_en: `2026-11-${10 + n}T15:00:00Z`,
+            reabierto_por: null,
+            reabierto_en: null,
+            motivo_reapertura: null,
+          });
+          ingreso = { ...ingreso, estado: "cerrado", motivo_cierre: body.motivo_cierre };
+        } else {
+          Object.assign(cierres[cierres.length - 1], {
+            reabierto_por: "coord_maria",
+            reabierto_en: "2026-11-12T15:00:00Z",
+            motivo_reapertura: body.motivo_reapertura ?? null,
+          });
+          ingreso = { ...ingreso, estado: body.estado, motivo_cierre: null };
+        }
+        return HttpResponse.json(ingreso);
+      }),
+    );
+    renderSheet("Coordinacion");
+
+    const cerrarCon = async (motivo: string) => {
+      await userEvent.click(await screen.findByTestId("btn-cerrar-caso", {}, { timeout: 8000 }));
+      const dialogo = await screen.findByRole("dialog", { name: /cerrar caso/i });
+      await userEvent.click(within(dialogo).getByRole("combobox"));
+      await userEvent.click(screen.getByRole("option", { name: motivo }));
+      await userEvent.click(within(dialogo).getByRole("button", { name: /confirmar cierre/i }));
+      await waitFor(() => expect(screen.queryByRole("button", { name: /confirmar (cierre|reapertura)/i })).not.toBeInTheDocument());
+    };
+
+    await cerrarCon("Abandono");
+    await userEvent.click(await screen.findByTestId("btn-reabrir-caso", {}, { timeout: 8000 }));
+    const reabrir = await screen.findByRole("dialog", { name: /reabrir caso/i });
+    await userEvent.type(within(reabrir).getByLabelText(/motivo de reapertura/i), "Retoma el tratamiento");
+    await userEvent.click(within(reabrir).getByRole("button", { name: /confirmar reapertura/i }));
+    await waitFor(() => expect(screen.queryByRole("button", { name: /confirmar (cierre|reapertura)/i })).not.toBeInTheDocument());
+    await cerrarCon("Alta médica");
+
+    expect(cuerpos).toEqual([
+      { estado: "cerrado", motivo_cierre: "abandono" },
+      { estado: "activo", motivo_reapertura: "Retoma el tratamiento" },
+      { estado: "cerrado", motivo_cierre: "alta_medica" },
+    ]);
+    const historial = await screen.findByTestId("historial-cierres");
+    expect(historial).toHaveTextContent("Historial de cierres");
+    await waitFor(() => expect(within(historial).getAllByTestId("cierre-item")).toHaveLength(2));
+    const [reciente, anterior] = within(historial).getAllByTestId("cierre-item");
+    expect(reciente).toHaveTextContent("Alta médica");
+    expect(reciente).toHaveTextContent("Cerrado el 12/11/2026 por coord_maria");
+    expect(reciente).not.toHaveTextContent("Reabierto");
+    expect(anterior).toHaveTextContent("Abandono");
+    expect(anterior).toHaveTextContent("Cerrado el 11/11/2026 por coord_maria");
+    expect(anterior).toHaveTextContent("Reabierto el 12/11/2026 por coord_maria — Retoma el tratamiento");
+  }, 30000);
+});

@@ -209,9 +209,11 @@ VENTANAS_DEFAULT: dict[str, dict] = {
     TipoAlerta.CITA_FUERA_DE_ODA.value: {"dias": 30, "habiles": False},
     # El mismo día del plazo (D10): Sasha envía los insumos al EPTista esa mañana.
     TipoAlerta.PLAZO_INSUMOS_EPT.value: {"dias": 0, "habiles": False},
-    # QA-003: "dias" = días corridos desde la fecha del caso para solicitar la RECA. 5 es
-    # provisional: la clienta aún debe confirmarlo (se edita en la configuración de alertas).
-    TipoAlerta.RECA_POR_SOLICITAR.value: {"dias": 5, "habiles": False},
+    # QA-010: "dias" = días corridos desde la fecha de envío del caso EPT (o la del caso) para
+    # solicitar la RECA; solo pacientes ISL.
+    TipoAlerta.RECA_POR_SOLICITAR.value: {"dias": 15, "habiles": False},
+    # QA-010: "dias" = días corridos desde la fecha del caso para remitirlo a ISL.
+    TipoAlerta.PENDIENTE_REMITIR_ISL.value: {"dias": 7, "habiles": False},
     # Sin plazo: la crea el sync al vincular el control; aquí solo se enciende o apaga.
     TipoAlerta.PROYECCION_REINTEGRO.value: {"dias": 0, "habiles": False},
 }
@@ -326,7 +328,9 @@ def _construir_hitos_licencias(db: Session, ventanas: dict[str, dict] | None = N
     return hitos
 
 
-def _construir_hitos_ept(db: Session, ventanas: dict[str, dict] | None = None) -> list[HitoPlazos]:
+def _construir_hitos_ept(
+    db: Session, ventanas: dict[str, dict] | None = None, caso_ept_id: int | None = None
+) -> list[HitoPlazos]:
     """Construye HitoPlazos desde plazo_ept JOIN caso_ept (EPIC-03) via ORM.
 
     QA-005: mientras no haya ``fecha_envio``, con ambos plazos cargados la alerta rige del
@@ -335,6 +339,7 @@ def _construir_hitos_ept(db: Session, ventanas: dict[str, dict] | None = None) -
     solo las enciende o apaga. Con un plazo registrado en el envío no se genera nada.
     Si falta alguno de los dos plazos (casos antiguos) se mantiene la ventana configurada.
     Destinatario: ver _resolver_usuario, vía CasoEpt.ingreso_id (hoy None).
+    ``caso_ept_id`` limita los hitos a un caso (QA-009: alertas al guardar el caso).
     """
     from app.models.ept import CasoEpt, PlazoEpt  # local import
     from app.services.alertas_cierre import ids_ingresos_cerrados  # local import
@@ -343,7 +348,10 @@ def _construir_hitos_ept(db: Session, ventanas: dict[str, dict] | None = None) -
     v_ept = (ventanas or VENTANAS_DEFAULT)[TipoAlerta.PLAZO_EPT.value]
     v_isl = (ventanas or VENTANAS_DEFAULT)[TipoAlerta.PLAZO_ISL.value]
 
-    filas = db.scalars(select(PlazoEpt).where(PlazoEpt.fecha_envio.is_(None))).all()
+    consulta = select(PlazoEpt).where(PlazoEpt.fecha_envio.is_(None))
+    if caso_ept_id is not None:
+        consulta = consulta.where(PlazoEpt.caso_ept_id == caso_ept_id)
+    filas = db.scalars(consulta).all()
     hitos: list[HitoPlazos] = []
     for plazo_ept in filas:
         caso = db.get(CasoEpt, plazo_ept.caso_ept_id)
@@ -370,11 +378,13 @@ def _construir_hitos_ept(db: Session, ventanas: dict[str, dict] | None = None) -
                     **rango,
                 )
             )
-    hitos.extend(_construir_hitos_insumos_ept(db, ventanas))
+    hitos.extend(_construir_hitos_insumos_ept(db, ventanas, caso_ept_id))
     return hitos
 
 
-def _construir_hitos_insumos_ept(db: Session, ventanas: dict[str, dict] | None = None) -> list[HitoPlazos]:
+def _construir_hitos_insumos_ept(
+    db: Session, ventanas: dict[str, dict] | None = None, caso_ept_id: int | None = None
+) -> list[HitoPlazos]:
     """Plazo de insumos de la empresa (proceso EPT, CEPA-031): alerta el mismo día (D10).
 
     El empleador entrega ese día los documentos que el CEPA envía al EPTista para el
@@ -390,11 +400,14 @@ def _construir_hitos_insumos_ept(db: Session, ventanas: dict[str, dict] | None =
     )
     if not ventana.get("activo", True):
         return []
-    filas = db.execute(
+    consulta = (
         select(ProcesoEpt.caso_ept_id, ProcesoEpt.plazo_insumos_empresa, CasoEpt.ingreso_id)
         .join(CasoEpt, CasoEpt.id == ProcesoEpt.caso_ept_id)
         .where(ProcesoEpt.plazo_insumos_empresa.is_not(None), CasoEpt.estado == EstadoEpt.ABIERTO.value)
-    ).all()
+    )
+    if caso_ept_id is not None:
+        consulta = consulta.where(ProcesoEpt.caso_ept_id == caso_ept_id)
+    filas = db.execute(consulta).all()
     cerrados = ids_ingresos_cerrados(db)  # QA-011: un caso cerrado no genera alertas
     return [
         HitoPlazos(
@@ -625,6 +638,110 @@ def _construir_alertas_gaf(
     return resultados
 
 
+def _persistir_resultados(db: Session, resultados: list[ResultadoAlerta]) -> None:
+    """Agrega a la sesión una alerta pendiente por resultado (sin commit)."""
+    for r in resultados:
+        db.add(
+            AlertaNotif(
+                tipo=r.tipo,
+                estado=EstadoAlerta.PENDIENTE.value,
+                caso_id=r.caso_id,
+                caso_tipo=r.caso_tipo,
+                usuario_id=r.usuario_id,
+                plazo_objetivo=datetime.combine(
+                    r.plazo_objetivo, datetime.min.time()
+                ).replace(tzinfo=timezone.utc),
+                ventana_dias=r.ventana_dias,
+                email_enviado=False,
+            )
+        )
+
+
+def _fecha_utc(valor) -> date | None:
+    """plazo_objetivo persistido (datetime UTC) como date; ver DD-E en _cargar_alertas_activas."""
+    if valor is None:
+        return None
+    if hasattr(valor, "date"):
+        if valor.tzinfo is not None:
+            valor = valor.astimezone(timezone.utc)
+        return valor.date()
+    return valor
+
+
+def sincronizar_alertas_caso_ept(
+    db: Session, caso_ept_id: int, *, actor: str = "sistema", hoy: date | None = None
+) -> int:
+    """Genera y actualiza en el momento las alertas de UN caso EPT (QA-009).
+
+    El job diario (07:00, días hábiles) sigue siendo la fuente general; esto evita que un
+    plazo registrado hoy espere al día siguiente. Reutiliza los hitos y el motor del job:
+      1. Resuelve las alertas abiertas del caso cuyo plazo ya no coincide con la fecha
+         vigente (plazo editado, borrado o informe enviado).
+      2. Evalúa los hitos del caso y crea las que correspondan, respetando la
+         idempotencia (caso_id, tipo, plazo_objetivo) del job.
+    No hace commit: lo hace el request que guarda el caso. Devuelve las alertas creadas.
+    """
+    from app.audit.service import record_audit
+    from app.models.ept import CasoEpt, PlazoEpt, ProcesoEpt
+    from app.services.config_alertas import cargar_festivos, cargar_ventanas
+
+    caso = db.get(CasoEpt, caso_ept_id)
+    if caso is None:
+        return 0
+    hoy = hoy or date.today()
+    plazo = db.scalars(select(PlazoEpt).where(PlazoEpt.caso_ept_id == caso_ept_id)).first()
+    proceso = db.scalars(select(ProcesoEpt).where(ProcesoEpt.caso_ept_id == caso_ept_id)).first()
+
+    # Fecha vigente de cada alerta del caso: (caso_tipo, caso_id, tipo) -> fecha o None.
+    vigentes: dict[tuple[str, int, str], date | None] = {
+        ("caso_ept", caso.id, TipoAlerta.PLAZO_INSUMOS_EPT.value): (
+            proceso.plazo_insumos_empresa if proceso else None
+        ),
+    }
+    if plazo is not None:
+        enviado = plazo.fecha_envio is not None
+        vigentes[("ept", plazo.id, TipoAlerta.PLAZO_EPT.value)] = (
+            None if enviado else plazo.plazo_informe_ept
+        )
+        vigentes[("ept", plazo.id, TipoAlerta.PLAZO_ISL.value)] = (
+            None if enviado else plazo.plazo_portal_isl
+        )
+    condiciones = [
+        (AlertaNotif.caso_tipo == ct) & (AlertaNotif.caso_id == cid) & (AlertaNotif.tipo == t)
+        for ct, cid, t in vigentes
+    ]
+    abiertas = db.scalars(
+        select(AlertaNotif).where(
+            AlertaNotif.estado != EstadoAlerta.RESUELTA.value, or_(*condiciones)
+        )
+    ).all()
+    for alerta in abiertas:
+        vigente = vigentes.get((alerta.caso_tipo, alerta.caso_id, alerta.tipo))
+        if vigente != _fecha_utc(alerta.plazo_objetivo):
+            alerta.estado = EstadoAlerta.RESUELTA.value
+            alerta.resuelta_en = datetime.now(timezone.utc)
+    db.flush()
+
+    hitos = _construir_hitos_ept(db, cargar_ventanas(db), caso_ept_id=caso.id)
+    resultados = evaluar_plazos(
+        hitos,
+        hoy=hoy,
+        alertas_activas=_cargar_alertas_activas(db),
+        festivos=cargar_festivos(db),
+    )
+    _persistir_resultados(db, resultados)
+    if resultados:
+        record_audit(
+            db,
+            actor=actor,
+            action="CREATE",
+            entity="alerta_notif",
+            entity_id=f"caso_ept:{caso.id}:{len(resultados)}",
+        )
+    db.flush()
+    return len(resultados)
+
+
 def ejecutar_job_alertas(
     db: Session, *, actor: str = "sistema", hoy: date | None = None
 ) -> int:
@@ -656,6 +773,12 @@ def ejecutar_job_alertas(
     reca_por_solicitar, resueltas_reca = alertar_reca_por_solicitar(db, hoy, ventanas, actor)
     resueltas += resueltas_reca
 
+    from app.services.alertas_remitir_isl import alertar_pendiente_remitir_isl
+
+    remitir_isl, resueltas_isl = alertar_pendiente_remitir_isl(db, hoy, ventanas, actor)
+    resueltas += resueltas_isl
+    reca_por_solicitar += remitir_isl
+
     hitos: list[HitoPlazos] = []
     hitos.extend(_construir_hitos_oda(db, ventanas))
     hitos.extend(_construir_hitos_licencias(db, ventanas))
@@ -670,20 +793,7 @@ def ejecutar_job_alertas(
     )
     resultados.extend(_construir_alertas_gaf(db, ventanas, alertas_activas))
 
-    for r in resultados:
-        alerta = AlertaNotif(
-            tipo=r.tipo,
-            estado=EstadoAlerta.PENDIENTE.value,
-            caso_id=r.caso_id,
-            caso_tipo=r.caso_tipo,
-            usuario_id=r.usuario_id,
-            plazo_objetivo=datetime.combine(
-                r.plazo_objetivo, datetime.min.time()
-            ).replace(tzinfo=timezone.utc),
-            ventana_dias=r.ventana_dias,
-            email_enviado=False,
-        )
-        db.add(alerta)
+    _persistir_resultados(db, resultados)
 
     if resultados:
         # DD-B: registrar auditoría ANTES del commit

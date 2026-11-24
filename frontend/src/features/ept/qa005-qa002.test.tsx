@@ -10,7 +10,6 @@ import { tokenStore } from "@/lib/tokenStore";
 import { PlazosEptPanel } from "./PlazosEptPanel";
 import { ProcesoEptPanel } from "./ProcesoEptPanel";
 import { NuevoCasoEptDialog } from "./NuevoCasoEptDialog";
-import { plazosAutomaticos } from "./plazosEptSchema";
 import { mesDesdeFecha } from "./casoEptSchema";
 import { opcionesConValorActual } from "./procesoEptSchema";
 
@@ -43,15 +42,6 @@ function wrap(ui: React.ReactElement) {
 }
 
 describe("helpers", () => {
-  it("plazos automáticos: ingreso + 18 y + 20 días corridos", () => {
-    expect(plazosAutomaticos("2026-01-10")).toEqual({
-      plazo_informe_ept: "2026-01-28",
-      plazo_portal_isl: "2026-01-30",
-    });
-    // cruza fin de mes y de año
-    expect(plazosAutomaticos("2026-12-20").plazo_portal_isl).toBe("2027-01-09");
-  });
-
   it("mes derivado de la fecha de ingreso", () => {
     expect(mesDesdeFecha("2026-01-20")).toBe("Enero 2026");
     expect(mesDesdeFecha("2026-09-01")).toBe("Septiembre 2026");
@@ -66,11 +56,15 @@ describe("helpers", () => {
 });
 
 describe("PlazosEptDialog (QA-005)", () => {
-  it("al registrar propone los plazos calculados, deja ajustarlos y manda la fecha de envío", async () => {
+  it("al registrar propone los plazos que calcula el backend, deja ajustarlos y manda la fecha de envío", async () => {
     let post: Record<string, unknown> | undefined;
     let patch: Record<string, unknown> | undefined;
     server.use(
       http.get(`${BASE}/api/v1/casos-ept/:casoId`, () => HttpResponse.json(CASO)),
+      // QA-009: ingreso 10-01 + 15 = domingo 25 → viernes 23; + 19 = jueves 29.
+      http.get(`${BASE}/api/v1/casos-ept/:casoId/plazos-sugeridos`, () =>
+        HttpResponse.json({ plazo_informe_ept: "2026-01-23", plazo_portal_isl: "2026-01-29" }),
+      ),
       http.post(`${BASE}/api/v1/casos-ept/:casoId/plazos`, async ({ request }) => {
         post = (await request.json()) as Record<string, unknown>;
         return HttpResponse.json({ id: 1, caso_ept_id: CASO_ID }, { status: 201 });
@@ -84,10 +78,13 @@ describe("PlazosEptDialog (QA-005)", () => {
 
     await userEvent.click(await screen.findByTestId("btn-registrar-plazos"));
     const informe = (await screen.findByLabelText(/Plazo informe EPT/i)) as HTMLInputElement;
-    await waitFor(() => expect(informe.value).toBe("2026-01-28"));
-    expect((screen.getByLabelText(/Plazo portal ISL/i) as HTMLInputElement).value).toBe("2026-01-30");
-    // proyección visible junto al campo de envío
-    expect(screen.getByTestId("proyeccion-plazos")).toHaveTextContent("28/01/2026");
+    await waitFor(() => expect(informe.value).toBe("2026-01-23"));
+    expect((screen.getByLabelText(/Plazo portal ISL/i) as HTMLInputElement).value).toBe("2026-01-29");
+    // proyección visible junto al campo de envío, con la regla del día hábil anterior
+    const proyeccion = screen.getByTestId("proyeccion-plazos");
+    expect(proyeccion).toHaveTextContent("23/01/2026");
+    expect(proyeccion).toHaveTextContent("+ 15 y + 19 días corridos");
+    expect(proyeccion).toHaveTextContent("día hábil anterior");
     const envio = screen.getByLabelText(/Fecha de envío/i) as HTMLInputElement;
     expect(envio.type).toBe("date");
 
@@ -98,13 +95,16 @@ describe("PlazosEptDialog (QA-005)", () => {
 
     await waitFor(() => expect(patch).toBeDefined());
     expect(post?.plazo_informe_ept).toBe("2026-01-29");
-    expect(post?.plazo_portal_isl).toBe("2026-01-30");
+    expect(post?.plazo_portal_isl).toBe("2026-01-29");
     expect(patch).toEqual({ fecha_envio: "2026-01-25" });
   });
 
   it("al editar no recalcula: conserva los plazos guardados y muestra la proyección", async () => {
     server.use(
       http.get(`${BASE}/api/v1/casos-ept/:casoId`, () => HttpResponse.json(CASO)),
+      http.get(`${BASE}/api/v1/casos-ept/:casoId/plazos-sugeridos`, () =>
+        HttpResponse.json({ plazo_informe_ept: "2026-01-23", plazo_portal_isl: "2026-01-29" }),
+      ),
       http.get(`${BASE}/api/v1/casos-ept/:casoId/plazos`, () =>
         HttpResponse.json({
           id: 1, caso_ept_id: CASO_ID, plazo_informe_ept: "2026-03-15", plazo_portal_isl: null,

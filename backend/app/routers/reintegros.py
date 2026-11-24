@@ -12,9 +12,12 @@ from app.schemas.reintegro import (
     CasoReintegroUpdate,
     CierreReintegroUpdate,
     PacienteConCasosRepetidosRead,
+    PanelReintegroRead,
+    PrecargaCasoRead,
     RecaCreate,
     RecaRead,
     RecaUpdate,
+    RemisionIslUpdate,
     SolicitudRecaUpdate,
 )
 from app.services.reintegro import (
@@ -26,8 +29,10 @@ from app.services.reintegro import (
     consulta_casos,
     crear_reca,
     listar_pacientes_con_casos_repetidos,
+    registrar_remision_isl,
     registrar_solicitud_reca,
 )
+from app.services.reintegro_panel import panel_reintegro, precarga_caso
 
 router = APIRouter(prefix="/api/v1/reintegros", tags=["reintegros"])
 
@@ -87,6 +92,30 @@ def listar_duplicados(
 ) -> list[PacienteConCasosRepetidosRead]:
     """Pacientes con más de un caso activo, para revisarlos a mano (solo lectura)."""
     return listar_pacientes_con_casos_repetidos(db)
+
+
+@router.get(
+    "/panel",
+    response_model=PanelReintegroRead,
+    dependencies=[Depends(_reader)],
+)
+def obtener_panel(db: Session = Depends(get_db)) -> PanelReintegroRead:
+    """Lista global de la pestaña (QA-010): casos activos de todos los pacientes y pacientes con
+    una proyección de reintegro alertada que aún no tienen caso."""
+    return panel_reintegro(db)
+
+
+@router.get(
+    "/precarga",
+    response_model=PrecargaCasoRead,
+    dependencies=[Depends(_reader)],
+)
+def obtener_precarga(
+    ingreso_id: int = Query(...),
+    db: Session = Depends(get_db),
+) -> PrecargaCasoRead:
+    """Ocupación y tipo de trabajador para precargar el alta de un caso del ingreso (QA-010)."""
+    return precarga_caso(db, ingreso_id)
 
 
 @router.get(
@@ -151,6 +180,37 @@ def registrar_solicitud(
         entity_id=str(caso.id),
         valor_anterior=f"fecha_solicitud_reca={anterior.isoformat()}" if anterior else None,
         valor_nuevo=f"fecha_solicitud_reca={caso.fecha_solicitud_reca.isoformat()}",
+    )
+    db.commit()
+    db.refresh(caso)
+    return caso
+
+
+# ── QA-010: remisión a ISL sin cerrar el caso ─────────────────────────────
+
+@router.patch(
+    "/{caso_id}/remitido-isl",
+    response_model=CasoReintegroRead,
+    dependencies=[Depends(_writer)],
+)
+def registrar_remision(
+    caso_id: int,
+    payload: RemisionIslUpdate,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+) -> CasoReintegroRead:
+    """Marca el caso «Remitido a ISL» con su fecha (o la corrige), sin cerrarlo."""
+    caso = _obtener_caso_o_404(db, caso_id)
+    anterior = caso.fecha_remitido_isl
+    caso = registrar_remision_isl(db, caso, payload.fecha_remitido_isl)
+    record_audit(
+        db,
+        actor=current_user.username,
+        action="UPDATE",
+        entity="caso_reintegro",
+        entity_id=str(caso.id),
+        valor_anterior=f"fecha_remitido_isl={anterior.isoformat()}" if anterior else None,
+        valor_nuevo=f"fecha_remitido_isl={caso.fecha_remitido_isl.isoformat()}",
     )
     db.commit()
     db.refresh(caso)

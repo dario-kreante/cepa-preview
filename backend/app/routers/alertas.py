@@ -11,6 +11,7 @@ from app.audit.service import record_audit
 from app.auth.deps import get_current_user, require_role
 from app.db.session import get_db
 from app.domain.enums_alertas import EstadoAlerta, TipoAlerta
+from app.domain.proyeccion_reintegro import opcion_alertable, texto_alerta
 from app.models.alertas import AlertaNotif
 from app.models.cita import Cita
 from app.models.control_medico import ControlMedico
@@ -104,19 +105,28 @@ def _detalles_de_alertas(db: Session, alertas: list[AlertaNotif]) -> dict[int, s
 
     ``alerta_notif`` no guarda el valor: se lee del control al listar. Si el médico corrigió
     la proyección, la alerta del valor anterior ya quedó resuelta (ver alertas_control).
+    QA-010: con una opción de la lista que alerta, el texto suma el plazo estimado (fecha del
+    control + 7/14/21 días) o «seguimiento» para el reintegro parcial.
     """
     de_proyeccion = [
         a for a in alertas
         if a.tipo == TipoAlerta.PROYECCION_REINTEGRO.value and a.caso_tipo == "control_medico"
     ]
-    valores: dict[int, str | None] = {}
+    controles: dict[int, tuple] = {}
     for lote in lotes({a.caso_id for a in de_proyeccion}):
-        valores.update(
-            db.execute(
-                select(ControlMedico.id, ControlMedico.proyeccion_reintegro).where(ControlMedico.id.in_(lote))
-            ).all()
-        )
-    return {a.id: valores[a.caso_id] for a in de_proyeccion if valores.get(a.caso_id)}
+        filas = db.execute(
+            select(ControlMedico.id, ControlMedico.proyeccion_reintegro, ControlMedico.fecha_control)
+            .where(ControlMedico.id.in_(lote))
+        ).all()
+        controles.update({cid: (valor, fecha) for cid, valor, fecha in filas})
+    detalles: dict[int, str] = {}
+    for a in de_proyeccion:
+        valor, fecha = controles.get(a.caso_id, (None, None))
+        if not valor:
+            continue
+        opcion = opcion_alertable(valor)
+        detalles[a.id] = texto_alerta(opcion, fecha) if opcion is not None and fecha else valor
+    return detalles
 
 
 def _casos_ept_de_alertas(db: Session, alertas: list[AlertaNotif]) -> dict[tuple[str, int], int]:

@@ -27,14 +27,14 @@ const COORD_TOKEN =
 
 // ── Render helper ────────────────────────────────────────────────────────────
 
-function renderPage(token = ADMIN_TOKEN) {
+function renderPage(token = ADMIN_TOKEN, ruta = "/ept") {
   tokenStore.setAccess(token);
   const qc = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
   return render(
     <QueryClientProvider client={qc}>
-      <MemoryRouter>
+      <MemoryRouter initialEntries={[ruta]}>
         <AuthProvider>
           <EptPage />
         </AuthProvider>
@@ -63,12 +63,15 @@ const MOCK_VISTA_360 = {
     {
       id: 10,
       paciente_id: 7,
+      folio: "F-001",
       fecha_ingreso: "2026-01-15",
       diagnostico_ingreso: "Fractura de cadera",
       estado: "activo",
     },
   ],
 };
+
+const BUSCADOR = "Buscar por folio, RUT o nombre del paciente";
 
 const MOCK_CASO: import("./api").CasoEptRead = {
   id: 55,
@@ -89,11 +92,22 @@ const MOCK_CASO: import("./api").CasoEptRead = {
   updated_at: "2026-01-20T10:00:00Z",
 };
 
+/** Caso como lo entrega el listado por paciente (QA-009): folio, ingreso y plazos. */
+const MOCK_RESUMEN: import("./api").CasoEptResumenRead = {
+  ...MOCK_CASO,
+  folio: "F-001",
+  fecha_ingreso: "2026-01-15",
+  plazo_informe_ept: "2026-01-30",
+  plazo_portal_isl: "2026-02-03",
+  fecha_envio: null,
+};
+
 // ── Helper: set up paciente search + vista360 + POST mocks ───────────────────
 
 function setupPacienteHandlers(
   captureBody?: (b: unknown) => void,
-  casosPaciente: import("./api").CasoEptRead[] = [],
+  casosPaciente: import("./api").CasoEptResumenRead[] = [],
+  vista: object = MOCK_VISTA_360,
 ) {
   server.use(
     http.get(`${BASE}/api/v1/casos-ept`, () => HttpResponse.json(casosPaciente)),
@@ -103,7 +117,7 @@ function setupPacienteHandlers(
       return HttpResponse.json([]);
     }),
     http.get(`${BASE}/api/v1/pacientes/:pacienteId/vista-360`, () =>
-      HttpResponse.json(MOCK_VISTA_360)
+      HttpResponse.json(vista)
     ),
     http.post(`${BASE}/api/v1/casos-ept`, async ({ request }) => {
       const body = await request.json();
@@ -135,18 +149,14 @@ describe("EptPage", () => {
   it("tiene el placeholder exacto requerido", () => {
     renderPage();
     expect(
-      screen.getByPlaceholderText("Buscar por RUT, folio, nombre o ID SALUTEM")
+      screen.getByPlaceholderText(BUSCADOR)
     ).toBeInTheDocument();
   });
 
-  it("muestra input de carga por caso_id", () => {
+  it("ya no ofrece «Cargar caso N°» (QA-009: se busca por folio, RUT o nombre)", () => {
     renderPage();
-    expect(
-      screen.getByPlaceholderText("Cargar caso N°")
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /Cargar/i })
-    ).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText("Cargar caso N°")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("input-caso-id")).not.toBeInTheDocument();
   });
 
   // ── RBAC: "Nueva EPT" button ───────────────────────────────────────────────
@@ -166,7 +176,7 @@ describe("EptPage", () => {
 
   // ── (a) Alta paciente-driven ───────────────────────────────────────────────
 
-  it("(a) busca paciente, selecciona, abre dialog, envía POST con ingreso_id:10, renderiza detalle del caso", async () => {
+  it("(a) busca paciente, abre «Nueva EPT» precargada, envía POST con ingreso_id:10 y muestra el caso", async () => {
     let capturedBody: unknown;
     setupPacienteHandlers((b) => {
       capturedBody = b;
@@ -175,7 +185,7 @@ describe("EptPage", () => {
     renderPage(ADMIN_TOKEN);
 
     // Search for paciente
-    const searchInput = screen.getByPlaceholderText("Buscar por RUT, folio, nombre o ID SALUTEM");
+    const searchInput = screen.getByPlaceholderText(BUSCADOR);
     await userEvent.type(searchInput, "Juan");
 
     await waitFor(
@@ -204,23 +214,15 @@ describe("EptPage", () => {
       { timeout: 8000 }
     );
 
-    // Fill required fields
-    await userEvent.type(
-      screen.getByLabelText(/Fecha de ingreso EPT/i),
-      "2026-01-20"
-    );
-    await userEvent.type(
-      screen.getByLabelText(/Nombre del trabajador/i),
-      "María González"
-    );
-    await userEvent.type(
-      screen.getByLabelText(/RUT del trabajador/i),
-      "12.345.678-9"
-    );
-    await userEvent.selectOptions(
-      screen.getByLabelText(/Región del trabajador/i),
-      "Metropolitana"
-    );
+    // QA-009: nombre, RUT, región del paciente y fecha del ingreso vienen precargados
+    expect(screen.getByLabelText(/Fecha de ingreso EPT/i)).toHaveValue("2026-01-15");
+    expect(screen.getByLabelText(/Nombre del trabajador/i)).toHaveValue("Juan Pérez");
+    expect(screen.getByLabelText(/RUT del trabajador/i)).toHaveValue("15.123.456-7");
+    expect(screen.getByLabelText(/Región del trabajador/i)).toHaveValue("Metropolitana");
+    expect(screen.getByTestId("folio-nueva-ept")).toHaveTextContent("F-001");
+    // siguen siendo editables
+    await userEvent.clear(screen.getByLabelText(/Fecha de ingreso EPT/i));
+    await userEvent.type(screen.getByLabelText(/Fecha de ingreso EPT/i), "2026-01-20");
     await userEvent.type(screen.getByLabelText(/EPTista/i), "EISTA-001");
 
     // Sin factor elegido no se envía (el selector parte vacío: QA-003)
@@ -245,6 +247,9 @@ describe("EptPage", () => {
       () => {
         expect(capturedBody).toBeDefined();
         expect((capturedBody as Record<string, unknown>).ingreso_id).toBe(10);
+        expect((capturedBody as Record<string, unknown>).nombre_trabajador).toBe("Juan Pérez");
+        expect((capturedBody as Record<string, unknown>).rut_trabajador).toBe("15.123.456-7");
+        expect((capturedBody as Record<string, unknown>).fecha_ingreso_ept).toBe("2026-01-20");
         // QA-002: el mes se deriva de la fecha de ingreso EPT
         expect((capturedBody as Record<string, unknown>).mes).toBe("Enero 2026");
         expect((capturedBody as Record<string, unknown>).factor_riesgo).toBe(
@@ -267,9 +272,9 @@ describe("EptPage", () => {
     expect(screen.getByText("Abierto")).toBeInTheDocument();
   });
 
-  // ── (b) Cargar por caso_id ─────────────────────────────────────────────────
+  // ── (b) Abrir por ?caso=<id> (enlace de una alerta) ────────────────────────
 
-  it("(b) carga caso por id → GET /api/v1/casos-ept/{id} → renderiza detalle", async () => {
+  it("(b) abre el caso de ?caso=55 → GET /api/v1/casos-ept/{id} → renderiza detalle", async () => {
     server.use(
       http.get(`${BASE}/api/v1/casos-ept/:casoId`, ({ params }) => {
         if (String(params.casoId) === "55") {
@@ -279,12 +284,7 @@ describe("EptPage", () => {
       })
     );
 
-    renderPage(ADMIN_TOKEN);
-
-    const casoInput = screen.getByTestId("input-caso-id");
-    await userEvent.type(casoInput, "55");
-
-    await userEvent.click(screen.getByTestId("btn-cargar-caso"));
+    renderPage(ADMIN_TOKEN, "/ept?caso=55");
 
     // Detail renders
     await waitFor(
@@ -311,7 +311,7 @@ describe("EptPage", () => {
 
     renderPage(ADMIN_TOKEN);
 
-    const searchInput = screen.getByPlaceholderText("Buscar por RUT, folio, nombre o ID SALUTEM");
+    const searchInput = screen.getByPlaceholderText(BUSCADOR);
     await userEvent.type(searchInput, "Juan");
 
     await waitFor(
@@ -332,22 +332,96 @@ describe("EptPage", () => {
 
   // ── QA Pilar 22-10 QA-003: casos del paciente y borrado ───────────────────
 
-  it("al seleccionar un paciente lista sus casos EPT y permite abrir uno", async () => {
-    const otro = { ...MOCK_CASO, id: 56, fecha_ingreso_ept: "2026-02-01" };
-    setupPacienteHandlers(undefined, [otro, MOCK_CASO]);
-    renderPage(ADMIN_TOKEN);
+  // ── QA-009: EPT del paciente por folio ────────────────────────────────────
 
-    await userEvent.type(
-      screen.getByPlaceholderText("Buscar por RUT, folio, nombre o ID SALUTEM"),
-      "Juan"
-    );
+  const VISTA_DOS_FOLIOS = {
+    paciente: MOCK_PACIENTE,
+    ingresos: [
+      ...MOCK_VISTA_360.ingresos,
+      { id: 11, paciente_id: 7, folio: "F-002", fecha_ingreso: "2026-03-02", estado: "activo" },
+    ],
+  };
+
+  async function seleccionarJuan() {
+    await userEvent.type(screen.getByPlaceholderText(BUSCADOR), "Juan");
     await userEvent.click(await screen.findByText("Juan Pérez", {}, { timeout: 8000 }));
+  }
+
+  it("al seleccionar un paciente lista sus EPT por folio con estado y plazos, y abre una", async () => {
+    setupPacienteHandlers(undefined, [MOCK_RESUMEN], VISTA_DOS_FOLIOS);
+    renderPage(ADMIN_TOKEN);
+    await seleccionarJuan();
 
     const tabla = await screen.findByTestId("casos-ept-paciente", {}, { timeout: 8000 });
-    expect(tabla).toHaveTextContent("Casos EPT de Juan Pérez (2)");
+    expect(tabla).toHaveTextContent("EPT de Juan Pérez (1 de 2 folios)");
+    const conEpt = screen.getByTestId("fila-folio-F-001");
+    expect(conEpt).toHaveTextContent("Abierto");
+    expect(conEpt).toHaveTextContent("30/01/2026");
+    expect(conEpt).toHaveTextContent("03/02/2026");
+    expect(screen.getByTestId("fila-folio-F-002")).toHaveTextContent("Sin EPT");
+    // el más reciente primero
+    const filas = tabla.querySelectorAll("tbody tr");
+    expect(filas[0]).toHaveTextContent("F-002");
 
-    await userEvent.click(screen.getByRole("button", { name: "Abrir caso 55" }));
+    await userEvent.click(screen.getByRole("button", { name: "Abrir EPT del folio F-001" }));
     expect(await screen.findByText("Caso N° 55", {}, { timeout: 8000 })).toBeInTheDocument();
+  });
+
+  it("«Nueva EPT» de un folio sin EPT precarga la fecha de ese ingreso y lo envía", async () => {
+    let body: Record<string, unknown> | undefined;
+    setupPacienteHandlers((b) => (body = b as Record<string, unknown>), [MOCK_RESUMEN], VISTA_DOS_FOLIOS);
+    renderPage(ADMIN_TOKEN);
+    await seleccionarJuan();
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Nueva EPT para el folio F-002" }, { timeout: 8000 })
+    );
+    await screen.findByRole("dialog");
+    // F-001 ya tiene EPT: solo queda F-002, sin selector
+    expect(screen.queryByLabelText(/^Folio$/)).not.toBeInTheDocument();
+    expect(screen.getByTestId("folio-nueva-ept")).toHaveTextContent("F-002");
+    expect(screen.getByLabelText(/Fecha de ingreso EPT/i)).toHaveValue("2026-03-02");
+
+    await userEvent.type(screen.getByLabelText(/EPTista/i), "EISTA-002");
+    await userEvent.selectOptions(screen.getByLabelText(/Factor de riesgo/i), "subcarga");
+    await userEvent.click(screen.getByRole("button", { name: /Crear caso EPT/i }));
+    await waitFor(() => expect(body?.ingreso_id).toBe(11));
+    expect(body?.mes).toBe("Marzo 2026");
+  });
+
+  it("con varios folios sin EPT el diálogo ofrece elegir el folio y ajusta la fecha", async () => {
+    let body: Record<string, unknown> | undefined;
+    setupPacienteHandlers((b) => (body = b as Record<string, unknown>), [], VISTA_DOS_FOLIOS);
+    renderPage(ADMIN_TOKEN);
+    await seleccionarJuan();
+    await waitFor(() => expect(screen.getByTestId("btn-nueva-ept")).not.toBeDisabled(), {
+      timeout: 8000,
+    });
+    await userEvent.click(screen.getByTestId("btn-nueva-ept"));
+
+    const folio = (await screen.findByLabelText(/^Folio$/)) as HTMLSelectElement;
+    expect(Array.from(folio.options).map((o) => o.textContent)).toEqual([
+      "F-002 · ingreso 02/03/2026",
+      "F-001 · ingreso 15/01/2026",
+    ]);
+    expect(screen.getByLabelText(/Fecha de ingreso EPT/i)).toHaveValue("2026-03-02");
+    await userEvent.selectOptions(folio, "10");
+    expect(screen.getByLabelText(/Fecha de ingreso EPT/i)).toHaveValue("2026-01-15");
+
+    await userEvent.type(screen.getByLabelText(/EPTista/i), "EISTA-001");
+    await userEvent.selectOptions(screen.getByLabelText(/Factor de riesgo/i), "subcarga");
+    await userEvent.click(screen.getByRole("button", { name: /Crear caso EPT/i }));
+    await waitFor(() => expect(body?.ingreso_id).toBe(10));
+    expect(body?.fecha_ingreso_ept).toBe("2026-01-15");
+  });
+
+  it("si todos los folios ya tienen EPT, «Nueva EPT» queda deshabilitado", async () => {
+    setupPacienteHandlers(undefined, [MOCK_RESUMEN]);
+    renderPage(ADMIN_TOKEN);
+    await seleccionarJuan();
+    await screen.findByTestId("fila-folio-F-001", {}, { timeout: 8000 });
+    expect(screen.getByTestId("btn-nueva-ept")).toBeDisabled();
+    expect(screen.queryByRole("button", { name: /Nueva EPT para el folio/ })).not.toBeInTheDocument();
   });
 
   it("Administrativo elimina un caso tras confirmar y el detalle se cierra", async () => {
@@ -359,10 +433,8 @@ describe("EptPage", () => {
         return new HttpResponse(null, { status: 204 });
       })
     );
-    renderPage(ADMIN_TOKEN);
+    renderPage(ADMIN_TOKEN, "/ept?caso=55");
 
-    await userEvent.type(screen.getByPlaceholderText("Cargar caso N°"), "55");
-    await userEvent.click(screen.getByTestId("btn-cargar-caso"));
     await userEvent.click(await screen.findByTestId("btn-eliminar-caso", {}, { timeout: 8000 }));
     await userEvent.click(await screen.findByTestId("btn-confirmar-eliminar"));
 
@@ -374,10 +446,8 @@ describe("EptPage", () => {
     server.use(
       http.get(`${BASE}/api/v1/casos-ept/:casoId`, () => HttpResponse.json(MOCK_CASO))
     );
-    renderPage(COORD_TOKEN);
+    renderPage(COORD_TOKEN, "/ept?caso=55");
 
-    await userEvent.type(screen.getByPlaceholderText("Cargar caso N°"), "55");
-    await userEvent.click(screen.getByTestId("btn-cargar-caso"));
     await screen.findByText("Caso N° 55", {}, { timeout: 8000 });
     expect(screen.queryByTestId("btn-eliminar-caso")).not.toBeInTheDocument();
   });
@@ -389,7 +459,7 @@ describe("EptPage", () => {
     renderPage(ADMIN_TOKEN);
 
     await userEvent.type(
-      screen.getByPlaceholderText("Buscar por RUT, folio, nombre o ID SALUTEM"),
+      screen.getByPlaceholderText(BUSCADOR),
       "Juan"
     );
     await userEvent.click(await screen.findByText("Juan Pérez", {}, { timeout: 8000 }));
@@ -417,10 +487,8 @@ describe("EptPage", () => {
         return HttpResponse.json({ ...legado, factor_riesgo: "subcarga" });
       })
     );
-    renderPage(ADMIN_TOKEN);
+    renderPage(ADMIN_TOKEN, "/ept?caso=55");
 
-    await userEvent.type(screen.getByPlaceholderText("Cargar caso N°"), "55");
-    await userEvent.click(screen.getByTestId("btn-cargar-caso"));
     expect(
       await screen.findByText("(anterior) Carga", {}, { timeout: 8000 })
     ).toBeInTheDocument();

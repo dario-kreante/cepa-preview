@@ -60,10 +60,13 @@ function makeQC() {
 
 function renderPlazos(canWrite: boolean, token = ADMIN_TOKEN) {
   tokenStore.setAccess(token);
-  // El diálogo lee la fecha de ingreso del caso para proponer los plazos (QA-005).
+  // El diálogo propone los plazos que calcula el backend (QA-009).
   server.use(
     http.get(`${BASE}/api/v1/casos-ept/:casoId`, () =>
       HttpResponse.json({ id: CASO_ID, fecha_ingreso_ept: "2026-01-10" })
+    ),
+    http.get(`${BASE}/api/v1/casos-ept/:casoId/plazos-sugeridos`, () =>
+      HttpResponse.json({ plazo_informe_ept: "2026-01-23", plazo_portal_isl: "2026-01-29" })
     )
   );
   const qc = makeQC();

@@ -1,12 +1,12 @@
 /**
  * EptPage — caso-céntrico workspace for Seguimiento EPT.
  *
- * Navigation to a caso:
- *   1. Paciente-driven: search paciente (RUT, nombre, folio, ID SALUTEM) → list
- *      his casos EPT (GET /api/v1/casos-ept?paciente_id=) → "Abrir" one, or
- *      resolve ingreso_id via Vista360 and create a new one with "Nueva EPT".
- *   2. Cargar por caso_id: type a known caso_id in the numeric input (or pass
- *      ?caso=<id> in the URL) → GET /api/v1/casos-ept/{caso_id} → detail renders.
+ * Navigation to a caso (QA-009):
+ *   1. Search paciente (folio, RUT, nombre) → one row per folio (ingreso, from Vista360)
+ *      with its EPT (GET /api/v1/casos-ept?paciente_id=: estado y plazos) → "Abrir" it,
+ *      or "Nueva EPT" for a folio without one (each folio admits a single EPT).
+ *   2. ?caso=<id> in the URL or an alerta → GET /api/v1/casos-ept/{caso_id}. The old
+ *      "Cargar caso N°" input was removed: the caso number is not what the area uses.
  *
  * A caso created by mistake (e.g. a duplicate) can be deleted by Administrativo.
  *
@@ -20,7 +20,6 @@ import {
   Plus,
   Briefcase,
   AlertCircle,
-  Hash,
   Pencil,
   Trash2,
 } from "lucide-react";
@@ -43,7 +42,7 @@ import { puedeEscribirEpt, type Rol } from "@/lib/rbac";
 import { AlertasPendientesModulo } from "@/features/alertas/AlertasPendientesModulo";
 import { useBuscarPacientes, useVista360 } from "@/features/ingresos/hooks";
 import { useCaso, useCasosPorPaciente, useEliminarCaso } from "./hooks";
-import { NuevoCasoEptDialog } from "./NuevoCasoEptDialog";
+import { NuevoCasoEptDialog, type IngresoOpcion } from "./NuevoCasoEptDialog";
 import { ProcesoEptPanel } from "./ProcesoEptPanel";
 import { PlazosEptPanel } from "./PlazosEptPanel";
 import { ContactosEptPanel } from "./ContactosEptPanel";
@@ -53,7 +52,7 @@ import {
   type CasoEptForm,
   type FactorRiesgo,
 } from "./casoEptSchema";
-import type { CasoEptRead, EstadoEpt } from "./api";
+import type { CasoEptRead, CasoEptResumenRead, EstadoEpt } from "./api";
 import type { DefaultValues } from "react-hook-form";
 import type { components } from "@/types/api";
 
@@ -370,13 +369,44 @@ function CasoPanel({ casoId, canWrite, onCasoUpdated, onCasoDeleted }: CasoPanel
 
 // ── Main Page ────────────────────────────────────────────────────────────────
 
+/** Una fila del listado de EPT del paciente: un folio (ingreso) con su EPT, si tiene. */
+interface FilaFolio {
+  ingresoId: number;
+  folio: string;
+  fechaIngreso: string;
+  caso: CasoEptResumenRead | null;
+}
+
+/**
+ * QA-009: cada folio admite una EPT. Se listan todos los folios del paciente: los que ya
+ * tienen EPT (con estado y plazos) y los que no (para crearla). Del más reciente al más antiguo.
+ */
+function filasPorFolio(
+  ingresos: { id: number; folio: string; fecha_ingreso: string }[],
+  casos: CasoEptResumenRead[],
+): FilaFolio[] {
+  const filas: FilaFolio[] = casos.map((c) => ({
+    ingresoId: c.ingreso_id,
+    folio: c.folio,
+    fechaIngreso: c.fecha_ingreso,
+    caso: c,
+  }));
+  const conEpt = new Set(casos.map((c) => c.ingreso_id));
+  for (const i of ingresos) {
+    if (!conEpt.has(i.id)) {
+      filas.push({ ingresoId: i.id, folio: i.folio, fechaIngreso: i.fecha_ingreso, caso: null });
+    }
+  }
+  return filas.sort((a, b) => b.fechaIngreso.localeCompare(a.fechaIngreso));
+}
+
 export function EptPage() {
   const { rol } = useAuth();
   const canWrite = puedeEscribirEpt(rol as Rol);
 
   const [searchParams] = useSearchParams();
 
-  // ── Paciente search (alta paciente-driven) ──────────────────────────────
+  // ── Paciente search (RUT, folio, nombre) ────────────────────────────────
   const [inputQ, setInputQ] = useState("");
   const [q, setQ] = useState("");
   const [selectedPaciente, setSelectedPaciente] =
@@ -392,40 +422,37 @@ export function EptPage() {
 
   const { data: pacientes = [], isFetching } = useBuscarPacientes(q);
 
-  // Resolve ingreso_id via vista-360
+  // Folios (ingresos) del paciente y sus EPT
   const { data: vista, isLoading: vistaLoading } = useVista360(
     selectedPaciente?.id ?? null
   );
-  const ingresoId: number | undefined = vista?.ingresos?.[0]?.id;
   const { data: casosPaciente = [], isLoading: casosLoading } = useCasosPorPaciente(
     selectedPaciente?.id ?? null
   );
+  const filas = filasPorFolio(vista?.ingresos ?? [], casosPaciente);
+  const foliosSinEpt: IngresoOpcion[] = filas
+    .filter((f) => f.caso === null)
+    .map((f) => ({ id: f.ingresoId, folio: f.folio, fecha_ingreso: f.fechaIngreso }));
 
-  // ── Cargar por caso_id ──────────────────────────────────────────────────
-  const [casoIdInput, setCasoIdInput] = useState("");
+  // ── Caso activo: desde el listado, al crear, o ?caso=<id> (enlace de una alerta) ──
   const [casoId, setCasoId] = useState<number | null>(() => {
     const param = searchParams.get("caso");
     const n = param ? parseInt(param, 10) : NaN;
     return Number.isInteger(n) && n > 0 ? n : null;
   });
 
-  // ── Active caso (set by create OR load) ────────────────────────────────
-  // casoId drives useCaso — either set from "cargar" input or from onCreated
   const hasSearched = q.length > 0;
 
-  // Dialog for "Nueva EPT"
-  const [nuevaOpen, setNuevaOpen] = useState(false);
+  // «Nueva EPT»: folio preseleccionado; `apertura` remonta el diálogo en cada apertura.
+  const [nueva, setNueva] = useState<{ ingresoId?: number; apertura: number } | null>(null);
+
+  function abrirNueva(ingresoId?: number) {
+    setNueva((prev) => ({ ingresoId, apertura: (prev?.apertura ?? 0) + 1 }));
+  }
 
   function handleCasoCreated(caso: CasoEptRead) {
     setCasoId(caso.id);
-    setNuevaOpen(false);
-  }
-
-  function handleLoadCaso() {
-    const parsed = parseInt(casoIdInput, 10);
-    if (!isNaN(parsed) && parsed > 0) {
-      setCasoId(parsed);
-    }
+    setNueva(null);
   }
 
   return (
@@ -441,24 +468,34 @@ export function EptPage() {
           </p>
         </div>
 
-        {/* "Nueva EPT" — Administrativo only; enabled when a paciente + ingreso is resolved */}
+        {/* "Nueva EPT" — Administrativo only; enabled when the paciente has a folio without EPT */}
         {canWrite && (
           <>
             <Button
               size="sm"
               aria-label="Nueva EPT"
               data-testid="btn-nueva-ept"
-              disabled={!ingresoId}
-              onClick={() => setNuevaOpen(true)}
+              disabled={foliosSinEpt.length === 0}
+              title={
+                selectedPaciente && foliosSinEpt.length === 0
+                  ? "Todos los folios del paciente ya tienen EPT"
+                  : undefined
+              }
+              onClick={() => abrirNueva()}
             >
               <Plus className="size-3.5" /> Nueva EPT
             </Button>
 
-            {ingresoId && (
+            {nueva && selectedPaciente && foliosSinEpt.length > 0 && (
               <NuevoCasoEptDialog
-                ingresoId={ingresoId}
-                open={nuevaOpen}
-                onOpenChange={setNuevaOpen}
+                key={nueva.apertura}
+                ingresoId={nueva.ingresoId}
+                ingresos={foliosSinEpt}
+                paciente={selectedPaciente}
+                open
+                onOpenChange={(o) => {
+                  if (!o) setNueva(null);
+                }}
                 onCreated={handleCasoCreated}
               />
             )}
@@ -469,34 +506,7 @@ export function EptPage() {
       {/* ── Alertas pendientes (mismo número que el menú) ── */}
       <AlertasPendientesModulo modulo="ept" onAbrir={(a) => a.caso_ept_id != null && setCasoId(a.caso_ept_id)} />
 
-      {/* ── Cargar por caso_id ── */}
-      <div className="flex items-center gap-2">
-        <Hash className="size-3.5 text-muted-foreground shrink-0" />
-        <Input
-          type="number"
-          min={1}
-          value={casoIdInput}
-          onChange={(e) => setCasoIdInput(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") handleLoadCaso();
-          }}
-          placeholder="Cargar caso N°"
-          className="h-9 w-[180px] text-[13px]"
-          aria-label="Cargar caso por ID"
-          data-testid="input-caso-id"
-        />
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={handleLoadCaso}
-          disabled={!casoIdInput || isNaN(parseInt(casoIdInput, 10))}
-          data-testid="btn-cargar-caso"
-        >
-          Cargar
-        </Button>
-      </div>
-
-      {/* ── Active caso (from cargar or create) ── */}
+      {/* ── Active caso (from the list, create or an alert) ── */}
       {casoId !== null && (
         <div className="space-y-2">
           <h2 className="text-[14px] font-semibold px-0.5">
@@ -511,7 +521,7 @@ export function EptPage() {
         </div>
       )}
 
-      {/* ── Paciente search (alta paciente-driven) ── */}
+      {/* ── Paciente search ── */}
       <div className="space-y-3">
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative w-[300px]">
@@ -519,7 +529,7 @@ export function EptPage() {
             <Input
               value={inputQ}
               onChange={(e) => setInputQ(e.target.value)}
-              placeholder="Buscar por RUT, folio, nombre o ID SALUTEM"
+              placeholder="Buscar por folio, RUT o nombre del paciente"
               className="h-9 pl-8 text-[13px]"
               aria-label="Buscar pacientes"
             />
@@ -531,8 +541,8 @@ export function EptPage() {
           <div className="rounded-lg border border-dashed border-border bg-muted/20 px-6 py-12 text-center">
             <Briefcase className="mx-auto mb-3 size-8 text-muted-foreground/50" />
             <p className="text-[13.5px] text-muted-foreground">
-              Busca un paciente para ver sus casos EPT o crear uno nuevo, o carga
-              un caso existente por su número.
+              Busca por folio, RUT o nombre para ver las EPT del paciente (una por folio) o
+              crear una nueva.
             </p>
           </div>
         )}
@@ -595,85 +605,16 @@ export function EptPage() {
           </Card>
         )}
 
-        {/* Paciente selected — his casos EPT, then vista loading / no ingreso / ready to create */}
+        {/* Paciente selected — one row per folio, with its EPT or the option to create it */}
         {selectedPaciente && (
           <div className="space-y-3">
-            {casosLoading && (
+            {(vistaLoading || casosLoading) && (
               <p className="text-[13px] text-muted-foreground px-1">
-                Cargando casos EPT de {selectedPaciente.nombre}…
+                Cargando EPT de {selectedPaciente.nombre}…
               </p>
             )}
 
-            {!casosLoading && casosPaciente.length > 0 && (
-              <Card className="overflow-hidden p-0" data-testid="casos-ept-paciente">
-                <div className="px-4 py-3 border-b">
-                  <h2 className="text-[13.5px] font-semibold">
-                    Casos EPT de {selectedPaciente.nombre} ({casosPaciente.length})
-                  </h2>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="bg-muted/30 border-b">
-                        <Th>Caso N°</Th>
-                        <Th>Ingreso EPT</Th>
-                        <Th>Factor de riesgo</Th>
-                        <Th>Estado</Th>
-                        <Th>{""}</Th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {casosPaciente.map((c) => (
-                        <tr
-                          key={c.id}
-                          className={cn(
-                            "border-b transition-colors",
-                            casoId === c.id ? "bg-primary/5" : "hover:bg-muted/40"
-                          )}
-                        >
-                          <td className="px-4 py-3 font-mono text-[12px]">{c.id}</td>
-                          <td className="px-4 py-3 font-mono text-[12px]">
-                            {fmtDate(c.fecha_ingreso_ept)}
-                          </td>
-                          <td className="px-4 py-3 text-[12.5px]">
-                            {etiquetaFactorRiesgo(c.factor_riesgo)}
-                            {(c.factores_adicionales?.length ?? 0) > 0 && (
-                              <span className="text-muted-foreground">
-                                {" "}+{c.factores_adicionales!.length}
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3">
-                            <Badge variant={estadoVariant(c.estado)}>
-                              {ESTADO_EPT_LABELS[c.estado]}
-                            </Badge>
-                          </td>
-                          <td className="px-4 py-3 text-right">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-7 text-[11.5px] px-2"
-                              onClick={() => setCasoId(c.id)}
-                              aria-label={`Abrir caso ${c.id}`}
-                            >
-                              Abrir
-                            </Button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </Card>
-            )}
-
-            {vistaLoading && (
-              <p className="text-[13px] text-muted-foreground px-1">
-                Cargando ingreso de {selectedPaciente.nombre}…
-              </p>
-            )}
-
-            {!vistaLoading && !ingresoId && (
+            {!vistaLoading && !casosLoading && filas.length === 0 && (
               <div className="rounded-lg border border-dashed border-border bg-muted/20 px-6 py-8 text-center">
                 <p className="text-[13.5px] text-muted-foreground">
                   Este paciente no tiene ingresos registrados.
@@ -681,29 +622,92 @@ export function EptPage() {
               </div>
             )}
 
-            {!vistaLoading && ingresoId && (
-              <div className="rounded-lg border border-border bg-muted/10 px-5 py-4 flex items-center justify-between gap-4">
-                <div>
-                  <p className="text-[13px] font-semibold">
-                    {selectedPaciente.nombre}
-                  </p>
+            {!vistaLoading && !casosLoading && filas.length > 0 && (
+              <Card className="overflow-hidden p-0" data-testid="casos-ept-paciente">
+                <div className="px-4 py-3 border-b">
+                  <h2 className="text-[13.5px] font-semibold">
+                    EPT de {selectedPaciente.nombre} ({casosPaciente.length} de{" "}
+                    {filas.length} {filas.length === 1 ? "folio" : "folios"})
+                  </h2>
                   <p className="text-[12px] text-muted-foreground">
-                    Ingreso N° {ingresoId} disponible
-                    {canWrite
-                      ? " — haz clic en «Nueva EPT» para registrar el caso."
-                      : "."}
+                    Cada folio admite una sola EPT.
                   </p>
                 </div>
-                {canWrite && (
-                  <Button
-                    size="sm"
-                    onClick={() => setNuevaOpen(true)}
-                    data-testid="btn-nueva-ept-inline"
-                  >
-                    <Plus className="size-3.5" /> Nueva EPT
-                  </Button>
-                )}
-              </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-muted/30 border-b">
+                        <Th>Folio</Th>
+                        <Th>Ingreso</Th>
+                        <Th>Estado EPT</Th>
+                        <Th>Plazo informe</Th>
+                        <Th>Plazo portal ISL</Th>
+                        <Th>Envío</Th>
+                        <Th>{""}</Th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filas.map((f) => (
+                        <tr
+                          key={f.ingresoId}
+                          data-testid={`fila-folio-${f.folio}`}
+                          className={cn(
+                            "border-b transition-colors",
+                            f.caso && casoId === f.caso.id ? "bg-primary/5" : "hover:bg-muted/40"
+                          )}
+                        >
+                          <td className="px-4 py-3 font-mono text-[12px]">{f.folio}</td>
+                          <td className="px-4 py-3 font-mono text-[12px]">
+                            {fmtDate(f.fechaIngreso)}
+                          </td>
+                          <td className="px-4 py-3">
+                            {f.caso ? (
+                              <Badge variant={estadoVariant(f.caso.estado)}>
+                                {ESTADO_EPT_LABELS[f.caso.estado]}
+                              </Badge>
+                            ) : (
+                              <span className="text-[12px] text-muted-foreground">Sin EPT</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 font-mono text-[12px]">
+                            {f.caso?.plazo_informe_ept ? fmtDate(f.caso.plazo_informe_ept) : "—"}
+                          </td>
+                          <td className="px-4 py-3 font-mono text-[12px]">
+                            {f.caso?.plazo_portal_isl ? fmtDate(f.caso.plazo_portal_isl) : "—"}
+                          </td>
+                          <td className="px-4 py-3 font-mono text-[12px]">
+                            {f.caso?.fecha_envio ? fmtDate(f.caso.fecha_envio) : "—"}
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            {f.caso ? (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 text-[11.5px] px-2"
+                                onClick={() => setCasoId(f.caso!.id)}
+                                aria-label={`Abrir EPT del folio ${f.folio}`}
+                              >
+                                Abrir
+                              </Button>
+                            ) : (
+                              canWrite && (
+                                <Button
+                                  size="sm"
+                                  className="h-7 text-[11.5px] px-2"
+                                  onClick={() => abrirNueva(f.ingresoId)}
+                                  aria-label={`Nueva EPT para el folio ${f.folio}`}
+                                >
+                                  <Plus className="size-3" /> Nueva EPT
+                                </Button>
+                              )
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
             )}
           </div>
         )}

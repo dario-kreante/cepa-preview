@@ -1,12 +1,15 @@
-"""Alerta «RECA por solicitar» (QA-003, 18-11-2026).
+"""Alerta «RECA por solicitar» (QA-003, 18-11-2026; plazo de QA-010, 23-11-2026).
 
-Un caso de reintegro activo que lleva ``dias`` días corridos (por defecto 5, PROVISIONAL: la
-clienta debe confirmarlo; se edita en la configuración de alertas) desde su ``fecha_caso`` sin
-fecha de solicitud de RECA ni RECA registrada avisa que hay que pedirla.
+Un caso de reintegro activo de un paciente ISL que lleva ``dias`` días corridos (por defecto 15;
+se edita en la configuración de alertas) desde la fecha de envío del caso sin fecha de solicitud
+de RECA ni RECA registrada avisa que hay que pedirla.
 
+- Fecha de envío del caso = el envío a ISL del caso EPT del mismo ingreso; sin envío registrado,
+  la fecha del caso de reintegro (ver ``reintegro_isl``).
+- Solo pacientes ISL: los del área clínica no tienen RECA.
 - Activo = estado de reintegro distinto de «total» e ingreso no cerrado.
-- Solo casos de hasta ``ANTIGUEDAD_MAXIMA_DIAS`` (60) días desde su fecha: los más antiguos no
-  generan alerta (las ya abiertas no se tocan).
+- Solo casos de hasta ``ANTIGUEDAD_MAXIMA_DIAS`` (60) días desde su fecha de envío: los más
+  antiguos no generan alerta (las ya abiertas no se tocan).
 - Una alerta por caso para siempre: si la encargada la resuelve a mano no reaparece.
 - Se resuelve sola al registrar la solicitud o la RECA (`resolver_alertas_reca`, desde los
   servicios del caso) y, en el job, al pasar a reintegro total o al cerrarse el ingreso.
@@ -24,6 +27,7 @@ from app.domain.reintegro_enums import EstadoReintegro
 from app.models.alertas import AlertaNotif
 from app.models.ingreso import Ingreso
 from app.models.reintegro import CasoReintegro, Reca
+from app.services.reintegro_isl import fechas_envio_ept, ingreso_es_isl
 
 CASO_TIPO = "caso_reintegro"
 # Corte de antigüedad: un caso con más de estos días corridos desde su fecha no genera la alerta.
@@ -99,9 +103,10 @@ def alertar_reca_por_solicitar(
 
     if not config.get("activo", True):
         return 0, resueltas
-    dias = config.get("dias", 5)
+    dias = config.get("dias", 15)
 
-    # Creación: casos activos sin solicitud ni RECA, a `dias` días corridos o más de su fecha.
+    # Creación: casos activos de pacientes ISL sin solicitud ni RECA, a `dias` días corridos o
+    # más de su fecha de envío. La fecha base depende del EPT del ingreso: se filtra en Python.
     ya_alertados = set(
         db.scalars(select(AlertaNotif.caso_id).where(AlertaNotif.tipo == TIPO, AlertaNotif.caso_tipo == CASO_TIPO))
     )
@@ -110,18 +115,17 @@ def alertar_reca_por_solicitar(
     candidatos = db.execute(
         select(CasoReintegro.id, CasoReintegro.fecha_caso, CasoReintegro.ingreso_id)
         .join(Ingreso, Ingreso.id == CasoReintegro.ingreso_id)
-        .where(
-            CasoReintegro.fecha_caso <= hoy - timedelta(days=dias),
-            CasoReintegro.fecha_caso >= hoy - timedelta(days=ANTIGUEDAD_MAXIMA_DIAS),
-            ~_no_requiere_solicitud(),
-        )
+        .where(~_no_requiere_solicitud(), ingreso_es_isl())
         .order_by(CasoReintegro.id)
     ).all()
+    candidatos = [c for c in candidatos if c[0] not in ya_alertados]
+    envios = fechas_envio_ept(db, {ingreso_id for _, _, ingreso_id in candidatos})
     creadas = 0
     for caso_id, fecha_caso, ingreso_id in candidatos:
-        if caso_id in ya_alertados:
+        base = envios.get(ingreso_id, fecha_caso)
+        if not hoy - timedelta(days=ANTIGUEDAD_MAXIMA_DIAS) <= base <= hoy - timedelta(days=dias):
             continue
-        plazo = fecha_caso + timedelta(days=dias)
+        plazo = base + timedelta(days=dias)
         db.add(
             AlertaNotif(
                 tipo=TIPO,

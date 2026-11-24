@@ -762,7 +762,7 @@ export interface paths {
         };
         /**
          * Listar Por Paciente
-         * @description Casos EPT de todos los ingresos del paciente (búsqueda por RUT/nombre en la UI).
+         * @description Casos EPT de todos los ingresos del paciente, con folio y plazos (QA-009).
          */
         get: operations["listar_por_paciente_api_v1_casos_ept_get"];
         put?: never;
@@ -851,6 +851,27 @@ export interface paths {
         patch: operations["actualizar_plazos_api_v1_casos_ept__caso_id__plazos_patch"];
         trace?: never;
     };
+    "/api/v1/casos-ept/{caso_id}/plazos-sugeridos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Obtener Plazos Sugeridos
+         * @description Plazos que el sistema propone (QA-009): ingreso + 15 y + 19 días corridos, adelantados
+         *     al día hábil anterior si caen en fin de semana o feriado.
+         */
+        get: operations["obtener_plazos_sugeridos_api_v1_casos_ept__caso_id__plazos_sugeridos_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/reintegros": {
         parameters: {
             query?: never;
@@ -885,6 +906,47 @@ export interface paths {
          * @description Pacientes con más de un caso activo, para revisarlos a mano (solo lectura).
          */
         get: operations["listar_duplicados_api_v1_reintegros_duplicados_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reintegros/panel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Obtener Panel
+         * @description Lista global de la pestaña (QA-010): casos activos de todos los pacientes y pacientes con
+         *     una proyección de reintegro alertada que aún no tienen caso.
+         */
+        get: operations["obtener_panel_api_v1_reintegros_panel_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reintegros/precarga": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Obtener Precarga
+         * @description Ocupación y tipo de trabajador para precargar el alta de un caso del ingreso (QA-010).
+         */
+        get: operations["obtener_precarga_api_v1_reintegros_precarga_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -929,6 +991,26 @@ export interface paths {
          * @description Registra o corrige la fecha en que se solicitó la RECA.
          */
         patch: operations["registrar_solicitud_api_v1_reintegros__caso_id__solicitud_reca_patch"];
+        trace?: never;
+    };
+    "/api/v1/reintegros/{caso_id}/remitido-isl": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Registrar Remision
+         * @description Marca el caso «Remitido a ISL» con su fecha (o la corrige), sin cerrarlo.
+         */
+        patch: operations["registrar_remision_api_v1_reintegros__caso_id__remitido_isl_patch"];
         trace?: never;
     };
     "/api/v1/reintegros/{caso_id}/reca": {
@@ -2501,6 +2583,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/ingresos/{ingreso_id}/cierres": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Listar Cierres
+         * @description Historial de cierres y reaperturas del caso, el más reciente primero (QA-007).
+         */
+        get: operations["listar_cierres_api_v1_ingresos__ingreso_id__cierres_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/ingresos/{ingreso_id}/estado": {
         parameters: {
             query?: never;
@@ -2898,23 +3000,23 @@ export interface components {
         /**
          * CasoEptCreate
          * @description Alta de caso EPT (CEPA-030). Campos obligatorios = RN-1.
+         *
+         *     QA-009: mes, fecha de ingreso EPT, nombre, RUT y región son opcionales: si no vienen
+         *     se toman del ingreso y del paciente (el mes se deriva de la fecha).
          */
         CasoEptCreate: {
             /** Ingreso Id */
             ingreso_id: number;
             /** Mes */
-            mes: string;
-            /**
-             * Fecha Ingreso Ept
-             * Format: date
-             */
-            fecha_ingreso_ept: string;
+            mes?: string | null;
+            /** Fecha Ingreso Ept */
+            fecha_ingreso_ept?: string | null;
             /** Nombre Trabajador */
-            nombre_trabajador: string;
+            nombre_trabajador?: string | null;
             /** Rut Trabajador */
-            rut_trabajador: string;
+            rut_trabajador?: string | null;
             /** Region Trabajador */
-            region_trabajador: string;
+            region_trabajador?: string | null;
             /** Eista */
             eista: string;
             factor_riesgo: components["schemas"]["FactorRiesgo"];
@@ -2980,6 +3082,68 @@ export interface components {
             updated_at: string;
         };
         /**
+         * CasoEptResumenRead
+         * @description Caso EPT en el listado por paciente (QA-009): folio, ingreso y plazos del caso.
+         */
+        CasoEptResumenRead: {
+            /** Id */
+            id: number;
+            /** Ingreso Id */
+            ingreso_id: number;
+            /** Mes */
+            mes: string;
+            /**
+             * Fecha Ingreso Ept
+             * Format: date
+             */
+            fecha_ingreso_ept: string;
+            /** Nombre Trabajador */
+            nombre_trabajador: string;
+            /** Rut Trabajador */
+            rut_trabajador: string;
+            /** Region Trabajador */
+            region_trabajador: string;
+            /** Eista */
+            eista: string;
+            /** Factor Riesgo */
+            factor_riesgo: components["schemas"]["FactorRiesgo"] | components["schemas"]["FactorRiesgoLegado"];
+            /**
+             * Factores Adicionales
+             * @default []
+             */
+            factores_adicionales: string[];
+            /** Corresponde Ept */
+            corresponde_ept: boolean;
+            estado: components["schemas"]["EstadoEpt"];
+            /** Razon Social */
+            razon_social: string | null;
+            /** Unidad Cargo Horario */
+            unidad_cargo_horario: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Folio */
+            folio: string;
+            /**
+             * Fecha Ingreso
+             * Format: date
+             */
+            fecha_ingreso: string;
+            /** Plazo Informe Ept */
+            plazo_informe_ept?: string | null;
+            /** Plazo Portal Isl */
+            plazo_portal_isl?: string | null;
+            /** Fecha Envio */
+            fecha_envio?: string | null;
+        };
+        /**
          * CasoEptUpdate
          * @description Actualización parcial del caso EPT. Todos los campos son opcionales.
          */
@@ -3006,6 +3170,41 @@ export interface components {
             razon_social?: string | null;
             /** Unidad Cargo Horario */
             unidad_cargo_horario?: string | null;
+        };
+        /**
+         * CasoPanelRead
+         * @description Fila de la lista global de casos activos de la pestaña Reintegro (QA-010).
+         */
+        CasoPanelRead: {
+            /** Caso Id */
+            caso_id: number;
+            /** Ingreso Id */
+            ingreso_id: number;
+            /** Paciente Id */
+            paciente_id: number;
+            /** Paciente Nombre */
+            paciente_nombre: string;
+            /** Rut */
+            rut: string | null;
+            /** Folio */
+            folio: string;
+            estado_reintegro: components["schemas"]["EstadoReintegro"];
+            /**
+             * Fecha Caso
+             * Format: date
+             */
+            fecha_caso: string;
+            /** Proyeccion */
+            proyeccion?: string | null;
+            /** Fecha Proyeccion */
+            fecha_proyeccion?: string | null;
+            /** Es Isl */
+            es_isl: boolean;
+            estado_solicitud_reca: components["schemas"]["EstadoSolicitudReca"];
+            /** Reca Por Solicitar */
+            reca_por_solicitar: boolean;
+            /** Pendiente Remitir Isl */
+            pendiente_remitir_isl: boolean;
         };
         /**
          * CasoReintegroCreate
@@ -3037,6 +3236,8 @@ export interface components {
             /** Razon Social */
             razon_social?: string | null;
             tipo_trabajador?: components["schemas"]["TipoTrabajador"] | null;
+            /** Ocupacion */
+            ocupacion?: string | null;
         };
         /** CasoReintegroRead */
         CasoReintegroRead: {
@@ -3067,11 +3268,15 @@ export interface components {
             /** Razon Social */
             razon_social: string | null;
             tipo_trabajador: components["schemas"]["TipoTrabajador"] | null;
+            /** Ocupacion */
+            ocupacion?: string | null;
             estado_reintegro: components["schemas"]["EstadoReintegro"];
             /** Fecha Reintegro */
             fecha_reintegro: string | null;
             /** Remitido Isl */
             remitido_isl: boolean;
+            /** Fecha Remitido Isl */
+            fecha_remitido_isl?: string | null;
             /** Alta Medica */
             alta_medica: boolean;
             /** Fecha Alta Medica */
@@ -3111,6 +3316,8 @@ export interface components {
             /** Razon Social */
             razon_social?: string | null;
             tipo_trabajador?: components["schemas"]["TipoTrabajador"] | null;
+            /** Ocupacion */
+            ocupacion?: string | null;
         };
         /**
          * CierreReintegroUpdate
@@ -3744,6 +3951,8 @@ export interface components {
             tipo_alta?: components["schemas"]["TipoAlta"] | null;
             /** Observaciones */
             observaciones?: string | null;
+            /** Motivo Reapertura */
+            motivo_reapertura?: string | null;
         };
         /**
          * EvaluacionUpdate
@@ -4164,6 +4373,33 @@ export interface components {
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /**
+         * HistorialCierreRead
+         * @description Un cierre del caso y, si se reabrió, cuándo, quién y por qué (QA-007).
+         */
+        HistorialCierreRead: {
+            /** Id */
+            id: number;
+            motivo_cierre: components["schemas"]["MotivoCierre"];
+            /**
+             * Fecha Cierre
+             * Format: date
+             */
+            fecha_cierre: string;
+            /** Cerrado Por */
+            cerrado_por: string;
+            /**
+             * Cerrado En
+             * Format: date-time
+             */
+            cerrado_en: string;
+            /** Reabierto Por */
+            reabierto_por?: string | null;
+            /** Reabierto En */
+            reabierto_en?: string | null;
+            /** Motivo Reapertura */
+            motivo_reapertura?: string | null;
         };
         /**
          * ImedLicenciaCreate
@@ -4995,6 +5231,13 @@ export interface components {
             /** Pacientes */
             pacientes: components["schemas"]["PacientePorCitarRead"][];
         };
+        /** PanelReintegroRead */
+        PanelReintegroRead: {
+            /** Activos */
+            activos: components["schemas"]["CasoPanelRead"][];
+            /** Pendientes Registro */
+            pendientes_registro: components["schemas"]["PendienteRegistroRead"][];
+        };
         /**
          * PdfConfirmPayload
          * @description Payload de confirmación: campos revisados/editados por el administrativo.
@@ -5021,6 +5264,33 @@ export interface components {
             fields: components["schemas"]["ExtractedFieldOut"][];
             /** Error Message */
             error_message?: string | null;
+        };
+        /**
+         * PendienteRegistroRead
+         * @description Paciente con alerta de proyección abierta y sin caso de reintegro activo (QA-010).
+         */
+        PendienteRegistroRead: {
+            /** Paciente Id */
+            paciente_id: number;
+            /** Paciente Nombre */
+            paciente_nombre: string;
+            /** Rut */
+            rut: string | null;
+            /** Ingreso Id */
+            ingreso_id: number;
+            /** Folio */
+            folio: string;
+            /** Alerta Id */
+            alerta_id: number;
+            /** Proyeccion */
+            proyeccion: string | null;
+            /**
+             * Fecha Control
+             * Format: date
+             */
+            fecha_control: string;
+            /** Plazo Estimado */
+            plazo_estimado?: string | null;
         };
         /** PlanTratamientoRead */
         PlanTratamientoRead: {
@@ -5100,6 +5370,31 @@ export interface components {
             fecha_entrega_isl?: string | null;
             /** Fecha Envio */
             fecha_envio?: string | null;
+        };
+        /**
+         * PlazosSugeridosRead
+         * @description Plazos que el sistema propone desde la fecha de ingreso EPT (QA-009).
+         */
+        PlazosSugeridosRead: {
+            /**
+             * Plazo Informe Ept
+             * Format: date
+             */
+            plazo_informe_ept: string;
+            /**
+             * Plazo Portal Isl
+             * Format: date
+             */
+            plazo_portal_isl: string;
+        };
+        /**
+         * PrecargaCasoRead
+         * @description Datos para precargar el alta de un caso (QA-010): de un caso anterior o de SALUTEM.
+         */
+        PrecargaCasoRead: {
+            /** Ocupacion */
+            ocupacion?: string | null;
+            tipo_trabajador?: components["schemas"]["TipoTrabajador"] | null;
         };
         /**
          * PrioridadCita
@@ -5522,6 +5817,17 @@ export interface components {
             tratamiento_previo?: string | null;
             /** Activo */
             activo?: boolean | null;
+        };
+        /**
+         * RemisionIslUpdate
+         * @description Marca el caso «Remitido a ISL» (o corrige la fecha) sin cerrarlo (QA-010).
+         */
+        RemisionIslUpdate: {
+            /**
+             * Fecha Remitido Isl
+             * Format: date
+             */
+            fecha_remitido_isl: string;
         };
         /**
          * ReporteAuditoriaRead
@@ -5957,7 +6263,7 @@ export interface components {
          * @description Tipos de alerta del motor: los 7 de CEPA-100 más el GAF de licencia (CEPA-075).
          * @enum {string}
          */
-        TipoAlerta: "control_medico" | "vencimiento_licencia" | "plazo_ept" | "plazo_isl" | "consentimiento_pendiente" | "receta_por_renovar" | "oda_por_vencer" | "gaf_licencia" | "licencia_en_control" | "receta_en_control" | "paciente_pendiente_folio" | "inasistencia" | "posible_encuadre" | "cita_fuera_de_oda" | "plazo_insumos_ept" | "reca_por_solicitar" | "proyeccion_reintegro";
+        TipoAlerta: "control_medico" | "vencimiento_licencia" | "plazo_ept" | "plazo_isl" | "consentimiento_pendiente" | "receta_por_renovar" | "oda_por_vencer" | "gaf_licencia" | "licencia_en_control" | "receta_en_control" | "paciente_pendiente_folio" | "inasistencia" | "posible_encuadre" | "cita_fuera_de_oda" | "plazo_insumos_ept" | "reca_por_solicitar" | "proyeccion_reintegro" | "pendiente_remitir_isl";
         /**
          * TipoAlta
          * @description Tipos de alta válidos (§7.1.3, v4 D6).
@@ -7884,7 +8190,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CasoEptRead"][];
+                    "application/json": components["schemas"]["CasoEptResumenRead"][];
                 };
             };
             /** @description Validation Error */
@@ -8263,6 +8569,37 @@ export interface operations {
             };
         };
     };
+    obtener_plazos_sugeridos_api_v1_casos_ept__caso_id__plazos_sugeridos_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                caso_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlazosSugeridosRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     listar_casos_api_v1_reintegros_get: {
         parameters: {
             query?: {
@@ -8349,6 +8686,57 @@ export interface operations {
             };
         };
     };
+    obtener_panel_api_v1_reintegros_panel_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PanelReintegroRead"];
+                };
+            };
+        };
+    };
+    obtener_precarga_api_v1_reintegros_precarga_get: {
+        parameters: {
+            query: {
+                ingreso_id: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrecargaCasoRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     obtener_caso_api_v1_reintegros__caso_id__get: {
         parameters: {
             query?: never;
@@ -8427,6 +8815,41 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["SolicitudRecaUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CasoReintegroRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    registrar_remision_api_v1_reintegros__caso_id__remitido_isl_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                caso_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RemisionIslUpdate"];
             };
         };
         responses: {
@@ -11206,6 +11629,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LicenciasResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    listar_cierres_api_v1_ingresos__ingreso_id__cierres_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ingreso_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HistorialCierreRead"][];
                 };
             };
             /** @description Validation Error */

@@ -18,12 +18,13 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { fmtDate } from "@/lib/utils";
 import {
-  plazosAutomaticos,
+  DIAS_PLAZO_INFORME,
+  DIAS_PLAZO_PORTAL_ISL,
   plazosEptSchema,
   type PlazosEptForm,
 } from "./plazosEptSchema";
-import { useCaso, useCrearPlazos, useActualizarPlazos } from "./hooks";
-import type { PlazoEptRead } from "./api";
+import { useCrearPlazos, useActualizarPlazos, usePlazosSugeridos } from "./hooks";
+import type { PlazoEptRead, PlazosSugeridosRead } from "./api";
 
 interface Props {
   casoId: number;
@@ -32,7 +33,7 @@ interface Props {
   onOpenChange: (open: boolean) => void;
 }
 
-type Proyeccion = ReturnType<typeof plazosAutomaticos>;
+type Proyeccion = PlazosSugeridosRead;
 
 function toDefaultValues(
   plazos: PlazoEptRead | null,
@@ -60,9 +61,8 @@ export function PlazosEptDialog({ casoId, plazos, open, onOpenChange }: Props) {
   const actualizarMutation = useActualizarPlazos();
 
   const isCreate = plazos === null;
-  const { data: caso } = useCaso(casoId);
-  const fechaIngreso = caso?.fecha_ingreso_ept;
-  const proyeccion = fechaIngreso ? plazosAutomaticos(fechaIngreso) : null;
+  // QA-009: la proyección la calcula el backend (considera los feriados registrados).
+  const { data: proyeccion = null } = usePlazosSugeridos(casoId, open);
 
   const {
     register,
@@ -77,11 +77,11 @@ export function PlazosEptDialog({ casoId, plazos, open, onOpenChange }: Props) {
   // Reset form whenever the dialog opens/closes or plazos changes
   useEffect(() => {
     if (open) {
-      reset(toDefaultValues(plazos, fechaIngreso ? plazosAutomaticos(fechaIngreso) : null));
+      reset(toDefaultValues(plazos, proyeccion));
     } else {
       reset(toDefaultValues(null));
     }
-  }, [open, plazos, fechaIngreso, reset]);
+  }, [open, plazos, proyeccion, reset]);
 
   async function onSubmit(values: PlazosEptForm) {
     // Coerce undefined optional dates to null for the API
@@ -191,8 +191,9 @@ export function PlazosEptDialog({ casoId, plazos, open, onOpenChange }: Props) {
           <div className="rounded-md border border-border bg-muted/20 p-3 space-y-2">
             {proyeccion && (
               <p className="text-[12px] text-muted-foreground" data-testid="proyeccion-plazos">
-                Proyección automática (días corridos desde el ingreso EPT): informe{" "}
-                {fmtDate(proyeccion.plazo_informe_ept)} · portal ISL{" "}
+                Proyección automática (ingreso EPT + {DIAS_PLAZO_INFORME} y +{" "}
+                {DIAS_PLAZO_PORTAL_ISL} días corridos; si cae en fin de semana o feriado, el día
+                hábil anterior): informe {fmtDate(proyeccion.plazo_informe_ept)} · portal ISL{" "}
                 {fmtDate(proyeccion.plazo_portal_isl)} (último día de envío).
               </p>
             )}

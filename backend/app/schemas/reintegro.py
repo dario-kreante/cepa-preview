@@ -8,7 +8,7 @@ Convenciones:
 
 from datetime import date
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.domain.enums import TipoDerivacion
 from app.domain.reintegro_enums import (
@@ -42,6 +42,8 @@ class CasoReintegroCreate(BaseModel):
     # Sin valor se usa la razón social del ingreso (puede no tenerla).
     razon_social: str | None = None
     tipo_trabajador: TipoTrabajador | None = None
+    # QA-010: ocupación del trabajador (el formulario la precarga, ver /precarga).
+    ocupacion: str | None = Field(default=None, max_length=120)
 
     @field_validator("rut")
     @classmethod
@@ -76,6 +78,7 @@ class CasoReintegroUpdate(BaseModel):
     rubro_empleador: str | None = None
     razon_social: str | None = None
     tipo_trabajador: TipoTrabajador | None = None
+    ocupacion: str | None = Field(default=None, max_length=120)
 
 
 class CasoReintegroRead(BaseModel):
@@ -94,9 +97,11 @@ class CasoReintegroRead(BaseModel):
     rubro_empleador: str | None
     razon_social: str | None
     tipo_trabajador: TipoTrabajador | None
+    ocupacion: str | None = None
     estado_reintegro: EstadoReintegro
     fecha_reintegro: date | None
     remitido_isl: bool
+    fecha_remitido_isl: date | None = None
     alta_medica: bool
     fecha_alta_medica: date | None
     alta_psicologica: bool
@@ -111,6 +116,59 @@ class SolicitudRecaUpdate(BaseModel):
     """Registra o corrige la fecha en que se solicitó la RECA (QA-003)."""
 
     fecha_solicitud_reca: date
+
+
+class RemisionIslUpdate(BaseModel):
+    """Marca el caso «Remitido a ISL» (o corrige la fecha) sin cerrarlo (QA-010)."""
+
+    fecha_remitido_isl: date
+
+
+class PrecargaCasoRead(BaseModel):
+    """Datos para precargar el alta de un caso (QA-010): de un caso anterior o de SALUTEM."""
+
+    ocupacion: str | None = None
+    tipo_trabajador: TipoTrabajador | None = None
+
+
+class CasoPanelRead(BaseModel):
+    """Fila de la lista global de casos activos de la pestaña Reintegro (QA-010)."""
+
+    caso_id: int
+    ingreso_id: int
+    paciente_id: int
+    paciente_nombre: str
+    rut: str | None
+    folio: str
+    estado_reintegro: EstadoReintegro
+    fecha_caso: date
+    # Proyección más reciente registrada en los controles del ingreso.
+    proyeccion: str | None = None
+    fecha_proyeccion: date | None = None
+    es_isl: bool
+    estado_solicitud_reca: EstadoSolicitudReca
+    # Pendientes (solo pacientes ISL): RECA sin solicitar y caso sin remitir a ISL.
+    reca_por_solicitar: bool
+    pendiente_remitir_isl: bool
+
+
+class PendienteRegistroRead(BaseModel):
+    """Paciente con alerta de proyección abierta y sin caso de reintegro activo (QA-010)."""
+
+    paciente_id: int
+    paciente_nombre: str
+    rut: str | None
+    ingreso_id: int
+    folio: str
+    alerta_id: int
+    proyeccion: str | None
+    fecha_control: date
+    plazo_estimado: date | None = None
+
+
+class PanelReintegroRead(BaseModel):
+    activos: list[CasoPanelRead]
+    pendientes_registro: list[PendienteRegistroRead]
 
 
 class CasoActivoResumen(BaseModel):

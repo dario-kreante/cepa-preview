@@ -6,7 +6,7 @@ el router de ingresos de EPIC-01 sin duplicar rutas.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
 
 from app.audit.service import record_audit
@@ -14,8 +14,8 @@ from app.auth.deps import get_current_user, require_role
 from app.db.session import get_db
 from app.domain.enums import EstadoCaso, MotivoCierre, TipoAlta
 from app.models.ingreso import Ingreso
-from app.schemas.ingreso import IngresoRead
-from app.services.cierre import cambiar_estado
+from app.schemas.ingreso import HistorialCierreRead, IngresoRead
+from app.services.cierre import cambiar_estado, historial_cierres
 
 router = APIRouter(prefix="/api/v1/ingresos", tags=["ingresos"])
 
@@ -28,6 +28,13 @@ class EstadoUpdate(BaseModel):
     motivo_cierre: MotivoCierre | None = None
     tipo_alta: TipoAlta | None = None
     observaciones: str | None = None
+    # Solo al reabrir un caso cerrado (QA-007): queda en el historial de cierres.
+    motivo_reapertura: str | None = Field(default=None, max_length=300)
+
+    @field_validator("motivo_reapertura")
+    @classmethod
+    def _blanco_es_none(cls, v: str | None) -> str | None:
+        return (v.strip() or None) if v is not None else None
 
 
 @router.get(
@@ -43,6 +50,16 @@ def obtener_ingreso(ingreso_id: int, db: Session = Depends(get_db)) -> Ingreso:
             status_code=status.HTTP_404_NOT_FOUND, detail="Ingreso no encontrado"
         )
     return ingreso
+
+
+@router.get(
+    "/{ingreso_id}/cierres",
+    response_model=list[HistorialCierreRead],
+    dependencies=[Depends(_reader)],
+)
+def listar_cierres(ingreso_id: int, db: Session = Depends(get_db)) -> list:
+    """Historial de cierres y reaperturas del caso, el más reciente primero (QA-007)."""
+    return historial_cierres(db, ingreso_id)
 
 
 @router.patch(
@@ -67,6 +84,7 @@ def actualizar_estado(
         motivo_cierre=payload.motivo_cierre,
         actor=current_user.username,
         rol=current_user.role,
+        motivo_reapertura=payload.motivo_reapertura,
     )
     if payload.tipo_alta is not None:
         ingreso.tipo_alta = payload.tipo_alta.value

@@ -2,13 +2,18 @@
  * NuevoCasoEptDialog — form to create (or edit) a caso EPT.
  *
  * Gate (enforced by the caller):
- *   - ingresoId !== undefined  (a paciente with a resolved ingreso must be selected)
+ *   - an ingreso to attach the caso to (`ingresoId` or at least one of `ingresos`)
  *   - puedeEscribirEpt(rol)    (Administrativo only)
  *
  * When `initialValues` is provided the dialog operates in edit mode and calls
  * useActualizarCaso instead of useCrearCaso.
+ *
+ * QA-009 (create mode): nombre, RUT y región se precargan del paciente y la fecha de
+ * ingreso EPT de la fecha del ingreso (folio) elegido; todo sigue siendo editable. Con
+ * varios folios sin EPT se muestra un selector de folio. The caller mounts the dialog
+ * fresh on each opening (key) so the chosen folio starts from `ingresoId`.
  */
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm, type DefaultValues } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
@@ -33,10 +38,30 @@ import {
 } from "./casoEptSchema";
 import { useCrearCaso, useActualizarCaso } from "./hooks";
 import { opcionesRegion } from "@/lib/regiones";
+import { fmtDate } from "@/lib/utils";
 import type { CasoEptRead } from "./api";
 
+/** Ingreso (folio) al que se puede asociar una EPT nueva. */
+export interface IngresoOpcion {
+  id: number;
+  folio: string;
+  fecha_ingreso: string;
+}
+
+/** Datos del paciente con que se precarga una EPT nueva. */
+export interface PacientePrecarga {
+  nombre: string;
+  rut?: string | null;
+  region?: string | null;
+}
+
 interface Props {
-  ingresoId: number;
+  /** Ingreso del caso (edición) o folio preseleccionado (alta). */
+  ingresoId?: number;
+  /** Alta: folios del paciente sin EPT; con más de uno se muestra un selector. */
+  ingresos?: IngresoOpcion[];
+  /** Alta: paciente cuyos datos se precargan. */
+  paciente?: PacientePrecarga;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCreated: (caso: CasoEptRead) => void;
@@ -69,6 +94,8 @@ const DEFAULT_VALUES: DefaultValues<CasoEptForm> = {
 
 export function NuevoCasoEptDialog({
   ingresoId,
+  ingresos = [],
+  paciente,
   open,
   onOpenChange,
   onCreated,
@@ -80,6 +107,25 @@ export function NuevoCasoEptDialog({
   const crearMutation = useCrearCaso();
   const actualizarMutation = useActualizarCaso();
 
+  const [ingresoElegidoId, setIngresoElegidoId] = useState<number | undefined>(
+    () => ingresoId ?? ingresos[0]?.id,
+  );
+  const ingresoElegido = ingresos.find((i) => i.id === ingresoElegidoId);
+  // Fecha del folio con que se abrió: la precarga no depende del folio elegido después
+  // (cambiar de folio solo cambia la fecha, sin borrar lo ya escrito).
+  const fechaInicial = ingresos.find((i) => i.id === (ingresoId ?? ingresos[0]?.id))
+    ?.fecha_ingreso;
+  const precarga = useMemo<DefaultValues<CasoEptForm>>(
+    () => ({
+      ...DEFAULT_VALUES,
+      fecha_ingreso_ept: fechaInicial ?? "",
+      nombre_trabajador: paciente?.nombre ?? "",
+      rut_trabajador: paciente?.rut ?? "",
+      region_trabajador: paciente?.region ?? "",
+    }),
+    [fechaInicial, paciente?.nombre, paciente?.rut, paciente?.region],
+  );
+
   const {
     register,
     handleSubmit,
@@ -89,23 +135,30 @@ export function NuevoCasoEptDialog({
     formState: { errors, isSubmitting },
   } = useForm<CasoEptForm>({
     resolver: zodResolver(casoEptSchema),
-    defaultValues: initialValues ?? DEFAULT_VALUES,
+    defaultValues: initialValues ?? precarga,
   });
 
   const correspondeEpt = watch("corresponde_ept");
   const fechaIngreso = watch("fecha_ingreso_ept");
   const mesDerivado = mesDesdeFecha(fechaIngreso ?? "");
   // Un valor antiguo escrito a mano se mantiene como opción para no perderlo al editar.
-  const regiones = opcionesRegion(initialValues?.region_trabajador);
+  // La región del paciente puede venir escrita fuera de la lista: se conserva como opción.
+  const regiones = opcionesRegion(initialValues?.region_trabajador ?? paciente?.region);
 
   // Reset form when dialog closes or initialValues change
   useEffect(() => {
     if (open) {
-      reset(initialValues ?? DEFAULT_VALUES);
+      reset(initialValues ?? precarga);
     } else {
       reset(DEFAULT_VALUES);
     }
-  }, [open, initialValues, reset]);
+  }, [open, initialValues, precarga, reset]);
+
+  function elegirIngreso(id: number) {
+    setIngresoElegidoId(id);
+    const fecha = ingresos.find((i) => i.id === id)?.fecha_ingreso;
+    if (fecha) setValue("fecha_ingreso_ept", fecha, { shouldValidate: true });
+  }
 
   async function onSubmit(values: CasoEptForm) {
     try {
@@ -129,8 +182,13 @@ export function NuevoCasoEptDialog({
         });
         toast.success("Caso EPT actualizado");
       } else {
+        const ingresoDestino = ingresoElegidoId ?? ingresoId;
+        if (ingresoDestino === undefined) {
+          toast.error("Elige el folio al que corresponde la EPT.");
+          return;
+        }
         caso = await crearMutation.mutateAsync({
-          ingreso_id: ingresoId,
+          ingreso_id: ingresoDestino,
           mes: mesDesdeFecha(values.fecha_ingreso_ept),
           fecha_ingreso_ept: values.fecha_ingreso_ept,
           nombre_trabajador: values.nombre_trabajador,
@@ -164,11 +222,35 @@ export function NuevoCasoEptDialog({
           <p className="text-[12.5px] text-muted-foreground">
             {isEdit
               ? "Actualiza los datos del caso EPT."
-              : "Registra un nuevo caso de Evaluación de Puesto de Trabajo."}
+              : "Registra un nuevo caso de Evaluación de Puesto de Trabajo. Los datos del paciente y la fecha del ingreso vienen precargados: revísalos antes de guardar."}
           </p>
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 py-2">
+          {/* Folio (QA-009): una EPT por folio; con varios sin EPT se elige uno */}
+          {!isEdit && ingresos.length > 1 && (
+            <div>
+              <Label htmlFor="ingreso_ept">Folio</Label>
+              <select
+                id="ingreso_ept"
+                value={ingresoElegidoId ?? ""}
+                onChange={(e) => elegirIngreso(Number(e.target.value))}
+                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-[13px] shadow-sm transition-colors focus:outline-none focus:ring-1 focus:ring-ring"
+              >
+                {ingresos.map((i) => (
+                  <option key={i.id} value={i.id}>
+                    {i.folio} · ingreso {fmtDate(i.fecha_ingreso)}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          {!isEdit && ingresos.length === 1 && ingresoElegido && (
+            <p className="text-[12.5px] text-muted-foreground" data-testid="folio-nueva-ept">
+              Folio {ingresoElegido.folio} · ingreso {fmtDate(ingresoElegido.fecha_ingreso)}
+            </p>
+          )}
+
           {/* Fecha ingreso EPT */}
           <div>
             <Label htmlFor="fecha_ingreso_ept">Fecha de ingreso EPT</Label>

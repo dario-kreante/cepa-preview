@@ -21,6 +21,11 @@ export type CasoActivoResumen = components["schemas"]["CasoActivoResumen"];
 export type PacienteConCasosRepetidos =
   components["schemas"]["PacienteConCasosRepetidosRead"];
 
+export type PanelReintegro = components["schemas"]["PanelReintegroRead"];
+export type CasoPanel = components["schemas"]["CasoPanelRead"];
+export type PendienteRegistro = components["schemas"]["PendienteRegistroRead"];
+export type PrecargaCaso = components["schemas"]["PrecargaCasoRead"];
+
 export type EstadoReintegro = components["schemas"]["EstadoReintegro"];
 export type TipoReca = components["schemas"]["TipoReca"];
 export type TipoAlta = components["schemas"]["TipoAlta"];
@@ -187,6 +192,41 @@ export async function registrarSolicitudReca(
     if (response.status === 422)
       throw new Error(mensajeDelBackend(error, "La fecha de solicitud no es válida."));
     throw new Error("No se pudo registrar la solicitud de RECA");
+  }
+  return data;
+}
+
+// ── QA-010: lista global, precarga del alta y remisión a ISL ─────────────────
+
+/** GET /api/v1/reintegros/panel — casos activos de todos los pacientes y pendientes por registrar. */
+export async function obtenerPanel(): Promise<PanelReintegro> {
+  const { data, error } = await api.GET("/api/v1/reintegros/panel");
+  if (error || !data) throw new Error("No se pudo cargar la lista de casos de reintegro");
+  return data;
+}
+
+/** GET /api/v1/reintegros/precarga?ingreso_id= — ocupación y tipo de trabajador para el alta. */
+export async function obtenerPrecarga(ingresoId: number): Promise<PrecargaCaso> {
+  const { data, error } = await api.GET("/api/v1/reintegros/precarga", {
+    params: { query: { ingreso_id: ingresoId } },
+  });
+  if (error || !data) throw new Error("No se pudieron precargar los datos del caso");
+  return data;
+}
+
+/** PATCH /api/v1/reintegros/{caso_id}/remitido-isl — marca «Remitido a ISL» sin cerrar el caso. */
+export async function registrarRemisionIsl(
+  casoId: number,
+  fecha: string,
+): Promise<CasoReintegroRead> {
+  const { data, error, response } = await api.PATCH(
+    "/api/v1/reintegros/{caso_id}/remitido-isl",
+    { params: { path: { caso_id: casoId } }, body: { fecha_remitido_isl: fecha } },
+  );
+  if (error || !data) {
+    if (response.status === 422)
+      throw new Error(mensajeDelBackend(error, "La fecha de remisión no es válida."));
+    throw new Error("No se pudo marcar el caso como remitido a ISL");
   }
   return data;
 }
