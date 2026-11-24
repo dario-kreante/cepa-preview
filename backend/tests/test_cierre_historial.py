@@ -185,7 +185,8 @@ def test_la_migracion_siembra_los_cerrados_y_baja_limpia():
             assert len(filas) == 1
             (f,) = filas
             assert (f.ingreso_id, f.motivo_cierre, f.cerrado_por) == (ids[0], "alta_medica", "coord_x")
-            assert f.cerrado_en == cuando
+            # Oracle devuelve TIMESTAMP WITH TIME ZONE sin tzinfo (python-oracledb); Postgres, con UTC.
+            assert f.cerrado_en.replace(tzinfo=None) == cuando.replace(tzinfo=None)
             assert f.reabierto_en is None
     finally:
         command.upgrade(cfg, "head")
