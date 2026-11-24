@@ -10,11 +10,9 @@ LOGIN, LOGIN_FALLIDO, BLOQUEO} pero el campo es String libre, por lo que "READ" 
 """
 from __future__ import annotations
 
-import csv
-import io
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from fastapi.responses import StreamingResponse
+from fastapi.responses import Response
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
@@ -30,6 +28,7 @@ from app.schemas.auditoria import (
 )
 from app.services.auditoria import generar_reporte, get_caso_consolidado
 from app.services.busqueda import buscar_pacientes
+from app.services.excel import XLSX, planilla
 
 router = APIRouter(prefix="/api/v1/auditoria", tags=["auditoria"])
 
@@ -182,18 +181,19 @@ def generar_reporte_auditoria(
 
 @router.post(
     "/reportes/descargar",
-    summary="Descarga el reporte de auditoría en formato CSV",
+    summary="Descarga el reporte de auditoría en Excel (.xlsx)",
 )
 def descargar_reporte_csv(
     filtros: FiltrosReporte,
     current_user=Depends(get_current_user),
     _: None = _reader,
     db: Session = Depends(get_db),
-) -> StreamingResponse:
-    """Descarga el reporte de auditoría como archivo CSV.
+) -> Response:
+    """Descarga el reporte de auditoría como planilla Excel.
 
-    Los encabezados incluyen folio, numero_siniestro e ingreso_id para trazabilidad
-    (CA-2, CA-3, RN-3, RN-4, TC-051-02, TC-051-03).
+    QA-005 (23-11-2026): antes era un CSV que Excel abría en una sola columna y con las
+    tildes rotas. Las columnas incluyen folio, N° de siniestro e ID de ingreso para
+    trazabilidad (CA-2, CA-3, RN-3, RN-4, TC-051-02, TC-051-03).
     """
     reporte = generar_reporte(db, filtros)
 
@@ -206,60 +206,35 @@ def descargar_reporte_csv(
     )
     db.commit()  # C1: persistir la traza READ
 
-    output = io.StringIO()
-    writer = csv.writer(output)
-
-    # Encabezados (incluyen folio, numero_siniestro e ingreso_id para trazabilidad)
-    encabezados = [
-        "ingreso_id",
-        "folio",
-        "numero_siniestro",
-        "rut",
-        "nombre_completo",
-        "region",
-        "fecha_denuncia",
-        "tipo_denuncia",
-        "estado_caso",
-        "diagnostico_inicial",
-        "diagnostico_post_reca",
-        "profesional",
-        "fecha_calificacion_reca",
-        "reintegro_parcial",
-        "reintegro_total",
-        "alta_medica",
-        "alta_psicologica",
-        "alta_terapeutica",
-    ]
-    writer.writerow(encabezados)
-
-    for fila in reporte.filas:
-        writer.writerow([
-            fila.ingreso_id,
-            _sanitize_csv_cell(fila.folio),
-            _sanitize_csv_cell(fila.numero_siniestro or ""),
-            _sanitize_csv_cell(fila.rut or ""),
-            _sanitize_csv_cell(fila.nombre_completo),
-            _sanitize_csv_cell(fila.region or ""),
-            fila.fecha_denuncia or "",
-            _sanitize_csv_cell(fila.tipo_denuncia or ""),
-            _sanitize_csv_cell(fila.estado_caso or ""),
-            _sanitize_csv_cell(fila.diagnostico_inicial or ""),
-            _sanitize_csv_cell(fila.diagnostico_post_reca or ""),
-            _sanitize_csv_cell(fila.profesional or ""),
-            fila.fecha_calificacion_reca or "",
-            fila.reintegro_parcial,
-            fila.reintegro_total,
-            fila.alta_medica,
-            fila.alta_psicologica,
-            fila.alta_terapeutica,
-        ])
-
-    output.seek(0)
-    nombre_archivo = (
-        f"reporte_auditoria_{filtros.fecha_desde}_{filtros.fecha_hasta}.csv"
+    contenido = planilla(
+        "Reporte de auditoría",
+        ENCABEZADOS_REPORTE,
+        (
+            [
+                fila.ingreso_id, fila.folio, fila.numero_siniestro, fila.rut,
+                fila.nombre_completo, fila.region, fila.tipo_ingreso, fila.programa,
+                fila.convenio, fila.fecha_denuncia, fila.tipo_denuncia,
+                ESTADOS_CASO.get(fila.estado_caso or "", fila.estado_caso),
+                fila.diagnostico_inicial, fila.diagnostico_post_reca, fila.profesional,
+                fila.fecha_calificacion_reca, fila.reintegro_parcial, fila.reintegro_total,
+                fila.alta_medica, fila.alta_psicologica, fila.alta_terapeutica,
+            ]
+            for fila in reporte.filas
+        ),
+        anchos=(10, 14, 16, 14, 32, 16, 18, 18, 26, 14, 18, 14, 30, 30, 26, 14, 12, 12, 12, 12, 12),
     )
-    return StreamingResponse(
-        iter([output.getvalue()]),
-        media_type="text/csv",
-        headers={"Content-Disposition": f"attachment; filename={nombre_archivo}"},
+    nombre_archivo = f"reporte_auditoria_{filtros.fecha_desde}_{filtros.fecha_hasta}.xlsx"
+    return Response(
+        content=contenido,
+        media_type=XLSX,
+        headers={"Content-Disposition": f'attachment; filename="{nombre_archivo}"'},
     )
+
+
+ENCABEZADOS_REPORTE = (
+    "ID ingreso", "Folio", "N° siniestro", "RUT", "Nombre", "Región", "Tipo de ingreso",
+    "Programa", "Convenio", "Fecha denuncia", "Tipo de denuncia", "Estado del caso",
+    "Diagnóstico inicial", "Diagnóstico post RECA", "Profesional", "Fecha calificación RECA",
+    "Reintegro parcial", "Reintegro total", "Alta médica", "Alta psicológica", "Alta terapéutica",
+)
+ESTADOS_CASO = {"activo": "Activo", "cerrado": "Cerrado", "derivado": "Derivado", "encuadre": "En encuadre"}

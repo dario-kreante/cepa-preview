@@ -14,7 +14,10 @@ from __future__ import annotations
 
 import datetime
 
+import io
+
 import pytest
+from openpyxl import load_workbook
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
@@ -322,20 +325,18 @@ class TestReportesAuditoria:
         payload = {"fecha_desde": "2026-01-01", "fecha_hasta": "2026-12-31"}
         r = as_auditor.post("/api/v1/auditoria/reportes/descargar", json=payload)
         assert r.status_code == 200
-        assert "text/csv" in r.headers.get("content-type", "")
+        assert "spreadsheetml" in r.headers.get("content-type", "")
         cd = r.headers.get("content-disposition", "")
-        assert "attachment" in cd
+        assert "attachment" in cd and ".xlsx" in cd
 
-        contenido = r.text
-        # Primera línea: encabezados con folio y numero_siniestro (trazabilidad)
-        encabezados = contenido.splitlines()[0].split(",")
-        assert "folio" in encabezados
-        assert "numero_siniestro" in encabezados
-        assert "ingreso_id" in encabezados
-
-        # Al menos una fila de datos
-        lineas = contenido.splitlines()
-        assert len(lineas) >= 2
+        # QA-005: Excel real, encabezados legibles, filtros y fila inmovilizada.
+        ws = load_workbook(io.BytesIO(r.content)).active
+        encabezados = [c.value for c in ws[1]]
+        assert {"Folio", "N° siniestro", "ID ingreso", "Programa", "Convenio"} <= set(encabezados)
+        assert ws.freeze_panes == "A2" and ws.auto_filter.ref
+        assert ws.max_row >= 2
+        valores = [c.value for c in ws[2]]
+        assert valores[encabezados.index("Reintegro parcial")] in ("Sí", "No")
 
     def test_descarga_admin_denegada(self, as_admin: TestClient):
         """TC-051-06: Administrativo no puede descargar reportes de auditoría."""
@@ -406,7 +407,8 @@ class TestPacienteSinRut:
     def test_reporte_csv_no_falla(self, as_auditor: TestClient, ingreso_sin_rut: Ingreso):
         r = as_auditor.post("/api/v1/auditoria/reportes/descargar", json=self._FILTROS)
         assert r.status_code == 200
-        assert "2026-0777" in r.text
+        ws = load_workbook(io.BytesIO(r.content)).active
+        assert any("2026-0777" in str(c.value) for fila in ws.iter_rows() for c in fila)
 
 
 # ── QA Pilar 22-10 QA-004: búsqueda por texto libre ───────────────────────

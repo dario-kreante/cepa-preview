@@ -107,6 +107,7 @@ class FiltrosReporte(BaseModel):
     region: str | None = None
     tipo_ingreso: str | None = None
     tipo_denuncia: str | None = None  # filtra por tipo_derivacion del Ingreso
+    convenio: str | None = None  # QA-004: Ingreso.tipo_convenio (nombre del catálogo)
 
     @field_validator("fecha_desde", "fecha_hasta", mode="before")
     @classmethod
@@ -142,6 +143,9 @@ class FilaReporteRead(BaseModel):
     alta_medica: bool
     alta_psicologica: bool
     alta_terapeutica: bool
+    tipo_ingreso: str | None = None
+    programa: str | None = None
+    convenio: str | None = None
 
 
 class ReporteAuditoriaRead(BaseModel):

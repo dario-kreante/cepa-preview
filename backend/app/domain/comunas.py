@@ -378,14 +378,15 @@ COMUNAS: tuple[tuple[str, str, str], ...] = (
 )
 
 
-def _clave(texto: str) -> str:
+def clave_texto(texto: str) -> str:
+    """Clave de comparación: sin tildes, en minúsculas y con los espacios colapsados."""
     base = unicodedata.normalize("NFD", texto)
     sin_tildes = "".join(c for c in base if unicodedata.category(c) != "Mn")
     return " ".join(sin_tildes.casefold().split())
 
 
-_POR_NOMBRE: dict[str, tuple[str, str, str]] = {_clave(n): (c, n, r) for c, n, r in COMUNAS}
-_REGION_POR_NOMBRE: dict[str, str] = {_clave(n): cod for cod, n in REGIONES.items()}
+_POR_NOMBRE: dict[str, tuple[str, str, str]] = {clave_texto(n): (c, n, r) for c, n, r in COMUNAS}
+_REGION_POR_NOMBRE: dict[str, str] = {clave_texto(n): cod for cod, n in REGIONES.items()}
 
 
 def buscar_comuna(nombre: str | None) -> tuple[str, str, str] | None:
@@ -395,7 +396,7 @@ def buscar_comuna(nombre: str | None) -> tuple[str, str, str] | None:
     """
     if not nombre or not nombre.strip():
         return None
-    return _POR_NOMBRE.get(_clave(nombre))
+    return _POR_NOMBRE.get(clave_texto(nombre))
 
 
 def region_de_comuna(nombre: str | None) -> str | None:
@@ -408,4 +409,4 @@ def codigo_region(nombre: str | None) -> str | None:
     """Código CUT de una región de la lista de SIGE («Maule» -> «07»), o None."""
     if not nombre or not nombre.strip():
         return None
-    return _REGION_POR_NOMBRE.get(_clave(nombre))
+    return _REGION_POR_NOMBRE.get(clave_texto(nombre))

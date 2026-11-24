@@ -12,11 +12,11 @@ Cada test valida exactamente el comportamiento corregido descrito en la revisió
 """
 from __future__ import annotations
 
-import csv
 import datetime
 import io
 
 import pytest
+from openpyxl import load_workbook
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -480,8 +480,8 @@ def test_m1_csv_sin_inyeccion_en_nombre_malicioso(
     r = as_auditor.post("/api/v1/auditoria/reportes/descargar", json=payload)
     assert r.status_code == 200
 
-    reader = csv.reader(io.StringIO(r.text))
-    rows = list(reader)
+    ws = load_workbook(io.BytesIO(r.content)).active
+    rows = [["" if c.value is None else str(c.value) for c in fila] for fila in ws.iter_rows()]
     # Hay al menos el encabezado + 1 fila
     assert len(rows) >= 2
     # En ninguna celda de string de los datos debe aparecer un valor iniciando con = sin '

@@ -8,7 +8,7 @@
  *   2. Reportes (CEPA-051): filtros (período obligatorio) → tabla + descarga CSV.
  */
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, type UseFormRegisterReturn } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { Search, ShieldCheck, Download, FileText } from "lucide-react";
@@ -17,6 +17,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { REGIONES_CHILE } from "@/lib/regiones";
+import { TIPOS_INGRESO } from "@/features/ingresos/tiposIngreso";
+import { PROGRAMAS } from "@/features/ingresos/programas";
+import { useConveniosParaReportes } from "@/features/convenios/hooks";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { type Rol } from "@/lib/rbac";
 import { useBuscarCasos, useGenerarReporte } from "./hooks";
@@ -154,8 +158,46 @@ function VistaCaso() {
 
 // ── Reportes (CEPA-051) ────────────────────────────────────────────────────────
 
+// QA-004 (23-11-2026): filtros con lista desplegable en vez de texto libre.
+const ESTADOS_CASO = [
+  ["activo", "Activo"],
+  ["cerrado", "Cerrado"],
+  ["encuadre", "En encuadre"],
+  ["derivado", "Derivado"],
+] as const;
+
+function Filtro({
+  id,
+  etiqueta,
+  registro,
+  opciones,
+}: {
+  id: string;
+  etiqueta: string;
+  registro: UseFormRegisterReturn;
+  opciones: readonly (readonly [string, string])[];
+}) {
+  return (
+    <div>
+      <Label htmlFor={id}>{etiqueta} (opcional)</Label>
+      <select
+        id={id}
+        {...registro}
+        className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+      >
+        <option value="">Todos</option>
+        {opciones.map(([valor, texto]) => (
+          <option key={valor} value={valor}>{texto}</option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
 function Reportes() {
   const generar = useGenerarReporte();
+  // Catálogo de convenios (incluso ocultos) más los valores antiguos de los ingresos.
+  const convenios = useConveniosParaReportes();
   const [descargando, setDescargando] = useState(false);
 
   const {
@@ -168,10 +210,12 @@ function Reportes() {
     defaultValues: {
       fecha_desde: "",
       fecha_hasta: "",
-      diagnostico: "",
       profesional: "",
       estado_caso: "",
       region: "",
+      tipo_ingreso: "",
+      programa: "",
+      convenio: "",
     },
   });
 
@@ -179,10 +223,12 @@ function Reportes() {
     return {
       fecha_desde: v.fecha_desde,
       fecha_hasta: v.fecha_hasta,
-      diagnostico: v.diagnostico || null,
       profesional: v.profesional || null,
       estado_caso: v.estado_caso || null,
       region: v.region || null,
+      tipo_ingreso: v.tipo_ingreso || null,
+      programa: v.programa || null,
+      convenio: v.convenio || null,
     };
   }
 
@@ -206,7 +252,7 @@ function Reportes() {
       await descargarReporteCsv(toFiltros(parsed.data));
       toast.success("Descarga iniciada");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Error al descargar CSV");
+      toast.error(err instanceof Error ? err.message : "Error al descargar el Excel");
     } finally {
       setDescargando(false);
     }
@@ -239,18 +285,16 @@ function Reportes() {
               </p>
             )}
           </div>
-          <div>
-            <Label htmlFor="estado_caso">Estado (opcional)</Label>
-            <Input id="estado_caso" {...register("estado_caso")} />
-          </div>
-          <div>
-            <Label htmlFor="diagnostico">Diagnóstico (opcional)</Label>
-            <Input id="diagnostico" {...register("diagnostico")} />
-          </div>
-          <div>
-            <Label htmlFor="region">Región (opcional)</Label>
-            <Input id="region" {...register("region")} />
-          </div>
+          <Filtro id="estado_caso" etiqueta="Estado" registro={register("estado_caso")}
+            opciones={ESTADOS_CASO} />
+          <Filtro id="region" etiqueta="Región" registro={register("region")}
+            opciones={REGIONES_CHILE.map((r) => [r, r] as const)} />
+          <Filtro id="tipo_ingreso" etiqueta="Tipo de ingreso" registro={register("tipo_ingreso")}
+            opciones={Object.entries(TIPOS_INGRESO)} />
+          <Filtro id="programa" etiqueta="Programa" registro={register("programa")}
+            opciones={PROGRAMAS.map((p) => [p, p] as const)} />
+          <Filtro id="convenio" etiqueta="Convenio" registro={register("convenio")}
+            opciones={(convenios.data ?? []).map((c) => [c, c] as const)} />
           <div className="flex gap-2">
             <Button type="submit" disabled={generar.isPending} data-testid="btn-generar">
               <FileText className="size-3.5" />
@@ -264,7 +308,7 @@ function Reportes() {
               data-testid="btn-descargar"
             >
               <Download className="size-3.5" />
-              CSV
+              Excel
             </Button>
           </div>
         </form>

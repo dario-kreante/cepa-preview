@@ -21,9 +21,10 @@ ADAPTACIONES respecto al plan original (declaradas):
 """
 from __future__ import annotations
 
-from sqlalchemy import and_, or_, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
+from app.domain.comunas import clave_texto as _clave
 from app.domain.reintegro_enums import EstadoReintegro
 from app.models.ingreso import Ingreso
 from app.models.paciente import Paciente
@@ -184,13 +185,13 @@ def generar_reporte(db: Session, filtros: FiltrosReporte) -> ReporteAuditoriaRea
     ]
 
     if filtros.estado_caso:
-        condiciones.append(Ingreso.estado == filtros.estado_caso)
+        condiciones.append(func.lower(Ingreso.estado) == filtros.estado_caso.strip().lower())
     if filtros.tipo_ingreso:
         condiciones.append(Ingreso.tipo_ingreso == filtros.tipo_ingreso)
     if filtros.tipo_denuncia:
         condiciones.append(Ingreso.tipo_derivacion == filtros.tipo_denuncia)
-    if filtros.region:
-        condiciones.append(Paciente.region == filtros.region)
+    if filtros.convenio:
+        condiciones.append(Ingreso.tipo_convenio == filtros.convenio)
 
     stmt = (
         select(Ingreso, Paciente, Seguimiento)
@@ -201,8 +202,11 @@ def generar_reporte(db: Session, filtros: FiltrosReporte) -> ReporteAuditoriaRea
     )
 
     # Filtro por programa (sobre Seguimiento)
+    # QA-004: el programa se elige en el ingreso; Seguimiento.programa queda por compatibilidad.
     if filtros.programa:
-        stmt = stmt.where(Seguimiento.programa == filtros.programa)
+        stmt = stmt.where(
+            or_(Ingreso.programa == filtros.programa, Seguimiento.programa == filtros.programa)
+        )
 
     # I1: filtro diagnostico — OR case-insensitive substring sobre Ingreso.diagnostico y Seguimiento.reca_ep_ec
     if filtros.diagnostico:
@@ -225,7 +229,12 @@ def generar_reporte(db: Session, filtros: FiltrosReporte) -> ReporteAuditoriaRea
         )
 
     filas: list[FilaReporteRead] = []
+    region_buscada = _clave(filtros.region) if filtros.region else None
     for ingreso, paciente, seg in db.execute(stmt):
+        # QA-004: la región se compara sin tildes ni mayúsculas («biobio» = «Biobío»); hay
+        # valores antiguos escritos a mano que SQL no sabe normalizar en Oracle y Postgres.
+        if region_buscada and _clave(paciente.region or "") != region_buscada:
+            continue
         # CasoReintegro para M2 (altas), I2 (EstadoReintegro), tipo_alta filter
         rei: CasoReintegro | None = db.scalar(
             select(CasoReintegro).where(CasoReintegro.ingreso_id == ingreso.id)
@@ -286,6 +295,9 @@ def generar_reporte(db: Session, filtros: FiltrosReporte) -> ReporteAuditoriaRea
             alta_medica=alta_medica,                          # M2
             alta_psicologica=alta_psicologica,                # M2
             alta_terapeutica=alta_terapeutica,                # M2
+            tipo_ingreso=ingreso.tipo_ingreso,
+            programa=ingreso.programa or (seg.programa if seg else None),
+            convenio=ingreso.tipo_convenio,
         )
         filas.append(fila)
 
