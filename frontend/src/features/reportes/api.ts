@@ -72,7 +72,7 @@ export async function reporteLicencias(
 }
 
 /** Filtro por programa del reporte de ODAS (el backend compara sin mayúsculas y por fragmento). */
-export type ProgramaFiltro = "regular" | "ley_karin" | "pipt";
+export type ProgramaFiltro = "regular" | "ingreso_isl" | "tratamiento_isl" | "ley_karin" | "pipt";
 export type EstadoGestion = "pendiente" | "solicitada" | "recibida";
 export type ODAVencidaItem = components["schemas"]["ODAVencidaItem"];
 export type ReporteODAEstadoResponse =

@@ -69,6 +69,7 @@ def get_reporte_operativo(
     inasistencias = _count_estado("inasistencia")
     anuladas = _count_estado("anulada")
     agendadas = _count_estado("agendada")
+    recepcionadas = _count_estado("recepcionada")
 
     # Detalle diario agrupado por fecha (portable: sin FILTER aggregate)
     # Contamos total de citas en cada fecha/programa/profesional
@@ -126,6 +127,7 @@ def get_reporte_operativo(
             anuladas=estado_map.get((r.fecha, r.programa, r.profesional_id, "anulada"), 0),
             # DD-6: incluir agendadas para que total_citas = realizadas + inasistencias + anuladas + agendadas
             agendadas=estado_map.get((r.fecha, r.programa, r.profesional_id, "agendada"), 0),
+            recepcionadas=estado_map.get((r.fecha, r.programa, r.profesional_id, "recepcionada"), 0),
         )
         for r in rows_detalle
     ]
@@ -147,5 +149,6 @@ def get_reporte_operativo(
             "inasistencias": inasistencias,
             "anuladas": anuladas,
             "agendadas": agendadas,
+            "recepcionadas": recepcionadas,
         },
     )

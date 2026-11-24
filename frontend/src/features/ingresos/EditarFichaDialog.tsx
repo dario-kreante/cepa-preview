@@ -30,6 +30,7 @@ import type { IngresoRead, IngresoUpdate, PacienteRead } from "./api";
 
 const TIPOS_DERIVACION = [
   "DIEP",
+  "DIEP sin EPT",
   "DIAT",
   "PAPT a flujo AT",
   "Reingreso FUMP",

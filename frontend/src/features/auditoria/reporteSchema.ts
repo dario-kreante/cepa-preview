@@ -18,6 +18,8 @@ export const reporteSchema = z
     programa: z.string().trim().optional(),
     region: z.string().trim().optional(),
     tipo_denuncia: z.string().trim().optional(),
+    tipo_ingreso: z.string().trim().optional(),
+    convenio: z.string().trim().optional(),
   })
   .refine((v) => v.fecha_desde <= v.fecha_hasta, {
     message: "La fecha desde no puede ser posterior a la fecha hasta",

@@ -235,6 +235,7 @@ def test_excel_reproduce_la_tabla_y_respeta_el_filtro(as_coordinacion, db_sessio
     _oda(db_session, a, "5001", _d(-60), _d(-30), tipo="Ambulatoria", vigente=False)
     _oda(db_session, a, "5002", _d(-35), _d(-20), tipo="OPA")
     _cita(db_session, a, _d(-25))
+    _cita(db_session, a, _d(-33))
     b = _caso(db_session, nombre="Excel PIPT", programa="PIPT")
     _oda(db_session, b, "5003", _d(-40), _d(-20))
     db_session.commit()
@@ -247,16 +248,18 @@ def test_excel_reproduce_la_tabla_y_respeta_el_filtro(as_coordinacion, db_sessio
     assert "odas-vencidas" in r.headers["content-disposition"]
     filas = list(load_workbook(io.BytesIO(r.content)).active.iter_rows(values_only=True))
     assert filas[0] == (
-        "Nombre", "RUT", "N° ODA/OPA", "Tipo", "Fecha inicio", "Fecha término",
-        "Fechas de atención", "Cobertura", "Estado de gestión",
+        "Folio", "Nombre", "RUT", "Programa", "Región", "Comuna", "Fecha de atención",
+        "N° ODA/OPA", "Tipo", "Fecha inicio", "Fecha término", "Cobertura", "Estado de gestión",
     )
-    assert len(filas) == 2
-    nombre, rut, numeros, tipos, inicios, terminos, atenciones, cobertura, gestion = filas[1]
-    assert (nombre, rut, numeros, tipos) == ("Excel Ley Karin", "12345678-5", "5001 / 5002", "ODA / OPA")
-    assert inicios == f"{_d(-60):%d-%m-%Y} / {_d(-35):%d-%m-%Y}"
-    assert terminos == f"{_d(-30):%d-%m-%Y} / {_d(-20):%d-%m-%Y}"
-    assert atenciones == f"{_d(-25):%d-%m-%Y}"
-    assert (cobertura, gestion) == ("CUBRE", "Pendiente")
+    # QA-006: una fila por fecha de atención, cada una con la orden que la cubre.
+    assert len(filas) == 3
+    por_fecha = {f[6].date(): f for f in filas[1:]}
+    temprana, tardia = por_fecha[_d(-33)], por_fecha[_d(-25)]
+    assert temprana[:6] == (a.folio, "Excel Ley Karin", "12345678-5", "Ley Karin", "Maule", "—")
+    # El -33 lo cubren las dos órdenes; el -25, solo la 5002.
+    assert temprana[7:9] == ("5001 / 5002", "ODA / OPA")
+    assert tardia[7:11] == ("5002", "OPA", f"{_d(-35):%d-%m-%Y}", f"{_d(-20):%d-%m-%Y}")
+    assert (tardia[11], tardia[12]) == ("CUBRE", "Pendiente")
 
 
 def test_excel_celdas_sin_dato_llevan_guion(as_coordinacion, db_session):
@@ -265,8 +268,8 @@ def test_excel_celdas_sin_dato_llevan_guion(as_coordinacion, db_session):
     db_session.commit()
     r = as_coordinacion.get("/api/v1/reportes/odas-vencidas/excel")
     filas = list(load_workbook(io.BytesIO(r.content)).active.iter_rows(values_only=True))
-    fila = next(f for f in filas if f[0] == "Excel antiguo")
-    assert (fila[3], fila[4], fila[6]) == ("—", "—", "—")
+    fila = next(f for f in filas if f[1] == "Excel antiguo")
+    assert (fila[6], fila[8], fila[9]) == ("—", "—", "—")
 
 
 # ── QA-006: listado por paciente ───────────────────────────────────────────────
@@ -409,9 +412,9 @@ def test_excel_neutraliza_formulas_en_el_texto(as_coordinacion, db_session):
     db_session.commit()
     r = as_coordinacion.get("/api/v1/reportes/odas-vencidas/excel")
     filas = list(load_workbook(io.BytesIO(r.content)).active.iter_rows(values_only=True))
-    fila = next(f for f in filas if "HYPERLINK" in str(f[0]))
-    assert fila[0].startswith("'=")
-    assert fila[2] == "'+1234"
+    fila = next(f for f in filas if "HYPERLINK" in str(f[1]))
+    assert fila[1].startswith("'=")
+    assert fila[7] == "'+1234"
 
 
 def test_consultas_por_lotes_con_mas_de_un_lote(as_coordinacion, db_session, monkeypatch):
@@ -537,8 +540,9 @@ def test_excel_incluye_atendidos_sin_oda(as_coordinacion, db_session):
     r = as_coordinacion.get("/api/v1/reportes/odas-vencidas/excel")
     assert r.status_code == 200
     ws = load_workbook(io.BytesIO(r.content)).active
-    fila = next(row for row in ws.iter_rows(values_only=True) if row[0] == "Excel sin orden")
-    assert fila[2:6] == ("—", "—", "—", "—")
-    assert fila[6] == "02-11-2026"
-    assert fila[7] == "SOLICITAR"
-    assert fila[8] == "—"
+    fila = next(row for row in ws.iter_rows(values_only=True) if row[1] == "Excel sin orden")
+    assert fila[7:11] == ("—", "—", "—", "—")
+    assert fila[6].date() == date(2026, 11, 2)
+    assert ws["G2"].number_format == "DD-MM-YYYY"
+    assert fila[11] == "SOLICITAR"
+    assert fila[12] == "—"

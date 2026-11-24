@@ -11,6 +11,7 @@ class TipoDerivacion(str, Enum):
     """Tipos de derivación permitidos (v4 D4). 'SOCORRO' ya no es válido."""
 
     DIEP = "DIEP"
+    DIEP_SIN_EPT = "DIEP sin EPT"  # QA 23-11-2026 (Angela): DIEP que no requiere EPT
     DIAT = "DIAT"
     PAPT_FLUJO_AT = "PAPT a flujo AT"
     REINGRESO_FUMP = "Reingreso FUMP"

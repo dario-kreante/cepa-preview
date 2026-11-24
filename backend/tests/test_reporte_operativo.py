@@ -28,6 +28,7 @@ def datos_operativos(db_session):
         Cita(origen="SALUTEM", ingreso_id=ing.id, estado="inasistencia", fecha=date(2026, 3, 12)),
         Cita(origen="SALUTEM", ingreso_id=ing.id, estado="anulada",      fecha=date(2026, 3, 19)),
         Cita(origen="SALUTEM", ingreso_id=ing.id, estado="agendada",     fecha=date(2026, 3, 26)),
+        Cita(origen="SALUTEM", ingreso_id=ing.id, estado="recepcionada", fecha=date(2026, 3, 26)),
     ]
     db_session.add_all(citas)
     db_session.commit()
@@ -45,6 +46,10 @@ def test_reporte_operativo_cifras_correctas(as_coordinacion, datos_operativos):
     assert body["totales"]["realizadas"] >= 1
     assert body["totales"]["inasistencias"] >= 1
     assert body["totales"]["anuladas"] >= 1
+    # QA-002: las recepcionadas se cuentan aparte de las agendadas.
+    assert (body["totales"]["agendadas"], body["totales"]["recepcionadas"]) == (1, 1)
+    [dia] = [i for i in body["items"] if i["fecha"] == "2026-03-26"]
+    assert (dia["agendadas"], dia["recepcionadas"], dia["total_citas"]) == (1, 1, 2)
 
 
 # ── TC-091-03: período vacío → 422 ────────────────────────────────────────────

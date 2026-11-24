@@ -22,9 +22,11 @@ from app.models.cita import Cita
 
 router = APIRouter(prefix="/api/v1/citas", tags=["citas"])
 
-_ESTADOS_VALIDOS = {"agendada", "realizada", "inasistencia", "anulada"}
+_ESTADOS_VALIDOS = {"agendada", "recepcionada", "realizada", "inasistencia", "anulada"}
 _TRANSICIONES_PERMITIDAS: dict[str, set[str]] = {
-    "agendada": {"realizada", "inasistencia", "anulada"},
+    "agendada": {"recepcionada", "realizada", "inasistencia", "anulada"},
+    # recepcionada: el paciente llegó y falta que el profesional evolucione la atención
+    "recepcionada": {"realizada", "inasistencia", "anulada"},
     # ya confirmadas: solo anulación
     "realizada": {"anulada"},
     "inasistencia": {"anulada"},

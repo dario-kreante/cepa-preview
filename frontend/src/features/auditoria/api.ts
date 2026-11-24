@@ -72,7 +72,7 @@ export async function generarReporte(
   return data;
 }
 
-/** POST /api/v1/auditoria/reportes/descargar → dispara descarga del CSV. */
+/** POST /api/v1/auditoria/reportes/descargar → descarga el reporte en Excel (QA-005). */
 export async function descargarReporteCsv(
   filtros: FiltrosReporte,
 ): Promise<void> {
@@ -80,12 +80,12 @@ export async function descargarReporteCsv(
     "/api/v1/auditoria/reportes/descargar",
     { body: filtros, parseAs: "blob" },
   );
-  if (error || !data) throw new Error("No se pudo descargar el reporte CSV");
+  if (error || !data) throw new Error("No se pudo descargar el reporte");
   const blob = data as Blob;
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `reporte_auditoria_${filtros.fecha_desde}_${filtros.fecha_hasta}.csv`;
+  a.download = `reporte_auditoria_${filtros.fecha_desde}_${filtros.fecha_hasta}.xlsx`;
   document.body.appendChild(a);
   a.click();
   a.remove();

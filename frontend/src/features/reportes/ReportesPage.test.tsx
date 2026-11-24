@@ -414,7 +414,7 @@ describe("ReportesPage — ODA vencidas: carga, columnas, gestión, filtro y Exc
     const opciones = Array.from(
       (screen.getByTestId("filtro-programa") as HTMLSelectElement).options,
     ).map((o) => o.textContent);
-    expect(opciones).toEqual(["Todos", "Regular", "Ley Karin", "PIPT"]);
+    expect(opciones).toEqual(["Todos", "Regular", "Ingreso ISL", "Tratamiento ISL", "Ley Karin", "PIPT"]);
     fireEvent.change(screen.getByTestId("filtro-programa"), { target: { value: "ley_karin" } });
     fireEvent.click(screen.getByTestId("btn-generar-reporte"));
     await waitFor(() => expect(consultas).toEqual(["", "?programa=ley_karin"]));

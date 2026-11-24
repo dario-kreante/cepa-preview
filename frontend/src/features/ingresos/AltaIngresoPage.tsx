@@ -16,7 +16,7 @@ import { PROGRAMAS } from "./programas";
 import { ConvenioSelect } from "@/features/convenios/ConvenioSelect";
 import { rutValido } from "@/lib/rut";
 
-const TIPOS_DERIVACION = ["DIEP", "DIAT", "PAPT a flujo AT", "Reingreso FUMP", "Reingreso SUSESO", "Reingreso ISL", "Convenio U.Clinica", "Proyecto", "Particular", "PAPT"];
+const TIPOS_DERIVACION = ["DIEP", "DIEP sin EPT", "DIAT", "PAPT a flujo AT", "Reingreso FUMP", "Reingreso SUSESO", "Reingreso ISL", "Convenio U.Clinica", "Proyecto", "Particular", "PAPT"];
 
 /**
  * Valores iniciales. Con un borrador de SALUTEM se precarga lo que ya se sabe; lo que

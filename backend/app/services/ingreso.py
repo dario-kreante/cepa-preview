@@ -22,9 +22,12 @@ def _aplicar_datos(paciente: Paciente, data: IngresoCreate) -> None:
     paciente.sexo = data.sexo.value
     paciente.edad = data.edad
     paciente.region = data.region
-    paciente.comuna = data.comuna
-    paciente.telefono = data.telefono
-    paciente.correo = data.correo
+    # El alta no pide comuna, teléfono ni correo: si no vienen, se conservan los que trajo
+    # SALUTEM al crear el borrador (QA-003, 23-11-2026). Antes quedaban en blanco.
+    for campo in ("comuna", "telefono", "correo"):
+        valor = getattr(data, campo)
+        if valor is not None:
+            setattr(paciente, campo, valor)
 
 
 def _paciente_de_borrador(db, data: IngresoCreate) -> Paciente:
