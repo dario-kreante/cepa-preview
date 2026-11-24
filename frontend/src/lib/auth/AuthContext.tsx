@@ -4,7 +4,15 @@ import { api, ErrorDeConexion } from "@/lib/apiClient";
 import { tokenStore } from "@/lib/tokenStore";
 import type { Rol } from "@/lib/rbac";
 
-interface JwtClaims { sub: string; username: string; role: Rol; type: string; exp: number; }
+interface JwtClaims {
+  sub: string;
+  username: string;
+  role: Rol;
+  /** CA-012: permiso extra «Acceso a Auditoría» (tokens anteriores no lo traen). */
+  acceso_auditoria?: boolean;
+  type: string;
+  exp: number;
+}
 
 /** Por qué no se pudo restaurar la sesión guardada. */
 export type ErrorSesion = "servidor" | "sesion";
@@ -14,6 +22,8 @@ interface AuthState {
   username: string | null;
   /** Id del usuario (claim `sub` del token), para saber qué alertas son suyas. */
   usuarioId: number | null;
+  /** CA-012: un Administrativo con este permiso ve además el módulo Auditoría. */
+  accesoAuditoria: boolean;
   cargando: boolean;
   errorSesion: ErrorSesion | null;
   login: (username: string, password: string) => Promise<void>;
@@ -31,6 +41,15 @@ function idDesdeToken(token: string | null): number | null {
     return Number.isInteger(id) ? id : null;
   } catch {
     return null;
+  }
+}
+
+function accesoAuditoriaDesdeToken(token: string | null): boolean {
+  if (!token) return false;
+  try {
+    return jwtDecode<JwtClaims>(token).acceso_auditoria === true;
+  } catch {
+    return false;
   }
 }
 
@@ -114,6 +133,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       username,
       // Se lee del token en cada render de la sesión: cambia junto con rol/username.
       usuarioId: idDesdeToken(tokenStore.getAccess()),
+      accesoAuditoria: accesoAuditoriaDesdeToken(tokenStore.getAccess()),
       cargando,
       errorSesion,
       login,

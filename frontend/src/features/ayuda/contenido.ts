@@ -289,7 +289,8 @@ export const GUIAS: Guia[] = [
         pasos: ["En «Reportes», indica «Desde» y «Hasta», presiona «Generar» y luego «CSV»."],
       },
     ],
-    quienEscribe: "Disponible para Coordinación, Auditor y Superadmin.",
+    quienEscribe:
+      "Disponible para Coordinación, Auditor y Superadmin, y para Administrativos con el permiso «Acceso a Auditoría».",
   },
   {
     ruta: "/agenda",

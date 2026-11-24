@@ -38,6 +38,8 @@ export const usuarioCreateSchema = z.object({
     .min(8, "La contraseña debe tener al menos 8 caracteres"),
   rol: z.enum(ROL_VALUES, { required_error: "El rol es requerido" }),
   email: emailOpcional,
+  /** CA-012: permiso extra «Acceso a Auditoría» (solo aplica a Administrativo). */
+  acceso_auditoria: z.boolean().optional(),
 });
 
 export const usuarioEditSchema = z.object({
@@ -50,6 +52,7 @@ export const usuarioEditSchema = z.object({
     .optional(),
   rol: z.enum(ROL_VALUES),
   email: emailOpcional,
+  acceso_auditoria: z.boolean().optional(),
 });
 
 export type UsuarioCreateForm = z.infer<typeof usuarioCreateSchema>;

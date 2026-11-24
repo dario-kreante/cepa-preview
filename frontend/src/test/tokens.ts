@@ -12,4 +12,6 @@ export const TOKENS = {
   Administrativo: `${HEADER}.eyJzdWIiOiIzIiwidXNlcm5hbWUiOiJhZG1pbmlzdHJhdGl2byIsInJvbGUiOiJBZG1pbmlzdHJhdGl2byIsInR5cGUiOiJhY2Nlc3MiLCJleHAiOjk5OTk5OTk5OTl9.${FIRMA}`,
   // {"sub":"2","username":"auditor","role":"Auditor","type":"access","exp":9999999999}
   Auditor: `${HEADER}.eyJzdWIiOiIyIiwidXNlcm5hbWUiOiJhdWRpdG9yIiwicm9sZSI6IkF1ZGl0b3IiLCJ0eXBlIjoiYWNjZXNzIiwiZXhwIjo5OTk5OTk5OTk5fQ.${FIRMA}`,
+  // {"sub":"4","username":"isidora","role":"Administrativo","acceso_auditoria":true,"type":"access","exp":9999999999}
+  AdministrativoConAuditoria: `${HEADER}.eyJzdWIiOiI0IiwidXNlcm5hbWUiOiJpc2lkb3JhIiwicm9sZSI6IkFkbWluaXN0cmF0aXZvIiwiYWNjZXNvX2F1ZGl0b3JpYSI6dHJ1ZSwidHlwZSI6ImFjY2VzcyIsImV4cCI6OTk5OTk5OTk5OX0.${FIRMA}`,
 } as const;

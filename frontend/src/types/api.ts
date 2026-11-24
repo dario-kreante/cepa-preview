@@ -6342,6 +6342,11 @@ export interface components {
             rol: "Coordinacion" | "Administrativo" | "Auditor" | "Superadmin";
             /** Email */
             email?: string | null;
+            /**
+             * Acceso Auditoria
+             * @default false
+             */
+            acceso_auditoria: boolean;
         };
         /** UsuarioRead */
         UsuarioRead: {
@@ -6358,6 +6363,11 @@ export interface components {
             /** Email */
             email?: string | null;
             /**
+             * Acceso Auditoria
+             * @default false
+             */
+            acceso_auditoria: boolean;
+            /**
              * Created At
              * Format: date-time
              */
@@ -6373,6 +6383,8 @@ export interface components {
             rol?: ("Coordinacion" | "Administrativo" | "Auditor" | "Superadmin") | null;
             /** Email */
             email?: string | null;
+            /** Acceso Auditoria */
+            acceso_auditoria?: boolean | null;
         };
         /** ValidacionPlazo */
         ValidacionPlazo: {

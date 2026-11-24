@@ -19,7 +19,7 @@ import {
   Handshake,
   type LucideIcon,
 } from "lucide-react";
-import { tieneRol, type Rol } from "@/lib/rbac";
+import { puedeVerAuditoria, tieneRol, type Rol } from "@/lib/rbac";
 
 export interface NavItem {
   to: string;
@@ -28,6 +28,8 @@ export interface NavItem {
   badgeKey?: string;
   /** Si se define, el item solo se muestra a estos roles. */
   roles?: Rol[];
+  /** Solo para quien puede leer Auditoría (rol o permiso extra «Acceso a Auditoría», CA-012). */
+  soloAuditoria?: boolean;
 }
 
 export interface NavSection {
@@ -66,7 +68,7 @@ export const NAV: NavSection[] = [
         badgeKey: "ept",
       },
       { to: "/reintegro", label: "Seguimiento reintegro", icon: RefreshCw },
-      { to: "/auditoria", label: "Auditoría", icon: ShieldCheck },
+      { to: "/auditoria", label: "Auditoría", icon: ShieldCheck, soloAuditoria: true },
     ],
   },
   {
@@ -125,8 +127,16 @@ export const NAV: NavSection[] = [
 ];
 
 /** Items de `items` visibles para `rol` (RBAC de menú). Sin rol, solo los no restringidos. */
-export function itemsVisibles(items: NavItem[], rol: Rol | null | undefined): NavItem[] {
-  return items.filter((item) => !item.roles || tieneRol(rol, ...item.roles));
+export function itemsVisibles(
+  items: NavItem[],
+  rol: Rol | null | undefined,
+  accesoAuditoria = false,
+): NavItem[] {
+  return items.filter(
+    (item) =>
+      (!item.roles || tieneRol(rol, ...item.roles)) &&
+      (!item.soloAuditoria || puedeVerAuditoria(rol, accesoAuditoria)),
+  );
 }
 
 /** Sección "Administración": la reusa el índice de /configuracion. */

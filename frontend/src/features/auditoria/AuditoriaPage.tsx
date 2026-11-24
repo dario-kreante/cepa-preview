@@ -1,7 +1,8 @@
 /**
  * AuditoriaPage — módulo de Auditoría (EPIC-05). Solo lectura.
  *
- * RBAC (RN-2, D1): acceden Coordinacion y Auditor. Administrativo NO accede.
+ * RBAC (RN-2, D1): acceden Coordinacion y Auditor. Administrativo solo con el permiso extra
+ * «Acceso a Auditoría» (CA-012).
  * Dos vistas:
  *   1. Vista de caso (CEPA-050): búsqueda por RUT / folio / N° siniestro →
  *      vista consolidada de las 4 secciones del caso.
@@ -22,7 +23,7 @@ import { TIPOS_INGRESO } from "@/features/ingresos/tiposIngreso";
 import { PROGRAMAS } from "@/features/ingresos/programas";
 import { useConveniosParaReportes } from "@/features/convenios/hooks";
 import { useAuth } from "@/lib/auth/AuthContext";
-import { type Rol } from "@/lib/rbac";
+import { puedeVerAuditoria, type Rol } from "@/lib/rbac";
 import { useBuscarCasos, useGenerarReporte } from "./hooks";
 import { descargarReporteCsv } from "./api";
 import { ConsolidadoView } from "./ConsolidadoView";
@@ -374,17 +375,18 @@ function Reportes() {
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export function AuditoriaPage() {
-  const { rol } = useAuth();
+  const { rol, accesoAuditoria } = useAuth();
   const [tab, setTab] = useState<Tab>("casos");
 
-  // RBAC: Administrativo no accede al módulo de auditoría (RN-2, D1).
-  if ((rol as Rol) === "Administrativo") {
+  // RBAC: Administrativo no accede al módulo de auditoría (RN-2, D1), salvo con el permiso
+  // extra «Acceso a Auditoría» (CA-012).
+  if (!puedeVerAuditoria(rol as Rol, accesoAuditoria)) {
     return (
       <div className="rounded-lg border border-dashed border-border bg-muted/20 px-6 py-16 text-center">
         <ShieldCheck className="mx-auto mb-3 size-8 text-muted-foreground/50" />
         <p className="text-[13.5px] text-muted-foreground">
           El módulo de Auditoría está restringido a perfiles Coordinación y
-          Auditor.
+          Auditor, o a usuarios con el permiso «Acceso a Auditoría».
         </p>
       </div>
     );

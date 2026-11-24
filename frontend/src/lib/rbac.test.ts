@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { puedeEscribir, puedeEscribirEpt, tieneRol } from "./rbac";
+import { puedeEscribir, puedeEscribirEpt, puedeVerAuditoria, tieneRol } from "./rbac";
 
 describe("rbac", () => {
   it("Administrativo y Coordinacion pueden escribir; Auditor no", () => {
@@ -31,5 +31,19 @@ describe("Superadmin", () => {
     expect(tieneRol("Coordinacion", "Administrativo")).toBe(false);
     expect(tieneRol("Administrativo", "Administrativo")).toBe(true);
     expect(tieneRol(null, "Coordinacion")).toBe(false);
+  });
+});
+
+describe("puedeVerAuditoria (CA-012)", () => {
+  it("Coordinación, Auditor y Superadmin por rol", () => {
+    expect(puedeVerAuditoria("Coordinacion")).toBe(true);
+    expect(puedeVerAuditoria("Auditor")).toBe(true);
+    expect(puedeVerAuditoria("Superadmin")).toBe(true);
+  });
+
+  it("Administrativo solo con el permiso extra", () => {
+    expect(puedeVerAuditoria("Administrativo")).toBe(false);
+    expect(puedeVerAuditoria("Administrativo", true)).toBe(true);
+    expect(puedeVerAuditoria(null, true)).toBe(false);
   });
 });
