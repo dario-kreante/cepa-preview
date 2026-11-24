@@ -762,7 +762,7 @@ export interface paths {
         };
         /**
          * Listar Por Paciente
-         * @description Casos EPT de todos los ingresos del paciente (búsqueda por RUT/nombre en la UI).
+         * @description Casos EPT de todos los ingresos del paciente, con folio y plazos (QA-009).
          */
         get: operations["listar_por_paciente_api_v1_casos_ept_get"];
         put?: never;
@@ -849,6 +849,27 @@ export interface paths {
         head?: never;
         /** Actualizar Plazos */
         patch: operations["actualizar_plazos_api_v1_casos_ept__caso_id__plazos_patch"];
+        trace?: never;
+    };
+    "/api/v1/casos-ept/{caso_id}/plazos-sugeridos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Obtener Plazos Sugeridos
+         * @description Plazos que el sistema propone (QA-009): ingreso + 15 y + 19 días corridos, adelantados
+         *     al día hábil anterior si caen en fin de semana o feriado.
+         */
+        get: operations["obtener_plazos_sugeridos_api_v1_casos_ept__caso_id__plazos_sugeridos_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/reintegros": {
@@ -2898,23 +2919,23 @@ export interface components {
         /**
          * CasoEptCreate
          * @description Alta de caso EPT (CEPA-030). Campos obligatorios = RN-1.
+         *
+         *     QA-009: mes, fecha de ingreso EPT, nombre, RUT y región son opcionales: si no vienen
+         *     se toman del ingreso y del paciente (el mes se deriva de la fecha).
          */
         CasoEptCreate: {
             /** Ingreso Id */
             ingreso_id: number;
             /** Mes */
-            mes: string;
-            /**
-             * Fecha Ingreso Ept
-             * Format: date
-             */
-            fecha_ingreso_ept: string;
+            mes?: string | null;
+            /** Fecha Ingreso Ept */
+            fecha_ingreso_ept?: string | null;
             /** Nombre Trabajador */
-            nombre_trabajador: string;
+            nombre_trabajador?: string | null;
             /** Rut Trabajador */
-            rut_trabajador: string;
+            rut_trabajador?: string | null;
             /** Region Trabajador */
-            region_trabajador: string;
+            region_trabajador?: string | null;
             /** Eista */
             eista: string;
             factor_riesgo: components["schemas"]["FactorRiesgo"];
@@ -2978,6 +2999,68 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+        };
+        /**
+         * CasoEptResumenRead
+         * @description Caso EPT en el listado por paciente (QA-009): folio, ingreso y plazos del caso.
+         */
+        CasoEptResumenRead: {
+            /** Id */
+            id: number;
+            /** Ingreso Id */
+            ingreso_id: number;
+            /** Mes */
+            mes: string;
+            /**
+             * Fecha Ingreso Ept
+             * Format: date
+             */
+            fecha_ingreso_ept: string;
+            /** Nombre Trabajador */
+            nombre_trabajador: string;
+            /** Rut Trabajador */
+            rut_trabajador: string;
+            /** Region Trabajador */
+            region_trabajador: string;
+            /** Eista */
+            eista: string;
+            /** Factor Riesgo */
+            factor_riesgo: components["schemas"]["FactorRiesgo"] | components["schemas"]["FactorRiesgoLegado"];
+            /**
+             * Factores Adicionales
+             * @default []
+             */
+            factores_adicionales: string[];
+            /** Corresponde Ept */
+            corresponde_ept: boolean;
+            estado: components["schemas"]["EstadoEpt"];
+            /** Razon Social */
+            razon_social: string | null;
+            /** Unidad Cargo Horario */
+            unidad_cargo_horario: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Folio */
+            folio: string;
+            /**
+             * Fecha Ingreso
+             * Format: date
+             */
+            fecha_ingreso: string;
+            /** Plazo Informe Ept */
+            plazo_informe_ept?: string | null;
+            /** Plazo Portal Isl */
+            plazo_portal_isl?: string | null;
+            /** Fecha Envio */
+            fecha_envio?: string | null;
         };
         /**
          * CasoEptUpdate
@@ -5100,6 +5183,22 @@ export interface components {
             fecha_entrega_isl?: string | null;
             /** Fecha Envio */
             fecha_envio?: string | null;
+        };
+        /**
+         * PlazosSugeridosRead
+         * @description Plazos que el sistema propone desde la fecha de ingreso EPT (QA-009).
+         */
+        PlazosSugeridosRead: {
+            /**
+             * Plazo Informe Ept
+             * Format: date
+             */
+            plazo_informe_ept: string;
+            /**
+             * Plazo Portal Isl
+             * Format: date
+             */
+            plazo_portal_isl: string;
         };
         /**
          * PrioridadCita
@@ -7884,7 +7983,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CasoEptRead"][];
+                    "application/json": components["schemas"]["CasoEptResumenRead"][];
                 };
             };
             /** @description Validation Error */
@@ -8250,6 +8349,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PlazoEptRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    obtener_plazos_sugeridos_api_v1_casos_ept__caso_id__plazos_sugeridos_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                caso_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlazosSugeridosRead"];
                 };
             };
             /** @description Validation Error */

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { http, HttpResponse } from "msw";
 import { server } from "@/test/msw/server";
-import { actualizarProceso, crearPlazos } from "./api";
+import { actualizarProceso, crearCaso, crearPlazos } from "./api";
 import { registrarCierre } from "@/features/reintegro/api";
 
 const BASE = import.meta.env.VITE_API_BASE_URL;
@@ -18,6 +18,19 @@ describe("errores de EPT y reintegro muestran el motivo del backend", () => {
     await expect(actualizarProceso(1, { hay_testigos: true, testigos_cantidad: 0 })).rejects.toThrow(
       motivo,
     );
+  });
+
+  it("segunda EPT del mismo folio (409, QA-009)", async () => {
+    const motivo =
+      "El folio F-001 ya tiene una EPT (caso N° 55). Cada folio admite una sola EPT: abre la existente para editarla.";
+    server.use(
+      http.post(`${BASE}/api/v1/casos-ept`, () =>
+        HttpResponse.json({ detail: motivo }, { status: 409 }),
+      ),
+    );
+    await expect(
+      crearCaso({ ingreso_id: 10, eista: "E", factor_riesgo: "sobrecarga", factores_adicionales: [], corresponde_ept: true }),
+    ).rejects.toThrow(motivo);
   });
 
   it("plazos EPT", async () => {

@@ -219,14 +219,26 @@ export const GUIAS: Guia[] = [
       {
         titulo: "Crear un caso EPT",
         pasos: [
-          "Busca al trabajador y selecciónalo.",
-          "Presiona «Nueva EPT» y completa mes, fecha de ingreso, región, factor de riesgo y si corresponde EPT.",
+          "Busca al paciente por folio, RUT o nombre y selecciónalo: aparece un listado con sus folios.",
+          "En un folio «Sin EPT» presiona «Nueva EPT». Cada folio admite una sola EPT.",
+          "Nombre, RUT, región y fecha de ingreso vienen precargados del paciente y del folio: revísalos, completa EPTista y factor de riesgo, y guarda.",
           "Después registra el «Proceso EPT» y los «Plazos EPT» desde el caso.",
         ],
       },
       {
-        titulo: "Abrir un caso existente",
-        pasos: ["Escribe el número en «Cargar caso N°» y presiona «Cargar», o entra desde su alerta."],
+        titulo: "Abrir una EPT existente",
+        pasos: [
+          "Busca al paciente por folio, RUT o nombre: el listado muestra sus EPT con estado y plazos.",
+          "Presiona «Abrir» en el folio que quieres revisar, o entra desde su alerta.",
+        ],
+      },
+      {
+        titulo: "Plazos EPT",
+        pasos: [
+          "El plazo del informe EPT es la fecha de ingreso + 15 días corridos y el del portal ISL, + 19.",
+          "Si ese día cae en sábado, domingo o feriado, el plazo se adelanta al día hábil anterior.",
+          "Los plazos propuestos se pueden ajustar a mano antes de guardar.",
+        ],
       },
     ],
     etiquetas: [
@@ -236,7 +248,8 @@ export const GUIAS: Guia[] = [
       { texto: "Cumplido", tono: "success", significado: "Se entregó a tiempo." },
     ],
     quienEscribe: "Solo el perfil Administrativo. Coordinación puede consultar.",
-    automatico: "Cada mañana se generan las alertas «Plazo informe EPT» y «Plazo portal ISL».",
+    automatico:
+      "Al guardar el caso, su proceso o sus plazos se generan en el momento las alertas de insumos, informe EPT y portal ISL que correspondan; además se revisan cada mañana. Al registrar la fecha de envío se resuelven.",
   },
   {
     ruta: "/reintegro",
