@@ -84,7 +84,8 @@ def test_migracion_siembra_umbrales_actuales(db_session: Session):
     # 7 de COMP-2609-07 + gaf_licencia (1300, desactivada) + inasistencia (1360, activa)
     # + posible_encuadre (1400, activa) + cita_fuera_de_oda (1410, activa)
     # + plazo_insumos_ept (1420, activa) + reca_por_solicitar y proyeccion_reintegro (1490, activas)
-    assert len(filas) == 14
+    # + pendiente_remitir_isl (1530, activa)
+    assert len(filas) == 15
     assert (filas["vencimiento_licencia"].dias, filas["vencimiento_licencia"].habiles) == (3, True)
     assert (filas["oda_por_vencer"].dias, filas["oda_por_vencer"].habiles) == (7, False)
     assert filas["consentimiento_pendiente"].dias == 30
@@ -191,7 +192,7 @@ def test_get_config_lectura_por_roles(as_admin: TestClient, as_auditor: TestClie
         resp = cliente.get("/api/v1/config-alertas")
         assert resp.status_code == 200
         tipos = {c["tipo"] for c in resp.json()}
-        assert "vencimiento_licencia" in tipos and len(tipos) == 17
+        assert "vencimiento_licencia" in tipos and len(tipos) == 18
         assert cliente.get("/api/v1/config-alertas/festivos").status_code == 200
 
 

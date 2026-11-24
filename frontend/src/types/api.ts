@@ -893,6 +893,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/reintegros/panel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Obtener Panel
+         * @description Lista global de la pestaña (QA-010): casos activos de todos los pacientes y pacientes con
+         *     una proyección de reintegro alertada que aún no tienen caso.
+         */
+        get: operations["obtener_panel_api_v1_reintegros_panel_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reintegros/precarga": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Obtener Precarga
+         * @description Ocupación y tipo de trabajador para precargar el alta de un caso del ingreso (QA-010).
+         */
+        get: operations["obtener_precarga_api_v1_reintegros_precarga_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/reintegros/{caso_id}": {
         parameters: {
             query?: never;
@@ -929,6 +970,26 @@ export interface paths {
          * @description Registra o corrige la fecha en que se solicitó la RECA.
          */
         patch: operations["registrar_solicitud_api_v1_reintegros__caso_id__solicitud_reca_patch"];
+        trace?: never;
+    };
+    "/api/v1/reintegros/{caso_id}/remitido-isl": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Registrar Remision
+         * @description Marca el caso «Remitido a ISL» con su fecha (o la corrige), sin cerrarlo.
+         */
+        patch: operations["registrar_remision_api_v1_reintegros__caso_id__remitido_isl_patch"];
         trace?: never;
     };
     "/api/v1/reintegros/{caso_id}/reca": {
@@ -3008,6 +3069,41 @@ export interface components {
             unidad_cargo_horario?: string | null;
         };
         /**
+         * CasoPanelRead
+         * @description Fila de la lista global de casos activos de la pestaña Reintegro (QA-010).
+         */
+        CasoPanelRead: {
+            /** Caso Id */
+            caso_id: number;
+            /** Ingreso Id */
+            ingreso_id: number;
+            /** Paciente Id */
+            paciente_id: number;
+            /** Paciente Nombre */
+            paciente_nombre: string;
+            /** Rut */
+            rut: string | null;
+            /** Folio */
+            folio: string;
+            estado_reintegro: components["schemas"]["EstadoReintegro"];
+            /**
+             * Fecha Caso
+             * Format: date
+             */
+            fecha_caso: string;
+            /** Proyeccion */
+            proyeccion?: string | null;
+            /** Fecha Proyeccion */
+            fecha_proyeccion?: string | null;
+            /** Es Isl */
+            es_isl: boolean;
+            estado_solicitud_reca: components["schemas"]["EstadoSolicitudReca"];
+            /** Reca Por Solicitar */
+            reca_por_solicitar: boolean;
+            /** Pendiente Remitir Isl */
+            pendiente_remitir_isl: boolean;
+        };
+        /**
          * CasoReintegroCreate
          * @description Alta de caso de reintegro. Campos obligatorios según D5/D6.
          */
@@ -3037,6 +3133,8 @@ export interface components {
             /** Razon Social */
             razon_social?: string | null;
             tipo_trabajador?: components["schemas"]["TipoTrabajador"] | null;
+            /** Ocupacion */
+            ocupacion?: string | null;
         };
         /** CasoReintegroRead */
         CasoReintegroRead: {
@@ -3067,11 +3165,15 @@ export interface components {
             /** Razon Social */
             razon_social: string | null;
             tipo_trabajador: components["schemas"]["TipoTrabajador"] | null;
+            /** Ocupacion */
+            ocupacion?: string | null;
             estado_reintegro: components["schemas"]["EstadoReintegro"];
             /** Fecha Reintegro */
             fecha_reintegro: string | null;
             /** Remitido Isl */
             remitido_isl: boolean;
+            /** Fecha Remitido Isl */
+            fecha_remitido_isl?: string | null;
             /** Alta Medica */
             alta_medica: boolean;
             /** Fecha Alta Medica */
@@ -3111,6 +3213,8 @@ export interface components {
             /** Razon Social */
             razon_social?: string | null;
             tipo_trabajador?: components["schemas"]["TipoTrabajador"] | null;
+            /** Ocupacion */
+            ocupacion?: string | null;
         };
         /**
          * CierreReintegroUpdate
@@ -4995,6 +5099,13 @@ export interface components {
             /** Pacientes */
             pacientes: components["schemas"]["PacientePorCitarRead"][];
         };
+        /** PanelReintegroRead */
+        PanelReintegroRead: {
+            /** Activos */
+            activos: components["schemas"]["CasoPanelRead"][];
+            /** Pendientes Registro */
+            pendientes_registro: components["schemas"]["PendienteRegistroRead"][];
+        };
         /**
          * PdfConfirmPayload
          * @description Payload de confirmación: campos revisados/editados por el administrativo.
@@ -5021,6 +5132,33 @@ export interface components {
             fields: components["schemas"]["ExtractedFieldOut"][];
             /** Error Message */
             error_message?: string | null;
+        };
+        /**
+         * PendienteRegistroRead
+         * @description Paciente con alerta de proyección abierta y sin caso de reintegro activo (QA-010).
+         */
+        PendienteRegistroRead: {
+            /** Paciente Id */
+            paciente_id: number;
+            /** Paciente Nombre */
+            paciente_nombre: string;
+            /** Rut */
+            rut: string | null;
+            /** Ingreso Id */
+            ingreso_id: number;
+            /** Folio */
+            folio: string;
+            /** Alerta Id */
+            alerta_id: number;
+            /** Proyeccion */
+            proyeccion: string | null;
+            /**
+             * Fecha Control
+             * Format: date
+             */
+            fecha_control: string;
+            /** Plazo Estimado */
+            plazo_estimado?: string | null;
         };
         /** PlanTratamientoRead */
         PlanTratamientoRead: {
@@ -5100,6 +5238,15 @@ export interface components {
             fecha_entrega_isl?: string | null;
             /** Fecha Envio */
             fecha_envio?: string | null;
+        };
+        /**
+         * PrecargaCasoRead
+         * @description Datos para precargar el alta de un caso (QA-010): de un caso anterior o de SALUTEM.
+         */
+        PrecargaCasoRead: {
+            /** Ocupacion */
+            ocupacion?: string | null;
+            tipo_trabajador?: components["schemas"]["TipoTrabajador"] | null;
         };
         /**
          * PrioridadCita
@@ -5522,6 +5669,17 @@ export interface components {
             tratamiento_previo?: string | null;
             /** Activo */
             activo?: boolean | null;
+        };
+        /**
+         * RemisionIslUpdate
+         * @description Marca el caso «Remitido a ISL» (o corrige la fecha) sin cerrarlo (QA-010).
+         */
+        RemisionIslUpdate: {
+            /**
+             * Fecha Remitido Isl
+             * Format: date
+             */
+            fecha_remitido_isl: string;
         };
         /**
          * ReporteAuditoriaRead
@@ -5957,7 +6115,7 @@ export interface components {
          * @description Tipos de alerta del motor: los 7 de CEPA-100 más el GAF de licencia (CEPA-075).
          * @enum {string}
          */
-        TipoAlerta: "control_medico" | "vencimiento_licencia" | "plazo_ept" | "plazo_isl" | "consentimiento_pendiente" | "receta_por_renovar" | "oda_por_vencer" | "gaf_licencia" | "licencia_en_control" | "receta_en_control" | "paciente_pendiente_folio" | "inasistencia" | "posible_encuadre" | "cita_fuera_de_oda" | "plazo_insumos_ept" | "reca_por_solicitar" | "proyeccion_reintegro";
+        TipoAlerta: "control_medico" | "vencimiento_licencia" | "plazo_ept" | "plazo_isl" | "consentimiento_pendiente" | "receta_por_renovar" | "oda_por_vencer" | "gaf_licencia" | "licencia_en_control" | "receta_en_control" | "paciente_pendiente_folio" | "inasistencia" | "posible_encuadre" | "cita_fuera_de_oda" | "plazo_insumos_ept" | "reca_por_solicitar" | "proyeccion_reintegro" | "pendiente_remitir_isl";
         /**
          * TipoAlta
          * @description Tipos de alta válidos (§7.1.3, v4 D6).
@@ -8349,6 +8507,57 @@ export interface operations {
             };
         };
     };
+    obtener_panel_api_v1_reintegros_panel_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PanelReintegroRead"];
+                };
+            };
+        };
+    };
+    obtener_precarga_api_v1_reintegros_precarga_get: {
+        parameters: {
+            query: {
+                ingreso_id: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrecargaCasoRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     obtener_caso_api_v1_reintegros__caso_id__get: {
         parameters: {
             query?: never;
@@ -8427,6 +8636,41 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["SolicitudRecaUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CasoReintegroRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    registrar_remision_api_v1_reintegros__caso_id__remitido_isl_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                caso_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RemisionIslUpdate"];
             };
         };
         responses: {

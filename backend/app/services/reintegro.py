@@ -27,6 +27,7 @@ from app.schemas.reintegro import (
     RecaUpdate,
 )
 from app.services.alertas_reca import resolver_alertas_reca
+from app.services.alertas_remitir_isl import resolver_alertas_remitir_isl
 
 
 _SANTIAGO = ZoneInfo("America/Santiago")
@@ -293,6 +294,7 @@ def crear_caso_reintegro(db: Session, data: CasoReintegroCreate) -> CasoReintegr
         rubro_empleador=data.rubro_empleador,
         razon_social=razon_social,
         tipo_trabajador=data.tipo_trabajador.value if data.tipo_trabajador else None,
+        ocupacion=(data.ocupacion or "").strip() or None,
     )
     db.add(caso)
     db.flush()
@@ -306,6 +308,8 @@ def actualizar_caso_reintegro(
     for campo, valor in data.model_dump(exclude_unset=True).items():
         if campo in ("tipo_derivacion", "tipo_trabajador") and valor is not None:
             setattr(caso, campo, valor.value if hasattr(valor, "value") else valor)
+        elif campo == "ocupacion":
+            caso.ocupacion = (valor or "").strip() or None
         else:
             setattr(caso, campo, valor)
     db.flush()
@@ -333,6 +337,33 @@ def registrar_solicitud_reca(
     caso.fecha_solicitud_reca = fecha
     db.flush()
     resolver_alertas_reca(db, caso.id)
+    return caso
+
+
+def registrar_remision_isl(
+    db: Session, caso: CasoReintegro, fecha: datetime.date, hoy: datetime.date | None = None
+) -> CasoReintegro:
+    """Marca el caso «Remitido a ISL» con su fecha, sin cerrarlo (QA-010).
+
+    Resuelve la alerta «Pendiente de remitir a ISL» del caso. La auditoría la escribe el router.
+    """
+    if fecha > (hoy or hoy_chile()):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"La fecha de remisión a ISL ({_fmt(fecha)}) no puede ser futura.",
+        )
+    if fecha < caso.fecha_caso:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=(
+                f"La fecha de remisión a ISL ({_fmt(fecha)}) no puede ser anterior "
+                f"a la fecha del caso ({_fmt(caso.fecha_caso)})."
+            ),
+        )
+    caso.remitido_isl = True
+    caso.fecha_remitido_isl = fecha
+    db.flush()
+    resolver_alertas_remitir_isl(db, caso.id)
     return caso
 
 
@@ -435,6 +466,8 @@ def cerrar_caso_reintegro(
     caso.estado_reintegro = data.estado_reintegro.value
     caso.fecha_reintegro = data.fecha_reintegro
     caso.remitido_isl = data.remitido_isl
+    if not data.remitido_isl:
+        caso.fecha_remitido_isl = None
     caso.alta_medica = data.alta_medica
     caso.fecha_alta_medica = data.fecha_alta_medica
     caso.alta_psicologica = data.alta_psicologica
@@ -444,4 +477,7 @@ def cerrar_caso_reintegro(
     db.flush()
     if data.estado_reintegro == EstadoReintegro.TOTAL:
         resolver_alertas_reca(db, caso.id)
+        resolver_alertas_remitir_isl(db, caso.id)
+    elif data.remitido_isl:
+        resolver_alertas_remitir_isl(db, caso.id)
     return caso
