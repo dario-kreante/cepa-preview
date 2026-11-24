@@ -9,6 +9,7 @@ import type { TipoDerivacion, TipoTrabajador } from "./api";
 
 export const TIPO_DERIVACION_VALUES = [
   "DIEP",
+  "DIEP sin EPT",
   "DIAT",
   "PAPT a flujo AT",
   "Reingreso FUMP",

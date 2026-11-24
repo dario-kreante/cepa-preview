@@ -13,6 +13,7 @@ def test_tipos_de_derivacion_son_la_lista_cerrada_v4_d4():
     valores = {d.value for d in TipoDerivacion}
     assert valores == {
         "DIEP",
+        "DIEP sin EPT",  # QA 23-11-2026
         "DIAT",
         "PAPT a flujo AT",
         "Reingreso FUMP",

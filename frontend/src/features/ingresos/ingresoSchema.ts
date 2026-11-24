@@ -21,7 +21,7 @@ export const ingresoSchema = z.object({
   region: z.string().min(1, "Requerido"),
   // Se conocen después de algunos controles: no se exigen al crear (QA-004).
   diagnostico: z.string().optional(),
-  tipo_derivacion: z.enum(["DIEP", "DIAT", "PAPT a flujo AT", "Reingreso FUMP", "Reingreso SUSESO", "Reingreso ISL", "Convenio U.Clinica", "Proyecto", "Particular", "PAPT"]),
+  tipo_derivacion: z.enum(["DIEP", "DIEP sin EPT", "DIAT", "PAPT a flujo AT", "Reingreso FUMP", "Reingreso SUSESO", "Reingreso ISL", "Convenio U.Clinica", "Proyecto", "Particular", "PAPT"]),
   tipo_ingreso: z.enum(["consulta_espontanea", "convenio", "proyecto", "particular"]),
   modelo_tratamiento: z.string().optional(),
   fecha_ingreso: z.string().min(1, "Requerido"),

@@ -2,7 +2,7 @@
  * Programas del ingreso. Los reportes filtran por estos valores exactos
  * (`Ingreso.programa`): no cambiar el texto sin migrar los datos existentes.
  */
-export const PROGRAMAS = ["Programa Regular", "Ley Karin", "PIPT"] as const;
+export const PROGRAMAS = ["Programa Regular", "Ingreso ISL", "Tratamiento ISL", "Ley Karin", "PIPT"] as const;
 
 /**
  * Opciones del selector: la lista, más el valor actual si es antiguo y ya no está en

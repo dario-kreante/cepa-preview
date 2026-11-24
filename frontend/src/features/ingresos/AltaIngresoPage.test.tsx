@@ -81,7 +81,7 @@ describe("AltaIngresoPage — programa del ingreso", () => {
     renderPage();
     expect(screen.getByLabelText("Programa (opcional)")).toHaveValue("");
     expect(screen.getByRole("option", { name: "Sin programa" })).toBeInTheDocument();
-    for (const programa of ["Programa Regular", "Ley Karin", "PIPT"]) {
+    for (const programa of ["Programa Regular", "Ingreso ISL", "Tratamiento ISL", "Ley Karin", "PIPT"]) {
       expect(screen.getByRole("option", { name: programa })).toBeInTheDocument();
     }
   });
