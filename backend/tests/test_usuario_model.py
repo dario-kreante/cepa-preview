@@ -17,6 +17,7 @@ def test_tabla_y_columnas_esperadas():
         "bloqueado_hasta",
         "email",  # DD-C (CEPA-102): correo para notificaciones de alerta
         "rut",  # SPIKE SSO UTalca: identidad que devuelve huemul.utalca.cl
+        "acceso_auditoria",  # CA-012: permiso extra de lectura de Auditoría
         "created_at",
     }
 

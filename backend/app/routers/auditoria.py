@@ -1,7 +1,8 @@
 """Router de Auditoría (EPIC-05).
 
 Expone la vista consolidada del caso (CEPA-050) y los reportes de auditoría (CEPA-051).
-Solo lectura: perfiles Coordinacion y Auditor; Administrativo sin acceso (RN-2, D1).
+Solo lectura: perfiles Coordinacion y Auditor; Administrativo solo con el permiso extra
+«Acceso a Auditoría» (RN-2, D1, CA-012).
 Todo acceso se registra en el log de auditoría (RN-7).
 
 Nota sobre action="READ": el docstring de record_audit menciona {CREATE, UPDATE, DELETE,
@@ -17,7 +18,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.audit.service import record_audit
-from app.auth.deps import get_current_user, require_role
+from app.auth.deps import get_current_user, require_auditoria
 from app.db.session import get_db
 from app.models.ingreso import Ingreso
 from app.models.paciente import Paciente
@@ -32,8 +33,9 @@ from app.services.excel import XLSX, planilla
 
 router = APIRouter(prefix="/api/v1/auditoria", tags=["auditoria"])
 
-# Solo Coordinacion y Auditor acceden al módulo de auditoría (RN-2, D1)
-_reader = Depends(require_role("Coordinacion", "Auditor"))
+# Coordinacion y Auditor acceden al módulo de auditoría (RN-2, D1); un Administrativo solo
+# con el permiso extra «Acceso a Auditoría» (CA-012, QA 23-11-2026).
+_reader = Depends(require_auditoria)
 
 # Prefijos que pueden usarse como fórmulas en ataques de inyección CSV (M1)
 _CSV_INJECTION_PREFIXES = ("=", "+", "-", "@")

@@ -4,15 +4,16 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.auth.deps import require_role
+from app.auth.deps import require_auditoria
 from app.db.session import get_db
 from app.models.audit_log import AuditLog
 from app.schemas.audit_log import AuditLogRead
 
 router = APIRouter(prefix="/api/v1/audit-log", tags=["audit-log"])
 
-# Lectura del log restringida a Auditor y Coordinación (CEPA-003 RN-5).
-_solo_auditoria = require_role("Auditor", "Coordinacion")
+# Lectura del log restringida a Auditor y Coordinación (CEPA-003 RN-5), más el Administrativo
+# con el permiso extra «Acceso a Auditoría» (CA-012, QA 23-11-2026).
+_solo_auditoria = require_auditoria
 
 
 @router.get("", response_model=list[AuditLogRead], dependencies=[Depends(_solo_auditoria)])

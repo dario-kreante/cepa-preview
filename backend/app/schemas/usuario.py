@@ -13,6 +13,8 @@ class UsuarioCreate(BaseModel):
     rol: Rol
     # DD-C (CEPA-102): correo opcional para notificaciones de alerta
     email: str | None = None
+    # CA-012: permiso extra «Acceso a Auditoría». Solo se guarda para Administrativo.
+    acceso_auditoria: bool = False
 
 
 class UsuarioUpdate(BaseModel):
@@ -21,6 +23,8 @@ class UsuarioUpdate(BaseModel):
     rol: Rol | None = None
     # DD-C (CEPA-102): correo opcional para notificaciones de alerta
     email: str | None = None
+    # CA-012: permiso extra «Acceso a Auditoría». Solo se guarda para Administrativo.
+    acceso_auditoria: bool | None = None
 
 
 class UsuarioRead(BaseModel):
@@ -32,4 +36,5 @@ class UsuarioRead(BaseModel):
     rol: str
     activo: bool
     email: str | None = None
+    acceso_auditoria: bool = False
     created_at: datetime

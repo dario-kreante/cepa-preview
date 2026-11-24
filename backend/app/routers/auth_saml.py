@@ -127,8 +127,12 @@ def canjear(payload: CanjearCodigoRequest, db: Session = Depends(get_db)) -> Tok
         )
 
     return TokenPair(
-        access_token=crear_access_token(usuario.id, usuario.username, usuario.rol),
-        refresh_token=crear_refresh_token(usuario.id, usuario.username, usuario.rol),
+        access_token=crear_access_token(
+            usuario.id, usuario.username, usuario.rol, usuario.acceso_auditoria
+        ),
+        refresh_token=crear_refresh_token(
+            usuario.id, usuario.username, usuario.rol, usuario.acceso_auditoria
+        ),
     )
 
 
