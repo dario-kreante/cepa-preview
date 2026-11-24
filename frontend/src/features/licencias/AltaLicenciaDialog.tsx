@@ -1,14 +1,12 @@
 /**
  * AltaLicenciaDialog — formulario de alta de licencia médica.
  *
- * ingreso_id / folio resolution
- * ─────────────────────────────
+ ingreso_id / folio
+ * ──────────────────
  * The backend `LicenciaCreate` requires `ingreso_id` (integer), not folio.
- * The page works folio-first; `ingreso_id` is resolved as follows:
- *   • `ingresoId` prop is set by the parent (LicenciasPage) when it already
- *     knows the id from the ingreso_id returned by the folio listing.
- *   • When no licencias exist yet for the folio (new case), `ingresoId` is
- *     undefined and the user must enter it in a visible text field.
+ * Quien abre el diálogo pasa siempre el ingreso del paciente (`ingresoId`). Ya no se
+ * escribe a mano (QA 23-11): un n.º tecleado dejaba la licencia en el ingreso de otro
+ * paciente y no se veía en la ficha ni en el módulo. Sin ingreso no se puede registrar.
  *
  * Enum values (backend exact literals):
  *   tipo_lm:     "1" | "5" | "6"
@@ -161,13 +159,13 @@ export function AltaLicenciaDialog({ folio, ingresoId, open, onOpenChange, suger
           {/* ingreso_id — hidden when prop is known; visible otherwise */}
           <div>
             <Label htmlFor="ingreso_id">
-              N.º de ingreso del paciente{" "}
-              {ingresoId === undefined && (
-                <span className="text-[11px] text-muted-foreground font-normal">
-                  (no se encontró en el historial — ingrésalo manualmente)
-                </span>
-              )}
+              N.º de ingreso del paciente
             </Label>
+            {ingresoId === undefined && (
+              <p role="alert" className="text-[11.5px] text-destructive mb-1">
+                Busca y elige primero al paciente: la licencia se asocia a su ingreso.
+              </p>
+            )}
             <p className="text-[11.5px] text-muted-foreground mb-1">
               Identificador interno del ingreso al que se asocia esta licencia. No es el RUT ni el
               folio de la licencia médica.
@@ -175,8 +173,8 @@ export function AltaLicenciaDialog({ folio, ingresoId, open, onOpenChange, suger
             <Input
               id="ingreso_id"
               type="number"
-              readOnly={ingresoId !== undefined}
-              className={ingresoId !== undefined ? "bg-muted/30 cursor-not-allowed" : ""}
+              readOnly
+              className="bg-muted/30 cursor-not-allowed"
               {...register("ingreso_id", { valueAsNumber: true })}
             />
             {errors.ingreso_id && (
@@ -335,7 +333,7 @@ export function AltaLicenciaDialog({ folio, ingresoId, open, onOpenChange, suger
             >
               Cancelar
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
+            <Button type="submit" disabled={isSubmitting || ingresoId === undefined}>
               {isSubmitting ? "Registrando…" : "Registrar licencia"}
             </Button>
           </DialogFooter>

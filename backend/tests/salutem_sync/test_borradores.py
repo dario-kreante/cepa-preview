@@ -2,14 +2,16 @@
 
 from datetime import date
 
+import pytest
 from sqlalchemy import select
 
 from app.config import get_settings
-from app.integrations.salutem.models import AtencionSalutem, EstadoCitaSalutem, PersonaSalutem
+from app.integrations.salutem.models import AtencionSalutem, CitaSalutem, EstadoCitaSalutem, PersonaSalutem
 from app.models.alertas import AlertaNotif
 from app.models.audit_log import AuditLog
 from app.models.config_alerta import ConfigAlerta
 from app.models.paciente import Paciente
+from app.models.salutem_copia import SalutemCita
 from app.services.salutem_sync import borradores, copia
 from app.models.salutem_sync import SalutemSyncEjecucion
 from app.services.salutem_sync.borradores import crear_borradores
@@ -295,3 +297,90 @@ def test_la_persona_creada_y_atendida_genera_un_solo_borrador(db_session):
 
     assert crear_borradores(db_session, AHORA, CORTE).creados == 1
     assert crear_borradores(db_session, AHORA, CORTE).creados == 0
+
+
+# ── Desde la cita agendada (QA 23-11-2026: «Creé paciente Taylor Swift. Agendé sesión de
+#    evaluación médica PAPT. No se visualiza en sistema SIGE») ─────────────────────────────
+
+
+def _cita(db, cita_id, persona=PERSONA, fecha="2026-11-30", estado=AGENDADO):
+    """Cita de la copia (salutem_cita), sin atención: así llega una hora agendada."""
+    copia.guardar_cita(db, CitaSalutem.desde_api({
+        "personaId": persona, "citaId": cita_id, "citaFecha": fecha, "estadoCitaId": estado,
+        "estadoCitaNombre": "x", "especialidadNombre": "Médico/a",
+    }), AHORA)
+
+
+@pytest.mark.parametrize("estado", [
+    EstadoCitaSalutem.AGENDADO, EstadoCitaSalutem.AGENDADO_WEB, EstadoCitaSalutem.CONFIRMADO,
+    EstadoCitaSalutem.CONFIRMADO_WEB, EstadoCitaSalutem.CONFIRMADO_EMAIL,
+    EstadoCitaSalutem.RECEPCIONADO, EstadoCitaSalutem.ATENDIDO,
+])
+def test_crea_el_borrador_de_una_persona_con_cita_vigente_desde_el_corte(db_session, estado):
+    # Sin fecha de creación: la persona llegó a la copia por su cita (ficha demográfica).
+    _persona(db_session, 7401, nombres="TAYLOR", apellidos="SWIFT")
+    _cita(db_session, 74011, persona=7401, estado=int(estado))
+
+    r = crear_borradores(db_session, AHORA, CORTE)
+
+    assert (r.creados, r.errores) == (1, [])
+    [p] = _pacientes(db_session)
+    assert (p.nombre, p.salutem_persona_id, p.estado_registro) == ("TAYLOR SWIFT", 7401, "pendiente_folio")
+    [a] = _alertas(db_session)
+    assert (a.tipo, a.caso_id, a.estado) == ("paciente_pendiente_folio", p.id, "pendiente")
+
+
+@pytest.mark.parametrize("estado", [EstadoCitaSalutem.ANULADO, EstadoCitaSalutem.NO_ASISTE])
+def test_no_crea_con_cita_anulada_o_inasistencia(db_session, estado):
+    _persona(db_session, 7402)
+    _cita(db_session, 74021, persona=7402, estado=int(estado))
+
+    assert crear_borradores(db_session, AHORA, CORTE).creados == 0
+    assert _pacientes(db_session) == []
+
+
+def test_no_crea_con_cita_anterior_al_corte_ni_desaparecida(db_session):
+    _persona(db_session, 7403)
+    _cita(db_session, 74031, persona=7403, fecha="2026-08-31")
+    _persona(db_session, 7404)
+    _cita(db_session, 74041, persona=7404)
+    fila = db_session.get(SalutemCita, 74041)
+    fila.desaparecida_en = AHORA
+    db_session.flush()
+
+    assert crear_borradores(db_session, AHORA, CORTE).creados == 0
+
+
+def test_con_cita_vigente_no_duplica_ni_recrea_descartados_ni_pacientes_existentes(db_session):
+    # Agendada y además atendida: un solo borrador, y no vuelve a crearse.
+    _atendida(db_session, 7405)
+    _cita(db_session, 74052, persona=7405)
+    assert crear_borradores(db_session, AHORA, CORTE).creados == 1
+    [p] = _pacientes(db_session)
+    p.estado_registro = "descartado"
+    db_session.flush()
+    _cita(db_session, 74053, persona=7405, fecha="2026-12-05")
+    assert crear_borradores(db_session, AHORA, CORTE).creados == 0
+
+    # Ya es paciente (por id de SALUTEM): no hay borrador.
+    db_session.add(Paciente(rut="390000099", nombre="Por id", sexo="F", edad=30, region="Maule",
+                            salutem_persona_id=7406))
+    db_session.flush()
+    _persona(db_session, 7406, identificacion="sin_id_7406", tipoIdentificacion="SIN IDENTIFICACION")
+    _cita(db_session, 74061, persona=7406)
+    assert crear_borradores(db_session, AHORA, CORTE).creados == 0
+    assert len(_pacientes(db_session)) == 2
+
+
+def test_candidatas_por_cita_no_usa_listas_in_literales(db_session):
+    import re
+
+    for i in range(3):
+        _persona(db_session, 7410 + i)
+        _cita(db_session, 74100 + i, persona=7410 + i, estado=int(EstadoCitaSalutem.CONFIRMADO))
+
+    sentencias = _sql_ejecutado(db_session, lambda: borradores._candidatas(db_session, CORTE))
+
+    assert len(borradores._candidatas(db_session, CORTE)) == 3
+    for s in sentencias:
+        assert not re.search(r"\bIN\s*\(\s*(%\(|\$\d|\?|:)", s, re.IGNORECASE), s

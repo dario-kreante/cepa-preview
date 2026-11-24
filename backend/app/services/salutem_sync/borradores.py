@@ -2,17 +2,21 @@
 
 Corre al final de cada ciclo del sync, después de la vinculación. Cada persona sin paciente
 (por RUT o por id de SALUTEM, en cualquier estado de registro) que fue creada en SALUTEM
-desde la fecha de corte, o que tiene una atención Atendida desde esa fecha, recibe un
-paciente `pendiente_folio` y una alerta sin profesional asignado. Desde el 05-11-2026 basta
-con la creación: el CEPA quiere al paciente en SIGE antes de su primera atención.
-Idempotente: con paciente, la persona nunca vuelve a ser candidata.
+desde la fecha de corte, que tiene una atención Atendida desde esa fecha o que tiene una
+cita vigente (agendada, confirmada, recepcionada o atendida; no anulada ni inasistencia)
+con fecha desde el corte, recibe un paciente `pendiente_folio` y una alerta sin profesional
+asignado. Desde el 05-11-2026 basta con la creación: el CEPA quiere al paciente en SIGE
+antes de su primera atención. Desde el 24-11-2026 basta también con la cita agendada (QA
+23-11): la fecha de creación solo llega por `GET /personas` por día, y una persona que el
+sync conoce por su cita (o creada antes del corte y agendada ahora) no se veía hasta ser
+atendida. Idempotente: con paciente, la persona nunca vuelve a ser candidata.
 """
 
 from dataclasses import dataclass, field
 from datetime import date, datetime, time, timezone
 from typing import Any
 
-from sqlalchemy import exists, or_, select
+from sqlalchemy import and_, exists, or_, select
 from sqlalchemy.orm import Session
 
 from app.audit.service import record_audit
@@ -22,7 +26,7 @@ from app.domain.enums_alertas import EstadoAlerta, TipoAlerta
 from app.integrations.salutem.models import EstadoCitaSalutem
 from app.models.alertas import AlertaNotif
 from app.models.paciente import Paciente
-from app.models.salutem_copia import SalutemAtencion, SalutemPersona
+from app.models.salutem_copia import SalutemAtencion, SalutemCita, SalutemPersona
 from app.services.config_alertas import cargar_ventanas
 from app.services.salutem_sync.alertas_control import ACTOR
 from app.services.salutem_sync.filtro import cruce_con_paciente
@@ -91,8 +95,25 @@ def _es_atendida(contenido: dict[str, Any]) -> bool:
         return False
 
 
+# Estados de cita que no cuentan para el borrador: la hora ya no está (anulada) o la
+# persona no llegó (inasistencia). Comparaciones sueltas, sin IN literal (Oracle, ORA-01795).
+_ESTADOS_SIN_HORA = (int(EstadoCitaSalutem.ANULADO), int(EstadoCitaSalutem.NO_ASISTE))
+
+
+def _con_cita_vigente(desde: date):
+    """La persona tiene en la copia una cita vigente con fecha desde el corte."""
+    return exists().where(
+        SalutemCita.persona_id == SalutemPersona.salutem_id,
+        SalutemCita.desaparecida_en.is_(None),
+        SalutemCita.fecha_cita >= desde,
+        SalutemCita.estado_id.is_not(None),
+        and_(*(SalutemCita.estado_id != e for e in _ESTADOS_SIN_HORA)),
+    )
+
+
 def _candidatas(db: Session, desde: date) -> list[SalutemPersona]:
-    """Personas sin paciente creadas desde el corte, o con una atención Atendida desde el corte."""
+    """Personas sin paciente creadas desde el corte, con una atención Atendida desde el corte
+    o con una cita vigente (no anulada ni inasistencia) con fecha desde el corte."""
     sin_paciente = ~exists().where(cruce_con_paciente())
     # Una sola consulta con join (sin listas IN literales: Oracle admite máximo 1000 elementos).
     personas: dict[int, SalutemPersona] = {}
@@ -118,6 +139,11 @@ def _candidatas(db: Session, desde: date) -> list[SalutemPersona]:
         )
     )
     for persona in creadas:
+        personas.setdefault(persona.salutem_id, persona)
+        atendidas.add(persona.salutem_id)
+    # Con exists y no con join: un DISTINCT sobre la persona no corre en Oracle (contenido CLOB).
+    agendadas = db.scalars(select(SalutemPersona).where(sin_paciente, _con_cita_vigente(desde)))
+    for persona in agendadas:
         personas.setdefault(persona.salutem_id, persona)
         atendidas.add(persona.salutem_id)
     return [p for sid, p in sorted(personas.items()) if sid in atendidas]

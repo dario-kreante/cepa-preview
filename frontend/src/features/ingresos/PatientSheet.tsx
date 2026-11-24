@@ -15,6 +15,8 @@ import {
   Edit3,
   Loader2,
   CalendarClock,
+  Lock,
+  LockOpen,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -374,6 +376,7 @@ export function PatientSheet({
   // Primary ingreso = first in list (the backend sorts by fecha_ingreso desc)
   const primaryIngreso = vista?.ingresos?.[0];
   const primaryIngresoId = primaryIngreso?.id;
+  const casoAbierto = primaryIngreso?.estado === "activo" || primaryIngreso?.estado === "encuadre";
 
   const { data: licencias = [], isLoading: licLoading, isError: licError } =
     useLicenciasPorIngreso(primaryIngresoId);
@@ -487,30 +490,6 @@ export function PatientSheet({
                             {primaryIngreso.estado === "activo" ? "Pasar a encuadre" : "Volver a activo"}
                           </Button>
                         )}
-                      {canWrite &&
-                        primaryIngreso &&
-                        (primaryIngreso.estado === "activo" || primaryIngreso.estado === "encuadre") && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-6 px-2 text-[11px] bg-white/10 text-white border-white/30 hover:bg-white/20"
-                            data-testid="btn-cerrar-caso"
-                            onClick={() => setDialogoCierre("cerrar")}
-                          >
-                            Cerrar caso
-                          </Button>
-                        )}
-                      {puedeReabrir && primaryIngreso?.estado === "cerrado" && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-6 px-2 text-[11px] bg-white/10 text-white border-white/30 hover:bg-white/20"
-                          data-testid="btn-reabrir-caso"
-                          onClick={() => setDialogoCierre("reabrir")}
-                        >
-                          Reabrir caso
-                        </Button>
-                      )}
                       {primaryIngreso && (
                         <Badge
                           variant="outline"
@@ -551,33 +530,60 @@ export function PatientSheet({
             </div>
           )}
 
-          {/* Action buttons — only for writers */}
-          {canWrite && vista && primaryIngreso && (
-            <div className="flex items-center gap-2 mt-5">
-              <Button
-                variant="secondary"
-                size="sm"
-                className="bg-white text-primary hover:bg-white/90"
-                onClick={() => setEditarOpen(true)}
-              >
-                <Edit3 className="size-3.5" /> Editar ficha
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="bg-transparent border-white/30 text-white hover:bg-white/10"
-                onClick={() => setLicenciaOpen(true)}
-              >
-                <FileText className="size-3.5" /> Nueva licencia
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="bg-transparent border-white/30 text-white hover:bg-white/10"
-                onClick={() => setControlOpen(true)}
-              >
-                <Stethoscope className="size-3.5" /> Agendar control
-              </Button>
+          {/* Acciones de la ficha. QA 23-11: «Cerrar caso» va aquí, junto a las demás acciones,
+              para que se encuentre (antes era un botón chico entre las etiquetas de estado). */}
+          {vista && primaryIngreso && (canWrite || puedeReabrir) && (
+            <div className="flex flex-wrap items-center gap-2 mt-5">
+              {canWrite && (
+                <>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="bg-white text-primary hover:bg-white/90"
+                    onClick={() => setEditarOpen(true)}
+                  >
+                    <Edit3 className="size-3.5" /> Editar ficha
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="bg-transparent border-white/30 text-white hover:bg-white/10"
+                    onClick={() => setLicenciaOpen(true)}
+                  >
+                    <FileText className="size-3.5" /> Nueva licencia
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="bg-transparent border-white/30 text-white hover:bg-white/10"
+                    onClick={() => setControlOpen(true)}
+                  >
+                    <Stethoscope className="size-3.5" /> Agendar control
+                  </Button>
+                </>
+              )}
+              {canWrite && casoAbierto && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="bg-transparent border-white/30 text-white hover:bg-white/10"
+                  data-testid="btn-cerrar-caso"
+                  onClick={() => setDialogoCierre("cerrar")}
+                >
+                  <Lock className="size-3.5" /> Cerrar caso
+                </Button>
+              )}
+              {puedeReabrir && primaryIngreso.estado === "cerrado" && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="bg-transparent border-white/30 text-white hover:bg-white/10"
+                  data-testid="btn-reabrir-caso"
+                  onClick={() => setDialogoCierre("reabrir")}
+                >
+                  <LockOpen className="size-3.5" /> Reabrir caso
+                </Button>
+              )}
             </div>
           )}
           {vista && primaryIngreso && dialogoCierre && (
