@@ -14,14 +14,11 @@ tiene. Sin atenciones se evalúa hoy: una orden vencida no cubre, así que queda
 
 from __future__ import annotations
 
-import io
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import date
 from typing import Literal
 
-from openpyxl import Workbook
-from openpyxl.styles import Font
 from sqlalchemy import and_, func, select, true
 from sqlalchemy.orm import Session, aliased
 
@@ -33,6 +30,7 @@ from app.models.oda import Oda
 from app.models.paciente import Paciente
 from app.services.cobertura_oda import oda_que_cubre, odas_por_ingreso
 from app.services.dashboard_operativo import DIAS_ODA_POR_VENCER
+from app.services.excel import planilla
 
 ESTADOS_GESTION = ("pendiente", "solicitada", "recibida")
 EstadoGestion = Literal["pendiente", "solicitada", "recibida"]
@@ -41,7 +39,13 @@ SIN_DATO = "—"
 
 # El filtro del reporte usa estos nombres; Ingreso.programa es texto libre (el seed guarda
 # «Programa Regular», «PIPT», «Ley Karin»), así que se compara sin mayúsculas y por fragmento.
-_PROGRAMAS = {"regular": "%regular%", "ley_karin": "%karin%", "pipt": "%pipt%"}
+_PROGRAMAS = {
+    "regular": "%regular%",
+    "ingreso_isl": "%ingreso isl%",
+    "tratamiento_isl": "%tratamiento isl%",
+    "ley_karin": "%karin%",
+    "pipt": "%pipt%",
+}
 
 
 def tipo_visible(tipo_orden: str | None) -> str | None:
@@ -250,8 +254,8 @@ def _filas_atendidos_sin_oda(
 # ── Excel ──────────────────────────────────────────────────────────────────────
 
 ENCABEZADOS_EXCEL = (
-    "Nombre", "RUT", "N° ODA/OPA", "Tipo", "Fecha inicio", "Fecha término",
-    "Fechas de atención", "Cobertura", "Estado de gestión",
+    "Folio", "Nombre", "RUT", "Programa", "Región", "Comuna", "Fecha de atención",
+    "N° ODA/OPA", "Tipo", "Fecha inicio", "Fecha término", "Cobertura", "Estado de gestión",
 )
 
 
@@ -263,36 +267,43 @@ def _unir(valores: list[str]) -> str:
     return SEPARADOR.join(valores) if valores else SIN_DATO
 
 
-def _seguro(valor: str) -> str:
-    """Evita la inyección de fórmulas: un texto que parte con = + - @ (o tab/CR) se antepone con '."""
-    return "'" + valor if valor[:1] in ("=", "+", "-", "@", "\t", "\r") else valor
+def _ordenes_de(f: FilaVencida, dia: date | None) -> list[OrdenFila]:
+    """Las órdenes cuyo período cubre la fecha de atención; si ninguna la cubre, todas."""
+    if dia is None:
+        return f.ordenes
+    cubren = [
+        o for o in f.ordenes
+        if (o.fecha_inicio is None or o.fecha_inicio <= dia)
+        and (o.fecha_termino is None or dia <= o.fecha_termino)
+    ]
+    return cubren or f.ordenes
 
 
 def generar_excel(filas: list[FilaVencida]) -> bytes:
-    wb = Workbook()
-    ws = wb.active
-    ws.title = "ODA vencidas"
-    ws.append(list(ENCABEZADOS_EXCEL))
-    for c in ws[1]:
-        c.font = Font(bold=True)
-    for f in filas:
-        fila = [
-                f.paciente.nombre,
-                f.paciente.rut or SIN_DATO,
-                _unir([o.identificador for o in f.ordenes]),
-                _unir([o.tipo or SIN_DATO for o in f.ordenes]),
-                _unir([_fecha(o.fecha_inicio) for o in f.ordenes]),
-                _unir([_fecha(o.fecha_termino) for o in f.ordenes]),
-                _unir([_fecha(d) for d in f.fechas_atencion]),
-                f.cobertura,
-                f.oda.estado_gestion.capitalize() if f.oda else SIN_DATO,
-        ]
-        ws.append([_seguro(str(v)) for v in fila])
-    for col, ancho in zip("ABCDEFGHI", (34, 14, 24, 14, 26, 26, 34, 12, 18)):
-        ws.column_dimensions[col].width = ancho
-    buf = io.BytesIO()
-    wb.save(buf)
-    return buf.getvalue()
+    """QA-006 (23-11-2026): una fila por fecha de atención (se repite el paciente), con
+    folio, programa, región y comuna, para buscar cada atención con su N° de orden."""
+
+    def filas_excel():
+        for f in filas:
+            for dia in f.fechas_atencion or [None]:
+                ordenes = _ordenes_de(f, dia)
+                yield [
+                    f.ingreso.folio, f.paciente.nombre, f.paciente.rut, f.ingreso.programa,
+                    f.paciente.region, f.paciente.comuna, dia,
+                    _unir([o.identificador for o in ordenes]),
+                    _unir([o.tipo or SIN_DATO for o in ordenes]),
+                    _unir([_fecha(o.fecha_inicio) for o in ordenes]),
+                    _unir([_fecha(o.fecha_termino) for o in ordenes]),
+                    f.cobertura,
+                    f.oda.estado_gestion.capitalize() if f.oda else None,
+                ]
+
+    return planilla(
+        "ODA vencidas",
+        ENCABEZADOS_EXCEL,
+        filas_excel(),
+        anchos=(14, 32, 14, 18, 16, 16, 14, 20, 10, 14, 14, 12, 18),
+    )
 
 
 # ── QA-006: listado por paciente ───────────────────────────────────────────────

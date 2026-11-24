@@ -31,6 +31,8 @@ const SIN_DATO = "—";
 const PROGRAMAS: [ProgramaFiltro | "", string][] = [
   ["", "Todos"],
   ["regular", "Regular"],
+  ["ingreso_isl", "Ingreso ISL"],
+  ["tratamiento_isl", "Tratamiento ISL"],
   ["ley_karin", "Ley Karin"],
   ["pipt", "PIPT"],
 ];

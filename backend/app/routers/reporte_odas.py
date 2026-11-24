@@ -75,7 +75,7 @@ def _item(f: FilaVencida) -> ODAVencidaItem:
 @router.get("/odas-vencidas", response_model=ReporteODASVencidasResponse)
 def get_odas_vencidas(
     programa: str | None = Query(
-        None, description="regular | ley_karin | pipt (otro valor: coincidencia exacta)"
+        None, description="regular | ingreso_isl | tratamiento_isl | ley_karin | pipt (otro valor: coincidencia exacta)"
     ),
     region: str | None = Query(None),
     comuna: str | None = Query(None),
