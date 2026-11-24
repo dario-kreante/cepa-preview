@@ -83,6 +83,8 @@ const MOCK_CONTROL: ControlMedicoRead = {
   origen: "CEPA",
   campos_editados: [],
   fuera_de_oda: false,
+  notas_salutem: [],
+  tiene_addendum: false,
 };
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
