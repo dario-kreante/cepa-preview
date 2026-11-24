@@ -172,3 +172,52 @@ export async function reporteAdherencia(
   }
   return data;
 }
+
+// ── Ambulatorio (formato de la plataforma ISL, QA 23-11-2026) ───────────────────
+
+export type AmbulatorioItem = components["schemas"]["AmbulatorioItem"];
+export type ReporteAmbulatorioResponse =
+  components["schemas"]["ReporteAmbulatorioResponse"];
+
+export interface FiltroAmbulatorio extends RangoFechas {
+  programa?: ProgramaFiltro;
+  region?: string;
+}
+
+function queryAmbulatorio(f: FiltroAmbulatorio) {
+  return {
+    fecha_desde: f.fecha_desde,
+    fecha_hasta: f.fecha_hasta,
+    ...(f.programa ? { programa: f.programa } : {}),
+    ...(f.region ? { region: f.region } : {}),
+  };
+}
+
+/** GET /api/v1/reportes/ambulatorio — una fila por atención realizada en el período. */
+export async function reporteAmbulatorio(
+  f: FiltroAmbulatorio,
+): Promise<ReporteAmbulatorioResponse> {
+  const { data, error } = await api.GET("/api/v1/reportes/ambulatorio", {
+    params: { query: queryAmbulatorio(f) },
+  });
+  if (error || !data)
+    throw new Error("No se pudo generar el reporte ambulatorio");
+  return data;
+}
+
+/** GET /api/v1/reportes/ambulatorio/excel — la misma tabla (mismos filtros) como .xlsx. */
+export async function descargarAmbulatorioExcel(
+  f: FiltroAmbulatorio,
+): Promise<void> {
+  const { data, error } = await api.GET("/api/v1/reportes/ambulatorio/excel", {
+    params: { query: queryAmbulatorio(f) },
+    parseAs: "blob",
+  });
+  if (error || !data) throw new Error("No se pudo descargar el Excel");
+  const url = URL.createObjectURL(data as Blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `ambulatorio-${f.fecha_desde}-${f.fecha_hasta}.xlsx`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
+}
