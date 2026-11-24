@@ -16,9 +16,10 @@ def test_la_migracion_sube_y_baja():
     cfg = _alembic_config()
     command.downgrade(cfg, "1570")
     try:
-        tablas = set(inspect(engine).get_table_names())
-        assert "farmaco_canasta" not in tablas and "farmaco_externalizado" not in tablas
+        # has_table y no get_table_names: en el Oracle del CI este último vuelve vacío.
+        assert not inspect(engine).has_table("farmaco_canasta")
+        assert not inspect(engine).has_table("farmaco_externalizado")
     finally:
         command.upgrade(cfg, "head")
-    tablas = set(inspect(engine).get_table_names())
-    assert {"farmaco_canasta", "farmaco_externalizado"} <= tablas
+    assert inspect(engine).has_table("farmaco_canasta")
+    assert inspect(engine).has_table("farmaco_externalizado")
