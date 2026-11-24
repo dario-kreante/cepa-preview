@@ -15,6 +15,7 @@ import {
   Edit3,
   Loader2,
   CalendarClock,
+  ChevronDown,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -44,6 +45,7 @@ import { FolioCard } from "./FolioCard";
 import { HistorialCierresCard } from "./HistorialCierresCard";
 import { AltaLicenciaDialog } from "@/features/licencias/AltaLicenciaDialog";
 import { NuevoControlDialog } from "@/features/controles/NuevoControlDialog";
+import { BadgeAddendum, NotasSalutemControl } from "@/features/controles/NotasSalutemControl";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -217,34 +219,79 @@ function ControlesTab({ controles }: { controles: ControlMedicoRead[] }) {
   return (
     <div className="space-y-2">
       {controles.map((c) => (
-        <Card key={c.id}>
-          <CardContent className="p-4 flex items-center gap-4">
-            <div className="size-10 rounded-md bg-[oklch(0.94_0.05_155)] text-[oklch(0.40_0.12_155)] grid place-items-center shrink-0">
-              <Stethoscope className="size-5" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="font-semibold text-[13px] flex items-center gap-1.5">
-                Semana {c.semana_control} · {c.medico_tratante}
-                {c.origen === "SALUTEM" && (
-                  <Badge variant="info" title="Creado automáticamente desde una atención de SALUTEM">
-                    SALUTEM
-                  </Badge>
-                )}
-              </div>
-              <div className="text-[11px] text-muted-foreground">
-                {formatDate(c.fecha_control)} · {c.region_derivacion}
-                {c.proximo_control ? ` · Próximo: ${formatDate(c.proximo_control)}` : ""}
-              </div>
-            </div>
-            {c.observaciones && (
-              <span className="text-[11px] text-muted-foreground truncate max-w-[120px]">
-                {c.observaciones}
-              </span>
-            )}
-          </CardContent>
-        </Card>
+        <ControlCard key={c.id} control={c} />
       ))}
     </div>
+  );
+}
+
+/**
+ * Un control de la pestaña. Las observaciones se ven cortadas en la tarjeta (con el texto
+ * completo en el title) y el botón «Ver detalle» despliega las observaciones completas y las
+ * notas de SALUTEM, con el addendum aparte (QA-008).
+ */
+function ControlCard({ control: c }: { control: ControlMedicoRead }) {
+  const [abierto, setAbierto] = useState(false);
+  const tieneDetalle = Boolean(c.observaciones) || (c.notas_salutem?.length ?? 0) > 0;
+  return (
+    <Card>
+      <CardContent className="p-4">
+        <div className="flex items-center gap-4">
+          <div className="size-10 rounded-md bg-[oklch(0.94_0.05_155)] text-[oklch(0.40_0.12_155)] grid place-items-center shrink-0">
+            <Stethoscope className="size-5" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="font-semibold text-[13px] flex flex-wrap items-center gap-1.5">
+              Semana {c.semana_control} · {c.medico_tratante}
+              {c.origen === "SALUTEM" && (
+                <Badge variant="info" title="Creado automáticamente desde una atención de SALUTEM">
+                  SALUTEM
+                </Badge>
+              )}
+              <BadgeAddendum control={c} />
+            </div>
+            <div className="text-[11px] text-muted-foreground">
+              {formatDate(c.fecha_control)} · {c.region_derivacion}
+              {c.proximo_control ? ` · Próximo: ${formatDate(c.proximo_control)}` : ""}
+            </div>
+          </div>
+          {c.observaciones && !abierto && (
+            <span
+              className="text-[11px] text-muted-foreground truncate max-w-[120px]"
+              title={c.observaciones}
+            >
+              {c.observaciones}
+            </span>
+          )}
+          {tieneDetalle && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 px-2 text-[11.5px] shrink-0"
+              aria-expanded={abierto}
+              data-testid={`btn-detalle-control-${c.id}`}
+              onClick={() => setAbierto((v) => !v)}
+            >
+              <ChevronDown className={cn("size-3.5 transition-transform", abierto && "rotate-180")} />
+              {abierto ? "Ocultar" : "Ver detalle"}
+            </Button>
+          )}
+        </div>
+        {abierto && (
+          <div className="mt-3 space-y-3 border-t pt-3" data-testid={`detalle-control-${c.id}`}>
+            {c.observaciones && (
+              <section>
+                <h4 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Observaciones
+                </h4>
+                <p className="mt-0.5 text-[13px] whitespace-pre-line">{c.observaciones}</p>
+              </section>
+            )}
+            <NotasSalutemControl control={c} />
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

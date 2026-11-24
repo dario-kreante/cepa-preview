@@ -14,6 +14,7 @@ import { NuevoControlDialog } from "./NuevoControlDialog";
 import { ProximoControlDialog } from "./ProximoControlDialog";
 import { EvaluacionControlDialog } from "./EvaluacionControlDialog";
 import { DocumentosSalutemPaciente } from "./DocumentosSalutem";
+import { BadgeAddendum, NotasSalutemControl } from "./NotasSalutemControl";
 import { EVALUACION_LABELS } from "./evaluacionControlSchema";
 import {
   LicenciaControlDialog,
@@ -100,6 +101,7 @@ function ControlRow({ control, ingresoId, canWrite, columnas }: ControlRowProps)
                 Fuera de ODA
               </Badge>
             )}
+            <BadgeAddendum control={control} />
             {control.origen === "SALUTEM" && (control.campos_editados?.length ?? 0) > 0 && (
               <Badge
                 variant="warning"
@@ -259,6 +261,11 @@ function ControlRow({ control, ingresoId, canWrite, columnas }: ControlRowProps)
               <div className="sm:col-span-3">
                 <Dato label="Observaciones" valor={control.observaciones} />
               </div>
+              {(control.notas_salutem?.length ?? 0) > 0 && (
+                <div className="sm:col-span-3">
+                  <NotasSalutemControl control={control} />
+                </div>
+              )}
             </dl>
           </td>
         </tr>
