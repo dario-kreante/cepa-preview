@@ -44,3 +44,4 @@ from app.models.config_alerta import ConfigAlerta, Festivo  # noqa: F401
 from app.models.gaf_tramo import GafTramo  # noqa: F401
 from app.models.convenio import Convenio  # noqa: F401
 from app.models.profesional import Profesional  # noqa: F401
+from app.models.farmaco_convenio import FarmacoCanasta, FarmacoExternalizado  # noqa: F401
