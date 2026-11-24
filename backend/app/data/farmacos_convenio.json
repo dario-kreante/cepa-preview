@@ -1,0 +1,2325 @@
+{
+ "fuente": {
+  "canasta_convenio_002": "convenio002.xlsx, hoja «Canasta 2025» (QA 23-11-2026)",
+  "externalizado": "externalizado.xlsx (QA 23-11-2026)"
+ },
+ "canasta_convenio_002": [
+  {
+   "codigo_sap": "3073",
+   "descripcion": "ALPRAZOLAM 0.5MG. CAJA 30 COMP.",
+   "principio_activo": "ALPRAZOLAM",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "GENERICO",
+   "familia": "TRANQUILIZANTES",
+   "laboratorio": "CHILE"
+  },
+  {
+   "codigo_sap": "9784",
+   "descripcion": "AMITRIPTILINA 25MG. CAJA 24 COMP.",
+   "principio_activo": "AMITRIPTILINA",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "GENERICO",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "CHILE"
+  },
+  {
+   "codigo_sap": "94889",
+   "descripcion": "NUMAX XL 150 MG X 60 COMP.REC",
+   "principio_activo": "ANFEBUTAMONA",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "NUMAX",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "CHILE"
+  },
+  {
+   "codigo_sap": "76440",
+   "descripcion": "BUTRINO 150 MG CAJA 30 COMP.REC.L.P",
+   "principio_activo": "ANFEBUTAMONA (BUPROPION)",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "BUTRIN",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "EUROFARMA CHILE"
+  },
+  {
+   "codigo_sap": "91672",
+   "descripcion": "BUTRINO 150MG TABL RECU XL X30 COMP",
+   "principio_activo": "ANFEBUTAMONA CLORHIDRATO (BUPROPION)",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "BUTRINO XL",
+   "familia": "OTRAS DROGAS DEL SNC",
+   "laboratorio": "EUROFARMA CHILE"
+  },
+  {
+   "codigo_sap": "91675",
+   "descripcion": "BUTRINO XL 300MG X 30 COMPRIMIDOS LP",
+   "principio_activo": "ANFEBUTAMONA CLORHIDRATO (BUPROPION)",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "BUTRINO XL",
+   "familia": "OTRAS DROGAS DEL SNC",
+   "laboratorio": "EUROFARMA CHILE"
+  },
+  {
+   "codigo_sap": "90584",
+   "descripcion": "NUMAX XL 150 MG X 30 COMP.REC",
+   "principio_activo": "ANFEBUTAMONA CLORHIDRATO (BUPROPION)",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "NUMAX",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "CHILE"
+  },
+  {
+   "codigo_sap": "88437",
+   "descripcion": "ARIPIPRAZOL 10 MG 30 COMP",
+   "principio_activo": "ARIPIPRAZOL",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "GENERICO",
+   "familia": "NEUROLEPTICOS",
+   "laboratorio": "SEVEN PHARMA CHILE SPA"
+  },
+  {
+   "codigo_sap": "90352",
+   "descripcion": "ARIPIPRAZOL 10 MG 30 COMP",
+   "principio_activo": "ARIPIPRAZOL",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "GENERICO",
+   "familia": "NEUROLEPTICOS",
+   "laboratorio": "ASCEND"
+  },
+  {
+   "codigo_sap": "89243",
+   "descripcion": "ARIPIPRAZOL 15 MG 30 COMP",
+   "principio_activo": "ARIPIPRAZOL",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "GENERICO",
+   "familia": "NEUROLEPTICOS",
+   "laboratorio": "ASCEND"
+  },
+  {
+   "codigo_sap": "94440",
+   "descripcion": "ARIPIPRAZOL 10 MG 30 COMP",
+   "principio_activo": "ARIPIPRAZOL",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "GENERICO",
+   "familia": "NEUROLEPTICOS",
+   "laboratorio": "CHILE"
+  },
+  {
+   "codigo_sap": "94441",
+   "descripcion": "ARIPIPRAZOL 15 MG 30 COMP",
+   "principio_activo": "ARIPIPRAZOL",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "GENERICO",
+   "familia": "NEUROLEPTICOS",
+   "laboratorio": "CHILE"
+  },
+  {
+   "codigo_sap": "45268",
+   "descripcion": "CICLOBENZAPRINA 10MG. CAJA 20 COMP.REC.",
+   "principio_activo": "CICLOBENZAPRINA",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "GENERICO",
+   "familia": "RELAJANTES MUSCULARES DE ACCION CENTRAL",
+   "laboratorio": "CHILE"
+  },
+  {
+   "codigo_sap": "46511",
+   "descripcion": "CITALOPRAM 20MG. CAJA 30 COMP.",
+   "principio_activo": "CITALOPRAM",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "GENERICO",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "MINTLAB CO SA"
+  },
+  {
+   "codigo_sap": "94435",
+   "descripcion": "CITALOPRAM 20MG X 30 COMP REC BE",
+   "principio_activo": "CITALOPRAM BROMHIDRATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "GENERICO",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "SEVEN PHARMA CHILE SPA"
+  },
+  {
+   "codigo_sap": "87702",
+   "descripcion": "CITALOPRAM 20MG. CAJA 30 COMP.",
+   "principio_activo": "CITALOPRAM BROMHIDRATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "GENERICO",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "CHILE"
+  },
+  {
+   "codigo_sap": "69944",
+   "descripcion": "CLONAZEPAM 0,5 CAJA 30 COMP.",
+   "principio_activo": "CLONAZEPAM",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "GENERICO",
+   "familia": "ANTIEPILEPTICOS",
+   "laboratorio": "CHILE"
+  },
+  {
+   "codigo_sap": "69943",
+   "descripcion": "CLONAZEPAM 2MG. CAJA 30 COMP.",
+   "principio_activo": "CLONAZEPAM",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "GENERICO",
+   "familia": "ANTIEPILEPTICOS",
+   "laboratorio": "CHILE"
+  },
+  {
+   "codigo_sap": "90399",
+   "descripcion": "CLONAZEPAM 2MG. CAJA 30 COMP.",
+   "principio_activo": "CLONAZEPAM",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "GENERICO",
+   "familia": "ANTIEPILEPTICOS",
+   "laboratorio": "INTERPHARMA"
+  },
+  {
+   "codigo_sap": "74211",
+   "descripcion": "BETIS CLOTIAZEPAM 10MG.CAJA 30 COMP.REC.",
+   "principio_activo": "CLOTIAZEPAM",
+   "bioequivalencia": "N",
+   "detalle_be": "MARCA",
+   "marca": "BETIS",
+   "familia": "ANTIEPILEPTICOS",
+   "laboratorio": "SYNTHON"
+  },
+  {
+   "codigo_sap": "74212",
+   "descripcion": "BETIS CLOTIAZEPAM 5MG.CAJA 30 COMP.REC.",
+   "principio_activo": "CLOTIAZEPAM",
+   "bioequivalencia": "N",
+   "detalle_be": "MARCA",
+   "marca": "BETIS",
+   "familia": "ANTIEPILEPTICOS",
+   "laboratorio": "SYNTHON"
+  },
+  {
+   "codigo_sap": "79973",
+   "descripcion": "DILASEDAN 10 MG. CAJA 30 COMP.",
+   "principio_activo": "CLOTIAZEPAM",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "DILASEDAN",
+   "familia": "ANTIEPILEPTICOS",
+   "laboratorio": "BAGO"
+  },
+  {
+   "codigo_sap": "87293",
+   "descripcion": "DILASEDAN 5MG 30COMP",
+   "principio_activo": "CLOTIAZEPAM",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "DILASEDAN",
+   "familia": "ANTIEPILEPTICOS",
+   "laboratorio": "BAGO"
+  },
+  {
+   "codigo_sap": "75818",
+   "descripcion": "PLANIDEN ODT 10MG. 30 COMP. DISPERSABLES",
+   "principio_activo": "CLOTIAZEPAM",
+   "bioequivalencia": "N",
+   "detalle_be": "MARCA",
+   "marca": "PLANIDEN",
+   "familia": "ANTIEPILEPTICOS",
+   "laboratorio": "RECALCINE S.A."
+  },
+  {
+   "codigo_sap": "75816",
+   "descripcion": "PLANIDEN ODT 5MG. 30COMP. DISPERSABLES",
+   "principio_activo": "CLOTIAZEPAM",
+   "bioequivalencia": "N",
+   "detalle_be": "MARCA",
+   "marca": "PLANIDEN",
+   "familia": "ANTIEPILEPTICOS",
+   "laboratorio": "RECALCINE S.A."
+  },
+  {
+   "codigo_sap": "78701",
+   "descripcion": "NEUROVAL CD 10 MG 30COMP. DISPERSABLES",
+   "principio_activo": "CLOTIAZEPAM",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "NEUROVAL",
+   "familia": "ANTIEPILEPTICOS",
+   "laboratorio": "SAVAL S.A."
+  },
+  {
+   "codigo_sap": "78702",
+   "descripcion": "NEUROVAL CD 5MG. 30 COMP. DISPERSABLES",
+   "principio_activo": "CLOTIAZEPAM",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "NEUROVAL",
+   "familia": "ANTIEPILEPTICOS",
+   "laboratorio": "SAVAL S.A."
+  },
+  {
+   "codigo_sap": "83890",
+   "descripcion": "ZUBAM ODT 10MG 30COMP",
+   "principio_activo": "CLOTIAZEPAM",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "ZUBAM ODT",
+   "familia": "ANTIEPILEPTICOS",
+   "laboratorio": "CHILE"
+  },
+  {
+   "codigo_sap": "83879",
+   "descripcion": "ZUBAM ODT 5MG 30COMP",
+   "principio_activo": "CLOTIAZEPAM",
+   "bioequivalencia": "N",
+   "detalle_be": "MARCA",
+   "marca": "ZUBAM ODT",
+   "familia": "ANTIEPILEPTICOS",
+   "laboratorio": "CHILE"
+  },
+  {
+   "codigo_sap": "85119",
+   "descripcion": "FAPRIS 100 MG CAJA 30COMP",
+   "principio_activo": "DESVENLAFAXINA",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "FAPRIS",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "TECNOFARMA S.A."
+  },
+  {
+   "codigo_sap": "85160",
+   "descripcion": "FAPRIS 50 MG CAJA 30COMP",
+   "principio_activo": "DESVENLAFAXINA",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "FAPRIS",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "TECNOFARMA S.A."
+  },
+  {
+   "codigo_sap": "86857",
+   "descripcion": "DESLAFAX 100 MG 30COMP REC",
+   "principio_activo": "DESVENLAFAXINA SUCCINATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "DESLAFAX",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "GADOR FARMA"
+  },
+  {
+   "codigo_sap": "86858",
+   "descripcion": "DESLAFAX 50 MG 30COMP REC",
+   "principio_activo": "DESVENLAFAXINA SUCCINATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "DESLAFAX",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "GADOR FARMA"
+  },
+  {
+   "codigo_sap": "2380",
+   "descripcion": "DIAZEPAM 10MG. CAJA 20 COMP.",
+   "principio_activo": "DIAZEPAM",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "GENERICO",
+   "familia": "TRANQUILIZANTES",
+   "laboratorio": "CHILE"
+  },
+  {
+   "codigo_sap": "86680",
+   "descripcion": "DULOXETINA 30MG. 28CAP",
+   "principio_activo": "DULOXETINA CLORHIDRATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "GENERICO",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "SEVEN PHARMA CHILE SPA"
+  },
+  {
+   "codigo_sap": "82654",
+   "descripcion": "DULOXETINA 30MG. CAJA 30CAP.",
+   "principio_activo": "DULOXETINA CLORHIDRATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "GENERICO",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "ASCEND"
+  },
+  {
+   "codigo_sap": "82653",
+   "descripcion": "DULOXETINA 60MG. CAJA 30CAP.",
+   "principio_activo": "DULOXETINA CLORHIDRATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "GENERICO",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "ASCEND"
+  },
+  {
+   "codigo_sap": "86453",
+   "descripcion": "DULOXETINA 60MG. CAJA 30CAP.",
+   "principio_activo": "DULOXETINA CLORHIDRATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "GENERICO",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "SEVEN PHARMA CHILE SPA"
+  },
+  {
+   "codigo_sap": "80790",
+   "descripcion": "ESC 10MG CAJA 30COMP REC",
+   "principio_activo": "ESCITALOPRAM OXALATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "ESC",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "EUROFARMA CHILE"
+  },
+  {
+   "codigo_sap": "92612",
+   "descripcion": "ESC 15MG X 30 COMP REC",
+   "principio_activo": "ESCITALOPRAM OXALATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "ESC",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "EUROFARMA CHILE"
+  },
+  {
+   "codigo_sap": "80791",
+   "descripcion": "ESC 20MG CAJA 30COMP REC",
+   "principio_activo": "ESCITALOPRAM OXALATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "ESC",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "EUROFARMA CHILE"
+  },
+  {
+   "codigo_sap": "60229",
+   "descripcion": "ESCITALOPRAM 10MG. CAJA 30 COMP. REC.",
+   "principio_activo": "ESCITALOPRAM OXALATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "GENERICO",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "SEVEN PHARMA CHILE SPA"
+  },
+  {
+   "codigo_sap": "79491",
+   "descripcion": "ESCITAVITAE 10MG. CAJA 28 COMP.REC",
+   "principio_activo": "ESCITALOPRAM OXALATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "ESCITAVITAE",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "GALENICUM HEALTH CHI"
+  },
+  {
+   "codigo_sap": "79492",
+   "descripcion": "ESCITAVITAE 20MG. CAJA 28 COMP.REC",
+   "principio_activo": "ESCITALOPRAM OXALATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "ESCITAVITAE",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "GALENICUM HEALTH CHI"
+  },
+  {
+   "codigo_sap": "87296",
+   "descripcion": "ESCITALOPRAM 20 MG 30COMP",
+   "principio_activo": "ESCITALOPRAM OXALATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "GENERICO",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "SEVEN PHARMA CHILE SPA"
+  },
+  {
+   "codigo_sap": "90386",
+   "descripcion": "ESCITALOPRAM 20 MG 30COMP",
+   "principio_activo": "ESCITALOPRAM OXALATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "GENERICO",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "PHARMATECH CHILE"
+  },
+  {
+   "codigo_sap": "87709",
+   "descripcion": "ESOMEPRAZOL 20MG. CA.30 CAP.GRAN.REC.E.",
+   "principio_activo": "ESOMEPRAZOL MAGNESICO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "GENERICO",
+   "familia": "ANTIULCEROSOS PEPTICOS",
+   "laboratorio": "SEVEN PHARMA CHILE SPA"
+  },
+  {
+   "codigo_sap": "69728",
+   "descripcion": "ESOMEPRAZOL 20MG. CA.30 CAP.GRAN.REC.E.",
+   "principio_activo": "ESOMEPRAZOL MAGNESICO TRIHIDRATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "GENERICO",
+   "familia": "ANTIULCEROSOS PEPTICOS",
+   "laboratorio": "ASCEND"
+  },
+  {
+   "codigo_sap": "69729",
+   "descripcion": "ESOMEPRAZOL 40MG. CA.30 CAP.GRAN.REC.E.",
+   "principio_activo": "ESOMEPRAZOL MAGNESICO TRIHIDRATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "GENERICO",
+   "familia": "ANTIULCEROSOS PEPTICOS",
+   "laboratorio": "ASCEND"
+  },
+  {
+   "codigo_sap": "87731",
+   "descripcion": "ESOMEPRAZOL 40MG. CA.30 CAP.GRAN.REC.E.",
+   "principio_activo": "ESOMEPRAZOL MAGNESIO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "GENERICO",
+   "familia": "ANTIULCEROSOS PEPTICOS",
+   "laboratorio": "SEVEN PHARMA CHILE SPA"
+  },
+  {
+   "codigo_sap": "94439",
+   "descripcion": "ESZOPICLONA BE 3 MG 30 COMPRIMIDOS REC",
+   "principio_activo": "ESZOPICLONA",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "GENERICO",
+   "familia": "HIPNOTICOS / SEDANTES",
+   "laboratorio": "CHILE"
+  },
+  {
+   "codigo_sap": "90533",
+   "descripcion": "ESZOPICLONA BE 3 MG 30 COMPRIMIDOS REC",
+   "principio_activo": "ESZOPICLONA",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "GENERICO",
+   "familia": "HIPNOTICOS / SEDANTES",
+   "laboratorio": "SEVEN PHARMA CHILE SPA"
+  },
+  {
+   "codigo_sap": "70906",
+   "descripcion": "NIRVAN 2MG. CAJA 40 COMP. REC.",
+   "principio_activo": "ESZOPICLONA",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "NIRVAN",
+   "familia": "HIPNOTICOS / SEDANTES",
+   "laboratorio": "SAVAL S.A."
+  },
+  {
+   "codigo_sap": "71070",
+   "descripcion": "NIRVAN 3MG. CAJA 40 COMP. REC.",
+   "principio_activo": "ESZOPICLONA",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "NIRVAN",
+   "familia": "HIPNOTICOS / SEDANTES",
+   "laboratorio": "SAVAL S.A."
+  },
+  {
+   "codigo_sap": "62915",
+   "descripcion": "VALNOC 2 MG 30 COMPRECUBIERTOS",
+   "principio_activo": "ESZOPICLONA",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "VALNOC",
+   "familia": "HIPNOTICOS / SEDANTES",
+   "laboratorio": "RECALCINE S.A."
+  },
+  {
+   "codigo_sap": "62914",
+   "descripcion": "VALNOC 3 MG 30 COMP.RECUBIERTOS",
+   "principio_activo": "ESZOPICLONA",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "VALNOC",
+   "familia": "HIPNOTICOS / SEDANTES",
+   "laboratorio": "RECALCINE S.A."
+  },
+  {
+   "codigo_sap": "66290",
+   "descripcion": "ZOPINOM 3MG X 30 COMPRIMIDOS REC",
+   "principio_activo": "ESZOPICLONA",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "ZOPINOM",
+   "familia": "HIPNOTICOS / SEDANTES",
+   "laboratorio": "CHILE"
+  },
+  {
+   "codigo_sap": "13032",
+   "descripcion": "FLUOXETINA 20MG. CAJA 20 COMP.",
+   "principio_activo": "FLUOXETINA",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "GENERICO",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "CHILE"
+  },
+  {
+   "codigo_sap": "40701",
+   "descripcion": "ACTAN 20MG. CAJA 30 CAP.",
+   "principio_activo": "FLUOXETINA CLORHIDRATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "ACTAN",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "SAVAL S.A."
+  },
+  {
+   "codigo_sap": "9790",
+   "descripcion": "ACTAN 20MG. CAJA 60 CAP.",
+   "principio_activo": "FLUOXETINA CLORHIDRATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "ACTAN",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "SAVAL S.A."
+  },
+  {
+   "codigo_sap": "1114",
+   "descripcion": "SOSTAC 20MG.CAJA 30 COMP.",
+   "principio_activo": "FLUOXETINA CLORHIDRATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "SOSTAC",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "CHILE"
+  },
+  {
+   "codigo_sap": "1205",
+   "descripcion": "SOSTAC 20MG.CAJA 60 COMP.",
+   "principio_activo": "FLUOXETINA CLORHIDRATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "SOSTAC",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "CHILE"
+  },
+  {
+   "codigo_sap": "74628",
+   "descripcion": "HALOPERIDOL 1MG. CAJA 30COMP.",
+   "principio_activo": "HALOPERIDOL",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "GENERICO",
+   "familia": "NEUROLEPTICOS",
+   "laboratorio": "SYNTHON"
+  },
+  {
+   "codigo_sap": "74629",
+   "descripcion": "HALOPERIDOL 5MG. CAJA 20COMP.",
+   "principio_activo": "HALOPERIDOL",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "GENERICO",
+   "familia": "NEUROLEPTICOS",
+   "laboratorio": "SYNTHON"
+  },
+  {
+   "codigo_sap": "86366",
+   "descripcion": "LAMOTRIGINA 100MG. CAJA 30 COMP",
+   "principio_activo": "LAMOTRIGINA",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "GENERICO",
+   "familia": "ANTIEPILEPTICOS",
+   "laboratorio": "INTERPHARMA"
+  },
+  {
+   "codigo_sap": "82236",
+   "descripcion": "LAMOTRIGINA 100MG. CAJA 30 COMP. DISPER.",
+   "principio_activo": "LAMOTRIGINA",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "GENERICO",
+   "familia": "ANTIEPILEPTICOS",
+   "laboratorio": "CHILE"
+  },
+  {
+   "codigo_sap": "82234",
+   "descripcion": "LAMOTRIGINA 25MG. CAJA 30COMP. DISPER.",
+   "principio_activo": "LAMOTRIGINA",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "GENERICO",
+   "familia": "ANTIEPILEPTICOS",
+   "laboratorio": "CHILE"
+  },
+  {
+   "codigo_sap": "86365",
+   "descripcion": "LAMOTRIGINA 50 MG. CAJA 30 COMP",
+   "principio_activo": "LAMOTRIGINA",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "GENERICO",
+   "familia": "ANTIEPILEPTICOS",
+   "laboratorio": "INTERPHARMA"
+  },
+  {
+   "codigo_sap": "82235",
+   "descripcion": "LAMOTRIGINA 50 MG. CAJA 30 COMP. DISPER.",
+   "principio_activo": "LAMOTRIGINA",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "GENERICO",
+   "familia": "ANTIEPILEPTICOS",
+   "laboratorio": "CHILE"
+  },
+  {
+   "codigo_sap": "44611",
+   "descripcion": "LANSOPRAZOL 30 MG. CAJA 30 COMP.",
+   "principio_activo": "LANSOPRAZOL",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "GENERICO",
+   "familia": "ANTIULCEROSOS PEPTICOS",
+   "laboratorio": "OPKO CHILE S.A."
+  },
+  {
+   "codigo_sap": "84404",
+   "descripcion": "LANSOPRAZOL 30 MG. CAJA 30 COMP.",
+   "principio_activo": "LANSOPRAZOL",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "GENERICO",
+   "familia": "ANTIULCEROSOS PEPTICOS",
+   "laboratorio": "CHILE"
+  },
+  {
+   "codigo_sap": "2874",
+   "descripcion": "LORAZEPAM 2MG. CAJA 30 COMP.",
+   "principio_activo": "LORAZEPAM",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "GENERICO",
+   "familia": "TRANQUILIZANTES",
+   "laboratorio": "CHILE"
+  },
+  {
+   "codigo_sap": "22024",
+   "descripcion": "MELATONINA 3MG.30CAP.",
+   "principio_activo": "MELATONINA",
+   "bioequivalencia": "N",
+   "detalle_be": "MARCA",
+   "marca": "FARMACIAS AHUMADA",
+   "familia": "ANSIOLITICOS , SEDANTES, HIPONOTICOS",
+   "laboratorio": "ARAMA NATURAL PROD. DIST. LTDA."
+  },
+  {
+   "codigo_sap": "37190",
+   "descripcion": "CIBLEX 15MG. CAJA 30 COMP. REC.",
+   "principio_activo": "MIRTAZAPINA",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "CIBLEX",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "LAFI"
+  },
+  {
+   "codigo_sap": "21557",
+   "descripcion": "CIBLEX 30MG. CAJA 30 COMP. REC.",
+   "principio_activo": "MIRTAZAPINA",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "CIBLEX",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "LAFI"
+  },
+  {
+   "codigo_sap": "37952",
+   "descripcion": "DIVARIL 30MG. CAJA 30 COMP. REC.",
+   "principio_activo": "MIRTAZAPINA",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "DIVARIL",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "TECNOFARMA S.A."
+  },
+  {
+   "codigo_sap": "94680",
+   "descripcion": "MIRTAVITAE 15MG 30 COMP REC",
+   "principio_activo": "MIRTAZAPINA",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "MIRTAVITAE",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "GALENICUM HEALTH CHI"
+  },
+  {
+   "codigo_sap": "94685",
+   "descripcion": "MIRTAVITAE 30MG 30 COMP REC",
+   "principio_activo": "MIRTAZAPINA",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "MIRTAVITAE",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "GALENICUM HEALTH CHI"
+  },
+  {
+   "codigo_sap": "48335",
+   "descripcion": "ALERTEX 100MG. CAJA 30 COMP.",
+   "principio_activo": "MODAFINILO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "ALERTEX",
+   "familia": "PSICOESTIMULANTES",
+   "laboratorio": "SAVAL S.A."
+  },
+  {
+   "codigo_sap": "48620",
+   "descripcion": "ALERTEX 200MG. CAJA 30 COMP.",
+   "principio_activo": "MODAFINILO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "ALERTEX",
+   "familia": "PSICOESTIMULANTES",
+   "laboratorio": "SAVAL S.A."
+  },
+  {
+   "codigo_sap": "38381",
+   "descripcion": "MENTIX 100MG. CAJA 30 COMP.",
+   "principio_activo": "MODAFINILO",
+   "bioequivalencia": "B",
+   "detalle_be": "MARCA",
+   "marca": "MENTIX",
+   "familia": "PSICOESTIMULANTES",
+   "laboratorio": "MEGALABS CHILE S.A"
+  },
+  {
+   "codigo_sap": "44704",
+   "descripcion": "MENTIX 200MG. CAJA 30 COMP.",
+   "principio_activo": "MODAFINILO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "MENTIX",
+   "familia": "PSICOESTIMULANTES",
+   "laboratorio": "MEGALABS CHILE S.A"
+  },
+  {
+   "codigo_sap": "49680",
+   "descripcion": "OMEPRAZOL 20MG. CAJA 60 CAP.",
+   "principio_activo": "OMEPRAZOL",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "GENERICO",
+   "familia": "ANTIULCEROSOS PEPTICOS",
+   "laboratorio": "ASCEND"
+  },
+  {
+   "codigo_sap": "91499",
+   "descripcion": "OMEPRAZOL 20MG. CAJA 60 CAP.",
+   "principio_activo": "OMEPRAZOL",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "GENERICO",
+   "familia": "ANTIULCEROSOS PEPTICOS",
+   "laboratorio": "OPKO CHILE S.A."
+  },
+  {
+   "codigo_sap": "72248",
+   "descripcion": "OMEPRAZOL 20MG.CAJA 30 CAP",
+   "principio_activo": "OMEPRAZOL",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "GENERICO",
+   "familia": "ANTIULCEROSOS PEPTICOS",
+   "laboratorio": "ASCEND"
+  },
+  {
+   "codigo_sap": "84417",
+   "descripcion": "OMEPRAZOL 20MG. CAJA 60 CAP.",
+   "principio_activo": "OMEPRAZOL",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "GENERICO",
+   "familia": "ANTIULCEROSOS PEPTICOS",
+   "laboratorio": "CHILE"
+  },
+  {
+   "codigo_sap": "84522",
+   "descripcion": "OMEPRAZOL 20MG.CAJA 30 CAP",
+   "principio_activo": "OMEPRAZOL",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "GENERICO",
+   "familia": "ANTIULCEROSOS PEPTICOS",
+   "laboratorio": "CHILE"
+  },
+  {
+   "codigo_sap": "83901",
+   "descripcion": "AROTEX 20 MG 30COMP REC",
+   "principio_activo": "PAROXETINA CLORHIDRATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "AROTEX",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "RAFFO S.A"
+  },
+  {
+   "codigo_sap": "44587",
+   "descripcion": "PAMAX 20 MG. CAJA 30 COMP. REC.",
+   "principio_activo": "PAROXETINA CLORHIDRATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "PAMAX",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "INSTITUTO SANITAS S.A"
+  },
+  {
+   "codigo_sap": "66048",
+   "descripcion": "PARODOX 20MGX30 COMPRIMIDOS REC.",
+   "principio_activo": "PAROXETINA CLORHIDRATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "PARODOX",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "EUROFARMA CHILE"
+  },
+  {
+   "codigo_sap": "90255",
+   "descripcion": "PARODOX XR 25 MG X 30 CPR",
+   "principio_activo": "PAROXETINA CLORHIDRATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "PARODOX",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "EUROFARMA CHILE"
+  },
+  {
+   "codigo_sap": "89558",
+   "descripcion": "PAROXETINA 20 MG 30 COMP REC",
+   "principio_activo": "PAROXETINA CLORHIDRATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "GENERICO",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "CHILE"
+  },
+  {
+   "codigo_sap": "18637",
+   "descripcion": "POSIVYL 20MG. CAJA 30 COMP. REC.",
+   "principio_activo": "PAROXETINA CLORHIDRATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "POSIVYL",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "CHILE"
+  },
+  {
+   "codigo_sap": "26460",
+   "descripcion": "TRAVIATA 20 MG. CAJA 30 COMP. REC.",
+   "principio_activo": "PAROXETINA CLORHIDRATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "TRAVIATA",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "ANDROMACO S.A."
+  },
+  {
+   "codigo_sap": "5006",
+   "descripcion": "SERETRAN 20MG. CAJA 30 COMP.REC.",
+   "principio_activo": "PAROXETINA CLORHIDRATO (HEMIHIDRATADO)",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "SERETRAN",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "LAFI"
+  },
+  {
+   "codigo_sap": "93229",
+   "descripcion": "LIMIAR 150MG 30 CAPS",
+   "principio_activo": "PREGABALINA",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "LIMIAR",
+   "familia": "ANTIEPILEPTICOS",
+   "laboratorio": "EUROFARMA CHILE"
+  },
+  {
+   "codigo_sap": "93230",
+   "descripcion": "LIMIAR 75 MG 30 CAPS",
+   "principio_activo": "PREGABALINA",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "LIMIAR",
+   "familia": "ANTIEPILEPTICOS",
+   "laboratorio": "EUROFARMA CHILE"
+  },
+  {
+   "codigo_sap": "87151",
+   "descripcion": "NEURUM 150 MG 30COMP",
+   "principio_activo": "PREGABALINA",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "NEURUM",
+   "familia": "OTRAS DROGAS DEL SNC",
+   "laboratorio": "SAVAL S.A."
+  },
+  {
+   "codigo_sap": "60900",
+   "descripcion": "NEURUM COMP 75 MG CAJA 30 COMP.",
+   "principio_activo": "PREGABALINA",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "NEURUM",
+   "familia": "OTRAS DROGAS DEL SNC",
+   "laboratorio": "SAVAL S.A."
+  },
+  {
+   "codigo_sap": "83921",
+   "descripcion": "PREGABALINA 150 MG 30CAP",
+   "principio_activo": "PREGABALINA",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "GENERICO",
+   "familia": "OTRAS DROGAS DEL SNC",
+   "laboratorio": "ASCEND"
+  },
+  {
+   "codigo_sap": "86888",
+   "descripcion": "PREGABALINA 150 MG 30CAP",
+   "principio_activo": "PREGABALINA",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "GENERICO",
+   "familia": "OTRAS DROGAS DEL SNC",
+   "laboratorio": "SEVEN PHARMA CHILE SPA"
+  },
+  {
+   "codigo_sap": "84571",
+   "descripcion": "PREGABALINA 75 MG 30CAP.",
+   "principio_activo": "PREGABALINA",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "GENERICO",
+   "familia": "OTRAS DROGAS DEL SNC",
+   "laboratorio": "ASCEND"
+  },
+  {
+   "codigo_sap": "87723",
+   "descripcion": "PREGABALINA 75 MG 30CAP.",
+   "principio_activo": "PREGABALINA",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "GENERICO",
+   "familia": "OTRAS DROGAS DEL SNC",
+   "laboratorio": "SEVEN PHARMA CHILE SPA"
+  },
+  {
+   "codigo_sap": "86863",
+   "descripcion": "PREGABAX 75 MG 28CAP",
+   "principio_activo": "PREGABALINA",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "PREGABAX",
+   "familia": "OTRAS DROGAS DEL SNC",
+   "laboratorio": "GADOR FARMA"
+  },
+  {
+   "codigo_sap": "62443",
+   "descripcion": "PREGALEX 150MG. X 30 COMP.",
+   "principio_activo": "PREGABALINA",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "PREGALEX",
+   "familia": "OTRAS DROGAS DEL SNC",
+   "laboratorio": "ANDROMACO S.A."
+  },
+  {
+   "codigo_sap": "62444",
+   "descripcion": "PREGALEX 75 MG. X 30 COMP.",
+   "principio_activo": "PREGABALINA",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "PREGALEX",
+   "familia": "OTRAS DROGAS DEL SNC",
+   "laboratorio": "ANDROMACO S.A."
+  },
+  {
+   "codigo_sap": "49413",
+   "descripcion": "PREGOBIN 75 MG CAJA 30 CAPS.",
+   "principio_activo": "PREGABALINA",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "PREGOBIN",
+   "familia": "OTRAS DROGAS DEL SNC",
+   "laboratorio": "RECALCINE S.A."
+  },
+  {
+   "codigo_sap": "75427",
+   "descripcion": "PRESTAT 150MG. CAJA 40 COMP.",
+   "principio_activo": "PREGABALINA",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "PRESTAT",
+   "familia": "OTRAS DROGAS DEL SNC",
+   "laboratorio": "BAGO"
+  },
+  {
+   "codigo_sap": "82703",
+   "descripcion": "PRESTAT 50 MG. 40 COMP.",
+   "principio_activo": "PREGABALINA",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "PRESTAT",
+   "familia": "OTRAS DROGAS DEL SNC",
+   "laboratorio": "BAGO"
+  },
+  {
+   "codigo_sap": "75541",
+   "descripcion": "PRESTAT 75MG. CAJA 40 COMP",
+   "principio_activo": "PREGABALINA",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "PRESTAT",
+   "familia": "OTRAS DROGAS DEL SNC",
+   "laboratorio": "BAGO"
+  },
+  {
+   "codigo_sap": "84354",
+   "descripcion": "PROPRANOLOL 10 MG. CAJA 20 COMP.",
+   "principio_activo": "PROPRANOLOL CLORHIDRATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "GENERICO",
+   "familia": "AGENTES BETA-BLOQUEADORES , SOLOS",
+   "laboratorio": "MINTLAB CO SA"
+  },
+  {
+   "codigo_sap": "1392",
+   "descripcion": "PROPRANOLOL 40 MG. CAJA 20 COMP.",
+   "principio_activo": "PROPRANOLOL CLORHIDRATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "GENERICO",
+   "familia": "AGENTES BETA-BLOQUEADORES , SOLOS",
+   "laboratorio": "CHILE"
+  },
+  {
+   "codigo_sap": "87881",
+   "descripcion": "NORTIUM 25 MG 30COMP REC",
+   "principio_activo": "QUETIAPINA FUMARATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "NORTIUM",
+   "familia": "NEUROLEPTICOS",
+   "laboratorio": "ASCEND"
+  },
+  {
+   "codigo_sap": "87743",
+   "descripcion": "NORTIUM XR 150 MG 30COMP REC",
+   "principio_activo": "QUETIAPINA FUMARATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "NORTIUM XR",
+   "familia": "NEUROLEPTICOS",
+   "laboratorio": "ASCEND"
+  },
+  {
+   "codigo_sap": "87744",
+   "descripcion": "NORTIUM XR 50 30COMP REC",
+   "principio_activo": "QUETIAPINA FUMARATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "NORTIUM XR",
+   "familia": "NEUROLEPTICOS",
+   "laboratorio": "ASCEND"
+  },
+  {
+   "codigo_sap": "79919",
+   "descripcion": "QUETIAPINA 100MG. 30 COMP.REC",
+   "principio_activo": "QUETIAPINA FUMARATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "GENERICO",
+   "familia": "NEUROLEPTICOS",
+   "laboratorio": "ASCEND"
+  },
+  {
+   "codigo_sap": "87717",
+   "descripcion": "QUETIAPINA 100MG. 30 COMP.REC",
+   "principio_activo": "QUETIAPINA FUMARATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "GENERICO",
+   "familia": "NEUROLEPTICOS",
+   "laboratorio": "SEVEN PHARMA CHILE SPA"
+  },
+  {
+   "codigo_sap": "80888",
+   "descripcion": "QUETIAPINA 200MG 30 COMP. REC.",
+   "principio_activo": "QUETIAPINA FUMARATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "GENERICO",
+   "familia": "NEUROLEPTICOS",
+   "laboratorio": "ASCEND"
+  },
+  {
+   "codigo_sap": "79918",
+   "descripcion": "QUETIAPINA 25MG. 30 COMP. REC",
+   "principio_activo": "QUETIAPINA FUMARATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "GENERICO",
+   "familia": "NEUROLEPTICOS",
+   "laboratorio": "ASCEND"
+  },
+  {
+   "codigo_sap": "86361",
+   "descripcion": "QUETIAPINA 25MG. 30 COMP. REC",
+   "principio_activo": "QUETIAPINA FUMARATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "GENERICO",
+   "familia": "NEUROLEPTICOS",
+   "laboratorio": "CHILE"
+  },
+  {
+   "codigo_sap": "87716",
+   "descripcion": "QUETIAPINA 25MG. 30 COMP. REC",
+   "principio_activo": "QUETIAPINA FUMARATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "GENERICO",
+   "familia": "NEUROLEPTICOS",
+   "laboratorio": "SEVEN PHARMA CHILE SPA"
+  },
+  {
+   "codigo_sap": "79970",
+   "descripcion": "QUETIAPINA 300MG. 30 COMP. REC.",
+   "principio_activo": "QUETIAPINA FUMARATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "GENERICO",
+   "familia": "NEUROLEPTICOS",
+   "laboratorio": "ASCEND"
+  },
+  {
+   "codigo_sap": "92675",
+   "descripcion": "QUETIAPINA XR 150MG. 30 COMP. REC.L.P.",
+   "principio_activo": "QUETIAPINA FUMARATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "GENERICO",
+   "familia": "NEUROLEPTICOS",
+   "laboratorio": "ASCEND"
+  },
+  {
+   "codigo_sap": "63755",
+   "descripcion": "QUETIAZIC 25 MG. CAJA 30 COMP. REC.",
+   "principio_activo": "QUETIAPINA FUMARATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "QUETIAZIC",
+   "familia": "NEUROLEPTICOS",
+   "laboratorio": "TECNOFARMA S.A."
+  },
+  {
+   "codigo_sap": "79971",
+   "descripcion": "QUETIAZIC 25MG. CAJA 60 COMP. REC",
+   "principio_activo": "QUETIAPINA FUMARATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "QUETIAZIC",
+   "familia": "NEUROLEPTICOS",
+   "laboratorio": "TECNOFARMA S.A."
+  },
+  {
+   "codigo_sap": "37777",
+   "descripcion": "QUETIDIN 100 MG. CAJA 30 COMP.REC.",
+   "principio_activo": "QUETIAPINA FUMARATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "QUETIDIN",
+   "familia": "NEUROLEPTICOS",
+   "laboratorio": "RECALCINE S.A."
+  },
+  {
+   "codigo_sap": "60986",
+   "descripcion": "QUETIDIN 200 MG. CAJA 30 COMP. REC.",
+   "principio_activo": "QUETIAPINA FUMARATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "QUETIDIN",
+   "familia": "NEUROLEPTICOS",
+   "laboratorio": "RECALCINE S.A."
+  },
+  {
+   "codigo_sap": "37786",
+   "descripcion": "QUETIDIN 25 MG. CAJA 30 COMP.REC.",
+   "principio_activo": "QUETIAPINA FUMARATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "QUETIDIN",
+   "familia": "NEUROLEPTICOS",
+   "laboratorio": "RECALCINE S.A."
+  },
+  {
+   "codigo_sap": "62278",
+   "descripcion": "QUETIDIN 300 MG. CAJA 30 COMP. REC",
+   "principio_activo": "QUETIAPINA FUMARATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "QUETIDIN",
+   "familia": "NEUROLEPTICOS",
+   "laboratorio": "RECALCINE S.A."
+  },
+  {
+   "codigo_sap": "78265",
+   "descripcion": "QUETIUM 100MG.CAJA 30COMP. REC.",
+   "principio_activo": "QUETIAPINA FUMARATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "QUETIUM",
+   "familia": "NEUROLEPTICOS",
+   "laboratorio": "SAVAL S.A."
+  },
+  {
+   "codigo_sap": "78264",
+   "descripcion": "QUETIUM 200MG. CAJA 30 COMP.REC.",
+   "principio_activo": "QUETIAPINA FUMARATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "QUETIUM",
+   "familia": "NEUROLEPTICOS",
+   "laboratorio": "SAVAL S.A."
+  },
+  {
+   "codigo_sap": "78266",
+   "descripcion": "QUETIUM 25MG. CAJA 30 COMP.REC.",
+   "principio_activo": "QUETIAPINA FUMARATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "QUETIUM",
+   "familia": "NEUROLEPTICOS",
+   "laboratorio": "SAVAL S.A."
+  },
+  {
+   "codigo_sap": "78263",
+   "descripcion": "QUETIUM 300MG. CAJA 30 COMP. REC.",
+   "principio_activo": "QUETIAPINA FUMARATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "QUETIUM",
+   "familia": "NEUROLEPTICOS",
+   "laboratorio": "SAVAL S.A."
+  },
+  {
+   "codigo_sap": "71241",
+   "descripcion": "QURAX 25MG. CAJA 30 COMP. REC.",
+   "principio_activo": "QUETIAPINA FUMARATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "QURAX",
+   "familia": "NEUROLEPTICOS",
+   "laboratorio": "MEGALABS CHILE S.A"
+  },
+  {
+   "codigo_sap": "63572",
+   "descripcion": "GOFYL 100MG. CAJA 30 COMP. REC.",
+   "principio_activo": "QUETIAPINA HEMIFUMARATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "GOFYL",
+   "familia": "NEUROLEPTICOS",
+   "laboratorio": "AXON"
+  },
+  {
+   "codigo_sap": "63571",
+   "descripcion": "GOFYL 25MG. CAJA 30 COMP. REC.",
+   "principio_activo": "QUETIAPINA HEMIFUMARATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "GOFYL",
+   "familia": "NEUROLEPTICOS",
+   "laboratorio": "AXON"
+  },
+  {
+   "codigo_sap": "90331",
+   "descripcion": "QURAX XR 150 MG X 30 COMP",
+   "principio_activo": "QUETIAPINA HEMIFUMARATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "QURAX XR",
+   "familia": "OTRAS DROGAS DEL SNC",
+   "laboratorio": "MEGALABS CHILE S.A"
+  },
+  {
+   "codigo_sap": "19081",
+   "descripcion": "DAGOTIL 1MG. CAJA 30 COMP.",
+   "principio_activo": "RISPERIDONA",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "DAGOTIL",
+   "familia": "NEUROLEPTICOS",
+   "laboratorio": "MEGALABS CHILE S.A"
+  },
+  {
+   "codigo_sap": "19094",
+   "descripcion": "DAGOTIL 3MG. CAJA 30 COMP.",
+   "principio_activo": "RISPERIDONA",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "DAGOTIL",
+   "familia": "NEUROLEPTICOS",
+   "laboratorio": "MEGALABS CHILE S.A"
+  },
+  {
+   "codigo_sap": "84217",
+   "descripcion": "RIMOX 1MG 30COMP REC",
+   "principio_activo": "RISPERIDONA",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "RIMOX",
+   "familia": "NEUROLEPTICOS",
+   "laboratorio": "CHILE"
+  },
+  {
+   "codigo_sap": "84215",
+   "descripcion": "RIMOX SOL ORAL C 45ML",
+   "principio_activo": "RISPERIDONA",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "RIMOX",
+   "familia": "NEUROLEPTICOS",
+   "laboratorio": "CHILE"
+  },
+  {
+   "codigo_sap": "82981",
+   "descripcion": "RISMIA 1MG CAJA 30COMP REC",
+   "principio_activo": "RISPERIDONA",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "RISMIA",
+   "familia": "NEUROLEPTICOS",
+   "laboratorio": "INDOPHARMA"
+  },
+  {
+   "codigo_sap": "39181",
+   "descripcion": "SPIRON 1 MG. CAJA 30 COMP. REC.",
+   "principio_activo": "RISPERIDONA",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "SPIRON",
+   "familia": "NEUROLEPTICOS",
+   "laboratorio": "ANDROMACO S.A."
+  },
+  {
+   "codigo_sap": "23416",
+   "descripcion": "DEPRAX 100MG. CAJA 30 COMP. REC.",
+   "principio_activo": "SERTRALINA CLORHIDRATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "DEPRAX",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "SAVAL S.A."
+  },
+  {
+   "codigo_sap": "20205",
+   "descripcion": "DEPRAX 50MG. CAJA 30 COMP. REC",
+   "principio_activo": "SERTRALINA CLORHIDRATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "DEPRAX",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "SAVAL S.A."
+  },
+  {
+   "codigo_sap": "71373",
+   "descripcion": "DEPRAX 50MG. CAJA 60 COMP. REC.",
+   "principio_activo": "SERTRALINA CLORHIDRATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "DEPRAX",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "SAVAL S.A."
+  },
+  {
+   "codigo_sap": "29938",
+   "descripcion": "ELEVAL 100MG. CAJA 30 COMP. REC.",
+   "principio_activo": "SERTRALINA CLORHIDRATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "ELEVAL",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "LAFI"
+  },
+  {
+   "codigo_sap": "78660",
+   "descripcion": "ELEVAL 50MG. 30COMP. REC.",
+   "principio_activo": "SERTRALINA CLORHIDRATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "ELEVAL",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "LAFI"
+  },
+  {
+   "codigo_sap": "29754",
+   "descripcion": "ELEVAL 50MG. CAJA 60 COMP. REC.",
+   "principio_activo": "SERTRALINA CLORHIDRATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "ELEVAL",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "LAFI"
+  },
+  {
+   "codigo_sap": "92938",
+   "descripcion": "ISEREN 100MG 30 COM",
+   "principio_activo": "SERTRALINA CLORHIDRATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "ISEREN",
+   "familia": "COMBINACIONES PSICOLEPTICOS/PSICOANALEPTICOS",
+   "laboratorio": "OPKO CHILE S.A."
+  },
+  {
+   "codigo_sap": "39185",
+   "descripcion": "SERONEX 100 MG. CAJA 30 COMP. REC.",
+   "principio_activo": "SERTRALINA CLORHIDRATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "SERONEX",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "EXELTIS"
+  },
+  {
+   "codigo_sap": "39184",
+   "descripcion": "SERONEX 50 MG. CAJA 30 COMP. REC",
+   "principio_activo": "SERTRALINA CLORHIDRATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "SERONEX",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "EXELTIS"
+  },
+  {
+   "codigo_sap": "45101",
+   "descripcion": "SERTAC 100 MG. CAJA 30 COMP. REC.",
+   "principio_activo": "SERTRALINA CLORHIDRATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "SERTAC",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "ANDROMACO S.A."
+  },
+  {
+   "codigo_sap": "45100",
+   "descripcion": "SERTAC 50MG. CAJA 30 COMP. REC.",
+   "principio_activo": "SERTRALINA CLORHIDRATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "SERTAC",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "ANDROMACO S.A."
+  },
+  {
+   "codigo_sap": "81757",
+   "descripcion": "SERTRALINA 100MG. CAJA 30 COMP.",
+   "principio_activo": "SERTRALINA CLORHIDRATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "GENERICO",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "CHILE"
+  },
+  {
+   "codigo_sap": "87718",
+   "descripcion": "SERTRALINA 100MG. CAJA 30 COMP.",
+   "principio_activo": "SERTRALINA CLORHIDRATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "GENERICO",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "MINTLAB CO SA"
+  },
+  {
+   "codigo_sap": "91497",
+   "descripcion": "SERTRALINA 100MG. CAJA 30 COMP.",
+   "principio_activo": "SERTRALINA CLORHIDRATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "GENERICO",
+   "familia": "OTRAS DROGAS DEL SNC",
+   "laboratorio": "ASCEND"
+  },
+  {
+   "codigo_sap": "38420",
+   "descripcion": "SERTRALINA 50 MG. CAJA 30 COMP. REC.",
+   "principio_activo": "SERTRALINA CLORHIDRATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "GENERICO",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "CHILE"
+  },
+  {
+   "codigo_sap": "88792",
+   "descripcion": "SERTRALINA 50 MG. CAJA 30 COMP. REC.",
+   "principio_activo": "SERTRALINA CLORHIDRATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "GENERICO",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "OPKO CHILE S.A."
+  },
+  {
+   "codigo_sap": "89393",
+   "descripcion": "SERTRALINA 50 MG. CAJA 30 COMP. REC.",
+   "principio_activo": "SERTRALINA CLORHIDRATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "GENERICO",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "MINTLAB CO SA"
+  },
+  {
+   "codigo_sap": "50195",
+   "descripcion": "TOPICTAL 100MG. CAJA 28 COMP. REC.",
+   "principio_activo": "TOPIRAMATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "TOPICTAL",
+   "familia": "ANTIEPILEPTICOS",
+   "laboratorio": "TECNOFARMA S.A."
+  },
+  {
+   "codigo_sap": "50194",
+   "descripcion": "TOPICTAL 25MG. CAJA 28 COMP. REC.",
+   "principio_activo": "TOPIRAMATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "TOPICTAL",
+   "familia": "ANTIEPILEPTICOS",
+   "laboratorio": "TECNOFARMA S.A."
+  },
+  {
+   "codigo_sap": "50162",
+   "descripcion": "TOPICTAL 50MG. CAJA 28 COMP. REC.",
+   "principio_activo": "TOPIRAMATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "TOPICTAL",
+   "familia": "ANTIEPILEPTICOS",
+   "laboratorio": "TECNOFARMA S.A."
+  },
+  {
+   "codigo_sap": "83159",
+   "descripcion": "TOPIVITAE 100MG CAJA 28COMP REC.",
+   "principio_activo": "TOPIRAMATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "TOPIVITAE",
+   "familia": "ANTIEPILEPTICOS",
+   "laboratorio": "GALENICUM HEALTH CHI"
+  },
+  {
+   "codigo_sap": "88686",
+   "descripcion": "TOPIVITAE 25MG CAJA 28COMP REC",
+   "principio_activo": "TOPIRAMATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "TOPIVITAE",
+   "familia": "ANTIEPILEPTICOS",
+   "laboratorio": "GALENICUM HEALTH CHI"
+  },
+  {
+   "codigo_sap": "83170",
+   "descripcion": "TOPIVITAE 50 MG CAJA 28COMP REC",
+   "principio_activo": "TOPIRAMATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "TOPIVITAE",
+   "familia": "ANTIEPILEPTICOS",
+   "laboratorio": "GALENICUM HEALTH CHI"
+  },
+  {
+   "codigo_sap": "2718",
+   "descripcion": "TRITTICO 100MG. CAJA 20 COMP. REC.",
+   "principio_activo": "TRAZODONA CLORHIDRATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "TRITTICO",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "CHILE"
+  },
+  {
+   "codigo_sap": "2003",
+   "descripcion": "TRITTICO 25MG CAJA 20 CAP.",
+   "principio_activo": "TRAZODONA CLORHIDRATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "TRITTICO",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "CHILE"
+  },
+  {
+   "codigo_sap": "92524",
+   "descripcion": "TRONSALAN 100MG 30 COMP",
+   "principio_activo": "TRAZODONA CLORHIDRATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "TRONSALAN",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "EUROFARMA CHILE"
+  },
+  {
+   "codigo_sap": "94682",
+   "descripcion": "VENLAVITAE 37.5MG 30CAPS",
+   "principio_activo": "VENLAFAXINA",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "VENLAVITAE",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "GALENICUM HEALTH CHI"
+  },
+  {
+   "codigo_sap": "29102",
+   "descripcion": "DEPUROL RETARD 150MG. CAJA 30CAP.",
+   "principio_activo": "VENLAFAXINA CLORHIDRATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "DEPUROL",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "MEGALABS CHILE S.A"
+  },
+  {
+   "codigo_sap": "38117",
+   "descripcion": "DEPUROL RETARD 37,5MG. CAJA 20 CAP",
+   "principio_activo": "VENLAFAXINA CLORHIDRATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "DEPUROL",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "MEGALABS CHILE S.A"
+  },
+  {
+   "codigo_sap": "73343",
+   "descripcion": "DEPUROL RETARD 37,5MG.CAJA 30CAP.",
+   "principio_activo": "VENLAFAXINA CLORHIDRATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "DEPUROL",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "MEGALABS CHILE S.A"
+  },
+  {
+   "codigo_sap": "29089",
+   "descripcion": "DEPUROL RETARD 75MG. CAJA 30 CAP",
+   "principio_activo": "VENLAFAXINA CLORHIDRATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "DEPUROL",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "MEGALABS CHILE S.A"
+  },
+  {
+   "codigo_sap": "77854",
+   "descripcion": "ECTIEN XR 150 MG CAJA 30 CAP.",
+   "principio_activo": "VENLAFAXINA CLORHIDRATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "ECTIEN",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "CHILE"
+  },
+  {
+   "codigo_sap": "77852",
+   "descripcion": "ECTIEN XR 37.5 MG CAJA 30CAP.",
+   "principio_activo": "VENLAFAXINA CLORHIDRATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "ECTIEN",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "CHILE"
+  },
+  {
+   "codigo_sap": "77853",
+   "descripcion": "ECTIEN XR 75 MG CAJA 30 CAP.",
+   "principio_activo": "VENLAFAXINA CLORHIDRATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "ECTIEN",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "CHILE"
+  },
+  {
+   "codigo_sap": "42873",
+   "descripcion": "SENEXON SR 150MG CAJA 30 COMP. REC.",
+   "principio_activo": "VENLAFAXINA CLORHIDRATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "SENEXON",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "RECBEN XENERICS"
+  },
+  {
+   "codigo_sap": "88641",
+   "descripcion": "SUBELAN OR 225 MG X30 COMP REC LP",
+   "principio_activo": "VENLAFAXINA CLORHIDRATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "SUBELAN",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "EXELTIS"
+  },
+  {
+   "codigo_sap": "39183",
+   "descripcion": "SUBELAN XR 150 MG. CAJA 30 CAP",
+   "principio_activo": "VENLAFAXINA CLORHIDRATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "SUBELAN",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "EXELTIS"
+  },
+  {
+   "codigo_sap": "39161",
+   "descripcion": "SUBELAN XR 37,5 MG. CAJA 30 CAP",
+   "principio_activo": "VENLAFAXINA CLORHIDRATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "SUBELAN",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "EXELTIS"
+  },
+  {
+   "codigo_sap": "39162",
+   "descripcion": "SUBELAN XR 75 MG. CAJA 30 CAP.",
+   "principio_activo": "VENLAFAXINA CLORHIDRATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "SUBELAN",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "EXELTIS"
+  },
+  {
+   "codigo_sap": "82499",
+   "descripcion": "VENLAVITAE XR 150MG. CAJA 30 CAP.",
+   "principio_activo": "VENLAFAXINA CLORHIDRATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "VENLAVITAE",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "GALENICUM HEALTH CHI"
+  },
+  {
+   "codigo_sap": "82520",
+   "descripcion": "VENLAVITAE XR 75MG. CAJA 30CAP.",
+   "principio_activo": "VENLAFAXINA CLORHIDRATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "VENLAVITAE",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "GALENICUM HEALTH CHI"
+  },
+  {
+   "codigo_sap": "78300",
+   "descripcion": "BRINTELLIX 10MG. CAJA 28 COMP.REC.",
+   "principio_activo": "VORTIOXETINA BROMHIDRATO",
+   "bioequivalencia": "N",
+   "detalle_be": "MARCA",
+   "marca": "BRINTELLIX",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "LUNDBECK"
+  },
+  {
+   "codigo_sap": "90886",
+   "descripcion": "BRINTELLIX 15 MG. X 28 COMP.REC",
+   "principio_activo": "VORTIOXETINA BROMHIDRATO",
+   "bioequivalencia": "N",
+   "detalle_be": "MARCA",
+   "marca": "BRINTELLIX",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "LUNDBECK"
+  },
+  {
+   "codigo_sap": "83304",
+   "descripcion": "BRINTELLIX 20 MG CAJA 28COMP REC",
+   "principio_activo": "VORTIOXETINA BROMHIDRATO",
+   "bioequivalencia": "N",
+   "detalle_be": "MARCA",
+   "marca": "BRINTELLIX",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "LUNDBECK"
+  },
+  {
+   "codigo_sap": "86964",
+   "descripcion": "BRINTELLIX 5MG 7COMP REC",
+   "principio_activo": "VORTIOXETINA BROMHIDRATO",
+   "bioequivalencia": "N",
+   "detalle_be": "MARCA",
+   "marca": "BRINTELLIX",
+   "familia": "ANTIDEPRESORES / TIMOANALEPTICOS",
+   "laboratorio": "LUNDBECK"
+  },
+  {
+   "codigo_sap": "17464",
+   "descripcion": "SOMNIL 10 MG. CAJA 30 COMP.REC.",
+   "principio_activo": "ZOLPIDEM HEMITARTRATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "SOMNIL",
+   "familia": "HIPNOTICOS / SEDANTES",
+   "laboratorio": "TECNOFARMA S.A."
+  },
+  {
+   "codigo_sap": "88843",
+   "descripcion": "SOMNIPRON 10MG 30COMP REC",
+   "principio_activo": "ZOLPIDEM HEMITARTRATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "SOMNIPRON",
+   "familia": "HIPNOTICOS / SEDANTES",
+   "laboratorio": "INSTITUTO SANITAS S.A"
+  },
+  {
+   "codigo_sap": "43001",
+   "descripcion": "SOMNO 10 MG. CAJA 30 COMP.REC.",
+   "principio_activo": "ZOLPIDEM HEMITARTRATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "SOMNO",
+   "familia": "HIPNOTICOS / SEDANTES",
+   "laboratorio": "SAVAL S.A."
+  },
+  {
+   "codigo_sap": "43729",
+   "descripcion": "SUCEDAL 10 MG. CAJA 30 COMP.REC.",
+   "principio_activo": "ZOLPIDEM HEMITARTRATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "SUCEDAL",
+   "familia": "HIPNOTICOS / SEDANTES",
+   "laboratorio": "MEGALABS CHILE S.A"
+  },
+  {
+   "codigo_sap": "43002",
+   "descripcion": "SOMNO 5 MG. CAJA 30 COMP.REC.",
+   "principio_activo": "ZOLPIDEM HEMITARTRATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "SOMNO",
+   "familia": "HIPNOTICOS / SEDANTES",
+   "laboratorio": "SAVAL S.A."
+  },
+  {
+   "codigo_sap": "87886",
+   "descripcion": "SUCEDAL LP 12,5 MG X COMP.REC.30COMP REC",
+   "principio_activo": "ZOLPIDEM HEMITARTRATO",
+   "bioequivalencia": "N",
+   "detalle_be": "MARCA",
+   "marca": "SUCEDAL",
+   "familia": "HIPNOTICOS / SEDANTES",
+   "laboratorio": "MEGALABS CHILE S.A"
+  },
+  {
+   "codigo_sap": "90600",
+   "descripcion": "SONIREM 10 MG/30ML SOLUCION GOTAS ORALES",
+   "principio_activo": "ZOLPIDEM TARTRATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "SONIREM",
+   "familia": "HIPNOTICOS / SEDANTES",
+   "laboratorio": "ITF - LABOMED"
+  },
+  {
+   "codigo_sap": "85216",
+   "descripcion": "SOMNIPAX 10 MG CAJA 30COMP.",
+   "principio_activo": "ZOLPIDEM TARTRATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "SOMNIPAX",
+   "familia": "HIPNOTICOS / SEDANTES",
+   "laboratorio": "BAGO"
+  },
+  {
+   "codigo_sap": "66116",
+   "descripcion": "SOMNO-XR 12,5 MG. 30 COMP.REC.LP",
+   "principio_activo": "ZOLPIDEM TARTRATO",
+   "bioequivalencia": "N",
+   "detalle_be": "MARCA",
+   "marca": "SOMNO",
+   "familia": "HIPNOTICOS / SEDANTES",
+   "laboratorio": "SAVAL S.A."
+  },
+  {
+   "codigo_sap": "69706",
+   "descripcion": "ZAVIANA FS 12,5 MG 30 COMP. REC. L.P",
+   "principio_activo": "ZOLPIDEM TARTRATO",
+   "bioequivalencia": "N",
+   "detalle_be": "MARCA",
+   "marca": "ZAVIANA",
+   "familia": "HIPNOTICOS / SEDANTES",
+   "laboratorio": "RECALCINE S.A."
+  },
+  {
+   "codigo_sap": "69707",
+   "descripcion": "ZAVIANA FS 6,25 MG 30 COMP. REC. LP",
+   "principio_activo": "ZOLPIDEM TARTRATO",
+   "bioequivalencia": "N",
+   "detalle_be": "MARCA",
+   "marca": "ZAVIANA",
+   "familia": "HIPNOTICOS / SEDANTES",
+   "laboratorio": "RECALCINE S.A."
+  },
+  {
+   "codigo_sap": "89780",
+   "descripcion": "ZOLPAST 5 MG X 30 COMPRIMIDOS BD",
+   "principio_activo": "ZOLPIDEM TARTRATO",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "ZOLPAST",
+   "familia": "HIPNOTICOS / SEDANTES",
+   "laboratorio": "PASTEUR"
+  },
+  {
+   "codigo_sap": "81441",
+   "descripcion": "NOCTIDEM 7,5 MG CAJA 30 COMP. REC.",
+   "principio_activo": "ZOPICLONA",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "NOCTIDEM",
+   "familia": "HIPNOTICOS / SEDANTES",
+   "laboratorio": "INTERPHARMA"
+  },
+  {
+   "codigo_sap": "6868",
+   "descripcion": "ZOMETIC 7.5 MG. CAJA 30 COMP. REC.",
+   "principio_activo": "ZOPICLONA",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "ZOMETIC",
+   "familia": "HIPNOTICOS / SEDANTES",
+   "laboratorio": "CHEMOPHARMA"
+  },
+  {
+   "codigo_sap": "81440",
+   "descripcion": "ZOPICLONA 7,5 MG CAJA 30 COMP. REC.",
+   "principio_activo": "ZOPICLONA",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "GENERICO",
+   "familia": "HIPNOTICOS / SEDANTES",
+   "laboratorio": "INTERPHARMA"
+  },
+  {
+   "codigo_sap": "86363",
+   "descripcion": "ZOPICLONA 7,5 MG CAJA 30 COMP. REC.",
+   "principio_activo": "ZOPICLONA",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "GENERICO",
+   "familia": "HIPNOTICOS / SEDANTES",
+   "laboratorio": "MINTLAB CO SA"
+  },
+  {
+   "codigo_sap": "91473",
+   "descripcion": "ZOPICLONA 7,5 MG CAJA 30 COMP. REC.",
+   "principio_activo": "ZOPICLONA",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "GENERICO",
+   "familia": "HIPNOTICOS / SEDANTES",
+   "laboratorio": "CHILE"
+  },
+  {
+   "codigo_sap": "92790",
+   "descripcion": "ZOPICLONA 7,5 MG CAJA 30 COMP. REC.",
+   "principio_activo": "ZOPICLONA",
+   "bioequivalencia": "B",
+   "detalle_be": "BIOEQUIVALENTE",
+   "marca": "GENERICO",
+   "familia": "HIPNOTICOS / SEDANTES",
+   "laboratorio": "SEVEN PHARMA CHILE SPA"
+  }
+ ],
+ "externalizado": [
+  {
+   "glosa": "ALPRAZOLAM 0.5MG. CAJA 30",
+   "convenio_001": false,
+   "convenio_002": true
+  },
+  {
+   "glosa": "BETIS CLOTIAZEPAM 10MG.CA",
+   "convenio_001": false,
+   "convenio_002": true
+  },
+  {
+   "glosa": "BETIS CLOTIAZEPAM 5MG.CAJ",
+   "convenio_001": false,
+   "convenio_002": true
+  },
+  {
+   "glosa": "BUTRINO 150 MG CAJA 30 CO",
+   "convenio_001": false,
+   "convenio_002": true
+  },
+  {
+   "glosa": "BUTRINO 150MG TABL RECU X",
+   "convenio_001": false,
+   "convenio_002": true
+  },
+  {
+   "glosa": "BUTRINO XL 300MG X 30 COM",
+   "convenio_001": false,
+   "convenio_002": true
+  },
+  {
+   "glosa": "CIRCALIFE MELATONINA 3MG",
+   "convenio_001": true,
+   "convenio_002": false
+  },
+  {
+   "glosa": "CLONAZEPAM 0,5 CAJA 30 CO",
+   "convenio_001": false,
+   "convenio_002": true
+  },
+  {
+   "glosa": "DEPRAX 100MG. CAJA 30 COM",
+   "convenio_001": false,
+   "convenio_002": true
+  },
+  {
+   "glosa": "DEPRAX 50MG. CAJA 60 COMP",
+   "convenio_001": false,
+   "convenio_002": true
+  },
+  {
+   "glosa": "DESLAFAX 100 MG 30COMP RE",
+   "convenio_001": false,
+   "convenio_002": true
+  },
+  {
+   "glosa": "DESLAFAX 50 MG 30COMP REC",
+   "convenio_001": false,
+   "convenio_002": true
+  },
+  {
+   "glosa": "DILASEDAN 10 MG. CAJA 30",
+   "convenio_001": false,
+   "convenio_002": true
+  },
+  {
+   "glosa": "DILASEDAN 5MG 30COMP",
+   "convenio_001": false,
+   "convenio_002": true
+  },
+  {
+   "glosa": "ECTIEN XR 75 MG CAJA 30 C",
+   "convenio_001": false,
+   "convenio_002": true
+  },
+  {
+   "glosa": "ELEVAL 50MG. 30COMP. REC.",
+   "convenio_001": false,
+   "convenio_002": true
+  },
+  {
+   "glosa": "ELEVAL 50MG. CAJA 60 COMP",
+   "convenio_001": false,
+   "convenio_002": true
+  },
+  {
+   "glosa": "ESCITALOPRAM 10MG. CAJA 3",
+   "convenio_001": false,
+   "convenio_002": true
+  },
+  {
+   "glosa": "ESCITALOPRAM 20 MG 30COMP",
+   "convenio_001": false,
+   "convenio_002": true
+  },
+  {
+   "glosa": "ESCITAVITAE 10MG. CAJA 28",
+   "convenio_001": false,
+   "convenio_002": true
+  },
+  {
+   "glosa": "ESCITAVITAE 20MG. CAJA 28",
+   "convenio_001": false,
+   "convenio_002": true
+  },
+  {
+   "glosa": "ESZOPICLONA BE 3 MG 30 CO",
+   "convenio_001": false,
+   "convenio_002": true
+  },
+  {
+   "glosa": "FLUOXETINA 20MG. CAJA 20",
+   "convenio_001": false,
+   "convenio_002": true
+  },
+  {
+   "glosa": "MELATONINA 3 MG 60 CAPS",
+   "convenio_001": true,
+   "convenio_002": false
+  },
+  {
+   "glosa": "NEUROVAL CD 10 MG 30COMP.",
+   "convenio_001": false,
+   "convenio_002": true
+  },
+  {
+   "glosa": "NEUROVAL CD 5MG. 30 COMP.",
+   "convenio_001": false,
+   "convenio_002": true
+  },
+  {
+   "glosa": "NUMAX XL 150 MG X 60 COMP",
+   "convenio_001": false,
+   "convenio_002": true
+  },
+  {
+   "glosa": "PAROXETINA 20 MG 30 COMP",
+   "convenio_001": false,
+   "convenio_002": true
+  },
+  {
+   "glosa": "PLANIDEN ODT 10MG. 30 COM",
+   "convenio_001": false,
+   "convenio_002": true
+  },
+  {
+   "glosa": "PLANIDEN ODT 5MG. 30COMP.",
+   "convenio_001": false,
+   "convenio_002": true
+  },
+  {
+   "glosa": "PREGABALINA 75MG 30 CAP",
+   "convenio_001": false,
+   "convenio_002": true
+  },
+  {
+   "glosa": "PRESTAT 75MG. CAJA 40 COM",
+   "convenio_001": false,
+   "convenio_002": true
+  },
+  {
+   "glosa": "PROPRANOLOL 40 MG. CAJA 2",
+   "convenio_001": false,
+   "convenio_002": true
+  },
+  {
+   "glosa": "QUETIAPINA 100 MG X 30 CO",
+   "convenio_001": false,
+   "convenio_002": true
+  },
+  {
+   "glosa": "QUETIAPINA 25 MG X 30 COM",
+   "convenio_001": false,
+   "convenio_002": true
+  },
+  {
+   "glosa": "QUETIDIN 25 MG. CAJA 30 C",
+   "convenio_001": false,
+   "convenio_002": true
+  },
+  {
+   "glosa": "SERTAC 100 MG. CAJA 30 CO",
+   "convenio_001": false,
+   "convenio_002": true
+  },
+  {
+   "glosa": "SERTAC 50MG. CAJA 30 COMP",
+   "convenio_001": false,
+   "convenio_002": true
+  },
+  {
+   "glosa": "SERTRALINA 100MG. CAJA 30",
+   "convenio_001": false,
+   "convenio_002": true
+  },
+  {
+   "glosa": "SERTRALINA 50 MG. CAJA 30",
+   "convenio_001": false,
+   "convenio_002": true
+  },
+  {
+   "glosa": "SOMNIPAX 10 MG CAJA 30COM",
+   "convenio_001": false,
+   "convenio_002": true
+  },
+  {
+   "glosa": "SOMNIPRON 10MG 30COMP REC",
+   "convenio_001": false,
+   "convenio_002": true
+  },
+  {
+   "glosa": "SOMNO 10 MG. CAJA 30 COMP",
+   "convenio_001": false,
+   "convenio_002": true
+  },
+  {
+   "glosa": "SOMNO-XR 12,5 MG. 30 COMP",
+   "convenio_001": false,
+   "convenio_002": true
+  },
+  {
+   "glosa": "SOSTAC 20MG.CAJA 60 COMP.",
+   "convenio_001": false,
+   "convenio_002": true
+  },
+  {
+   "glosa": "SUCEDAL LP 12,5 MG X COMP",
+   "convenio_001": false,
+   "convenio_002": true
+  },
+  {
+   "glosa": "TRITTICO 25MG CAJA 20 CAP",
+   "convenio_001": false,
+   "convenio_002": true
+  },
+  {
+   "glosa": "ZAVIANA FS 12,5 MG 30 COM",
+   "convenio_001": false,
+   "convenio_002": true
+  },
+  {
+   "glosa": "ZOMETIC 7.5 MG. CAJA 30 C",
+   "convenio_001": false,
+   "convenio_002": true
+  },
+  {
+   "glosa": "ZOPICLONA 7,5 MG CAJA 30",
+   "convenio_001": false,
+   "convenio_002": true
+  },
+  {
+   "glosa": "ZOPINOM 3MG X 30 COMPRIMI",
+   "convenio_001": false,
+   "convenio_002": true
+  }
+ ]
+}
