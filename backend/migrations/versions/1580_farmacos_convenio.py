@@ -11,8 +11,8 @@ generado una vez desde las planillas del QA del 23-11-2026, en lotes de 100 fila
 
 El downgrade borra ambas tablas.
 
-Revision ID: 1550
-Revises: 1530
+Revision ID: 1580
+Revises: 1570
 """
 import json
 from pathlib import Path
@@ -20,8 +20,8 @@ from pathlib import Path
 import sqlalchemy as sa
 from alembic import op
 
-revision = "1550"
-down_revision = "1530"
+revision = "1580"
+down_revision = "1570"
 branch_labels = None
 depends_on = None
 

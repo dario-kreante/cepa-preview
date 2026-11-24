@@ -1,5 +1,5 @@
 """Reporte «Externalizado» de fármacos (QA-010 / QA-013): catálogos sembrados por la migración
-1550 y el reporte por período con su clasificación. Datos de pacientes inventados.
+1580 y el reporte por período con su clasificación. Datos de pacientes inventados.
 """
 
 import io

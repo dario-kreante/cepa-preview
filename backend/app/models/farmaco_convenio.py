@@ -4,7 +4,7 @@
 - ``FarmacoExternalizado``: lista «Externalizado» con la glosa truncada del ISL y la marca de
   Convenio 001 y/o 002.
 
-Datos del sistema sembrados por la migración 1550 desde ``app/data/farmacos_convenio.json``.
+Datos del sistema sembrados por la migración 1580 desde ``app/data/farmacos_convenio.json``.
 """
 
 from sqlalchemy import BigInteger, Boolean, Identity, String
