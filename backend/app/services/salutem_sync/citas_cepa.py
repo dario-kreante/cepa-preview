@@ -53,7 +53,9 @@ _ESTADOS = {
     EstadoCitaSalutem.CONFIRMADO: "agendada",
     EstadoCitaSalutem.CONFIRMADO_WEB: "agendada",
     EstadoCitaSalutem.CONFIRMADO_EMAIL: "agendada",
-    EstadoCitaSalutem.RECEPCIONADO: "agendada",  # [CEPA, P7]
+    # QA-002 (23-11-2026): el CEPA quiere ver aparte las citas recepcionadas que el
+    # profesional aún no evoluciona (antes contaban como agendadas, [CEPA, P7]).
+    EstadoCitaSalutem.RECEPCIONADO: "recepcionada",
 }
 
 
@@ -254,7 +256,9 @@ def sincronizar_citas(
     limite = hoy - timedelta(days=DIAS_AGENDADA_ANTIGUA)
     resultado.agendadas_antiguas = db.scalar(
         select(func.count()).select_from(Cita).where(
-            Cita.origen == "SALUTEM", Cita.estado == "agendada", Cita.fecha < limite
+            Cita.origen == "SALUTEM",
+            Cita.estado.in_(("agendada", "recepcionada")),
+            Cita.fecha < limite,
         )
     ) or 0
     return resultado

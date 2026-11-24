@@ -1310,11 +1310,12 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Descarga el reporte de auditoría en formato CSV
-         * @description Descarga el reporte de auditoría como archivo CSV.
+         * Descarga el reporte de auditoría en Excel (.xlsx)
+         * @description Descarga el reporte de auditoría como planilla Excel.
          *
-         *     Los encabezados incluyen folio, numero_siniestro e ingreso_id para trazabilidad
-         *     (CA-2, CA-3, RN-3, RN-4, TC-051-02, TC-051-03).
+         *     QA-005 (23-11-2026): antes era un CSV que Excel abría en una sola columna y con las
+         *     tildes rotas. Las columnas incluyen folio, N° de siniestro e ID de ingreso para
+         *     trazabilidad (CA-2, CA-3, RN-3, RN-4, TC-051-02, TC-051-03).
          */
         post: operations["descargar_reporte_csv_api_v1_auditoria_reportes_descargar_post"];
         delete?: never;
@@ -4024,6 +4025,12 @@ export interface components {
             alta_psicologica: boolean;
             /** Alta Terapeutica */
             alta_terapeutica: boolean;
+            /** Tipo Ingreso */
+            tipo_ingreso?: string | null;
+            /** Programa */
+            programa?: string | null;
+            /** Convenio */
+            convenio?: string | null;
         };
         /**
          * FiltrosReporte
@@ -4059,6 +4066,8 @@ export interface components {
             tipo_ingreso?: string | null;
             /** Tipo Denuncia */
             tipo_denuncia?: string | null;
+            /** Convenio */
+            convenio?: string | null;
         };
         /**
          * FolioUpdate
@@ -5640,6 +5649,11 @@ export interface components {
              * @default 0
              */
             agendadas: number;
+            /**
+             * Recepcionadas
+             * @default 0
+             */
+            recepcionadas: number;
         };
         /** ReporteOperativoResponse */
         ReporteOperativoResponse: {
@@ -5955,7 +5969,7 @@ export interface components {
          * @description Tipos de derivación permitidos (v4 D4). 'SOCORRO' ya no es válido.
          * @enum {string}
          */
-        TipoDerivacion: "DIEP" | "DIAT" | "PAPT a flujo AT" | "Reingreso FUMP" | "Reingreso SUSESO" | "Reingreso ISL" | "Convenio U.Clinica" | "Proyecto" | "Particular" | "PAPT";
+        TipoDerivacion: "DIEP" | "DIEP sin EPT" | "DIAT" | "PAPT a flujo AT" | "Reingreso FUMP" | "Reingreso SUSESO" | "Reingreso ISL" | "Convenio U.Clinica" | "Proyecto" | "Particular" | "PAPT";
         /**
          * TipoIngreso
          * @description Tipo de ingreso (v4 D6 / dashboard D5).
@@ -9723,7 +9737,7 @@ export interface operations {
     get_odas_vencidas_api_v1_reportes_odas_vencidas_get: {
         parameters: {
             query?: {
-                /** @description regular | ley_karin | pipt (otro valor: coincidencia exacta) */
+                /** @description regular | ingreso_isl | tratamiento_isl | ley_karin | pipt (otro valor: coincidencia exacta) */
                 programa?: string | null;
                 region?: string | null;
                 comuna?: string | null;

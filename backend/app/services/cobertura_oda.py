@@ -71,7 +71,7 @@ def alertar_citas_fuera_de_oda(
             .join(Ingreso, Ingreso.id == Cita.ingreso_id)
             .where(
                 Cita.salutem_cita_id.is_not(None),
-                Cita.estado.in_(("agendada", "realizada")),
+                Cita.estado.in_(("agendada", "recepcionada", "realizada")),
                 Cita.fecha >= desde,
                 Cita.fecha <= hasta,
                 Ingreso.estado == EstadoCaso.ACTIVO.value,

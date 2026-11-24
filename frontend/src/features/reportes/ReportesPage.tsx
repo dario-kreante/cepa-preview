@@ -172,12 +172,14 @@ function OperativoTab() {
       />
       {m.data && (
         <Tabla
-          headers={["Fecha", "Programa", "Citas", "Realizadas", "Inasist.", "Anuladas", "Agendadas"]}
+          headers={["Fecha", "Programa", "Citas", "Realizadas", "Recepcionadas", "Inasist.", "Anuladas", "Agendadas"]}
           rows={m.data.items.map((it) => [
             fmtDate(it.fecha),
-            it.programa ?? "—",
+            it.programa ?? "Sin programa",
             it.total_citas,
             it.realizadas,
+            // QA-002: el paciente llegó y la atención aún no se evoluciona en SALUTEM.
+            it.recepcionadas ?? 0,
             it.inasistencias,
             it.anuladas,
             it.agendadas,

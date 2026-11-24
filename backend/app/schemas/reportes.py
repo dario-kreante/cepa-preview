@@ -93,6 +93,7 @@ class ReporteOperativoItem(BaseModel):
     inasistencias: int
     anuladas: int
     agendadas: int = 0  # DD-6: incluido para que columnas reconcilien con total_citas
+    recepcionadas: int = 0  # QA-002: el paciente llegó y la atención aún no se evoluciona
 
 
 class ReporteOperativoResponse(BaseModel):

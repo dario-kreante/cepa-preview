@@ -84,7 +84,7 @@ def _escenario(db, **kw):
     ("estado_id", "esperado"),
     [
         (1, "agendada"), (4, "agendada"), (5, "agendada"), (6, "agendada"), (7, "agendada"),
-        (8, "agendada"), (3, "realizada"), (9, "inasistencia"), (2, "anulada"),
+        (8, "recepcionada"), (3, "realizada"), (9, "inasistencia"), (2, "anulada"),
         (99, None), (None, None),
     ],
 )
