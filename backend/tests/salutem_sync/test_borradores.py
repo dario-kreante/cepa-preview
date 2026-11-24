@@ -76,7 +76,7 @@ def test_mapea_los_datos_de_salutem(db_session):
     assert p.sexo == "M"
     assert p.edad == 59
     assert p.comuna == "Talca"
-    assert p.region is None
+    assert p.region == "Maule"  # deducida de la comuna (QA-003)
 
 
 def test_persona_sin_rut_queda_sin_rut(db_session):

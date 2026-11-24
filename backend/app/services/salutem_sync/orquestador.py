@@ -30,7 +30,7 @@ from app.services.salutem_sync.bitacora import (
     registrar_omitida,
     ultimo_inicio_ok,
 )
-from app.services.salutem_sync.borradores import crear_borradores
+from app.services.salutem_sync.borradores import completar_contacto, crear_borradores
 from app.services.salutem_sync.citas_cepa import sincronizar_citas
 from app.services.salutem_sync.incremental import (
     hoy_en_santiago,
@@ -160,6 +160,14 @@ def correr(
             log.exception("Modo %s: falló la creación de borradores", modo)
             db.rollback()
             errores = errores + [f"borradores: {type(e).__name__}: {e}"]
+        try:
+            completados = completar_contacto(db)
+            if completados:
+                log.info("Pacientes con contacto completado desde SALUTEM: %d", completados)
+        except Exception as e:  # noqa: BLE001 — un fallo de este paso no debe perder el resto del ciclo
+            log.exception("Modo %s: falló el completado de contacto", modo)
+            db.rollback()
+            errores = errores + [f"contacto: {type(e).__name__}: {e}"]
         try:
             citas = sincronizar_citas(
                 db,

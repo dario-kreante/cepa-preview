@@ -12,10 +12,11 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, time, timezone
 from typing import Any
 
-from sqlalchemy import exists, select
+from sqlalchemy import exists, or_, select
 from sqlalchemy.orm import Session
 
 from app.audit.service import record_audit
+from app.domain.comunas import region_de_comuna
 from app.domain.enums import EstadoRegistroPaciente, OrigenPaciente
 from app.domain.enums_alertas import EstadoAlerta, TipoAlerta
 from app.integrations.salutem.models import EstadoCitaSalutem
@@ -73,7 +74,7 @@ def paciente_desde_persona(persona: SalutemPersona, hoy: date) -> Paciente:
         rut=persona.rut,
         sexo=_sexo(c.get("sexo")),
         edad=_edad(c.get("fechaNacimiento"), hoy),
-        region=None,
+        region=region_de_comuna(c.get("comuna") if isinstance(c.get("comuna"), str) else None),
         comuna=_texto(c.get("comuna"), 80),
         telefono=_texto(c.get("telefonoMovil"), 30),
         correo=_texto(c.get("email"), 120),
@@ -168,3 +169,45 @@ def resolver_alerta_borrador(db: Session, paciente_id: int) -> None:
         alerta.estado = EstadoAlerta.RESUELTA.value
         alerta.resuelta_en = ahora
     db.flush()
+
+
+def completar_contacto(db: Session) -> int:
+    """Rellena con SALUTEM los datos de contacto vacíos de los pacientes ya vinculados (QA-003).
+
+    Solo completa lo que está vacío en SIGE (comuna, teléfono, correo y la región deducida
+    de la comuna): nunca pisa un dato que el CEPA ya escribió. Repara además las fichas que
+    quedaron en blanco cuando el alta borraba lo que traía el borrador. Devuelve cuántos
+    pacientes cambiaron.
+    """
+    vacio = or_(
+        Paciente.comuna.is_(None), Paciente.telefono.is_(None),
+        Paciente.correo.is_(None), Paciente.region.is_(None),
+    )
+    filas = db.execute(
+        select(Paciente, SalutemPersona).join(SalutemPersona, cruce_con_paciente()).where(vacio)
+    ).all()
+    cambiados: set[int] = set()
+    for paciente, persona in filas:
+        if paciente.id in cambiados:
+            continue
+        c = persona.contenido or {}
+        nuevos = {
+            "comuna": _texto(c.get("comuna"), 80),
+            "telefono": _texto(c.get("telefonoMovil"), 30),
+            "correo": _texto(c.get("email"), 120),
+        }
+        cambio = False
+        for campo, valor in nuevos.items():
+            if getattr(paciente, campo) is None and valor:
+                setattr(paciente, campo, valor)
+                cambio = True
+        if paciente.region is None:
+            region = region_de_comuna(paciente.comuna)
+            if region:
+                paciente.region = region
+                cambio = True
+        if cambio:
+            cambiados.add(paciente.id)
+    if cambiados:
+        db.flush()
+    return len(cambiados)
